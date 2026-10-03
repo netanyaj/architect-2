@@ -1,0 +1,156 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { useUi } from "@/lib/ui-store";
+import { Icon, type IconName } from "./icon";
+
+type NavItem = { href: string; label: string; icon: IconName; count?: number };
+
+export type SideNavProps = {
+  workspaceName: string;
+  userName: string;
+  isAdmin: boolean;
+  projectCount?: number;
+  approvalsWaiting?: number;
+  credits: { left: number; total: number; resetsOn: string };
+  /** Shows "Online" next to Help when people are answering tickets. */
+  peopleOnline?: boolean;
+};
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase())
+    .join("");
+}
+
+function NavLink({ item, active }: { item: NavItem; active: boolean }) {
+  return (
+    <Link
+      href={item.href}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex min-h-10 w-full items-center gap-[11px] rounded-card border border-transparent px-3 text-body font-[550] text-ink-2 no-underline hover:bg-selected hover:text-ink",
+        active && "border-line bg-surface font-[650] text-ink shadow-[0_1px_2px_rgba(0,0,0,.05)] hover:bg-surface",
+      )}
+    >
+      <Icon name={item.icon} />
+      {item.label}
+      {item.count !== undefined && item.count > 0 && (
+        <span className="ml-auto rounded-full border border-line bg-surface px-2 text-small leading-5 text-ink-2 tabular-nums">
+          {item.count}
+        </span>
+      )}
+    </Link>
+  );
+}
+
+export function CreditsCard({ left, total, resetsOn }: SideNavProps["credits"]) {
+  const pct = total > 0 ? Math.max(0, Math.min(100, (left / total) * 100)) : 0;
+  return (
+    <div className="flex flex-col gap-2 rounded-card border border-line bg-surface p-3.5">
+      <div className="flex items-center justify-between">
+        <span className="font-semibold">Credits</span>
+        <span className="text-small font-semibold tabular-nums">
+          {left.toLocaleString("en-US")} / {total.toLocaleString("en-US")}
+        </span>
+      </div>
+      <div
+        className="h-1.5 overflow-hidden rounded-full bg-selected"
+        role="meter"
+        aria-label="Credits left"
+        aria-valuemin={0}
+        aria-valuemax={total}
+        aria-valuenow={left}
+      >
+        <i className="block h-full bg-ink" style={{ width: `${pct}%` }} />
+      </div>
+      <div className="flex items-center justify-between text-small text-ink-2">
+        <span>Resets {resetsOn}</span>
+        <Link href="/usage" className="min-h-6 font-semibold text-ink underline decoration-line-ctl underline-offset-[3px]">
+          Plans
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+/** The tray side nav for pages outside a project. */
+export function SideNav(props: SideNavProps) {
+  const pathname = usePathname();
+  const openHelp = useUi((s) => s.openHelp);
+  const main: NavItem[] = [
+    { href: "/home", label: "Home", icon: "home" },
+    { href: "/projects", label: "Projects", icon: "projects", count: props.projectCount },
+    { href: "/agents", label: "Agents", icon: "agent" },
+    { href: "/connections", label: "Connections", icon: "connections" },
+    { href: "/marketplace", label: "Marketplace", icon: "marketplace" },
+    { href: "/usage", label: "Usage", icon: "usage" },
+  ];
+  const admin: NavItem[] = [
+    { href: "/governance/approvals", label: "Approvals", icon: "approvals", count: props.approvalsWaiting },
+    { href: "/governance", label: "Governance", icon: "governance" },
+  ];
+  const isActive = (href: string) =>
+    href === "/governance" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+
+  return (
+    <nav
+      aria-label="Workspace"
+      className="flex flex-col gap-0.5 rounded-pane border border-line bg-tray px-3 py-3.5 md:sticky md:top-2.5 md:h-[calc(100dvh-20px)] md:w-[248px] md:flex-none"
+    >
+      <div className="flex items-center gap-2.5 px-1.5 pt-0.5 pb-3 text-sub font-bold">
+        <span className="grid size-[30px] flex-none place-items-center rounded-[9px] bg-primary text-body font-bold text-on-primary" aria-hidden="true">
+          A
+        </span>
+        Architect
+        <span className="flex-1" />
+        <span className="sr-only">Workspace: {props.workspaceName}</span>
+      </div>
+      {main.map((item) => (
+        <NavLink key={item.href} item={item} active={isActive(item.href)} />
+      ))}
+      {props.isAdmin && (
+        <>
+          <div className="px-3 pt-3.5 pb-1 text-small font-[650] text-ink-3">Admin</div>
+          {admin.map((item) => (
+            <NavLink key={item.href} item={item} active={isActive(item.href)} />
+          ))}
+        </>
+      )}
+      <div className="flex-1" />
+      <CreditsCard {...props.credits} />
+      <button
+        type="button"
+        onClick={() => openHelp()}
+        className="mt-2 flex min-h-10 w-full items-center gap-[11px] rounded-card px-3 text-left font-[550] text-ink-2 hover:bg-selected hover:text-ink"
+      >
+        <Icon name="help" />
+        Help
+        {props.peopleOnline && (
+          <span className="ml-auto inline-flex items-center gap-1.5 text-small font-[650] text-works">
+            <i className="block size-2 rounded-full bg-current" aria-hidden="true" />
+            Online
+          </span>
+        )}
+      </button>
+      <Link
+        href="/settings"
+        aria-current={isActive("/settings") ? "page" : undefined}
+        className="flex min-h-12 items-center gap-2.5 rounded-card px-3 py-1.5 no-underline hover:bg-selected"
+      >
+        <span className="grid size-[30px] flex-none place-items-center rounded-full bg-surface text-small font-bold" aria-hidden="true">
+          {initials(props.userName)}
+        </span>
+        <span className="flex min-w-0 flex-col leading-tight">
+          <span className="truncate font-semibold">{props.userName}</span>
+          <span className="text-small text-ink-2">Settings</span>
+        </span>
+      </Link>
+    </nav>
+  );
+}
