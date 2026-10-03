@@ -66,6 +66,17 @@ describe("create_demo_workspace", () => {
     expect(await count("select count(*) as n from members where workspace_id = $1 and status = 'invited'", [ws])).toBe(2);
   });
 
+  it("shows Sam as ticket-triage's owner while the real owner is the signed-in person", async () => {
+    const p = await one<{ owner_id: string; owner_display_name: string }>(
+      "select owner_id, owner_display_name from projects where name = 'ticket-triage' limit 1",
+    );
+    expect(p).toEqual({ owner_id: MORGAN, owner_display_name: "Sam" });
+    expect(
+      await count("select count(*) as n from approvals where kind in ('deploy','token') and payload->>'requested_by_name' = 'Sam'"),
+    ).toBe(2);
+    expect(await count("select count(*) as n from projects where name <> 'ticket-triage' and owner_display_name is not null")).toBe(0);
+  });
+
   it("every built part has a passing proof (DATA-MODEL rule 5)", async () => {
     expect(
       await count(`select count(*) as n from items i where i.status = 'built'

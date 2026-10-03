@@ -20,7 +20,10 @@ alter table workspaces
 -- Projects: the prompt that started it, and its tile icon ---------------------------------
 alter table projects
   add column prompt text,
-  add column icon text not null default 'projects';
+  add column icon text not null default 'projects',
+  -- Who lists and approvals show as the owner when it isn't the real owner_id yet
+  -- (seeded projects for teammates without accounts). The F8 hand-off makes it real and clears it.
+  add column owner_display_name text;
 
 -- Support tickets need a workspace for staff routing; the asker can always read their own.
 alter table support_tickets add column workspace_id uuid references workspaces(id) on delete set null;
@@ -100,8 +103,8 @@ begin
   ------------------------------------------------------------------ ticket-triage: 5 of 6, waiting for approval
   v_titles := array['New tickets read','Urgency and team label','Draft reply for simple tickets','VIP escalation','Slack alert to the team','Production deploy'];
   v_groups := array['integrations','agents','agents','features','integrations','quality'];
-  insert into projects (workspace_id, name, owner_id, status, current_version, budget_credits, model, prompt, icon, updated_at)
-  values (p_workspace, 'ticket-triage', p_owner, 'built', 1, 150, 'claude-sonnet',
+  insert into projects (workspace_id, name, owner_id, owner_display_name, status, current_version, budget_credits, model, prompt, icon, updated_at)
+  values (p_workspace, 'ticket-triage', p_owner, 'Sam', 'built', 1, 150, 'claude-sonnet',
           'Classify incoming Zendesk tickets by urgency and team, draft a reply for simple ones, and escalate anything from VIP customers.',
           'lines', now() - interval '1 day')
   returning id into v_project;
@@ -122,7 +125,7 @@ begin
     (p_workspace, v_project, null, 'blueprint', 3, 'Plan written', now() - interval '1 day'),
     (p_workspace, v_project, v_run, 'build', 93, 'Build · 5 parts', now() - interval '1 day');
   insert into approvals (workspace_id, project_id, kind, title, requested_by, payload) values
-    (p_workspace, v_project, 'deploy', 'ticket-triage: Production deploy', p_owner, '{"environment": "production"}');
+    (p_workspace, v_project, 'deploy', 'ticket-triage: Production deploy', p_owner, '{"environment": "production", "requested_by_name": "Sam"}');
 
   ------------------------------------------------------------------ Lead scorer: paused at budget, 4 of 7
   v_titles := array['New HubSpot leads read','Company size lookup','Recent activity score','Score from 0 to 100','Reason for each score','Top 5 posted to #sales','Daily schedule'];
@@ -184,7 +187,7 @@ begin
   -- Approvals waiting (besides the ticket-triage deploy above).
   insert into approvals (workspace_id, kind, title, requested_by, payload) values
     (p_workspace, 'connector', 'HubSpot connector', p_owner, '{"provider": "hubspot"}'),
-    (p_workspace, 'token', 'Claude Code token for Sam', p_owner, '{"agent": "Claude Code", "for": "Sam"}');
+    (p_workspace, 'token', 'Claude Code token for Sam', p_owner, '{"agent": "Claude Code", "for": "Sam", "requested_by_name": "Sam"}');
 
   insert into audit_log (workspace_id, actor, action, target, details) values
     (p_workspace, 'system', 'workspace.seeded', 'Acme Ops', '{"note": "Demo data for the prototype"}');
