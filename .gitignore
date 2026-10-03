@@ -10,3 +10,8 @@ test-results/
 *.har
 *.mov
 *.pem
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+supabase/.temp/
+.pnpm-debug.log*
