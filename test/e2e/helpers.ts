@@ -1,0 +1,33 @@
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "../../src/lib/database.types";
+
+/** Service-role client for test setup and cleanup only (never shipped to the browser). */
+export function adminDb() {
+  return createClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+export type TestUser = { id: string; email: string; password: string };
+
+/** A confirmed email account, so tests don't depend on reading an inbox. */
+export async function createTestUser(label: string): Promise<TestUser> {
+  const email = `e2e-${label}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@example.com`;
+  const password = `e2e-${Math.random().toString(36).slice(2)}-Pw1`;
+  const { data, error } = await adminDb().auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { full_name: `Test ${label}` },
+  });
+  if (error || !data.user) throw new Error(`createUser failed: ${error?.message}`);
+  return { id: data.user.id, email, password };
+}
+
+/** Removes the account and every workspace it owns (projects and the rest cascade). */
+export async function deleteTestUser(user: TestUser) {
+  const db = adminDb();
+  const { data: owned } = await db.from("members").select("workspace_id").eq("user_id", user.id).eq("role", "owner");
+  for (const m of owned ?? []) await db.from("workspaces").delete().eq("id", m.workspace_id);
+  await db.auth.admin.deleteUser(user.id);
+}

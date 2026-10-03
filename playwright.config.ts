@@ -1,5 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// Tests talk to the real Supabase project; load local settings when present (CI sets them as env vars).
+try {
+  process.loadEnvFile(".env.local");
+} catch {
+  // No .env.local: rely on the environment.
+}
+
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${PORT}`;
 
