@@ -1,0 +1,129 @@
+/**
+ * Runs the real migrations on PGlite (Postgres in WASM) with a minimal stand-in for Supabase's
+ * auth schema, roles and Realtime publication, then checks the demo seed, first sign-in and reset.
+ */
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import { PGlite } from "@electric-sql/pglite";
+import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
+import { beforeAll, describe, expect, it } from "vitest";
+
+const MIGRATIONS = join(__dirname, "../../supabase/migrations");
+
+const SUPABASE_STUB = `
+  create role anon; create role authenticated;
+  create schema auth;
+  create table auth.users (id uuid primary key, email text);
+  create function auth.uid() returns uuid language sql stable as $$
+    select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
+  $$;
+  create publication supabase_realtime;
+`;
+
+const MORGAN = "00000000-0000-0000-0000-00000000000a";
+const REVIEWER = "00000000-0000-0000-0000-00000000000b";
+
+let db: PGlite;
+
+async function one<T>(sql: string, params: unknown[] = []): Promise<T> {
+  const r = await db.query<T>(sql, params);
+  return r.rows[0];
+}
+
+async function count(sql: string, params: unknown[] = []): Promise<number> {
+  return Number((await one<{ n: number | string }>(sql, params)).n);
+}
+
+beforeAll(async () => {
+  db = new PGlite({ extensions: { pgcrypto } });
+  await db.exec(SUPABASE_STUB);
+  for (const f of readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort()) {
+    await db.exec(readFileSync(join(MIGRATIONS, f), "utf8"));
+  }
+  await db.query("insert into auth.users (id, email) values ($1, 'morgan@example.com'), ($2, 'reviewer@example.com')", [MORGAN, REVIEWER]);
+}, 60_000);
+
+describe("create_demo_workspace", () => {
+  it("gives a new person their own seeded Acme Ops, as Owner", async () => {
+    const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
+    const w = await one<{ name: string; governance_enabled: boolean }>("select name, governance_enabled from workspaces where id = $1", [ws]);
+    expect(w).toEqual({ name: "Acme Ops", governance_enabled: true });
+    expect(await one("select role, status from members where workspace_id = $1 and user_id = $2", [ws, MORGAN])).toEqual({ role: "owner", status: "active" });
+
+    const projects = await db.query<{ name: string; status: string; total: number; built: number }>(
+      `select p.name, p.status, count(i.*)::int as total, count(i.*) filter (where i.status = 'built')::int as built
+       from projects p join items i on i.project_id = p.id where p.workspace_id = $1 group by p.name, p.status order by p.name`,
+      [ws],
+    );
+    expect(projects.rows).toEqual([
+      { name: "Lead scorer", status: "paused", total: 7, built: 4 },
+      { name: "Meeting Prep", status: "live", total: 12, built: 12 },
+      { name: "Vendor tracker", status: "draft", total: 3, built: 0 },
+      { name: "ticket-triage", status: "built", total: 6, built: 5 },
+    ]);
+    expect(await count("select sum(credits) as n from usage_ledger where workspace_id = $1", [ws])).toBe(372);
+    expect(await count("select count(*) as n from approvals where workspace_id = $1 and status = 'waiting'", [ws])).toBe(3);
+    expect(await count("select count(*) as n from members where workspace_id = $1 and status = 'invited'", [ws])).toBe(2);
+  });
+
+  it("every built part has a passing proof (DATA-MODEL rule 5)", async () => {
+    expect(
+      await count(`select count(*) as n from items i where i.status = 'built'
+                   and not exists (select 1 from proofs p where p.item_id = i.id and p.result = 'pass')`),
+    ).toBe(0);
+  });
+
+  it("is idempotent: signing in again returns the same workspace", async () => {
+    const a = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
+    const b = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
+    expect(a.ws).toBe(b.ws);
+    expect(await count("select count(*) as n from members where user_id = $1", [MORGAN])).toBe(1);
+  });
+
+  it("keeps reviewers apart: a second person gets a separate workspace", async () => {
+    const m = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
+    const r = await one<{ ws: string }>("select create_demo_workspace($1, 'reviewer@example.com', 'Reviewer') as ws", [REVIEWER]);
+    expect(r.ws).not.toBe(m.ws);
+    expect(await count("select count(*) as n from workspaces")).toBe(2);
+  });
+});
+
+describe("reset_demo_workspace", () => {
+  it("restores the demo data and keeps people, tickets and the audit log", async () => {
+    const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
+    const meetingPrep = await one<{ id: string }>("select id from projects where workspace_id = $1 and name = 'Meeting Prep'", [ws]);
+    // Change things a reviewer might change.
+    await db.query("insert into projects (workspace_id, name, owner_id) values ($1, 'My test app', $2)", [ws, MORGAN]);
+    await db.query("delete from projects where workspace_id = $1 and name = 'Vendor tracker'", [ws]);
+    await db.query("update connections set status = 'connected' where workspace_id = $1", [ws]);
+    await db.query("insert into members (workspace_id, invited_email, email, role, status) values ($1, 'friend@example.com', 'friend@example.com', 'viewer', 'invited')", [ws]);
+    await db.query("insert into support_tickets (user_id, project_id, workspace_id, question) values ($1, $2, $3, 'Why?')", [MORGAN, meetingPrep.id, ws]);
+
+    await db.query("select reset_demo_workspace($1, $2)", [ws, MORGAN]);
+
+    const names = (await db.query<{ name: string }>("select name from projects where workspace_id = $1 order by name", [ws])).rows.map((r) => r.name);
+    expect(names).toEqual(["Lead scorer", "Meeting Prep", "Vendor tracker", "ticket-triage"]);
+    expect(await count("select count(*) as n from connections where workspace_id = $1 and status = 'missing'", [ws])).toBe(2);
+    expect(await count("select sum(credits) as n from usage_ledger where workspace_id = $1", [ws])).toBe(372);
+    expect(await count("select count(*) as n from members where workspace_id = $1 and status = 'invited'", [ws])).toBe(3); // Sam, Jordan, friend
+    expect(await count("select count(*) as n from members where workspace_id = $1 and user_id = $2 and role = 'owner'", [ws, MORGAN])).toBe(1);
+    expect(await count("select count(*) as n from support_tickets where question = 'Why?' and project_id is null")).toBe(1);
+    expect(await count("select count(*) as n from audit_log where workspace_id = $1 and action = 'workspace.reset'", [ws])).toBe(1);
+  });
+
+  it("refuses anyone who isn't the workspace owner", async () => {
+    const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
+    await expect(db.query("select reset_demo_workspace($1, $2)", [ws, REVIEWER])).rejects.toThrow(/Only the workspace owner/);
+  });
+});
+
+describe("function privileges", () => {
+  it("API roles can't call the seed, create or reset functions", async () => {
+    for (const fn of ["seed_demo_workspace(uuid,uuid)", "create_demo_workspace(uuid,text,text)", "reset_demo_workspace(uuid,uuid)"]) {
+      for (const role of ["anon", "authenticated"]) {
+        const r = await one<{ ok: boolean }>(`select has_function_privilege('${role}', '${fn}', 'execute') as ok`);
+        expect(r.ok, `${role} → ${fn}`).toBe(false);
+      }
+    }
+  });
+});
