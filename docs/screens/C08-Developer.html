@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Developer view</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../../design-system/reference/screens.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#0b0b0a}</style>
+</helmet>
+<div class="mx opt-c dark" style="position: relative">
+<header class="mh">
+<a class="icb q" href="#" aria-label="Back to projects"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 5l-5 5 5 5"/></svg></a>
+<div class="proj"><span class="tile dark" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2.5v3M13 2.5v3"/></svg></span><div class="col"><strong class="t-16" style="line-height: 20px">Meeting Prep<span class="tag" style="margin-left: 4px">Developer view</span></strong><span class="t-12 c2">Edited by you · 2 min ago</span></div></div>
+<nav class="stepper" aria-label="Project stage">
+<button class="stp done" type="button"><span class="n"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3 3 7-7"/></svg></span>Plan</button>
+<span class="stsep" aria-hidden="true"></span>
+<button class="stp on" type="button" aria-current="step"><span class="n">2</span>Build<span class="sub">· 10 of 12 working · fixing Brief writer</span></button>
+<span class="stsep" aria-hidden="true"></span>
+<button class="stp" type="button"><span class="n">3</span>Launch</button>
+</nav>
+<button class="icb" type="button" aria-label="Help with Architect"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M8 8a2 2 0 1 1 2.6 1.9c-.4.1-.6.4-.6.8v.6M10 13.6v.1"/></svg></button>
+<button class="btn" type="button">Share</button>
+<button class="icb" type="button" aria-label="More: Developer view, version history, duplicate, download code, GitHub, settings"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="10" r="1.1"/><circle cx="10" cy="10" r="1.1"/><circle cx="15" cy="10" r="1.1"/></svg></button>
+<button class="btn" type="button" aria-disabled="true" title="Launch opens when every part works or you set it aside">Launch</button>
+</header>
+<div class="mcols">
+<aside class="pane plan" aria-label="Plan" style="flex-basis: 300px">
+<div class="ph"><h2 class="t-20">Plan</h2><span class="t-12 c2">v1 · plan.yaml</span></div>
+<div style="flex: 1; overflow: auto">
+<section class="group" aria-label="In progress"><div class="gh"><span>In progress</span><span class="ct">1</span></div>
+<button class="it sel" type="button" aria-current="true"><span class="st building"><svg viewBox="0 0 16 16" aria-hidden="true"><path class="spin" d="M8 2.5a5.5 5.5 0 1 1-5.5 5.5"/></svg></span><span class="t">Brief writer<span class="d">Fix 1 of 3 · PR #14</span></span></button>
+</section>
+<section class="group" aria-label="Needs you"><div class="gh"><span>Needs you</span><span class="ct">2</span></div>
+<button class="it" type="button"><span class="st attention"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2.5v3M10 2.5v3M4.5 5.5h7v2.5a3.5 3.5 0 0 1-7 0zM8 11.5v2"/></svg></span><span class="t">Gmail<span class="d">Needs a connection</span></span></button>
+<button class="it" type="button"><span class="st approval"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="7.5" width="8" height="5.5" rx="1.3"/><path d="M5.6 7.5V6a2.4 2.4 0 0 1 4.8 0v1.5"/></svg></span><span class="t">HubSpot lookup<span class="d">Needs IT approval</span></span></button>
+</section>
+<section class="group" aria-label="Works"><div class="gh"><span>Works</span><span class="ct">9</span></div>
+<button class="it" type="button"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t">Research agent</span></button>
+<button class="it" type="button"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t">Last email thread per attendee</span></button>
+<button class="lnk" type="button" style="margin: 2px 8px 0">Show 7 more</button>
+</section>
+</div>
+</aside>
+<section class="pane stage" aria-label="Code">
+<div class="sh"><div class="seg" role="tablist" aria-label="View"><button type="button" role="tab">App</button><button type="button" role="tab">Agents</button><button type="button" role="tab">Data</button><button type="button" role="tab">Files</button><button class="on" type="button" role="tab" aria-selected="true">Code</button><button type="button" role="tab">Terminal</button></div><span class="sp"></span><a class="btn sm" href="#"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><circle cx="6" cy="5" r="1.8"/><circle cx="6" cy="15" r="1.8"/><circle cx="14" cy="15" r="1.8"/><path d="M6 6.8v6.4M14 13.2V9a3 3 0 0 0-3-3H9"/></svg>PR #14 · checks running</a></div>
+<div style="flex: 1; display: flex; min-height: 0; margin: 0 12px 12px; border: 1px solid var(--line); border-radius: var(--r-card); overflow: hidden">
+<nav aria-label="Changed files" style="flex: 0 0 270px; background: var(--tray); border-right: 1px solid var(--line); padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; overflow: auto">
+<div class="seg" role="group" aria-label="Show" style="align-self: flex-start; margin: 0 4px 8px"><button class="on" type="button" aria-pressed="true">Changes 4</button><button type="button" aria-pressed="false">All files</button></div>
+<div class="gh"><span>Brief writer · fix 1 of 3</span></div>
+<button class="fl on" type="button" aria-current="true"><span style="flex: 1; overflow: hidden; text-overflow: ellipsis">agents/brief_writer.py</span><span class="p">+4</span><span class="m">−1</span></button>
+<button class="fl" type="button"><span style="flex: 1; overflow: hidden; text-overflow: ellipsis">checks/brief_writer.yaml</span><span class="p">+3</span></button>
+<div class="gh"><span>Weekly summary email · new</span></div>
+<button class="fl" type="button"><span style="flex: 1">jobs/weekly_recap.py</span><span class="p">+48</span></button>
+<button class="fl" type="button"><span style="flex: 1">plan.yaml</span><span class="p">+9</span><span class="m">−1</span></button>
+<div class="gh" style="margin-top: 8px"><span>Project</span></div>
+<button class="fl" type="button"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="9" width="12" height="8" rx="1.5"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/></svg><span style="flex: 1">Keys and passwords</span><span class="c3">4</span></button>
+<button class="fl" type="button"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><circle cx="6" cy="5" r="1.8"/><circle cx="6" cy="15" r="1.8"/><path d="M6 6.8v6.4"/></svg><span style="flex: 1">acme/meeting-prep</span><span class="c3">GitHub</span></button>
+</nav>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--surface)">
+<div class="row" style="padding: 10px 14px; border-bottom: 1px solid var(--line)"><span class="code">agents/brief_writer.py</span><span class="code"><span style="color: var(--works)">+4</span> <span style="color: var(--failed)">−1</span></span><span class="sp"></span><span class="statusw w-building" style="font-size: 12.5px"><i></i>Architect is editing</span></div>
+<pre class="code"><span class="cl"><b>1</b><i> </i><span><span class="kw">from</span> architect.agents <span class="kw">import</span> Agent, trim_to_words</span></span><span class="cl"><b>2</b><i> </i><span><span class="kw">from</span> .prompts <span class="kw">import</span> BRIEF_PROMPT</span></span><span class="cl"><b>3</b><i> </i><span> </span></span><span class="cl"><b>4</b><i> </i><span>MAX_WORDS = <span class="nm">200</span>  <span class="cm"># from the plan part “Brief writer”</span></span></span><span class="cl"><b>5</b><i> </i><span> </span></span><span class="cl"><b>6</b><i> </i><span>brief_writer = Agent(name=<span class="str">"Brief writer"</span>, model=<span class="str">"gateway:default"</span>,</span></span><span class="cl"><b>7</b><i> </i><span>                     instructions=BRIEF_PROMPT)</span></span><span class="cl"><b>8</b><i> </i><span> </span></span><span class="cl"><b>9</b><i> </i><span><span class="kw">def</span> write_brief(meeting, threads, agenda):</span></span><span class="cl del"><b>10</b><i>−</i><span>    draft = brief_writer.run(meeting=meeting, threads=threads, agenda=agenda)</span></span><span class="cl ins"><b>10</b><i>+</i><span>    draft = brief_writer.run(</span></span><span class="cl ins"><b>11</b><i>+</i><span>        meeting=meeting, threads=threads, agenda=agenda,</span></span><span class="cl ins"><b>12</b><i>+</i><span>        max_words=MAX_WORDS)</span></span><span class="cl ins"><b>13</b><i>+</i><span>    <span class="kw">return</span> trim_to_words(draft, MAX_WORDS)</span></span></pre>
+<div class="term" aria-label="Terminal"><span><span class="c3">$</span> architect check "Brief writer"</span><span><span style="color: var(--works)">✓</span> names every attendee   <span style="color: var(--works)">✓</span> includes agenda items</span><span><span style="color: var(--failed)">✕</span> 200 words or fewer <span class="c3">(got 236)</span></span><span class="c3">fix 1 of 3 · patch applied · re-running…</span></div>
+</div>
+</div>
+</section>
+<aside class="pane talk" aria-label="Activity" style="flex-basis: 330px">
+<div class="ph"><h2 class="t-16">Activity</h2><span class="sp"></span><div class="seg" role="group" aria-label="Show"><button class="on" type="button" aria-pressed="true">This part</button><button type="button" aria-pressed="false">All</button></div></div>
+<div class="thread" style="font-size: 14px">
+<div class="col" style="gap: 4px"><span class="who">Checker · 12:04</span><span><span class="w-failed b">Failed</span> 200 words or fewer (got 236)</span></div>
+<div class="col" style="gap: 4px"><span class="who">Architect agent · fix 1 of 3 · 12:05</span><span class="code">Read checks/brief_writer.yaml</span><span class="code">Edited agents/brief_writer.py +4 −1</span><span><span class="w-building b">Checking</span> 200 words or fewer</span></div>
+<div class="you">Run the tests for Research agent too.</div>
+<div class="col" style="gap: 4px"><span class="who">Claude Code (Sam) · via MCP · 12:06</span><span class="code">run_tests("Research agent")</span><span><span class="w-works b">Passed</span> 3 of 3 · 2.8 s</span></div>
+<div class="col" style="gap: 4px"><span class="who">GitHub · 12:06</span><span class="code">a41c9e2 “Limit brief to 200 words” → PR #14</span></div>
+</div>
+<div class="composer"><label class="sr" for="msg">Message about this part</label><textarea id="msg" placeholder="Ask about this part, or @ a file…"></textarea><div class="row"><button class="icb" type="button" aria-label="Add files, Studio agents or tools" style="width: 34px; height: 34px"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button><button class="pill" type="button" aria-pressed="true" style="background: var(--ink); color: var(--on-primary); border-color: var(--ink)"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h2M4 10h2M4 15h2M9 5h7M9 10h7M9 15h5"/></svg>Talk first</button><button class="pill soft" type="button" title="claude-sonnet via gateway">Sonnet<svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 8l4 4 4-4"/></svg></button><span class="sp"></span><button class="send" type="button" aria-label="Send"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 15V5M6 9l4-4 4 4"/></svg></button></div></div>
+</aside>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
+

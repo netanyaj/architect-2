@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Files, full plan and sharing</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../../design-system/reference/screens.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#eeede9}</style>
+</helmet>
+<div class="mx opt-c " style="position: relative">
+<header class="mh">
+<a class="icb q" href="#" aria-label="Back to projects"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 5l-5 5 5 5"/></svg></a>
+<div class="proj"><span class="tile dark" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2.5v3M13 2.5v3"/></svg></span><div class="col"><strong class="t-16" style="line-height: 20px">Meeting Prep</strong><span class="t-12 c2">Edited by you · 2 min ago</span></div></div>
+<nav class="stepper" aria-label="Project stage">
+<button class="stp done" type="button"><span class="n"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3 3 7-7"/></svg></span>Plan</button>
+<span class="stsep" aria-hidden="true"></span>
+<button class="stp done" type="button"><span class="n"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3 3 7-7"/></svg></span>Build</button>
+<span class="stsep" aria-hidden="true"></span>
+<button class="stp on" type="button" aria-current="step"><span class="n">3</span>Launch<span class="sub">· 2 things before going live</span></button>
+</nav>
+<button class="icb" type="button" aria-label="Help with Architect"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M8 8a2 2 0 1 1 2.6 1.9c-.4.1-.6.4-.6.8v.6M10 13.6v.1"/></svg></button>
+<button class="btn" type="button">Share</button>
+<button class="icb" type="button" aria-label="More: Developer view, version history, duplicate, download code, GitHub, settings"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="10" r="1.1"/><circle cx="10" cy="10" r="1.1"/><circle cx="15" cy="10" r="1.1"/></svg></button>
+<button class="btn" type="button" aria-disabled="true" title="Fix the 2 items in the Launch checklist first">Share with your team</button>
+</header>
+<div class="mcols">
+<aside class="pane" aria-label="Plan, hidden" style="flex: 0 0 56px; align-items: center; padding: 12px 0; gap: 8px"><button class="icb" type="button" aria-label="Show plan panel"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M8 4v12"/></svg></button></aside>
+<section class="pane stage" aria-label="Files">
+<div class="sh"><div class="seg" role="tablist" aria-label="View"><button type="button" role="tab">App</button><button type="button" role="tab">Agents</button><button type="button" role="tab">Data</button><button class="on" type="button" role="tab" aria-selected="true">Files</button></div><span class="sp"></span><button class="btn sm" type="button"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v9M6 9l4 4 4-4M4 16h12"/></svg>Download code</button></div>
+<div style="flex: 1; display: flex; min-height: 0; margin: 0 12px 12px; border: 1px solid var(--line); border-radius: var(--r-card); overflow: hidden">
+<nav aria-label="Files" style="flex: 0 0 290px; background: var(--tray); border-right: 1px solid var(--line); padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; overflow: auto">
+<div class="gh"><span>The plan</span></div>
+<button class="it sel" type="button" aria-current="true"><span class="tile dark" style="width: 28px; height: 28px; border-radius: 8px" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><path d="M6 3h6l3 3v11H6z"/><path d="M8.5 10h4M8.5 13h4"/></svg></span><span class="t">Plan v2<span class="d">13 parts · updated 12:31</span></span></button>
+<div class="gh" style="margin-top: 8px"><span>Your uploads</span><button class="lnk" type="button">Upload</button></div>
+<button class="it" type="button"><span class="tile" style="width: 28px; height: 28px; border-radius: 8px" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><path d="M6 3h6l3 3v11H6z"/></svg></span><span class="t">agenda-template.pdf<span class="d">Used by “Agenda PDF summarised”</span></span></button>
+<button class="it" type="button"><span class="tile" style="width: 28px; height: 28px; border-radius: 8px" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="12" rx="2"/><circle cx="8" cy="9" r="1.5"/><path d="M4 15l4-4 3 3 2-2 3 3"/></svg></span><span class="t">brand-colours.png<span class="d">Used by “Look and feel”</span></span></button>
+<div class="gh" style="margin-top: 8px"><span>Made by Architect</span><button class="lnk" type="button">All code</button></div>
+<button class="it" type="button"><span class="tile" style="width: 28px; height: 28px; border-radius: 8px" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><path d="M7 7l-3 3 3 3M13 7l3 3-3 3"/></svg></span><span class="t">The app<span class="d">Next.js · 41 files</span></span></button>
+<button class="it" type="button"><span class="tile" style="width: 28px; height: 28px; border-radius: 8px" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><rect x="4" y="6" width="12" height="9" rx="3"/><path d="M10 3v3"/></svg></span><span class="t">Agent instructions<span class="d">2 agents · synced with Lyzr Studio</span></span></button>
+<button class="it" type="button"><span class="tile" style="width: 28px; height: 28px; border-radius: 8px" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><path d="M5 10.5l3 3 7-7"/></svg></span><span class="t">Checks<span class="d">13 checks, written before the code</span></span></button>
+</nav>
+<div style="flex: 1; overflow: auto; background: var(--surface)">
+<div class="doc" style="padding-top: 28px">
+<div class="row"><span class="t-12 c2 b">Plan v2 · applied “Weekly summary email” at 12:31</span><span class="sp"></span><button class="btn sm" type="button">Compare with v1</button><button class="btn sm" type="button">Edit</button></div>
+<h1 class="t-28">A Slack brief before every meeting, and a Friday recap</h1>
+<section class="col" style="gap: 10px"><h3>What it does · 12 of 13 work</h3>
+<div class="wellbox">
+<div class="it" style="border-radius: 0; border-bottom: 1px solid var(--line); padding: 12px 14px"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t"><b style="font-weight: 600">Weekly summary email</b><span class="d">Done when Friday’s recap lists every meeting of the week. <a href="#">See the check</a></span></span><span class="num t-12 c2">12 cr</span></div>
+<div class="it" style="border-radius: 0; padding: 12px 14px"><span class="st approval"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="7.5" width="8" height="5.5" rx="1.3"/><path d="M5.6 7.5V6a2.4 2.4 0 0 1 4.8 0v1.5"/></svg></span><span class="t"><b style="font-weight: 600">HubSpot contact lookup</b><span class="d">Waiting for IT. Everything else works without it.</span></span><span class="num t-12 c2">~11 cr</span></div>
+</div></section>
+<section class="col" style="gap: 10px"><h3>Look and feel</h3>
+<div class="grid3">
+<button class="tcard" type="button" style="border: 2px solid var(--ink)"><span style="display: flex; gap: 4px"><i style="width: 22px; height: 22px; border-radius: 6px; background: #1f3a5f; display: block"></i><i style="width: 22px; height: 22px; border-radius: 6px; background: #e8a33d; display: block"></i><i style="width: 22px; height: 22px; border-radius: 6px; background: #f4f1ea; display: block; border: 1px solid var(--line)"></i></span><b style="font-weight: 600">Acme brand</b><span class="t-12 c2">From brand-colours.png · in use</span></button>
+<button class="tcard" type="button"><span style="display: flex; gap: 4px"><i style="width: 22px; height: 22px; border-radius: 6px; background: #5a2e1e; display: block"></i><i style="width: 22px; height: 22px; border-radius: 6px; background: #c9a227; display: block"></i><i style="width: 22px; height: 22px; border-radius: 6px; background: #faf6ee; display: block; border: 1px solid var(--line)"></i></span><b style="font-weight: 600">Heritage Premium</b><span class="t-12 c2">Preset</span></button>
+<button class="tcard" type="button"><span style="display: flex; gap: 4px"><i style="width: 22px; height: 22px; border-radius: 6px; background: #111; display: block"></i><i style="width: 22px; height: 22px; border-radius: 6px; background: #c9a227; display: block"></i><i style="width: 22px; height: 22px; border-radius: 6px; background: #2a2a2a; display: block"></i></span><b style="font-weight: 600">Heritage Dark</b><span class="t-12 c2">Preset</span></button>
+</div></section>
+</div>
+</div>
+</div>
+</section>
+<aside class="pane" aria-label="Chat, hidden" style="flex: 0 0 56px; align-items: center; padding: 12px 0"><button class="icb" type="button" aria-label="Show chat"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12v8H9l-4 3v-3H4z"/></svg></button></aside>
+</div>
+<section class="pop" role="dialog" aria-label="Share Meeting Prep" style="top: 58px; right: 244px; width: 420px">
+<div class="row" style="padding: 16px 16px 10px"><h2 class="t-16">Share Meeting Prep</h2><span class="sp"></span><button class="icb q" type="button" aria-label="Close" style="width: 32px; height: 32px"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5 5 15"/></svg></button></div>
+<div class="row" style="padding: 0 16px 12px; flex-wrap: nowrap"><label class="sr" for="em">Email</label><input id="em" value="sam@acme.com" style="flex: 1; min-width: 0; min-height: 38px; border: 1px solid var(--line-ctl); border-radius: 12px; padding: 0 12px; background: var(--surface)"><button class="pill" type="button" style="min-height: 38px">Can edit<svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 8l4 4 4-4"/></svg></button><button class="btn pri sm" type="button" style="min-height: 38px">Invite</button></div>
+<div class="col" style="padding: 0 8px 8px">
+<div class="mi" style="min-height: 52px"><span class="ini" style="border-radius: 50%; width: 30px; height: 30px">ML</span><span class="col" style="flex: 1"><span>Morgan Lee (you)</span><small>Owner</small></span></div>
+<div class="mi" style="min-height: 52px"><span class="ini" style="border-radius: 50%; width: 30px; height: 30px">JT</span><span class="col" style="flex: 1"><span>Jordan Tan</span><small>IT admin · approves tools</small></span><span class="t-12 c2">Can view</span></div>
+</div>
+<div class="row" style="padding: 12px 16px; border-top: 1px solid var(--line)"><svg class="ic s c2" viewBox="0 0 20 20" aria-hidden="true"><path d="M8 12l4-4M7 9 5.5 10.5a2.5 2.5 0 0 0 3.5 3.5L10.5 12.5M13 11l1.5-1.5a2.5 2.5 0 0 0-3.5-3.5L9.5 7.5"/></svg><span class="t-12 c2" style="flex: 1">Only people you invite can open this project.</span><button class="btn sm" type="button">Copy link</button></div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
+

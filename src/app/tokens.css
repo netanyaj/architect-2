@@ -1,0 +1,125 @@
+/* Architect 2.0 · Soft Tray tokens (design system v3). Generated from design-system/tokens.json. Do not edit by hand. */
+@import "tailwindcss";
+
+:root {
+  --canvas: #eeede9;
+  --surface: #ffffff;
+  --tray: #f6f5f2;
+  --selected: #ecebe6;
+  --line: #e3e2dc;
+  --line-ctl: #75746c;
+  --ink: #1a1a19;
+  --ink-2: #42413d;
+  --ink-3: #5c5b56;
+  --primary: #1a1a19;
+  --on-primary: #ffffff;
+  --focus: #1a56c2;
+  --works: #1d6e30;
+  --works-bg: #e5f2e8;
+  --building: #1a56c2;
+  --building-bg: #e8effc;
+  --attention: #8a4500;
+  --attention-bg: #fcefdc;
+  --approval: #6236ad;
+  --approval-bg: #f0eafa;
+  --failed: #b4232a;
+  --failed-bg: #fbe8e8;
+  --primary-disabled: #6b6a65;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 10px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 20px;
+  --space-7: 24px;
+  --space-8: 32px;
+  --space-9: 48px;
+  --radius-pane: 18px;
+  --radius-card: 12px;
+  --radius-tile: 10px;
+  --radius-pill: 9999px;
+  --control: 38px;
+  --control-sm: 32px;
+  --target-min: 24px;
+  --rail: 56px;
+  --plan-panel: 340px;
+  --chat-panel: 344px;
+  --ax-shadow-pane: 0 1px 2px rgba(20,20,20,0.04), 0 6px 20px rgba(20,20,20,0.05);
+  --ax-shadow-hero: 0 12px 32px rgba(20,20,20,0.07);
+  --ax-shadow-pop: 0 18px 48px rgba(0,0,0,0.18);
+  --ax-shadow-drawer: 0 24px 60px rgba(0,0,0,0.25);
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Dark: Developer view default, or the user's theme setting. Set data-theme="dark" on <html>. */
+[data-theme="dark"] {
+  --canvas: #0b0b0a;
+  --surface: #161615;
+  --tray: #111110;
+  --selected: #262624;
+  --line: #2d2d2a;
+  --line-ctl: #7a7a73;
+  --ink: #efeee9;
+  --ink-2: #c4c3bd;
+  --ink-3: #a3a29b;
+  --primary: #efeee9;
+  --on-primary: #121211;
+  --focus: #93b6ff;
+  --works: #6fd38a;
+  --works-bg: #122a19;
+  --building: #93b6ff;
+  --building-bg: #17233d;
+  --attention: #f2b25a;
+  --attention-bg: #2c200d;
+  --approval: #c7aafc;
+  --approval-bg: #251b3e;
+  --failed: #ff8d8d;
+  --failed-bg: #381616;
+  --primary-disabled: #8a8983;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-tray: var(--tray);
+  --color-selected: var(--selected);
+  --color-line: var(--line);
+  --color-line-ctl: var(--line-ctl);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-focus: var(--focus);
+  --color-works: var(--works);
+  --color-works-bg: var(--works-bg);
+  --color-building: var(--building);
+  --color-building-bg: var(--building-bg);
+  --color-attention: var(--attention);
+  --color-attention-bg: var(--attention-bg);
+  --color-approval: var(--approval);
+  --color-approval-bg: var(--approval-bg);
+  --color-failed: var(--failed);
+  --color-failed-bg: var(--failed-bg);
+  --color-primary-disabled: var(--primary-disabled);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --radius-pane: 18px;
+  --radius-card: 12px;
+  --radius-tile: 10px;
+  --shadow-pane: var(--ax-shadow-pane);
+  --shadow-pop: var(--ax-shadow-pop);
+  --shadow-hero: var(--ax-shadow-hero);
+  --shadow-drawer: var(--ax-shadow-drawer);
+  --text-display: 40px;  --text-display--line-height: 46px;
+  --text-title: 28px;    --text-title--line-height: 34px;
+  --text-heading: 20px;  --text-heading--line-height: 28px;
+  --text-sub: 16px;      --text-sub--line-height: 24px;
+  --text-body: 14px;     --text-body--line-height: 21px;
+  --text-small: 12.5px;  --text-small--line-height: 18px;
+}
+
+body { background: var(--canvas); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 21px; font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }

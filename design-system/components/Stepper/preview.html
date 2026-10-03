@@ -1,0 +1,16 @@
+<!-- @dsCard group="Navigation" height=120 subtitle="Plan · Build · Launch with the current stage’s progress" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Stepper</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#ffffff}[data-theme="dark"] body{background:#161615}</style>
+</head>
+<body>
+<div class="mx opt-c" style="min-height: 0; padding: 16px; display: block; background: var(--surface)">
+<nav class="stepper" aria-label="Project stage" style="margin: 0"><button class="stp done" type="button"><span class="n"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3 3 7-7"/></svg></span>Plan</button><span class="stsep" aria-hidden="true"></span><button class="stp on" type="button" aria-current="step"><span class="n">2</span>Build<span class="sub">· 7 of 12 working · about 6 min</span></button><span class="stsep" aria-hidden="true"></span><button class="stp" type="button"><span class="n">3</span>Launch</button></nav>
+<nav class="stepper" aria-label="Project stage, paused" style="margin: 12px 0 0"><button class="stp done" type="button"><span class="n"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3 3 7-7"/></svg></span>Plan</button><span class="stsep" aria-hidden="true"></span><button class="stp on" type="button" aria-current="step"><span class="n"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M8 6v8M12 6v8"/></svg></span>Build<span class="sub">· paused at budget</span></button><span class="stsep" aria-hidden="true"></span><button class="stp" type="button"><span class="n">3</span>Launch</button></nav>
+</div>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Agents</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../../design-system/reference/screens.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#eeede9}</style>
+</helmet>
+<div class="mx opt-c " style="position: relative">
+<header class="mh">
+<a class="icb q" href="#" aria-label="Back to projects"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 5l-5 5 5 5"/></svg></a>
+<div class="proj"><span class="tile dark" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2.5v3M13 2.5v3"/></svg></span><div class="col"><strong class="t-16" style="line-height: 20px">Meeting Prep</strong><span class="t-12 c2">Edited by you · 2 min ago</span></div></div>
+<nav class="stepper" aria-label="Project stage">
+<button class="stp done" type="button"><span class="n"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3 3 7-7"/></svg></span>Plan</button>
+<span class="stsep" aria-hidden="true"></span>
+<button class="stp done" type="button"><span class="n"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3 3 7-7"/></svg></span>Build</button>
+<span class="stsep" aria-hidden="true"></span>
+<button class="stp on" type="button" aria-current="step"><span class="n">3</span>Launch<span class="sub">· ready to share</span></button>
+</nav>
+<button class="icb" type="button" aria-label="Help with Architect"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M8 8a2 2 0 1 1 2.6 1.9c-.4.1-.6.4-.6.8v.6M10 13.6v.1"/></svg></button>
+<button class="btn" type="button">Share</button>
+<button class="icb" type="button" aria-label="More: Developer view, version history, duplicate, download code, GitHub, settings"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="10" r="1.1"/><circle cx="10" cy="10" r="1.1"/><circle cx="15" cy="10" r="1.1"/></svg></button>
+<button class="btn" type="button" aria-disabled="true" title="Save or discard your agent changes first">Share with your team</button>
+</header>
+<div class="mcols">
+<aside class="pane plan" aria-label="Plan">
+<div class="ph"><h2 class="t-20">Plan</h2><span class="t-12 c2">v2</span><span class="sp"></span><button class="lnk" type="button">Open full plan</button></div>
+<div style="flex: 1; overflow: auto">
+<section class="group" aria-label="AI agents"><div class="gh"><span>AI agents</span><span class="ct">2</span></div>
+<button class="it" type="button"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t">Research agent<span class="d">Your Studio agent, reused</span></span></button>
+<button class="it sel" type="button" aria-current="true"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t">Brief writer<span class="d">New · 2 unsaved changes</span></span></button>
+</section>
+<section class="group" aria-label="Apps it connects to"><div class="gh"><span>Apps it connects to</span><span class="ct">4</span></div>
+<button class="it" type="button"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t">Google Calendar</span></button>
+<button class="it" type="button"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t">Gmail</span></button>
+<button class="it" type="button"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t">Slack</span></button>
+<button class="it" type="button"><span class="st approval"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="7.5" width="8" height="5.5" rx="1.3"/><path d="M5.6 7.5V6a2.4 2.4 0 0 1 4.8 0v1.5"/></svg></span><span class="t">HubSpot<span class="d">Waiting for IT</span></span></button>
+</section>
+</div>
+</aside>
+<section class="pane stage" aria-label="Agents">
+<div class="sh"><div class="seg" role="tablist" aria-label="View"><button type="button" role="tab">App</button><button class="on" type="button" role="tab" aria-selected="true">Agents</button><button type="button" role="tab">Data</button><button type="button" role="tab">Files</button></div><span class="sp"></span><button class="btn sm" type="button"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg>Add an agent</button></div>
+<div style="flex: 1; display: flex; min-height: 0">
+<div class="graph" role="img" aria-label="How the agents connect: a meeting on Google Calendar starts the Research agent, which uses Gmail and HubSpot and hands its findings to the Brief writer. The Brief writer uses the PDF summariser and the Brand voice notes, and sends the brief to Slack." style="margin-right: 0; border-radius: var(--r-card) 0 0 var(--r-card)">
+<svg class="edges" aria-hidden="true"><path d="M150 108V170"/><path d="M150 258V330"/><path d="M150 418V490"/><path class="d" d="M260 200H330"/><path class="d" d="M260 220C300 220 300 255 330 255"/><path class="d" d="M260 360H330"/><path class="d" d="M260 380C300 380 300 415 330 415"/></svg>
+<span class="elabel" style="left: 150px; top: 139px">Meeting coming up</span>
+<span class="elabel" style="left: 150px; top: 294px">Hands over findings</span>
+<span class="elabel" style="left: 150px; top: 454px">Sends the brief</span>
+<button class="node" type="button" style="left: 40px; top: 30px"><span class="k">Starts when</span><strong style="font-weight: 650">Google Calendar</strong><span class="t-12 c2">30 min before each meeting</span></button>
+<button class="node" type="button" style="left: 40px; top: 170px"><span class="k">AI agent · from Lyzr Studio</span><strong style="font-weight: 650">Research agent</strong><span class="statusw w-works" style="font-size: 12.5px"><i></i>Works · Sonnet</span></button>
+<button class="node sel" type="button" aria-pressed="true" style="left: 40px; top: 330px"><span class="k">AI agent · new</span><strong style="font-weight: 650">Brief writer</strong><span class="statusw w-works" style="font-size: 12.5px"><i></i>Works · Sonnet</span></button>
+<button class="node" type="button" style="left: 40px; top: 490px"><span class="k">Delivers to</span><strong style="font-weight: 650">Slack message</strong><span class="t-12 c2">To Morgan</span></button>
+<button class="node tool" type="button" style="left: 330px; top: 182px"><span class="t-12"><b>Gmail</b> · tool</span></button>
+<button class="node tool" type="button" style="left: 330px; top: 236px"><span class="t-12"><b>HubSpot</b> · <span class="w-approval b">waiting for IT</span></span></button>
+<button class="node tool" type="button" style="left: 330px; top: 342px"><span class="t-12"><b>PDF summariser</b> · tool</span></button>
+<button class="node tool" type="button" style="left: 330px; top: 396px"><span class="t-12"><b>Brand voice</b> · notes</span></button>
+<div class="zoom"><button class="icb" type="button" aria-label="Zoom out" style="width: 34px; height: 34px"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10h10"/></svg></button><button class="icb" type="button" aria-label="Zoom in" style="width: 34px; height: 34px"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 5v10M5 10h10"/></svg></button><button class="icb" type="button" aria-label="Fit to screen" style="width: 34px; height: 34px"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 8V4h4M16 8V4h-4M4 12v4h4M16 12v4h-4"/></svg></button></div>
+</div>
+<aside aria-label="Brief writer settings" style="flex: 0 0 380px; margin: 0 12px 12px 0; border: 1px solid var(--line); border-left: 0; border-radius: 0 var(--r-card) var(--r-card) 0; display: flex; flex-direction: column; min-height: 0; background: var(--surface)">
+<div class="row" style="padding: 14px 16px 8px; align-items: flex-start"><div class="col" style="flex: 1"><h2 class="t-20">Brief writer</h2><span class="t-12 c2">Writes the brief from threads, agenda and notes.</span></div><button class="icb q" type="button" aria-label="Close settings" style="width: 32px; height: 32px"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5 5 15"/></svg></button></div>
+<div class="row" style="padding: 0 16px 10px"><span class="t-12 c2" style="flex: 1">Synced with Lyzr Studio · 12:05</span><a class="btn sm" href="#">Open in Studio<svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4H4v12h12v-4M11 4h5v5M16 4l-7 7"/></svg></a></div>
+<div class="seg" role="tablist" aria-label="Agent" style="margin: 0 16px 6px; align-self: flex-start"><button class="on" type="button" role="tab" aria-selected="true">Settings</button><button type="button" role="tab">Runs</button><button type="button" role="tab">Try it</button><button type="button" role="tab">Checks</button></div>
+<div class="col" style="flex: 1; overflow: auto; padding: 10px 16px; gap: 14px">
+<div class="col" style="gap: 6px"><span class="t-12 b c2">Model</span><div class="row"><button class="btn sm" type="button" style="flex: 1; justify-content: space-between">Claude Sonnet<svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 8l4 4 4-4"/></svg></button><button class="btn sm" type="button">Compare</button></div><button class="lnk" type="button" style="align-self: flex-start">More model settings · creativity 0.3</button></div>
+<div class="col" style="gap: 6px"><label class="t-12 b c2" for="ins">Instructions</label><textarea id="ins" style="min-height: 96px; resize: none; border: 1px solid var(--line-ctl); border-radius: 12px; padding: 10px 12px; font-size: 14px; line-height: 1.5; background: var(--surface); color: var(--ink)">Write a brief for the meeting. Name every attendee. Use their last email thread and the agenda. End with three talking points. Stay under 200 words.</textarea></div>
+<div class="col" style="gap: 6px"><span class="t-12 b c2">Tools</span><div class="row" style="flex-wrap: wrap; gap: 6px"><span class="pill soft">PDF summariser</span><span class="pill soft">Slack send</span><button class="pill" type="button"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg>Tool or MCP server</button></div></div>
+<div class="col" style="gap: 6px"><span class="t-12 b c2">Knowledge</span><div class="row" style="flex-wrap: wrap; gap: 6px"><span class="pill soft">Brand voice · 3 docs</span><button class="pill" type="button"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg>Add knowledge</button></div></div>
+</div>
+<div class="row" style="padding: 12px 16px; border-top: 1px solid var(--line)"><span class="t-12 c2" style="flex: 1">2 unsaved changes</span><button class="btn q sm" type="button">Discard</button><button class="btn pri sm" type="button">Save changes</button></div>
+</aside>
+</div>
+</section>
+<aside class="pane" aria-label="Chat, hidden" style="flex: 0 0 56px; align-items: center; padding: 12px 0"><button class="icb" type="button" aria-label="Show chat"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12v8H9l-4 3v-3H4z"/></svg></button></aside>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
+

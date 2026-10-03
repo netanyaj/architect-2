@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>No projects yet</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../../design-system/reference/screens.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#eeede9}</style>
+</helmet>
+<div class="mx opt-c " style="position: relative">
+<div class="shell">
+<nav class="side" aria-label="Workspace">
+<div class="brand"><span class="logo" aria-hidden="true">A</span>Architect<span class="sp"></span><button class="icb q" type="button" aria-label="Switch workspace: Acme Ops" style="width: 32px; height: 32px"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 8l3-3 3 3M7 12l3 3 3-3"/></svg></button></div>
+<a class="nv" href="#"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 9 10 3.5 16.5 9v7.5h-13z"/><path d="M8 16.5v-4h4v4"/></svg>Home</a>
+<a class="nv on" href="#" aria-current="page"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2.5"/><path d="M3 8h14"/></svg>Projects<span class="n">4</span></a>
+<a class="nv" href="#"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="6" width="12" height="9" rx="3"/><path d="M10 3v3M7.5 10.5h.1M12.5 10.5h.1"/></svg>Agents</a>
+<a class="nv" href="#"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M8 12l4-4M7 9 5.5 10.5a2.5 2.5 0 0 0 3.5 3.5L10.5 12.5M13 11l1.5-1.5a2.5 2.5 0 0 0-3.5-3.5L9.5 7.5"/></svg>Connections</a>
+<a class="nv" href="#"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7h12l-1 9.5H5z"/><path d="M7.5 7a2.5 2.5 0 0 1 5 0"/></svg>Marketplace</a>
+<a class="nv" href="#"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 16V10M10 16V4M16 16v-6"/></svg>Usage</a>
+<div class="nsec">Admin</div>
+<a class="nv" href="#"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3 4 5.5v4c0 4 2.6 6.5 6 7.5 3.4-1 6-3.5 6-7.5v-4z"/><path d="M7.5 10l2 2 3-3.5"/></svg>Approvals<span class="n">2</span></a>
+<a class="nv" href="#"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><rect x="3.5" y="3.5" width="13" height="13" rx="2.5"/><path d="M7 8h6M7 12h4"/></svg>Governance</a>
+<span class="sp"></span>
+<div class="card" style="gap: 8px; margin-bottom: 8px">
+<div class="row" style="justify-content: space-between"><span class="b" style="font-size: 14px">Credits</span><span class="num t-12 b">1,240 / 2,000</span></div>
+<div class="prog" role="img" aria-label="1,240 of 2,000 credits left"><i style="width: 62%"></i></div>
+<div class="row t-12 c2" style="justify-content: space-between"><span>Resets 1 Nov</span><a href="#" class="lnk" style="font-size: 12.5px">Plans</a></div>
+</div>
+<a class="nv" href="#"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M8 8a2 2 0 1 1 2.6 1.9c-.4.1-.6.4-.6.8v.6M10 13.6v.1"/></svg>Help<span class="statusw w-works" style="margin-left: auto; font-size: 12.5px"><i></i>Online</span></a>
+<button class="nv" type="button" aria-label="Account and settings: Morgan Lee"><span class="ini" style="border-radius: 50%; width: 26px; height: 26px">ML</span><span class="col" style="line-height: 18px"><span style="color: var(--ink); font-weight: 600">Morgan Lee</span><span class="t-12 c2">Settings</span></span></button>
+</nav>
+
+<main class="main">
+<div class="wrap" style="max-width: 720px; align-items: center; text-align: center; gap: 20px; padding-top: 120px">
+<span class="tile" style="width: 56px; height: 56px; border-radius: 16px" aria-hidden="true"><svg class="ic" viewBox="0 0 20 20" style="width: 26px; height: 26px"><rect x="3" y="4" width="14" height="12" rx="2.5"/><path d="M3 8h14M10 10.5v3.5M8.2 12.2h3.6"/></svg></span>
+<h1 class="t-28">No projects yet</h1>
+<p class="c2" style="font-size: 16px; max-width: 520px">Describe something you do every week. Architect writes a plan with its cost, and nothing is built until you say so.</p>
+<div class="row" style="justify-content: center; flex-wrap: wrap"><a class="btn pri" href="#">Write your first plan</a><a class="btn" href="#">Import a repo</a></div>
+<a href="#" class="lnk">Not sure? Help me decide</a>
+</div>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
+

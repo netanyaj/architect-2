@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Build paused at budget</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../../design-system/reference/screens.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#eeede9}</style>
+</helmet>
+<div class="mx opt-c " style="position: relative">
+<header class="mh">
+<a class="icb q" href="#" aria-label="Back to projects"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 5l-5 5 5 5"/></svg></a>
+<div class="proj"><span class="tile dark" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><path d="M4 16V10M10 16V4M16 16v-6"/></svg></span><div class="col"><strong class="t-16" style="line-height: 20px">Lead scorer</strong><span class="t-12 c2">Edited by you · Monday</span></div></div>
+<nav class="stepper" aria-label="Project stage">
+<button class="stp done" type="button"><span class="n"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3 3 7-7"/></svg></span>Plan</button>
+<span class="stsep" aria-hidden="true"></span>
+<button class="stp on" type="button" aria-current="step"><span class="n"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M8 6v8M12 6v8"/></svg></span>Build<span class="sub">· paused at budget · 4 of 7 working</span></button>
+<span class="stsep" aria-hidden="true"></span>
+<button class="stp" type="button"><span class="n">3</span>Launch</button>
+</nav>
+<button class="icb" type="button" aria-label="Help with Architect"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M8 8a2 2 0 1 1 2.6 1.9c-.4.1-.6.4-.6.8v.6M10 13.6v.1"/></svg></button>
+<button class="btn" type="button">Share</button>
+<button class="icb" type="button" aria-label="More"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="10" r="1.1"/><circle cx="10" cy="10" r="1.1"/><circle cx="15" cy="10" r="1.1"/></svg></button>
+<button class="btn" type="button" aria-disabled="true" title="Finish or set aside the 3 waiting parts first">Launch</button>
+</header>
+<div class="mcols">
+<aside class="pane plan" aria-label="Plan">
+<div class="ph"><h2 class="t-20">Plan</h2><span class="t-12 c2">v1</span><span class="sp"></span><button class="lnk" type="button">Open full plan</button></div>
+<div style="padding: 0 16px 14px" class="col">
+<div class="row t-12 c2" style="justify-content: space-between; margin-bottom: 6px"><span><b style="color: var(--ink)">4 of 7</b> parts work</span><span class="num">100 of 100 budget</span></div>
+<div class="prog" role="img" aria-label="Budget fully used"><i style="width: 100%"></i></div>
+</div>
+<div style="flex: 1; overflow: auto">
+<section class="group" aria-label="Waiting for budget"><div class="gh"><span>Waiting for budget</span><span class="ct">3</span></div>
+<button class="it" type="button"><span class="st todo"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 5v6M10 5v6"/></svg></span><span class="t">Weekly digest to Slack<span class="d">About 8 credits</span></span></button>
+<button class="it" type="button"><span class="st todo"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 5v6M10 5v6"/></svg></span><span class="t">Score history chart<span class="d">About 9 credits</span></span></button>
+<button class="it" type="button"><span class="st todo"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 5v6M10 5v6"/></svg></span><span class="t">Runs every morning<span class="d">About 5 credits</span></span></button>
+</section>
+<section class="group" aria-label="Works"><div class="gh"><span>Works</span><span class="ct">4</span></div>
+<button class="it" type="button"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t">Lead list from HubSpot</span></button>
+<button class="it" type="button"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t">Company details</span></button>
+<button class="it" type="button"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t">Scoring agent</span></button>
+<button class="it" type="button"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t">Why each score</span></button>
+</section>
+</div>
+</aside>
+<section class="pane stage" aria-label="Your app">
+<div class="card" style="margin: 12px 12px 10px; border: 1.5px solid var(--ink); padding: 16px 18px; gap: 10px">
+<div class="row" style="align-items: flex-start"><span class="st todo" style="width: 26px; height: 26px; margin-top: 2px"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 5v6M10 5v6"/></svg></span><div class="col" style="flex: 1; gap: 2px"><strong class="t-16">Paused: this project used its 100-credit budget</strong><span class="c2">The 4 finished parts are kept and working. The 3 left need about <b class="num">22</b> credits. Nothing more is spent until you choose. You have <span class="num">1,140</span> credits in your plan.</span></div></div>
+<div class="row" style="margin-left: 34px; flex-wrap: wrap"><button class="btn pri" type="button">Raise budget to <span class="num">125</span> and continue</button><button class="btn" type="button">Set the 3 parts aside</button><button class="btn q" type="button">Stop here</button></div>
+</div>
+<div class="frame"><div class="fbar"><span class="url">lead-scorer--test.architect.space/leads</span></div><div class="app"><div class="anav"><b>Lead scorer</b><span class="on">Leads</span><span>Settings</span></div><div class="abrief"><div style="font-size: 19px; font-weight: 650">Leads this week</div>
+<table style="border-collapse: collapse; font-size: 14px"><thead><tr><th style="text-align: left; padding: 8px 12px 8px 0; color: #454b57">Company</th><th style="text-align: left; padding: 8px 12px; color: #454b57">Score</th><th style="text-align: left; padding: 8px 12px; color: #454b57">Why</th></tr></thead><tbody><tr><td style="padding: 8px 12px 8px 0">Northwind Health</td><td style="padding: 8px 12px">86</td><td style="padding: 8px 12px">Visited pricing 3 times; 200+ staff</td></tr><tr><td style="padding: 8px 12px 8px 0">Bluefin Logistics</td><td style="padding: 8px 12px">72</td><td style="padding: 8px 12px">Opened 2 emails; matches your ideal customer</td></tr><tr><td style="padding: 8px 12px 8px 0">Cedar &amp; Co</td><td style="padding: 8px 12px">41</td><td style="padding: 8px 12px">Small team; no recent activity</td></tr></tbody></table></div></div></div>
+</section>
+<aside class="pane talk" aria-label="Chat with Architect">
+<div class="ph"><h2 class="t-16">Chat</h2></div>
+<div class="thread">
+<div class="ai"><div class="who"><span class="av" aria-hidden="true">A</span>Architect</div><p>I’ve paused at your 100-credit budget. The 3 parts left should cost about 22 credits.</p>
+<div class="card" style="gap: 4px"><div class="row t-12" style="justify-content: space-between"><span class="c2">Finished parts</span><span class="num">98 cr</span></div><div class="row t-12" style="justify-content: space-between"><span class="c2">Fixes</span><span class="num">2 cr</span></div><div class="row t-12 b" style="justify-content: space-between; border-top: 1px solid var(--line); padding-top: 4px"><span>Spent</span><span class="num">100 cr</span></div><div class="row t-12" style="justify-content: space-between"><span class="c2">Still to build</span><span class="num">~22 cr</span></div></div></div>
+</div>
+<div class="composer"><label class="sr" for="msg">Message Architect</label><textarea id="msg" placeholder="Ask a question or describe a change…"></textarea><div class="row"><button class="icb" type="button" aria-label="Add files, Studio agents or tools" style="width: 34px; height: 34px"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button><button class="pill" type="button" aria-pressed="false"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h2M4 10h2M4 15h2M9 5h7M9 10h7M9 15h5"/></svg>Talk first</button><button class="pill soft" type="button">Sonnet<svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 8l4 4 4-4"/></svg></button><span class="sp"></span><button class="send" type="button" aria-label="Send"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 15V5M6 9l4-4 4 4"/></svg></button></div></div>
+</aside>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
+

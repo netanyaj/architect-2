@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Building</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../../design-system/reference/screens.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#eeede9}</style>
+</helmet>
+<div class="mx opt-c " style="position: relative">
+<header class="mh">
+<a class="icb q" href="#" aria-label="Back to projects"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 5l-5 5 5 5"/></svg></a>
+<div class="proj"><span class="tile dark" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2.5v3M13 2.5v3"/></svg></span><div class="col"><strong class="t-16" style="line-height: 20px">Meeting Prep</strong><span class="t-12 c2">Edited by you · 2 min ago</span></div></div>
+<nav class="stepper" aria-label="Project stage">
+<button class="stp done" type="button"><span class="n"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3 3 7-7"/></svg></span>Plan</button>
+<span class="stsep" aria-hidden="true"></span>
+<button class="stp on" type="button" aria-current="step"><span class="n">2</span>Build<span class="sub">· 7 of 12 working · about 6 min</span></button>
+<span class="stsep" aria-hidden="true"></span>
+<button class="stp" type="button"><span class="n">3</span>Launch</button>
+</nav>
+<button class="icb" type="button" aria-label="Help with Architect"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M8 8a2 2 0 1 1 2.6 1.9c-.4.1-.6.4-.6.8v.6M10 13.6v.1"/></svg></button>
+<button class="btn" type="button">Share</button>
+<button class="icb" type="button" aria-label="More: Developer view, version history, duplicate, download code, GitHub, settings"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="10" r="1.1"/><circle cx="10" cy="10" r="1.1"/><circle cx="15" cy="10" r="1.1"/></svg></button>
+<button class="btn" type="button" aria-disabled="true" title="Launch opens when every part works or you set it aside">Launch</button>
+</header>
+<div class="mcols">
+<aside class="pane plan" aria-label="Plan">
+<div class="ph"><h2 class="t-20">Plan</h2><span class="t-12 c2">v1</span><span class="sp"></span><button class="lnk" type="button">Open full plan</button></div>
+<div style="padding: 0 16px 14px" class="col">
+<div class="row t-12 c2" style="justify-content: space-between; margin-bottom: 6px"><span class="kpi"><b class="num">7</b><span class="num">/12</span> parts work</span><span class="num">142 of ~160 credits</span></div>
+<div class="prog" role="img" aria-label="7 of 12 parts work"><i style="width: 58%"></i></div>
+<div class="cells" role="img" aria-label="7 of 12 parts work, 2 need you, 2 in progress, 1 up next"><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="n"></i><i class="n"></i><i class="p"></i><i class="p"></i><i></i></div>
+</div>
+<div style="flex: 1; overflow: auto; padding-bottom: 6px">
+<section class="group" aria-label="Needs you">
+<div class="gh"><span class="row" style="gap: 8px"><span class="gt" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><path d="M10 3.5l7 12.5H3z"/><path d="M10 8.5v3.5M10 14v.1"/></svg></span>Needs you</span><span class="ct">2</span></div>
+<div class="need">
+<div class="row" style="align-items: flex-start"><span class="st attention"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2.5v3M10 2.5v3M4.5 5.5h7v2.5a3.5 3.5 0 0 1-7 0zM8 11.5v2"/></svg></span><div class="col" style="flex: 1"><strong style="font-weight: 600">Connect Gmail</strong><span class="t-12 c2">Briefs show sample email threads until Architect can read yours.</span></div></div>
+<button class="btn pri sm" type="button" style="align-self: flex-start; margin-left: 30px">Connect Google account</button>
+</div>
+<div class="need">
+<div class="row" style="align-items: flex-start"><span class="st approval"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="7.5" width="8" height="5.5" rx="1.3"/><path d="M5.6 7.5V6a2.4 2.4 0 0 1 4.8 0v1.5"/></svg></span><div class="col" style="flex: 1"><strong style="font-weight: 600">HubSpot lookup is waiting for IT</strong><span class="t-12 c2">Jordan approves new tools. Everything else keeps building.</span></div></div>
+<button class="lnk" type="button" style="align-self: flex-start; margin-left: 30px">Remind Jordan</button>
+</div>
+</section>
+<section class="group" aria-label="In progress">
+<div class="gh"><span class="row" style="gap: 8px"><span class="gt" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 2"/></svg></span>In progress</span><span class="ct">2</span></div>
+<button class="it" type="button"><span class="st failed"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4v5M8 11.5v.1"/></svg></span><span class="t">Brief writer<span class="d">A check failed (too long). Fixing it, try 1 of 3.</span></span></button>
+<button class="it" type="button"><span class="st building"><svg viewBox="0 0 16 16" aria-hidden="true"><path class="spin" d="M8 2.5a5.5 5.5 0 1 1-5.5 5.5"/></svg></span><span class="t">Runs 30 min before each meeting<span class="d">Building now</span></span></button>
+</section>
+<section class="group" aria-label="Works">
+<div class="gh"><span class="row" style="gap: 8px"><span class="gt" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7"/><path d="M6.5 10.5l2.5 2.5 4.5-5"/></svg></span>Works</span><span class="ct">7</span></div>
+<button class="it sel" type="button" aria-current="true"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t">Last email thread per attendee<span class="d">Checked 12:04 · using sample data</span></span></button>
+<button class="it" type="button"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t">Brief before each meeting</span></button>
+<button class="it" type="button"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t">PDF agenda summarised</span></button>
+<button class="lnk" type="button" style="margin: 2px 8px 0">Show 4 more</button>
+</section>
+<section class="group" aria-label="Up next">
+<div class="gh"><span class="row" style="gap: 8px"><span class="gt" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><path d="M4 6h12M4 10h12M4 14h7"/></svg></span>Up next</span><span class="ct">1</span></div>
+<button class="it" type="button"><span class="st todo"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="1.5" fill="currentColor"/></svg></span><span class="t">Look and feel: Acme brand</span></button>
+</section>
+</div>
+</aside>
+<section class="pane stage" aria-label="Your app">
+<div class="sh">
+<div class="seg" role="tablist" aria-label="View"><button class="on" type="button" role="tab" aria-selected="true">App</button><button type="button" role="tab">Agents</button><button type="button" role="tab">Data</button><button type="button" role="tab">Files</button></div>
+<span class="sp"></span>
+<span class="badge" style="background: var(--building-bg); color: var(--building)"><span style="width: 7px; height: 7px; border-radius: 50%; background: currentColor"></span>Test version</span>
+<button class="btn sm" type="button"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4l10 6-10 6z"/></svg>Test the app</button>
+</div>
+<div class="frame">
+<div class="fbar"><span class="url"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><rect x="5" y="9" width="10" height="7" rx="1.5"/><path d="M7.5 9V7a2.5 2.5 0 0 1 5 0v2"/></svg>meeting-prep--test.architect.space/today</span><button class="icb q" type="button" aria-label="Open the test version in a new tab" style="width: 30px; height: 30px; color: #454b57"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4H4v12h12v-4M11 4h5v5M16 4l-7 7"/></svg></button></div>
+<div class="app">
+<div class="anav"><b>Meeting Prep</b><span class="on">Today</span><span>This week</span><span>All briefs</span><span>Attendees</span><span>Settings</span></div>
+<div class="alist">
+<div class="mtg on"><strong>10:00 · Q4 pipeline review</strong><div style="color: #454b57">Dana Whitfield, Marco Reyes</div></div>
+<div class="mtg"><strong>13:30 · Vendor renewal</strong><div style="color: #454b57">Lena Brooks</div></div>
+<div class="mtg"><strong>16:00 · Hiring sync</strong><div style="color: #454b57">Sam Ortiz</div></div>
+</div>
+<div class="abrief">
+<div><div style="font-size: 19px; font-weight: 650">Q4 pipeline review</div><div style="color: #454b57">10:00–10:45 · Brief sent to Slack at 09:30</div></div>
+<div class="hl" style="margin-top: 22px"><span class="hltag">Last email thread per attendee</span><h4>Last email thread · sample</h4><div><strong>Dana Whitfield</strong> · “Can we see the West region split before Tuesday?” · 2 days ago</div><div style="margin-top: 4px"><strong>Marco Reyes</strong> · “Sent the revised forecast deck (v3).” · Yesterday</div></div>
+<div><h4>Agenda, from the attached PDF</h4><div>1. Pipeline by region · 2. Deals that slipped · 3. Q1 hiring plan</div></div>
+<div><h4>Talking points</h4><div>Bring the West region split Dana asked for. Confirm whether Marco’s v3 deck replaces last week’s numbers.</div></div>
+</div>
+</div>
+<div class="dock" role="toolbar" aria-label="Preview tools">
+<button class="on" type="button" aria-label="Desktop size" aria-pressed="true"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4" width="15" height="10" rx="1.5"/><path d="M7 17h6"/></svg></button>
+<button type="button" aria-label="Phone size" aria-pressed="false"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><rect x="6.5" y="3" width="7" height="14" rx="1.5"/></svg></button>
+<span class="vr" aria-hidden="true"></span>
+<button type="button"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3l10 6-4.5 1.2L9 15z"/></svg>Point at something</button>
+<span class="vr" aria-hidden="true"></span>
+<button class="pb" type="button">1 problem</button>
+</div>
+</div>
+</section>
+<aside class="pane talk" aria-label="Chat with Architect">
+<div class="ph"><h2 class="t-16">Chat</h2><span class="sp"></span><button class="icb q" type="button" aria-label="Hide chat"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M12 4v12"/></svg></button></div>
+<div class="thread">
+<div class="you">Build it.</div>
+<div class="ai"><div class="who"><span class="av" aria-hidden="true">A</span>Architect</div>
+<p>Building your app. 7 of 12 parts already work. I need you for one thing: <b>connect Gmail</b> so briefs use your real email. HubSpot is waiting for IT, and nothing else is blocked by it.</p>
+<button class="lnk" type="button" style="align-self: flex-start">Show what I did (6 steps)</button></div>
+<div class="you">Also send me a Friday recap of the week’s meetings.</div>
+<div class="card"><span class="t-12 c2 b">Suggested change</span><strong style="font-weight: 650">Add a weekly summary email</strong><span class="t-12 c2"><span class="num">~12</span> credits · starts after this build, once you apply it</span><div class="row" style="margin-top: 4px"><button class="btn sm" type="button">Apply</button><button class="btn q sm" type="button">Edit</button><button class="btn q sm" type="button">Discard</button></div></div>
+</div>
+<div class="queue"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 2"/></svg><span style="flex: 1">Next: “Make the brief bullet points”</span><button class="lnk" type="button">Edit</button></div>
+<div class="composer">
+<label class="sr" for="msg">Message Architect</label>
+<textarea id="msg" placeholder="Ask a question or describe a change…"></textarea>
+<div class="row"><button class="icb" type="button" aria-label="Add files, Studio agents or tools" style="width: 34px; height: 34px"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button><button class="pill" type="button" aria-pressed="false" title="Talk first: discuss, nothing changes until you say so"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h2M4 10h2M4 15h2M9 5h7M9 10h7M9 15h5"/></svg>Talk first</button><button class="pill soft" type="button" aria-label="Model: Claude Sonnet. Change">Sonnet<svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 8l4 4 4-4"/></svg></button><span class="sp"></span><button class="send" type="button" aria-label="Send"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 15V5M6 9l4-4 4 4"/></svg></button></div>
+</div>
+</aside>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
+

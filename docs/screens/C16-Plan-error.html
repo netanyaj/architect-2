@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The plan could not be finished</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../../design-system/reference/screens.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#eeede9}</style>
+</helmet>
+<div class="mx opt-c " style="position: relative">
+<header class="mh">
+<a class="icb q" href="#" aria-label="Back to projects"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 5l-5 5 5 5"/></svg></a>
+<div class="proj"><span class="tile dark" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2.5v3M13 2.5v3"/></svg></span><div class="col"><strong class="t-16" style="line-height: 20px">Meeting Prep</strong><span class="t-12 c2">Edited by you · 2 min ago</span></div></div>
+<nav class="stepper" aria-label="Project stage">
+<button class="stp on" type="button" aria-current="step"><span class="n">1</span>Plan<span class="sub">· stopped at 5 of 13 parts</span></button>
+<span class="stsep" aria-hidden="true"></span>
+<button class="stp" type="button"><span class="n">2</span>Build</button>
+<span class="stsep" aria-hidden="true"></span>
+<button class="stp" type="button"><span class="n">3</span>Launch</button>
+</nav>
+<button class="icb" type="button" aria-label="Help with Architect"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M8 8a2 2 0 1 1 2.6 1.9c-.4.1-.6.4-.6.8v.6M10 13.6v.1"/></svg></button>
+<button class="btn" type="button">Share</button>
+<button class="icb" type="button" aria-label="More: Developer view, version history, duplicate, download code, GitHub, settings"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="10" r="1.1"/><circle cx="10" cy="10" r="1.1"/><circle cx="15" cy="10" r="1.1"/></svg></button>
+<button class="btn" type="button" aria-disabled="true" title="Build opens when the plan is complete">Build</button>
+</header>
+<div class="mcols">
+<aside class="pane plan" aria-label="Plan outline">
+<div class="ph"><h2 class="t-20">Plan</h2><span class="t-12 c2">v1 · unfinished</span></div>
+<div style="flex: 1; overflow: auto">
+<section class="group" aria-label="Written so far"><div class="gh"><span>Written so far</span><span class="ct">5</span></div>
+<div class="it"><span class="st todo"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="1.5" fill="currentColor"/></svg></span><span class="t">Brief before each meeting</span></div>
+<div class="it"><span class="st todo"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="1.5" fill="currentColor"/></svg></span><span class="t">Last email thread per attendee</span></div>
+<div class="it"><span class="st todo"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="1.5" fill="currentColor"/></svg></span><span class="t">Agenda PDF summarised</span></div>
+<div class="it"><span class="st todo"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="1.5" fill="currentColor"/></svg></span><span class="t">Google Calendar</span></div>
+<div class="it"><span class="st todo"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="1.5" fill="currentColor"/></svg></span><span class="t">Gmail</span></div>
+</section>
+</div>
+</aside>
+<section class="pane stage" aria-label="Plan document">
+<div style="flex: 1; overflow: auto"><div class="doc">
+<div class="card" style="border: 1.5px solid var(--failed); padding: 18px 20px; gap: 10px">
+<div class="row" style="align-items: flex-start"><span class="st failed" style="width: 26px; height: 26px"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4v5M8 11.5v.1"/></svg></span><div class="col" style="flex: 1; gap: 4px"><h1 class="t-20">I couldn’t finish the plan</h1><p class="c2">Claude Sonnet stopped answering after 5 of 13 parts. The 5 parts are kept. Nothing was built and only 2 credits were used for drafting.</p></div></div>
+<div class="row" style="margin-left: 36px; flex-wrap: wrap"><button class="btn pri" type="button">Try again</button><button class="btn" type="button">Try with GPT</button><button class="btn q" type="button">Edit my request</button></div>
+</div>
+<p class="t-12 c2">If it fails twice, Help can look at it with this project attached.</p>
+</div></div>
+</section>
+<aside class="pane talk" aria-label="Chat with Architect">
+<div class="ph"><h2 class="t-16">Chat</h2></div>
+<div class="thread">
+<div class="you">Before each meeting on my calendar, send me a Slack brief with each attendee’s last email thread, a summary of any attached agenda PDF, and three talking points.</div>
+<div class="ai"><div class="who"><span class="av" aria-hidden="true">A</span>Architect</div><p>Sorry, I lost the connection to the model halfway through. Your request and the first 5 parts are saved. Try again, or switch models.</p></div>
+</div>
+<div class="composer"><label class="sr" for="msg">Message Architect</label><textarea id="msg" placeholder="Ask a question or describe a change…"></textarea><div class="row"><button class="icb" type="button" aria-label="Add files, Studio agents or tools" style="width: 34px; height: 34px"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button><button class="pill" type="button" aria-pressed="false"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h2M4 10h2M4 15h2M9 5h7M9 10h7M9 15h5"/></svg>Talk first</button><button class="pill soft" type="button">Sonnet<svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 8l4 4 4-4"/></svg></button><span class="sp"></span><button class="send" type="button" aria-label="Send"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 15V5M6 9l4-4 4 4"/></svg></button></div></div>
+</aside>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
+

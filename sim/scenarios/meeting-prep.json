@@ -1,0 +1,31 @@
+{
+  "id": "meeting-prep",
+  "description": "Default build story. Matches real Blueprint items by group and keywords.",
+  "timing": { "base_ms": 6500, "check_written_ms": 400, "jitter": 0.2, "size_factor": { "features": 1.2, "integrations": 0.8, "agents": 1.5, "data": 0.9, "quality": 0.6 } },
+  "cost": { "actual_factor": [0.85, 1.15], "fix_credits": [2, 3] },
+  "order": ["data", "integrations", "agents", "features", "quality"],
+  "rules": [
+    { "id": "needs-connection", "match": { "grp": "integrations", "provider_not_connected": true }, "outcome": "needs_connection",
+      "log": { "verb": "Waiting", "object": "{provider} connection" } },
+    { "id": "needs-approval", "match": { "provider_not_allowed_by_policy": true }, "outcome": "needs_approval",
+      "log": { "verb": "Waiting", "object": "approval for {provider}" } },
+    { "id": "sample-data", "match": { "grp": "data", "keywords": ["archive", "history", "notes", "past"] }, "outcome": "sample_data",
+      "reason": "No real data source connected yet" },
+    { "id": "fix-once", "match": { "grp": "agents", "position": "last" }, "outcome": "fail_then_pass", "fail_attempts": 1,
+      "failure": { "check": "brief is 200 words or fewer", "measured": "236 words" },
+      "fix_log": [ { "verb": "Read", "object": "architect/checks/{key}.yaml" }, { "verb": "Edited", "object": "agents/{key}.py · +4 −1" } ] },
+    { "id": "default", "match": {}, "outcome": "pass" }
+  ],
+  "variants": {
+    "paused": { "override": { "fix-once": { "outcome": "fail", "fail_attempts": 3, "measured_by_attempt": ["236 words", "212 words", "204 words"] } } },
+    "budget": { "project_budget": 100 }
+  },
+  "checks_by_group": {
+    "features": { "kind": "ui_test", "assertions": 4, "screenshot": true },
+    "integrations": { "kind": "api_test", "assertions": 3, "screenshot": false },
+    "agents": { "kind": "eval", "assertions": 3, "screenshot": false },
+    "data": { "kind": "api_test", "assertions": 2, "screenshot": false },
+    "quality": { "kind": "http", "assertions": 2, "screenshot": false }
+  },
+  "preview": { "app": "meeting-prep", "reveal": { "features": "/today", "agents": "/today#talking-points", "integrations": "/settings/connections" } }
+}

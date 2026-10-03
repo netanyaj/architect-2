@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A part is blocked after 3 fixes</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../../design-system/reference/screens.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#eeede9}</style>
+</helmet>
+<div class="mx opt-c " style="position: relative">
+<header class="mh">
+<a class="icb q" href="#" aria-label="Back to projects"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 5l-5 5 5 5"/></svg></a>
+<div class="proj"><span class="tile dark" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2.5v3M13 2.5v3"/></svg></span><div class="col"><strong class="t-16" style="line-height: 20px">Meeting Prep</strong><span class="t-12 c2">Edited by you · 2 min ago</span></div></div>
+<nav class="stepper" aria-label="Project stage">
+<button class="stp done" type="button"><span class="n"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3 3 7-7"/></svg></span>Plan</button>
+<span class="stsep" aria-hidden="true"></span>
+<button class="stp on" type="button" aria-current="step"><span class="n">2</span>Build<span class="sub">· 10 of 12 working · 1 blocked</span></button>
+<span class="stsep" aria-hidden="true"></span>
+<button class="stp" type="button"><span class="n">3</span>Launch</button>
+</nav>
+<button class="icb" type="button" aria-label="Help with Architect"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M8 8a2 2 0 1 1 2.6 1.9c-.4.1-.6.4-.6.8v.6M10 13.6v.1"/></svg></button>
+<button class="btn" type="button">Share</button>
+<button class="icb" type="button" aria-label="More: Developer view, version history, duplicate, download code, GitHub, settings"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="10" r="1.1"/><circle cx="10" cy="10" r="1.1"/><circle cx="15" cy="10" r="1.1"/></svg></button>
+<button class="btn" type="button" aria-disabled="true" title="Launch opens when every part works or you set it aside">Launch</button>
+</header>
+<div class="mcols">
+<aside class="pane plan" aria-label="Plan">
+<div class="ph"><h2 class="t-20">Plan</h2><span class="t-12 c2">v1</span><span class="sp"></span><button class="lnk" type="button">Open full plan</button></div>
+<div style="padding: 0 16px 14px" class="col">
+<div class="row t-12 c2" style="justify-content: space-between; margin-bottom: 6px"><span><b style="color: var(--ink)">10 of 12</b> parts work</span><span class="num">163 of ~160 credits</span></div>
+<div class="prog" role="img" aria-label="10 of 12 parts work"><i style="width: 83%"></i></div>
+</div>
+<div style="flex: 1; overflow: auto">
+<section class="group" aria-label="Needs you"><div class="gh"><span>Needs you</span><span class="ct">2</span></div>
+<button class="it sel" type="button" aria-current="true"><span class="st todo"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 5v6M10 5v6"/></svg></span><span class="t"><b style="font-weight: 600">Brief writer is blocked</b><span class="d">Stopped after 3 fixes to protect your credits</span></span></button>
+<button class="it" type="button"><span class="st approval"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="7.5" width="8" height="5.5" rx="1.3"/><path d="M5.6 7.5V6a2.4 2.4 0 0 1 4.8 0v1.5"/></svg></span><span class="t">HubSpot lookup<span class="d">Waiting for IT</span></span></button>
+</section>
+<section class="group" aria-label="Works"><div class="gh"><span>Works</span><span class="ct">10</span></div>
+<button class="it" type="button"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t">Brief before each meeting</span></button>
+<button class="it" type="button"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t">Last email thread per attendee</span></button>
+<button class="lnk" type="button" style="margin: 2px 8px 0">Show 8 more</button>
+</section>
+</div>
+</aside>
+<section class="pane stage" aria-label="Your app">
+<div class="sh"><div class="seg" role="tablist" aria-label="View"><button class="on" type="button" role="tab" aria-selected="true">App</button><button type="button" role="tab">Agents</button><button type="button" role="tab">Data</button><button type="button" role="tab">Files</button></div><span class="sp"></span></div>
+<div class="frame"><div class="fbar"><span class="url">meeting-prep--test.architect.space/today</span></div><div class="app"><div class="anav"><b>Meeting Prep</b><span class="on">Today</span><span>This week</span><span>All briefs</span></div><div class="abrief"><div style="font-size: 19px; font-weight: 650">Q4 pipeline review</div><div class="hl" style="margin-top: 22px"><span class="hltag">Brief writer</span><h4>Talking points · 236 words</h4><div>Bring the West region split Dana asked for, including the breakdown by segment and the comparison with last quarter’s forecast, then confirm whether Marco’s v3 deck replaces…</div></div></div></div></div>
+</section>
+<aside class="pane talk" aria-label="Chat with Architect"><div class="ph"><h2 class="t-16">Chat</h2></div></aside>
+</div>
+<div class="scrim" aria-hidden="true"></div>
+<section class="drawer" role="dialog" aria-label="Brief writer">
+<div class="dh"><span class="st todo" style="width: 28px; height: 28px; margin-top: 2px"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 5v6M10 5v6"/></svg></span><div class="col" style="flex: 1"><h2 class="t-20">Brief writer is blocked</h2><span class="t-12 c2">Its check failed 3 times, so I stopped to protect your credits. Everything else keeps working.</span></div><button class="icb q" type="button" aria-label="Close"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5 5 15"/></svg></button></div>
+<div class="db">
+<div class="card" style="background: var(--tray)"><span class="t-12 c2 b">The check</span><span>Done when briefs stay under <b>200 words</b> and name every attendee.</span></div>
+<section class="col" style="gap: 10px" aria-label="What I tried"><span class="b">What I tried</span>
+<div class="steps">
+<div class="stepi"><span class="st failed"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4v5M8 11.5v.1"/></svg></span><div class="row" style="flex: 1; align-items: flex-start"><span style="flex: 1">Told the agent about the word limit</span><span class="t-12 c2" style="white-space: nowrap">236 words · <span class="num">2</span> cr</span></div></div>
+<div class="stepi"><span class="st failed"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4v5M8 11.5v.1"/></svg></span><div class="row" style="flex: 1; align-items: flex-start"><span style="flex: 1">Trimmed the brief after writing it</span><span class="t-12 c2" style="white-space: nowrap">212 words · <span class="num">2</span> cr</span></div></div>
+<div class="stepi"><span class="st failed"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4v5M8 11.5v.1"/></svg></span><div class="row" style="flex: 1; align-items: flex-start"><span style="flex: 1">Shortened the talking points</span><span class="t-12 c2" style="white-space: nowrap">204 words · <span class="num">3</span> cr</span></div></div>
+</div></section>
+<div class="card" style="border: 2px solid var(--ink)"><span class="t-12 c2 b">What I suggest</span><strong style="font-weight: 650">Allow up to 250 words</strong><span class="t-12 c2">Briefs with 4 or more attendees need the room. The last try was 204 words, so this passes. No extra credits.</span></div>
+</div>
+<div class="df" style="flex-wrap: wrap"><button class="btn pri" type="button">Allow 250 words</button><button class="btn" type="button">Edit this part</button><button class="btn" type="button">Try once more · <span class="num">~3</span> cr</button><span class="sp"></span><button class="btn q" type="button">Set aside for now</button></div>
+<div class="row t-12 c2" style="padding: 0 20px 16px; gap: 16px"><a href="#" class="lnk">History and go back</a><a href="#" class="lnk">Ask a person about this</a></div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
+

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Data</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../../design-system/reference/screens.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#eeede9}</style>
+</helmet>
+<div class="mx opt-c " style="position: relative">
+<header class="mh">
+<a class="icb q" href="#" aria-label="Back to projects"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 5l-5 5 5 5"/></svg></a>
+<div class="proj"><span class="tile dark" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2.5v3M13 2.5v3"/></svg></span><div class="col"><strong class="t-16" style="line-height: 20px">Meeting Prep</strong><span class="t-12 c2">Edited by you · 2 min ago</span></div></div>
+<nav class="stepper" aria-label="Project stage">
+<button class="stp done" type="button"><span class="n"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3 3 7-7"/></svg></span>Plan</button>
+<span class="stsep" aria-hidden="true"></span>
+<button class="stp done" type="button"><span class="n"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3 3 7-7"/></svg></span>Build</button>
+<span class="stsep" aria-hidden="true"></span>
+<button class="stp on" type="button" aria-current="step"><span class="n">3</span>Launch<span class="sub">· 2 things before going live</span></button>
+</nav>
+<button class="icb" type="button" aria-label="Help with Architect"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M8 8a2 2 0 1 1 2.6 1.9c-.4.1-.6.4-.6.8v.6M10 13.6v.1"/></svg></button>
+<button class="btn" type="button">Share</button>
+<button class="icb" type="button" aria-label="More: Developer view, version history, duplicate, download code, GitHub, settings"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="10" r="1.1"/><circle cx="10" cy="10" r="1.1"/><circle cx="15" cy="10" r="1.1"/></svg></button>
+<button class="btn" type="button" aria-disabled="true" title="Fix the 2 items in the Launch checklist first">Share with your team</button>
+</header>
+<div class="mcols">
+<aside class="pane" aria-label="Plan, hidden" style="flex: 0 0 56px; align-items: center; padding: 12px 0"><button class="icb" type="button" aria-label="Show plan panel"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M8 4v12"/></svg></button></aside>
+<section class="pane stage" aria-label="Data">
+<div class="sh"><div class="seg" role="tablist" aria-label="View"><button type="button" role="tab">App</button><button type="button" role="tab">Agents</button><button class="on" type="button" role="tab" aria-selected="true">Data</button><button type="button" role="tab">Files</button></div><span class="sp"></span><button class="pill" type="button" aria-label="Showing data from the Test version. Switch version"><span style="width: 7px; height: 7px; border-radius: 50%; background: var(--building)"></span>Test version data<svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 8l4 4 4-4"/></svg></button></div>
+<div style="flex: 1; display: flex; min-height: 0; margin: 0 12px 12px; border: 1px solid var(--line); border-radius: var(--r-card); overflow: hidden">
+<nav aria-label="Tables" style="flex: 0 0 250px; background: var(--tray); border-right: 1px solid var(--line); padding: 12px 10px; display: flex; flex-direction: column; gap: 2px">
+<div class="gh"><span>What the app stores</span></div>
+<button class="it sel" type="button" aria-current="true"><span class="t">Briefs<span class="d">128 saved</span></span></button>
+<button class="it" type="button"><span class="t">Meetings<span class="d">131 saved</span></span></button>
+<button class="it" type="button"><span class="t">Attendees<span class="d">46 saved</span></span></button>
+<button class="it" type="button"><span class="t">Email threads<span class="d">212 saved</span></span></button>
+<button class="it" type="button"><span class="t">Meeting notes<span class="d">Sample data</span></span></button>
+<div class="gh" style="margin-top: 8px"><span>Sign-in</span></div>
+<button class="it" type="button"><span class="t">People who can sign in<span class="d">3 · Google sign-in</span></span></button>
+<p class="t-12 c2" style="padding: 10px 8px 0">Each version has its own data. Live data is read-only here.</p>
+</nav>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--surface)">
+<div class="row" style="padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap"><strong class="t-16">Briefs</strong><div class="seg" role="group" aria-label="Show"><button class="on" type="button" aria-pressed="true">Rows</button><button type="button" aria-pressed="false">Columns</button></div><span class="sp"></span><label class="sr" for="flt">Filter</label><input id="flt" placeholder="Filter…" style="min-height: 34px; border: 1px solid var(--line-ctl); border-radius: 9999px; padding: 0 14px; width: 180px; background: var(--surface)"><button class="btn sm" type="button">Export CSV</button></div>
+<div style="flex: 1; overflow: auto"><table class="tbl"><thead><tr><th scope="col">Meeting</th><th scope="col">Attendees</th><th scope="col">Status</th><th scope="col">Sent</th></tr></thead><tbody>
+<tr><td>Q4 pipeline review</td><td>Dana Whitfield, Marco Reyes</td><td><span class="statusw w-works"><i></i>Sent</span></td><td class="c2">Today 09:30</td></tr>
+<tr><td>Vendor renewal</td><td>Lena Brooks</td><td><span class="statusw c2"><i></i>Scheduled</span></td><td class="c2">Today 13:00</td></tr>
+<tr><td>Hiring sync</td><td>Sam Ortiz</td><td><span class="statusw c2"><i></i>Scheduled</span></td><td class="c2">Today 15:30</td></tr>
+<tr><td>Weekly recap</td><td>Morgan Lee</td><td><span class="statusw w-works"><i></i>Sent</span></td><td class="c2">Fri 17:00</td></tr>
+<tr><td>Board prep</td><td>Priya Nair, Tom Hale</td><td><span class="statusw w-works"><i></i>Sent</span></td><td class="c2">Fri 08:30</td></tr>
+<tr><td>Design review</td><td>Ana Lima</td><td><span class="statusw w-failed"><i></i>Failed · <a href="#">see why</a></span></td><td class="c2">Thu 10:30</td></tr>
+</tbody></table></div>
+<div class="row t-12" style="padding: 10px 16px; border-top: 1px solid var(--line)"><span class="c2">1–6 of 128</span><span class="sp"></span><button class="btn q sm" type="button">Previous</button><button class="btn sm" type="button">Next</button></div>
+</div>
+</div>
+</section>
+<aside class="pane" aria-label="Chat, hidden" style="flex: 0 0 56px; align-items: center; padding: 12px 0"><button class="icb" type="button" aria-label="Show chat"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12v8H9l-4 3v-3H4z"/></svg></button></aside>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
+

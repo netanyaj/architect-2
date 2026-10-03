@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Help me decide</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../../design-system/reference/screens.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#eeede9}</style>
+</helmet>
+<div class="mx opt-c " style="position: relative">
+<div class="shell">
+<nav class="side" aria-label="Workspace">
+<div class="brand"><span class="logo" aria-hidden="true">A</span>Architect<span class="sp"></span><button class="icb q" type="button" aria-label="Switch workspace: Acme Ops" style="width: 32px; height: 32px"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 8l3-3 3 3M7 12l3 3 3-3"/></svg></button></div>
+<a class="nv on" href="#" aria-current="page"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 9 10 3.5 16.5 9v7.5h-13z"/><path d="M8 16.5v-4h4v4"/></svg>Home</a>
+<a class="nv" href="#"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2.5"/><path d="M3 8h14"/></svg>Projects<span class="n">4</span></a>
+<a class="nv" href="#"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="6" width="12" height="9" rx="3"/><path d="M10 3v3M7.5 10.5h.1M12.5 10.5h.1"/></svg>Agents</a>
+<a class="nv" href="#"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M8 12l4-4M7 9 5.5 10.5a2.5 2.5 0 0 0 3.5 3.5L10.5 12.5M13 11l1.5-1.5a2.5 2.5 0 0 0-3.5-3.5L9.5 7.5"/></svg>Connections</a>
+<a class="nv" href="#"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7h12l-1 9.5H5z"/><path d="M7.5 7a2.5 2.5 0 0 1 5 0"/></svg>Marketplace</a>
+<a class="nv" href="#"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 16V10M10 16V4M16 16v-6"/></svg>Usage</a>
+<div class="nsec">Admin</div>
+<a class="nv" href="#"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3 4 5.5v4c0 4 2.6 6.5 6 7.5 3.4-1 6-3.5 6-7.5v-4z"/><path d="M7.5 10l2 2 3-3.5"/></svg>Approvals<span class="n">2</span></a>
+<a class="nv" href="#"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><rect x="3.5" y="3.5" width="13" height="13" rx="2.5"/><path d="M7 8h6M7 12h4"/></svg>Governance</a>
+<span class="sp"></span>
+<div class="card" style="gap: 8px; margin-bottom: 8px">
+<div class="row" style="justify-content: space-between"><span class="b" style="font-size: 14px">Credits</span><span class="num t-12 b">1,240 / 2,000</span></div>
+<div class="prog" role="img" aria-label="1,240 of 2,000 credits left"><i style="width: 62%"></i></div>
+<div class="row t-12 c2" style="justify-content: space-between"><span>Resets 1 Nov</span><a href="#" class="lnk" style="font-size: 12.5px">Plans</a></div>
+</div>
+<a class="nv" href="#"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M8 8a2 2 0 1 1 2.6 1.9c-.4.1-.6.4-.6.8v.6M10 13.6v.1"/></svg>Help<span class="statusw w-works" style="margin-left: auto; font-size: 12.5px"><i></i>Online</span></a>
+<button class="nv" type="button" aria-label="Account and settings: Morgan Lee"><span class="ini" style="border-radius: 50%; width: 26px; height: 26px">ML</span><span class="col" style="line-height: 18px"><span style="color: var(--ink); font-weight: 600">Morgan Lee</span><span class="t-12 c2">Settings</span></span></button>
+</nav>
+
+<main class="main">
+<div class="wrap" style="gap: 26px; padding-top: 40px">
+<div class="row"><a class="btn q sm" href="#"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 5l-5 5 5 5"/></svg>Back</a><span class="sp"></span><span class="t-12 c2">Step 3 of 3 · about 2 minutes in total</span></div>
+<div class="col" style="gap: 8px"><h1 class="t-28">Here are three things worth building</h1><p class="c2" style="font-size: 16px">Picked from what you told me. Each one saves you time every week, and you’ll still see the full plan and its cost before anything is built.</p></div>
+<div class="row" style="flex-wrap: wrap; gap: 6px"><span class="t-12 c2 b" style="margin-right: 4px">You said</span><span class="tag">Sales operations lead</span><span class="tag">Meeting prep takes ~4 h a week</span><span class="tag">Gmail, Calendar, Slack, HubSpot</span><button class="lnk" type="button" style="margin-left: 6px">Change answers</button></div>
+<div class="col" style="gap: 10px" role="radiogroup" aria-label="Ideas">
+<button class="lrow" type="button" role="radio" aria-checked="true" style="border: 2px solid var(--ink); text-align: left; align-items: flex-start; width: 100%"><span class="tile dark" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14"/></svg></span><span class="col" style="flex: 1; gap: 4px"><strong class="t-16">Meeting briefs in Slack</strong><span class="c2">Before each meeting, a brief with every attendee’s last email and three talking points.</span><span class="row t-12 c2"><span class="tools"><span class="ini">C</span><span class="ini">G</span><span class="ini">S</span></span>Saves about 3 h a week · about 160 credits to build</span></span><span class="st works" style="width: 24px; height: 24px"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span></button>
+<button class="lrow" type="button" role="radio" aria-checked="false" style="text-align: left; align-items: flex-start; width: 100%"><span class="tile" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><path d="M4 16V10M10 16V4M16 16v-6"/></svg></span><span class="col" style="flex: 1; gap: 4px"><strong class="t-16">Morning lead scores</strong><span class="c2">Every morning, new HubSpot leads scored 0–100 with a reason, top 5 posted to #sales.</span><span class="row t-12 c2"><span class="tools"><span class="ini">H</span><span class="ini">S</span></span>Saves about 2 h a week · about 100 credits</span></span></button>
+<button class="lrow" type="button" role="radio" aria-checked="false" style="text-align: left; align-items: flex-start; width: 100%"><span class="tile" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><path d="M4 5h12v8H9l-4 3v-3H4z"/></svg></span><span class="col" style="flex: 1; gap: 4px"><strong class="t-16">Follow-up drafts after calls</strong><span class="c2">After each customer meeting, a follow-up email drafted in Gmail for you to send.</span><span class="row t-12 c2"><span class="tools"><span class="ini">C</span><span class="ini">G</span></span>Saves about 1.5 h a week · about 90 credits</span></span></button>
+</div>
+<div class="row"><button class="btn q" type="button">Show 3 different ideas</button><span class="sp"></span><button class="btn pri" type="button">Write the plan for this<svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M8 5l5 5-5 5"/></svg></button></div>
+</div>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
+

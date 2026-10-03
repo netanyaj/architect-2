@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+node_modules/
+.next/
+.vercel/
+coverage/
+playwright-report/
+test-results/
+*.har
+*.mov
+*.pem

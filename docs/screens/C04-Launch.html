@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Launch</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../../design-system/reference/screens.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#eeede9}</style>
+</helmet>
+<div class="mx opt-c " style="position: relative">
+<header class="mh">
+<a class="icb q" href="#" aria-label="Back to projects"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 5l-5 5 5 5"/></svg></a>
+<div class="proj"><span class="tile dark" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2.5v3M13 2.5v3"/></svg></span><div class="col"><strong class="t-16" style="line-height: 20px">Meeting Prep</strong><span class="t-12 c2">Edited by you · 2 min ago</span></div></div>
+<nav class="stepper" aria-label="Project stage">
+<button class="stp done" type="button"><span class="n"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3 3 7-7"/></svg></span>Plan</button>
+<span class="stsep" aria-hidden="true"></span>
+<button class="stp done" type="button"><span class="n"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3 3 7-7"/></svg></span>Build</button>
+<span class="stsep" aria-hidden="true"></span>
+<button class="stp on" type="button" aria-current="step"><span class="n">3</span>Launch<span class="sub">· 2 things before going live</span></button>
+</nav>
+<button class="icb" type="button" aria-label="Help with Architect"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M8 8a2 2 0 1 1 2.6 1.9c-.4.1-.6.4-.6.8v.6M10 13.6v.1"/></svg></button>
+<button class="btn" type="button">Share</button>
+<button class="icb" type="button" aria-label="More: Developer view, version history, duplicate, download code, GitHub, settings"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="10" r="1.1"/><circle cx="10" cy="10" r="1.1"/><circle cx="15" cy="10" r="1.1"/></svg></button>
+<button class="btn" type="button" aria-disabled="true" title="Fix the 2 items in the checklist first">Share with your team</button>
+</header>
+<div class="mcols">
+<aside class="pane plan" aria-label="Plan">
+<div class="ph"><h2 class="t-20">Plan</h2><span class="t-12 c2">v2</span><span class="sp"></span><button class="lnk" type="button">Open full plan</button></div>
+<div style="padding: 0 16px 14px" class="col">
+<div class="row t-12 c2" style="justify-content: space-between; margin-bottom: 6px"><span><b style="color: var(--ink)">12 of 13</b> parts work</span><span class="num">170 of ~172 credits</span></div>
+<div class="prog" role="img" aria-label="12 of 13 parts work"><i style="width: 92%"></i></div>
+</div>
+<div style="flex: 1; overflow: auto">
+<section class="group" aria-label="Needs you"><div class="gh"><span>Needs you</span><span class="ct">1</span></div>
+<button class="it" type="button"><span class="st approval"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="7.5" width="8" height="5.5" rx="1.3"/><path d="M5.6 7.5V6a2.4 2.4 0 0 1 4.8 0v1.5"/></svg></span><span class="t">HubSpot lookup<span class="d">Waiting for IT. Needed only for the live version.</span></span></button>
+</section>
+<section class="group" aria-label="Works"><div class="gh"><span>Works</span><span class="ct">12</span></div>
+<button class="it" type="button"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t">Brief before each meeting</span></button>
+<button class="it" type="button"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t">Last email thread per attendee</span></button>
+<button class="it" type="button"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t">Weekly summary email<span class="d">New in v2</span></span></button>
+<button class="lnk" type="button" style="margin: 2px 8px 0">Show 9 more</button>
+</section>
+</div>
+</aside>
+<section class="pane stage" aria-label="Launch">
+<div style="flex: 1; overflow: auto">
+<div class="doc" style="max-width: 820px; gap: 26px">
+<div class="col" style="gap: 6px"><h1 class="t-28">Launch Meeting Prep</h1><p class="c2" style="font-size: 16px">Move it from your test version to your team, then live. Each step keeps the one before it, and you can go back in one click.</p></div>
+<div class="envs" role="list">
+<div class="env" role="listitem"><span class="t-12 c2 b">Now</span><strong class="t-16">Test version</strong><span class="t-12 c2">Only you · sample data allowed</span><span class="row t-12" style="margin-top: 4px"><span class="code c2" style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">meeting-prep--test.architect.space</span><button class="icb q" type="button" aria-label="Copy test link" style="width: 28px; height: 28px"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="7" width="9" height="9" rx="2"/><path d="M13 7V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h2"/></svg></button></span></div>
+<div class="env on" role="listitem"><span class="t-12 c2 b">Next</span><strong class="t-16">Team version</strong><span class="t-12 c2">Your workspace · real data only</span><span class="statusw w-attention" style="margin-top: 4px"><i></i>2 things to fix</span></div>
+<div class="env" role="listitem"><span class="t-12 c2 b">Then</span><strong class="t-16">Live</strong><span class="t-12 c2">prep.acme.com · anyone you allow</span><span class="statusw w-approval" style="margin-top: 4px"><i></i>Needs IT approval</span></div>
+</div>
+<section class="col" style="gap: 12px" aria-labelledby="chk"><div class="row"><h2 id="chk" class="t-16">Before your team can use it</h2><span class="sp"></span><span class="t-12 c2">Architect checked 6 things · 4 are fine</span></div>
+<div class="wellbox">
+<div class="it" style="border-radius: 0; border-bottom: 1px solid var(--line); padding: 14px; align-items: center"><span class="st attention"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2.5v3M10 2.5v3M4.5 5.5h7v2.5a3.5 3.5 0 0 1-7 0zM8 11.5v2"/></svg></span><span class="t"><b style="font-weight: 600">Connect Gmail for your team</b><span class="d">The team version can’t use sample emails.</span></span><button class="btn pri sm" type="button">Connect Gmail</button></div>
+<div class="it" style="border-radius: 0; border-bottom: 1px solid var(--line); padding: 14px; align-items: center"><span class="st attention"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 5h9M3.5 8h9M3.5 11h5"/></svg></span><span class="t"><b style="font-weight: 600">Meeting notes archive still uses sample data</b><span class="d">Upload your notes or leave this part out of the team version.</span></span><button class="btn sm" type="button">Upload notes</button></div>
+<div class="it" style="border-radius: 0; padding: 14px; align-items: center"><span class="st works"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t"><b style="font-weight: 600">Tests, security and privacy checks passed</b><span class="d">42 tests · no secrets in the code · email text hidden in logs</span></span><button class="lnk" type="button">Details</button></div>
+</div></section>
+<section class="col" style="gap: 12px" aria-labelledby="set"><h2 id="set" class="t-16">Settings for the shared versions</h2>
+<div class="wellbox">
+<div class="row" style="padding: 14px; border-bottom: 1px solid var(--line)"><div class="col" style="flex: 1"><b style="font-weight: 600">Who can sign in</b><span class="t-12 c2">Anyone at acme.com with Google sign-in</span></div><button class="btn sm" type="button">Change</button></div>
+<div class="row" style="padding: 14px; border-bottom: 1px solid var(--line)"><div class="col" style="flex: 1"><b style="font-weight: 600">Web address</b><span class="t-12 c2">prep.acme.com for the live version</span></div><button class="btn sm" type="button">Change</button></div>
+<div class="row" style="padding: 14px; border-bottom: 1px solid var(--line)"><div class="col" style="flex: 1"><b style="font-weight: 600">Keys and passwords</b><span class="t-12 c2">4 saved for the team version · 3 for live</span></div><button class="btn sm" type="button">Manage</button></div>
+<div class="row" style="padding: 14px; border-bottom: 1px solid var(--line)"><div class="col" style="flex: 1"><b style="font-weight: 600">Show “Built with Architect”</b><span class="t-12 c2">You can hide it on paid plans</span></div><button class="swt" type="button" role="switch" aria-checked="true" aria-label="Show Built with Architect"></button></div>
+<div class="row" style="padding: 14px"><div class="col" style="flex: 1"><b style="font-weight: 600">List in the Marketplace</b><span class="t-12 c2">Others in Acme can copy it as a starting point</span></div><button class="swt off" type="button" role="switch" aria-checked="false" aria-label="List in the Marketplace"></button></div>
+</div></section>
+<div class="row t-12 c2" style="gap: 16px"><a href="#" class="lnk">Version history and go back</a><a href="#" class="lnk">Usage and visitors</a><a href="#" class="lnk">Download code</a></div>
+</div>
+</div>
+</section>
+<aside class="pane" aria-label="Chat, hidden" style="flex: 0 0 56px; align-items: center; padding: 12px 0"><button class="icb" type="button" aria-label="Show chat"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12v8H9l-4 3v-3H4z"/></svg></button></aside>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
+
