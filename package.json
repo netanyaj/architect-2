@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "db:push": "supabase db push",
-    "db:types": "supabase gen types typescript --linked --schema public > src/lib/database.types.ts"
+    "db:types": "supabase gen types typescript --linked --schema public > src/lib/database.types.ts",
+    "db:verify": "node --env-file=.env.local scripts/verify-db.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.87",
