@@ -5,7 +5,8 @@ import { z } from "zod";
 import { MODEL_CHOICES, MODEL_LABEL } from "@/lib/models";
 import { canBuild } from "@/lib/permissions";
 import { allowedModels } from "../blueprint/write-plan";
-import { createAdminDb, type AdminDb } from "../db";
+import type { VersionItem } from "@/lib/plan-diff";
+import { createAdminDb, createServerDb, type AdminDb } from "../db";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
 
@@ -143,4 +144,17 @@ export async function buildPlan(input: { blueprintId: string }): Promise<ActionR
   revalidatePath(`/p/${bp.project_id}`);
   revalidatePath("/projects");
   return { ok: true, runId };
+}
+
+/** One version's parts, for Compare versions (A-5). Read with the person's own access (RLS). */
+export async function loadVersionItems(input: { blueprintId: string }): Promise<ActionResult<{ items: VersionItem[] }>> {
+  if (!uuid.safeParse(input.blueprintId).success) return { ok: false, message: "That version isn't in this project." };
+  const db = await createServerDb();
+  const { data, error } = await db
+    .from("items")
+    .select("key, grp, title, description, proved_when, source_quote, item_class, size, provider, status, drop_reason, position")
+    .eq("blueprint_id", input.blueprintId)
+    .order("position");
+  if (error) return { ok: false, message: "That version couldn't be loaded. Try again." };
+  return { ok: true, items: (data ?? []) as VersionItem[] };
 }

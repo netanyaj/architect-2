@@ -12,6 +12,7 @@ import { MODEL_LABEL, type ModelChoice } from "@/lib/models";
 import { answerQuestion, changeDefault, editItem } from "@/server/actions/plan";
 import type { PlanItem } from "@/server/blueprint/write-plan";
 import type { PlanQuestion, ProjectWorkspace, WorkspaceItem } from "@/server/project";
+import { CompareVersions } from "./compare-versions";
 import type { WriterState } from "./use-plan-writer";
 
 export const GROUP_LABEL: Record<string, string> = {
@@ -234,6 +235,9 @@ export function PlanDocument({
       <div className="flex flex-col gap-1.5">
         <span className="flex flex-wrap items-center gap-2 text-small font-semibold text-ink-2">
           {project.name} · plan v{plan?.version ?? 1}
+          {plan?.basedOn ? ` · changed from v${plan.basedOn}` : ""}
+          <span className="flex-1" />
+          <CompareVersions versions={project.versions} />
           {(plan?.simulatedModel || (writer.phase === "writing" && writer.model?.simulated)) && (
             <SimTag title={`${modelLabel} isn't connected here, so Gemini wrote this plan`} />
           )}
