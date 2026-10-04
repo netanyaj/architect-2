@@ -27,7 +27,8 @@ let nextId = 1;
 
 class Query implements PromiseLike<Result> {
   private filters: ((r: Row) => boolean)[] = [];
-  private op: "select" | "insert" | "update" | "delete" = "select";
+  private op: "select" | "insert" | "update" | "delete" | "upsert" = "select";
+  private conflictKeys: string[] = [];
   private payload: Row | Row[] = {};
 
   constructor(
@@ -41,6 +42,12 @@ class Query implements PromiseLike<Result> {
   insert(values: Row | Row[]) {
     this.op = "insert";
     this.payload = values;
+    return this;
+  }
+  upsert(values: Row, opts?: { onConflict?: string }) {
+    this.op = "upsert";
+    this.payload = values;
+    this.conflictKeys = (opts?.onConflict ?? "id").split(",").map((k) => k.trim());
     return this;
   }
   update(values: Row) {
@@ -79,6 +86,17 @@ class Query implements PromiseLike<Result> {
       const rows = values.map((v) => ({ id: `id-${nextId++}`, invite_token: `tok-${nextId}`, ...v }));
       this.rows.push(...rows);
       return rows;
+    }
+    if (this.op === "upsert") {
+      const v = this.payload as Row;
+      const hit = this.rows.find((r) => this.conflictKeys.every((k) => r[k] === v[k]));
+      if (hit) {
+        Object.assign(hit, v);
+        return [hit];
+      }
+      const row = { id: `id-${nextId++}`, ...v };
+      this.rows.push(row);
+      return [row];
     }
     if (this.op === "update") {
       const hit = this.rows.filter(match);
