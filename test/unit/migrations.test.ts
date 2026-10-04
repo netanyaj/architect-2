@@ -252,3 +252,14 @@ describe("agree_and_build (the Build gate, DATA-MODEL rule 1)", () => {
     }
   });
 });
+
+describe("questions.default_effect (0005)", () => {
+  it("stores the label, and only the four known values", async () => {
+    const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
+    const { id: project } = await one<{ id: string }>("insert into projects (workspace_id, name) values ($1, 'Effects') returning id", [ws]);
+    const { id: bp } = await one<{ id: string }>("insert into blueprints (project_id, version, prompt) values ($1, 1, 'x') returning id", [project]);
+    await db.query("insert into questions (blueprint_id, text, options, recommended, blocking, default_effect) values ($1, 'Which SMS service?', '[]', 'twilio', true, 'none')", [bp]);
+    expect((await one<{ default_effect: string }>("select default_effect from questions where blueprint_id = $1", [bp])).default_effect).toBe("none");
+    await expect(db.query("insert into questions (blueprint_id, text, options, recommended, default_effect) values ($1, 'q', '[]', 'r', 'maybe')", [bp])).rejects.toThrow(/check/);
+  });
+});

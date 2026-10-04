@@ -1,7 +1,7 @@
 import "server-only";
 
 import { Output, streamText, type FilePart, type TextPart } from "ai";
-import { applyQuestionRules, BlueprintDraft, Item, normalizeDraft, strictProblems, toKey, validateBlueprint, type Blueprint as BlueprintT, type Item as ItemT } from "@/lib/blueprint";
+import { applyQuestionRules, BlueprintDraft, Item, normalizeDraft, shortenQuote, strictProblems, toKey, validateBlueprint, type Blueprint as BlueprintT, type Item as ItemT } from "@/lib/blueprint";
 import { classifyGatewayError, resolveModel, type ModelChoice } from "@/lib/gateway";
 import { BLUEPRINT_SYSTEM, blueprintPrompt } from "../prompts/blueprint";
 
@@ -64,8 +64,17 @@ async function attempt(
   let emitted = 0;
   const emitUpTo = async (items: unknown[], upTo: number) => {
     while (emitted < upTo) {
-      const raw = items[emitted] as { key?: string; title?: string } | undefined;
-      const parsed = Item.safeParse(raw ? { ...raw, key: toKey(raw.key || raw.title || `part-${emitted + 1}`) } : raw);
+      const raw = items[emitted] as { key?: string; title?: string; source_quote?: string } | undefined;
+      // The same tidying as the finished plan gets (normalizeDraft), so one long quote doesn't stall the stream.
+      const parsed = Item.safeParse(
+        raw
+          ? {
+              ...raw,
+              key: toKey(raw.key || raw.title || `part-${emitted + 1}`),
+              ...(typeof raw.source_quote === "string" ? { source_quote: shortenQuote(raw.source_quote) } : {}),
+            }
+          : raw,
+      );
       if (!parsed.success) return; // not complete enough yet; wait for more
       await events.onItem?.(parsed.data, emitted);
       emitted++;

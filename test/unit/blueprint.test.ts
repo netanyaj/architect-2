@@ -70,7 +70,7 @@ describe("validateBlueprint", () => {
     const bp = base();
     bp.items[2].source_quote = "five talking points";
     bp.items[1].key = "calendar-read";
-    bp.questions = [{ text: "Which?", affects: ["nope"], options: [{ label: "A", value: "a" }, { label: "B", value: "b" }], recommended: "c", blocking: false }];
+    bp.questions = [{ text: "Which?", affects: ["nope"], options: [{ label: "A", value: "a" }, { label: "B", value: "b" }], recommended: "c", default_effect: "keep", blocking: false }];
     const problems = validateBlueprint(bp, PROMPT);
     expect(problems).toEqual([
       'Item key "calendar-read" is used twice; every key must be unique.',
@@ -116,13 +116,14 @@ describe("applyQuestionRules (Slack workspace)", () => {
     expect(bp.questions[0]).toMatchObject({ blocking: true, affects: ["slack-brief"], recommended: "connected" });
   });
   it("marks a model-written workspace question blocking instead of adding a second", () => {
-    const withQ = { ...base(), questions: [{ text: "Which Slack workspace?", affects: ["slack-brief"], options: [{ label: "Acme", value: "acme" }, { label: "Sandbox", value: "sandbox" }], recommended: "acme", blocking: false }] };
+    const withQ = { ...base(), questions: [{ text: "Which Slack workspace?", affects: ["slack-brief"], options: [{ label: "Acme", value: "acme" }, { label: "Sandbox", value: "sandbox" }], recommended: "acme", default_effect: "keep" as const }] };
     const bp = applyQuestionRules(withQ, PROMPT);
-    expect(bp.questions).toEqual([{ ...withQ.questions[0], blocking: true }]);
+    // The Slack rule decides here, whatever the model's label: no safe default.
+    expect(bp.questions).toEqual([{ ...withQ.questions[0], default_effect: "none", blocking: true }]);
   });
   it("a named channel settles it: the workspace question becomes a default", () => {
     const lead = promptText("lead-scorer");
-    const withQ = { ...base(), questions: [{ text: "Which Slack workspace?", affects: ["slack-brief"], options: [{ label: "A", value: "a" }, { label: "B", value: "b" }], recommended: "a", blocking: true }] };
+    const withQ = { ...base(), questions: [{ text: "Which Slack workspace?", affects: ["slack-brief"], options: [{ label: "A", value: "a" }, { label: "B", value: "b" }], recommended: "a", default_effect: "none" as const }] };
     expect(applyQuestionRules(withQ, lead).questions[0].blocking).toBe(false);
     expect(applyQuestionRules(base(), lead).questions).toEqual([]);
   });
@@ -135,12 +136,17 @@ describe("applyQuestionRules (Slack workspace)", () => {
     const noSlack = { ...base(), items: base().items.filter((i) => i.key !== "slack-brief") };
     expect(applyQuestionRules(noSlack as BlueprintT, PROMPT)).toEqual(noSlack);
   });
-  it("other questions the model marks blocking have a safe default, so they don't hold Build", () => {
-    const over = {
+  it("questions block by their label: reduce, remove or none hold Build; keep doesn't", () => {
+    const q = (text: string, effect: "keep" | "reduce" | "remove" | "none") => ({ text, affects: ["calendar-read"], options: [{ label: "A", value: "a" }, { label: "B", value: "b" }], recommended: "a", default_effect: effect });
+    const bp = applyQuestionRules({ ...base(), items: base().items.filter((i) => i.key !== "slack-brief"), questions: [q("Keep?", "keep"), q("Fewer?", "reduce"), q("Skip?", "remove"), q("Which SMS service?", "none")] }, PROMPT);
+    expect(bp.questions.map((x) => [x.text, x.blocking])).toEqual([["Keep?", false], ["Fewer?", true], ["Skip?", true], ["Which SMS service?", true]]);
+  });
+  it("a question labelled keep doesn't hold Build, even one that sounds important", () => {
+    const calendar = {
       ...base(),
-      questions: [{ text: "Which calendar and email provider should be used?", affects: ["calendar-read"], options: [{ label: "Google Workspace", value: "google" }, { label: "Microsoft 365", value: "microsoft" }], recommended: "google", blocking: true }],
+      questions: [{ text: "Which calendar and email provider should be used?", affects: ["calendar-read"], options: [{ label: "Google Workspace", value: "google" }, { label: "Microsoft 365", value: "microsoft" }], recommended: "google", default_effect: "keep" as const }],
     };
-    const bp = applyQuestionRules(over, PROMPT);
+    const bp = applyQuestionRules(calendar, PROMPT);
     expect(bp.questions.filter((q) => q.blocking).map((q) => q.text)).toEqual(["Which Slack workspace should this post to?"]);
     expect(bp.questions.find((q) => q.text.startsWith("Which calendar"))).toMatchObject({ blocking: false, recommended: "google" });
   });

@@ -39,13 +39,22 @@ export const Item = z.object({
 });
 export type Item = z.infer<typeof Item>;
 
+/**
+ * What a question's recommended answer does to the parts the person asked for. The model labels it; the server
+ * decides what blocks Build (questionBlocks): keep = no harm; reduce / remove = the default weakens or drops something
+ * they asked for; none = there's no safe default at all.
+ */
+export const DEFAULT_EFFECTS = ["keep", "reduce", "remove", "none"] as const;
+export type DefaultEffect = (typeof DEFAULT_EFFECTS)[number];
+
 export const Question = z.object({
   text: z.string().max(120),
   affects: z.array(z.string()).min(1), // item keys
   options: z.array(z.object({ label: z.string(), value: z.string() })).min(2).max(4),
   recommended: z.string(), // one of options[].value, applied by default
-  // true ONLY if the default would remove or weaken a requested item, or no safe default exists
-  blocking: z.boolean(),
+  default_effect: z.enum(DEFAULT_EFFECTS),
+  // Set by the server (applyQuestionRules), never by the model.
+  blocking: z.boolean().optional(),
 });
 export type Question = z.infer<typeof Question>;
 
@@ -134,7 +143,7 @@ export const BlueprintDraft = z.object({
       affects: z.array(z.string()),
       options: z.array(z.object({ label: z.string(), value: z.string() })),
       recommended: z.string(),
-      blocking: z.boolean(),
+      default_effect: z.enum(DEFAULT_EFFECTS),
     }),
   ),
   not_in_this_version: z.array(z.object({ title: z.string(), reason: z.string() })),
@@ -194,31 +203,31 @@ export function normalizeDraft<T extends DraftShape>(draft: T): T {
 const SLACK_WORKSPACE_Q = /slack/i;
 const WORKSPACE_WORD = /workspace/i;
 
+/** The server's rule (A-0, A-2): a default that reduces or removes something asked for, or no safe default, holds Build. */
+export function questionBlocks(effect: DefaultEffect): boolean {
+  return effect === "reduce" || effect === "remove" || effect === "none";
+}
+
 /**
- * Deterministic question rules applied after generation, so the plan doesn't depend on the model's mood:
- * - Posting to Slack needs a workspace when the request asks for Slack. If it names a channel ("#sales"), the destination is settled and
- *   any workspace question is just a default. If it doesn't ("send me a Slack brief"), there's no safe default, so
- *   exactly one blocking "Which Slack workspace?" question holds Build (A-0, A-2).
- * - Every other question has a recommended answer, so it's a safe default: the model tends to over-flag questions as
- *   blocking ("Which calendar provider?" with Google recommended), which would hold Build for no reason. Those become
- *   defaulted choices the person can still change. Removing or weakening a part is guarded separately (A-3).
+ * Decides which questions hold Build. The model only labels each question's default_effect; the server decides:
+ * - Every question blocks when its effect is reduce, remove or none (questionBlocks).
+ * - The Slack workspace is decided here, whatever the label: when the request asks for Slack and names no channel
+ *   ("send me a Slack brief") there's no safe default, so exactly one "Which Slack workspace?" question blocks. A named
+ *   channel ("#sales") settles it, and Slack the planner chose on its own is a default; then it doesn't block.
  */
 export function applyQuestionRules(bp: Blueprint, prompt: string): Blueprint {
   const slackItems = bp.items.filter((i) => i.provider?.toLowerCase() === "slack" || (i.item_class === "integration.chat_send" && /slack/i.test(`${i.title} ${i.description} ${i.source_quote}`)));
   const isWorkspaceQ = (q: Question) => SLACK_WORKSPACE_Q.test(q.text) && WORKSPACE_WORD.test(q.text);
-  const others = bp.questions.filter((q) => !isWorkspaceQ(q)).map((q) => ({ ...q, blocking: false }));
+  const others = bp.questions.filter((q) => !isWorkspaceQ(q)).map((q) => ({ ...q, blocking: questionBlocks(q.default_effect) }));
   const existing = bp.questions.find(isWorkspaceQ);
 
-  // Only when the person asked for Slack: if the planner chose Slack itself (say, for escalations), it's a default.
-  if (slackItems.length === 0 || !/\bslack\b/i.test(prompt)) {
-    return { ...bp, questions: [...others, ...(existing ? [{ ...existing, blocking: false }] : [])] };
-  }
+  const slackAsked = slackItems.length > 0 && /\bslack\b/i.test(prompt);
   const channelNamed = /(^|\s)#[a-z0-9][\w-]*/i.test(prompt);
-  if (channelNamed) {
-    return { ...bp, questions: [...others, ...(existing ? [{ ...existing, blocking: false }] : [])] };
+  if (!slackAsked || channelNamed) {
+    return { ...bp, questions: [...others, ...(existing ? [{ ...existing, default_effect: "keep" as const, blocking: false }] : [])] };
   }
   const question: Question = existing
-    ? { ...existing, blocking: true }
+    ? { ...existing, default_effect: "none", blocking: true }
     : {
         text: "Which Slack workspace should this post to?",
         affects: slackItems.map((i) => i.key),
@@ -227,6 +236,7 @@ export function applyQuestionRules(bp: Blueprint, prompt: string): Blueprint {
           { label: "Another workspace", value: "other" },
         ],
         recommended: "connected",
+        default_effect: "none",
         blocking: true,
       };
   // Keep within the 5-question limit, with the blocking one first.

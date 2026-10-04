@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyDiff, compareVersions, conflictsOf, isEmpty, normalizeChange, type ChangeDraft, type VersionItem } from "@/lib/plan-diff";
+import { acceptanceLines, applyDiff, compareVersions, conflictsOf, isEmpty, normalizeChange, weakensCheck, type ChangeDraft, type VersionItem } from "@/lib/plan-diff";
 
 const part = (key: string, status = "proposed", position = 0): VersionItem => ({
   key,
@@ -29,12 +29,12 @@ describe("normalizeChange", () => {
   it("ignores changes and removals for parts that don't exist, and edits that change nothing", () => {
     const d = normalizeChange(
       draft({
-        change: [{ key: "nope", title: "X" }, { key: "brief-writer", title: "brief writer" }, { key: "talking-points", title: "Five talking points" }],
+        change: [{ key: "nope", kind: "modify", title: "X" }, { key: "brief-writer", kind: "modify", title: "brief writer" }, { key: "talking-points", kind: "modify", title: "Five talking points" }],
         remove: [{ key: "ghost", reason: "x" }],
       }),
       current,
     );
-    expect(d.change).toEqual([{ key: "talking-points", title: "Five talking points" }]);
+    expect(d.change).toEqual([{ key: "talking-points", kind: "modify", title: "Five talking points" }]);
     expect(d.remove).toEqual([]);
     expect(isEmpty(normalizeChange(draft({}), current))).toBe(true);
   });
@@ -44,7 +44,7 @@ describe("applyDiff (A-11, A-3)", () => {
   it("built parts stay built, changed ones go back to agreed after a build, new ones start agreed", () => {
     const d = normalizeChange(
       draft({
-        change: [{ key: "talking-points", title: "Five talking points" }],
+        change: [{ key: "talking-points", kind: "modify", title: "Five talking points" }],
         add: [{ key: "friday-recap", grp: "features", title: "Friday recap", description: "d", proved_when: "p", source_quote: "Friday recap", item_class: "quality.schedule", size: "s" }],
       }),
       current,
@@ -61,7 +61,7 @@ describe("applyDiff (A-11, A-3)", () => {
 
   it("no part leaves silently: a removal needs Keep, Defer or Drop, and Drop needs a reason", () => {
     const d = normalizeChange(draft({ remove: [{ key: "agenda-summary", reason: "You asked to skip PDFs" }] }), current);
-    expect(conflictsOf(d, current)).toEqual([{ key: "agenda-summary", title: "agenda summary", reason: "You asked to skip PDFs" }]);
+    expect(conflictsOf(d, current)).toEqual([{ key: "agenda-summary", title: "agenda summary", kind: "remove", reason: "You asked to skip PDFs" }]);
     expect(() => applyDiff(current, d, {}, { built: false })).toThrow("Decide what happens to: agenda-summary");
     expect(() => applyDiff(current, d, { "agenda-summary": { decision: "drop" } }, { built: false })).toThrow("needs a reason");
 
@@ -83,5 +83,47 @@ describe("compareVersions (A-5)", () => {
       ["a", ["title"]],
       ["d", ["status"]],
     ]);
+  });
+});
+
+describe("weaken: the model labels, the server decides (A-3)", () => {
+  const brief = { ...part("brief-writer", "built", 0), proved_when: "The brief is 200 words or fewer and lists three talking points" };
+  const items = [brief, part("agenda-summary", "proposed", 1)];
+
+  it("splits a check into its acceptance lines", () => {
+    expect(acceptanceLines(brief.proved_when)).toEqual(["The brief is 200 words or fewer", "lists three talking points"]);
+  });
+
+  it("treats a check that loses a line, or changes a number, as weaken whatever the model says", () => {
+    expect(weakensCheck(brief.proved_when, "The brief is 200 words or fewer")).toBe(true); // a line dropped
+    expect(weakensCheck(brief.proved_when, "The brief is 400 words or fewer and lists three talking points")).toBe(true); // 200 → 400
+    expect(weakensCheck(brief.proved_when, "The brief is 200 words or fewer, lists three talking points and links the agenda")).toBe(false); // stricter
+    const d = normalizeChange(draft({ change: [{ key: "brief-writer", kind: "modify", proved_when: "The brief lists three talking points" }] }), items);
+    expect(d.change[0].kind).toBe("weaken");
+  });
+
+  it("the model's own weaken label is kept even when the check is untouched", () => {
+    const d = normalizeChange(draft({ change: [{ key: "brief-writer", kind: "weaken", description: "Only for external meetings" }] }), items);
+    expect(d.change[0].kind).toBe("weaken");
+  });
+
+  it("a weakening gets the Keep / Defer / Drop card, like a removal", () => {
+    const d = normalizeChange(draft({ change: [{ key: "brief-writer", kind: "modify", proved_when: "The brief lists three talking points" }] }), items);
+    expect(conflictsOf(d, items)).toEqual([
+      expect.objectContaining({ key: "brief-writer", kind: "weaken", before: brief.proved_when, after: "The brief lists three talking points" }),
+    ]);
+    expect(() => applyDiff(items, d, {}, { built: true })).toThrow("Decide what happens to: brief-writer");
+    expect(() => applyDiff(items, d, { "brief-writer": { decision: "drop" } }, { built: true })).toThrow("needs a reason");
+    // Keep: stays as asked. Defer: set aside. Drop: the weaker version, with the reason on the part.
+    expect(applyDiff(items, d, { "brief-writer": { decision: "keep" } }, { built: true })[0]).toEqual(brief);
+    expect(applyDiff(items, d, { "brief-writer": { decision: "defer" } }, { built: true })[0].status).toBe("deferred");
+    const dropped = applyDiff(items, d, { "brief-writer": { decision: "drop", reason: "Length doesn't matter to me" } }, { built: true })[0];
+    expect(dropped).toMatchObject({ proved_when: "The brief lists three talking points", status: "agreed", drop_reason: "Weakened: Length doesn't matter to me" });
+  });
+
+  it("a plain modify that keeps every line needs no decision", () => {
+    const d = normalizeChange(draft({ change: [{ key: "brief-writer", kind: "modify", title: "Meeting brief" }] }), items);
+    expect(conflictsOf(d, items)).toEqual([]);
+    expect(applyDiff(items, d, {}, { built: true })[0]).toMatchObject({ title: "Meeting brief", status: "agreed" });
   });
 });

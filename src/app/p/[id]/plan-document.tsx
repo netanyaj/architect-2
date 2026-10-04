@@ -81,9 +81,13 @@ function QuestionCard({ q, editReason }: { q: PlanQuestion; editReason?: string 
     >
       {q.answer
         ? "Answered. You can change it until you click Build."
-        : q.blocking
-          ? "There's no safe default, so Build waits for your answer."
-          : "I picked the recommended answer. Change it if you like."}
+        : !q.blocking
+          ? "I picked the recommended answer. Change it if you like."
+          : q.defaultEffect === "remove"
+            ? "The recommended answer would drop something you asked for, so Build waits for your answer."
+            : q.defaultEffect === "reduce"
+              ? "The recommended answer would do less than you asked, so Build waits for your answer."
+              : "There's no safe default, so Build waits for your answer."}
       {editReason && <span className="block text-small">{editReason}</span>}
       <Message error={error} />
     </StageBanner>

@@ -170,7 +170,8 @@ export async function writePlan(
           affects: q.affects,
           options: q.options,
           recommended: q.recommended,
-          blocking: q.blocking,
+          blocking: Boolean(q.blocking),
+          default_effect: q.default_effect,
           position,
         })),
       );
@@ -210,7 +211,7 @@ export async function writePlan(
       credits,
       note: `Plan written · v${version}${resolved.simulated ? ` · ${resolved.label} (simulated)` : ""}`,
     });
-    const blocking = plan.questions.filter((q) => q.blocking).length;
+    const blocking = plan.questions.filter((q) => q.blocking).length; // decided by the server (applyQuestionRules)
     emit({ type: "done", blueprintId: bp.id, name: plan.name, summary: plan.summary, totals: t, questions: plan.questions.length, blocking });
   } catch (err) {
     const kind = err instanceof GatewayRateLimited ? "rate_limited" : err instanceof BlueprintInvalid ? "invalid" : "unavailable";

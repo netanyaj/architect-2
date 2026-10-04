@@ -1,0 +1,76 @@
+{
+  "name": "Meeting SMS Reminder",
+  "summary": "Sends an SMS reminder with the meeting link to each attendee before each calendar event.",
+  "items": [
+    {
+      "key": "calendar-events",
+      "grp": "integrations",
+      "title": "Calendar event reader",
+      "description": "Reads upcoming meetings and attendee lists from your calendar.",
+      "proved_when": "Upcoming calendar events and attendee details are successfully retrieved.",
+      "source_quote": "Before each meeting on my calendar",
+      "item_class": "integration.calendar",
+      "size": "m",
+      "provider": "google_calendar"
+    },
+    {
+      "key": "sms-sender",
+      "grp": "integrations",
+      "title": "SMS reminder sender",
+      "description": "Sends text messages to meeting attendees.",
+      "proved_when": "SMS messages containing the meeting link are dispatched successfully.",
+      "source_quote": "text each attendee an SMS reminder with the meeting link",
+      "item_class": "integration.chat_send",
+      "size": "m",
+      "provider": "twilio"
+    },
+    {
+      "key": "reminder-scheduler",
+      "grp": "quality",
+      "title": "Timing controller",
+      "description": "Triggers the reminder prior to the scheduled meeting time.",
+      "proved_when": "Reminders are sent at the designated interval before meetings.",
+      "source_quote": "Before each meeting",
+      "item_class": "quality.schedule",
+      "size": "s"
+    }
+  ],
+  "defaults": [
+    {
+      "label": "Reminder timing",
+      "value": "15 minutes before the meeting",
+      "alternatives": [
+        "30 minutes before the meeting",
+        "5 minutes before the meeting",
+        "1 hour before the meeting"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "text": "Which SMS service should be used to send the text messages?",
+      "affects": [
+        "sms-sender"
+      ],
+      "options": [
+        {
+          "label": "Twilio",
+          "value": "twilio"
+        },
+        {
+          "label": "Vonage",
+          "value": "vonage"
+        }
+      ],
+      "recommended": "twilio",
+      "default_effect": "none",
+      "blocking": true
+    }
+  ],
+  "not_in_this_version": [
+    {
+      "title": "Two-way text replies",
+      "reason": "The current version only supports one-way outgoing reminder messages."
+    }
+  ]
+}

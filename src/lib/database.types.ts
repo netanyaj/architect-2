@@ -1006,6 +1006,7 @@ export type Database = {
           answered_by: string | null
           blocking: boolean
           blueprint_id: string
+          default_effect: string
           id: string
           options: Json
           position: number
@@ -1019,6 +1020,7 @@ export type Database = {
           answered_by?: string | null
           blocking?: boolean
           blueprint_id: string
+          default_effect?: string
           id?: string
           options: Json
           position?: number
@@ -1032,6 +1034,7 @@ export type Database = {
           answered_by?: string | null
           blocking?: boolean
           blueprint_id?: string
+          default_effect?: string
           id?: string
           options?: Json
           position?: number

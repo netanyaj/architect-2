@@ -36,6 +36,8 @@ export type PlanQuestion = {
   recommended: string;
   answer: string | null;
   blocking: boolean;
+  /** What the recommended answer does to what was asked for (the model's label; the server set blocking from it). */
+  defaultEffect: "keep" | "reduce" | "remove" | "none";
 };
 
 export type PlanDefault = { id: string; label: string; value: string; alternatives: string[] };
@@ -70,8 +72,10 @@ export type ChangeCardData = {
   credits: number;
   minutes: number;
   add: { key: string; title: string }[];
-  change: { key: string; title: string; fields: string[] }[];
+  change: { key: string; title: string; fields: string[]; kind: "modify" | "weaken" }[];
   remove: { key: string; title: string; reason: string }[];
+  /** Parts this change removes or weakens: each needs Keep / Defer / Drop before Apply (A-3). */
+  conflicts: { key: string; title: string; kind: "remove" | "weaken"; reason: string; before?: string; after?: string }[];
   versionCreated: number | null;
   baseVersion: number | null;
 };
@@ -143,7 +147,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
           .select("id, key, title, description, proved_when, source_quote, grp, status, status_detail, drop_reason, estimate_low, estimate_likely, estimate_high, cost_driver, provider, position, edited_at")
           .eq("blueprint_id", latestId)
           .order("position"),
-        db.from("questions").select("id, text, affects, options, recommended, answer, blocking, position").eq("blueprint_id", latestId).order("position"),
+        db.from("questions").select("id, text, affects, options, recommended, answer, blocking, default_effect, position").eq("blueprint_id", latestId).order("position"),
         db.from("defaults").select("id, label, value, alternatives, position").eq("blueprint_id", latestId).order("position"),
       ])
     : [{ data: null }, { data: [] }, { data: [] }, { data: [] }];
@@ -155,7 +159,13 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
   ]);
   const titleOf = (key: string) => (items ?? []).find((i) => i.key === key)?.title ?? key.replace(/-/g, " ");
   const changes: ChangeCardData[] = (props ?? []).map((c) => {
-    const d = (c.diff ?? {}) as { add?: { key: string; title: string }[]; change?: { key: string; title?: string; description?: string; proved_when?: string }[]; remove?: { key: string; reason: string }[]; base_version?: number };
+    const d = (c.diff ?? {}) as {
+      add?: { key: string; title: string }[];
+      change?: { key: string; kind?: "modify" | "weaken"; title?: string; description?: string; proved_when?: string }[];
+      remove?: { key: string; reason: string }[];
+      base_version?: number;
+    };
+    const conflict = (c.conflict ?? null) as { items?: ChangeCardData["conflicts"] } | null;
     return {
       id: c.id,
       messageId: c.message_id,
@@ -168,8 +178,11 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
         key: x.key,
         title: x.title ?? titleOf(x.key),
         fields: [x.title && "name", x.description && "what it does", x.proved_when && "its check"].filter(Boolean) as string[],
+        kind: x.kind ?? "modify",
       })),
       remove: (d.remove ?? []).map((r) => ({ key: r.key, title: titleOf(r.key), reason: r.reason })),
+      // Older cards stored removals only (no kind); treat them as removals.
+      conflicts: (conflict?.items ?? []).map((i) => ({ ...i, kind: i.kind ?? "remove" })),
       versionCreated: c.version_created,
       baseVersion: d.base_version ?? null,
     };
@@ -239,6 +252,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
             recommended: q.recommended,
             answer: q.answer,
             blocking: q.blocking,
+            defaultEffect: q.default_effect as PlanQuestion["defaultEffect"],
           })),
           defaults: (defaults ?? []).map((d) => ({ id: d.id, label: d.label, value: d.value, alternatives: (d.alternatives as string[]) ?? [] })),
           agreedAt: bp.agreed_at,

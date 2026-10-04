@@ -1,0 +1,1 @@
+Before each meeting on my calendar, text each attendee an SMS reminder with the meeting link.

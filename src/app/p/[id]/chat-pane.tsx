@@ -38,7 +38,7 @@ function ChangeCardView({ card, canChange, onEdit }: { card: ChangeCardData; can
   const [error, setError] = useState<string>();
   const [choices, setChoices] = useState<Record<string, Choice>>({});
   const reasonId = useId();
-  const undecided = card.remove.filter((r) => !choices[r.key] || (choices[r.key].decision === "drop" && !choices[r.key].reason?.trim()));
+  const undecided = card.conflicts.filter((r) => !choices[r.key] || (choices[r.key].decision === "drop" && !choices[r.key].reason?.trim()));
 
   const cost = card.credits
     ? `~${card.credits} credits${card.minutes ? ` · about ${card.minutes} min` : ""}${card.status === "proposed" ? " · nothing starts until you apply it" : ""}`
@@ -72,7 +72,7 @@ function ChangeCardView({ card, canChange, onEdit }: { card: ChangeCardData; can
         ))}
         {card.change.map((c) => (
           <li key={c.key}>
-            <span className="text-ink-2">Change </span>
+            <span className="text-ink-2">{c.kind === "weaken" ? "Weaken " : "Change "}</span>
             <b>{c.title}</b>
             {c.fields.length > 0 && <span className="text-ink-2"> ({c.fields.join(", ")})</span>}
           </li>
@@ -87,29 +87,50 @@ function ChangeCardView({ card, canChange, onEdit }: { card: ChangeCardData; can
       <span className="text-small text-ink-2 tabular-nums">{cost}</span>
 
       {card.status === "proposed" &&
-        card.remove.map((r) => {
+        card.conflicts.map((r) => {
           const c = choices[r.key];
+          const weaken = r.kind === "weaken";
           return (
-            // Conflict guard (A-3): no part leaves the plan without a recorded decision.
+            // Conflict guard (A-3): no part is removed or weakened without a recorded decision.
             <div key={r.key} className="flex flex-col gap-2 rounded-card border-[1.5px] border-attention px-3 py-2.5">
               <p className="text-small">
-                Your request asked for <b>{r.title}</b>. This change removes it ({r.reason}).
+                Your request asked for <b>{r.title}</b>. {weaken ? "This change weakens it" : "This change removes it"} ({r.reason}).
               </p>
+              {weaken && r.before && r.after && (
+                <p className="text-small text-ink-2">
+                  Checked now: {r.before}
+                  <br />
+                  After the change: {r.after}
+                </p>
+              )}
               <div className="flex flex-wrap gap-1.5" role="group" aria-label={`What happens to ${r.title}`}>
                 <Option selected={c?.decision === "keep"} onClick={() => setChoices({ ...choices, [r.key]: { decision: "keep" } })}>
-                  Keep it
+                  Keep
                 </Option>
                 <Option selected={c?.decision === "defer"} onClick={() => setChoices({ ...choices, [r.key]: { decision: "defer" } })}>
                   Set aside
                 </Option>
-                <Option selected={c?.decision === "drop"} onClick={() => setChoices({ ...choices, [r.key]: { decision: "drop", reason: c?.reason ?? r.reason } })}>
+                <Option selected={c?.decision === "drop"} onClick={() => setChoices({ ...choices, [r.key]: { decision: "drop", reason: c?.reason ?? (weaken ? "" : r.reason) } })}>
                   Drop
                 </Option>
               </div>
+              <p className="text-small text-ink-3">
+                {c?.decision === "keep"
+                  ? weaken
+                    ? "Keep: the part stays as you asked; the weaker version isn't applied."
+                    : "Keep: the part stays in the plan."
+                  : c?.decision === "defer"
+                    ? "Set aside: the part waits in Up next and isn't built or charged."
+                    : c?.decision === "drop"
+                      ? weaken
+                        ? "Drop: the stronger version goes, and the part is built as changed. Your reason is saved on it."
+                        : "Drop: the part is struck through with your reason, and isn't built."
+                      : "Choose one to apply the change."}
+              </p>
               {c?.decision === "drop" && (
                 <>
                   <label htmlFor={`${reasonId}-${r.key}`} className="text-small font-semibold">
-                    Why it&apos;s dropped (shown on the plan)
+                    Why (saved on the plan)
                   </label>
                   <input
                     id={`${reasonId}-${r.key}`}

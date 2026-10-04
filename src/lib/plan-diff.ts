@@ -22,9 +22,51 @@ export const ChangeDraft = z.object({
       provider: z.string().optional(),
     }),
   ),
-  change: z.array(z.object({ key: z.string(), title: z.string().optional(), description: z.string().optional(), proved_when: z.string().optional() })),
+  change: z.array(
+    z.object({
+      key: z.string(),
+      // The model's label: "weaken" when the change makes a part do less than asked or be checked less strictly.
+      kind: z.enum(["modify", "weaken"]),
+      title: z.string().optional(),
+      description: z.string().optional(),
+      proved_when: z.string().optional(),
+    }),
+  ),
   remove: z.array(z.object({ key: z.string(), reason: z.string() })),
 });
+
+export type ChangeKind = "add" | "modify" | "weaken" | "remove";
+
+const STOP = new Set(["the", "a", "an", "and", "or", "of", "to", "in", "on", "for", "with", "each", "every", "is", "are", "be", "when", "that", "its", "it", "as", "at", "by", "from", "per"]);
+const words = (t: string) => t.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length >= 3 && !STOP.has(w));
+const numbers = (t: string): string[] => t.match(/\d+(\.\d+)?/g) ?? [];
+
+/** A part's acceptance lines: its check split into the separate conditions it states. */
+export function acceptanceLines(provedWhen: string): string[] {
+  return provedWhen
+    .split(/\n|;|\.\s+|,?\s+and\s+/i)
+    .map((l) => l.trim().replace(/[.,]+$/, ""))
+    .filter((l) => words(l).length > 0);
+}
+
+/** Is an old acceptance line still in the new check? Most of its words, and every number in it, must remain. */
+function lineKept(line: string, next: string): boolean {
+  const nextWords = new Set(words(next));
+  const w = words(line);
+  const kept = w.filter((x) => nextWords.has(x)).length / Math.max(1, w.length);
+  const nums = numbers(line);
+  return kept >= 0.7 && nums.every((n) => numbers(next).includes(n));
+}
+
+/**
+ * The server's own weaken test (A-3), whatever the model labels: a new check with fewer acceptance lines than the
+ * old one, or one that drops an old line (including changing a number in it), weakens the part.
+ */
+export function weakensCheck(before: string, after: string | undefined): boolean {
+  if (after === undefined) return false;
+  const old = acceptanceLines(before);
+  return acceptanceLines(after).length < old.length || old.some((l) => !lineKept(l, after));
+}
 export type ChangeDraft = z.infer<typeof ChangeDraft>;
 
 /** A part as a version holds it (only what the diff needs). */
@@ -45,7 +87,7 @@ export type VersionItem = {
 
 export type Diff = {
   add: (Pick<Item, "key" | "grp" | "title" | "description" | "proved_when" | "source_quote" | "item_class" | "size"> & { provider?: string })[];
-  change: { key: string; title?: string; description?: string; proved_when?: string }[];
+  change: { key: string; kind: "modify" | "weaken"; title?: string; description?: string; proved_when?: string }[];
   remove: { key: string; reason: string }[];
 };
 
@@ -83,8 +125,9 @@ export function normalizeChange(draft: ChangeDraft, current: VersionItem[]): Dif
     .filter((c) => live.has(c.key))
     .map((c) => {
       const was = byKey.get(c.key)!;
-      const next = {
+      const next: Diff["change"][number] = {
         key: c.key,
+        kind: c.kind,
         title: clip(c.title, LIMITS.title),
         description: clip(c.description, LIMITS.description),
         proved_when: clip(c.proved_when, LIMITS.proved_when),
@@ -93,6 +136,8 @@ export function normalizeChange(draft: ChangeDraft, current: VersionItem[]): Dif
       if (next.title === was.title) delete next.title;
       if (next.description === (was.description ?? "")) delete next.description;
       if (next.proved_when === was.proved_when) delete next.proved_when;
+      // The model labels; the server decides: a check that loses a line (or a number) weakens the part.
+      if (weakensCheck(was.proved_when, next.proved_when)) next.kind = "weaken";
       return next;
     })
     .filter((c) => c.title || c.description || c.proved_when);
@@ -104,10 +149,27 @@ export function isEmpty(d: Diff): boolean {
   return d.add.length === 0 && d.change.length === 0 && d.remove.length === 0;
 }
 
-/** The parts a change would take away: each needs a recorded decision before Apply (A-3). */
-export function conflictsOf(d: Diff, current: VersionItem[]): { key: string; title: string; reason: string }[] {
+export type Conflict = { key: string; title: string; kind: "remove" | "weaken"; reason: string; before?: string; after?: string };
+
+/** Parts a change would take away or weaken: each needs a recorded Keep / Defer / Drop decision before Apply (A-3). */
+export function conflictsOf(d: Diff, current: VersionItem[]): Conflict[] {
   const byKey = new Map(current.map((i) => [i.key, i]));
-  return d.remove.map((r) => ({ key: r.key, title: byKey.get(r.key)?.title ?? r.key, reason: r.reason }));
+  return [
+    ...d.remove.map((r) => ({ key: r.key, title: byKey.get(r.key)?.title ?? r.key, kind: "remove" as const, reason: r.reason })),
+    ...d.change
+      .filter((c) => c.kind === "weaken")
+      .map((c) => {
+        const was = byKey.get(c.key);
+        return {
+          key: c.key,
+          title: was?.title ?? c.key,
+          kind: "weaken" as const,
+          reason: c.proved_when ? "It would be checked less strictly." : "It would do less than you asked.",
+          before: was?.proved_when,
+          after: c.proved_when,
+        };
+      }),
+  ];
 }
 
 /**
@@ -118,10 +180,11 @@ export function conflictsOf(d: Diff, current: VersionItem[]): { key: string; tit
  */
 export function applyDiff(current: VersionItem[], d: Diff, decisions: Record<string, Decision>, opts: { built: boolean }): VersionItem[] {
   const fresh = opts.built ? "agreed" : "proposed";
-  const missing = d.remove.filter((r) => !decisions[r.key]);
-  if (missing.length) throw new Error(`Decide what happens to: ${missing.map((m) => m.key).join(", ")}`);
-  const dropWithoutReason = d.remove.filter((r) => decisions[r.key]?.decision === "drop" && !decisions[r.key]?.reason?.trim());
-  if (dropWithoutReason.length) throw new Error("Dropping a part needs a reason.");
+  // Removed and weakened parts both need a decision; Drop needs a reason (A-3).
+  const guarded = [...d.remove.map((r) => r.key), ...d.change.filter((c) => c.kind === "weaken").map((c) => c.key)];
+  const missing = guarded.filter((k) => !decisions[k]);
+  if (missing.length) throw new Error(`Decide what happens to: ${missing.join(", ")}`);
+  if (guarded.some((k) => decisions[k]?.decision === "drop" && !decisions[k]?.reason?.trim())) throw new Error("Dropping needs a reason.");
 
   const changes = new Map(d.change.map((c) => [c.key, c]));
   const removals = new Map(d.remove.map((r) => [r.key, decisions[r.key]]));
@@ -130,6 +193,13 @@ export function applyDiff(current: VersionItem[], d: Diff, decisions: Record<str
     const r = removals.get(item.key);
     if (r?.decision === "defer") return { ...item, status: "deferred" };
     if (r?.decision === "drop") return { ...item, status: "dropped", drop_reason: r.reason!.trim() };
+    if (c?.kind === "weaken") {
+      // Keep = the part stays as asked (the weakening isn't applied); Defer = set the part aside;
+      // Drop = drop the stronger version and accept the weaker one, with the reason recorded on the part.
+      const w = decisions[c.key];
+      if (w.decision === "keep") return item;
+      if (w.decision === "defer") return { ...item, status: "deferred" };
+    }
     if (c) {
       return {
         ...item,
@@ -137,6 +207,7 @@ export function applyDiff(current: VersionItem[], d: Diff, decisions: Record<str
         description: c.description ?? item.description,
         proved_when: c.proved_when ?? item.proved_when,
         status: item.status === "dropped" ? "dropped" : fresh,
+        ...(c.kind === "weaken" ? { drop_reason: `Weakened: ${decisions[c.key].reason!.trim()}` } : {}),
       };
     }
     return item;

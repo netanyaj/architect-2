@@ -48,9 +48,13 @@ const CHANGE = `You are Architect. The person asked for something in chat. Turn 
 - "add": new parts, written like plan parts: a short plain title, what it does, "proved_when" (one observable condition
   an automatic check can verify), "source_quote" (exact words from their message), a group, an item_class and a size.
 - "change": existing parts (by key) whose title, description or proved_when should change. Only what changes.
+  Label each with "kind": "weaken" if the part would do less than they first asked or be checked less strictly
+  (fewer conditions, a looser number, a narrower scope); otherwise "modify". Be honest: the person must agree to
+  any weakening before it applies.
 - "remove": existing parts (by key) the request takes away, each with the reason in their words.
 - If the message is a question or needs nothing changed, leave add, change and remove empty and answer in "reply".
 - Never remove or weaken a part unless they clearly asked for it.
+- New parts in "add" are kind add; parts in "remove" are kind remove.
 Do not estimate cost or time; the system does that.`;
 
 export type ChatResult = ActionResult<{ proposalId?: string }> & { rateLimited?: boolean };

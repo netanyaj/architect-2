@@ -10,8 +10,9 @@ export function checkFixture(raw: unknown, prompt: string, expectedBlocking: Reg
   // 3. No blocking questions except where expected.
   const blocking = bp.questions.filter((q) => q.blocking);
   if (expectedBlocking) {
-    expect(blocking.length, "expected exactly one blocking question").toBe(1);
-    expect(blocking[0].text).toMatch(expectedBlocking);
+    expect(blocking.map((q) => q.text).some((t) => expectedBlocking.test(t)), `expected a blocking question matching ${expectedBlocking}, got ${JSON.stringify(blocking.map((q) => q.text))}`).toBe(true);
+    // Blocking is the server's decision from the label (or the Slack rule), never the model's own flag.
+    for (const q of blocking) expect(["reduce", "remove", "none"]).toContain(q.default_effect);
   } else {
     expect(blocking.map((q) => q.text)).toEqual([]);
   }
