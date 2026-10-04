@@ -236,6 +236,8 @@ Based on our network captures and tests of today's Architect (`03-architect-arch
 | Cells for scale and isolation | One large shared cluster | Contained failures, predictable growth, a customer cloud is just another cell | More environments to operate and monitor |
 
 ## 9. What the assignment prototype implements
+
+Where the prototype differs from this design or the spec, and the numbers it sets, are listed in the [decisions log](../DECISIONS.md).
 | Part | In the prototype |
 |---|---|
 | Web app, auth, projects | **Real:** Next.js, Supabase auth (Google, GitHub, email) and Postgres |

@@ -66,7 +66,7 @@ test.describe("M2: plans and chat", () => {
     expect(plan!.agreed_at).not.toBeNull();
   });
 
-  test("a chat request returns a change card with a price; Apply makes a new version and builds nothing yet", async ({ page }) => {
+  test("a chat request returns a change card with a price; Apply makes a new version; a removal needs a decision", async ({ page }) => {
     await signIn(page, user);
     const id = await writePlan(page, "Every Monday, send me a Slack message in #ops listing vendor renewals due this month.");
     await expect(page.getByText(/Here's the plan: \d+ parts/)).toBeVisible({ timeout: 60_000 });
@@ -82,6 +82,24 @@ test.describe("M2: plans and chat", () => {
     await expect(chat.getByText("Applied. This is now plan v2.")).toBeVisible();
     const db = adminDb();
     expect((await db.from("blueprints").select("version").eq("project_id", id)).data!.map((b) => b.version).sort()).toEqual([1, 2]);
+    expect((await db.from("runs").select("id").eq("project_id", id)).data).toEqual([]);
+
+    // Conflict guard (A-3): removing a part needs Keep / Set aside / Drop before Apply.
+    await chat.getByLabel("Message Architect").fill("Remove the Monday Slack message, I'll check renewals myself.");
+    await chat.getByRole("button", { name: "Send" }).click();
+    const guard = chat.locator("div.rounded-card").filter({ hasText: /This change (removes|weakens) it/ });
+    await expect(guard).toBeVisible({ timeout: 45_000 });
+    const apply = chat.getByRole("button", { name: "Apply" }).last();
+    await expect(apply).toHaveAttribute("aria-disabled", "true");
+    await expect(apply).toHaveAttribute("title", /^Decide what happens to/);
+    await guard.getByRole("button", { name: "Drop" }).click();
+    await guard.getByLabel(/Why \(saved on the plan\)/).fill("I'll check renewals myself");
+    await apply.click();
+    await expect(chat.getByText("Applied. This is now plan v3.")).toBeVisible();
+    const { data: v3 } = await db.from("blueprints").select("id").eq("project_id", id).eq("version", 3).single();
+    const { data: dropped } = await db.from("items").select("status, drop_reason").eq("blueprint_id", v3!.id).eq("status", "dropped");
+    expect(dropped!.length).toBeGreaterThan(0);
+    expect(dropped![0].drop_reason).toBe("I'll check renewals myself");
     expect((await db.from("runs").select("id").eq("project_id", id)).data).toEqual([]);
   });
 

@@ -54,7 +54,7 @@ workspace ─┬─ members (owner · admin · builder · viewer)
 - Connections: Google Calendar and Slack connected; Gmail missing; HubSpot not allowed by policy.
 - Policies:
   - location: Lyzr Cloud;
-  - models: Claude, GPT, Gemini allowed;
+  - models: Claude, GPT, Gemini and OpenRouter (free models) allowed;
   - connectors: allow list without HubSpot;
   - egress: allow list;
   - permission: push to main and Production deploy need approval.

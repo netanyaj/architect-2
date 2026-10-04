@@ -12,6 +12,7 @@ This folder becomes the root of the new repo. Claude Code reads `CLAUDE.md` firs
 | `docs/SIMULATOR.md`, `sim/scenarios/meeting-prep.json` | How the build is simulated, the event types, scenario rules |
 | `docs/DESIGN.md`, `src/app/tokens.css`, `design-system/` | Design tokens (Tailwind v4), the component list, the design-system copy |
 | `docs/QA-CHECKLIST.md` | What M6 checks |
+| `docs/DECISIONS.md` | Where the prototype differs from the spec, and why; the numbers we set |
 | `docs/product/` | PRD, architecture, flows, stack and milestones (for context) |
 | `.env.example` | The keys you add yourself |
 
