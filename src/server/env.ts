@@ -7,7 +7,26 @@ function required(name: string): string {
   return value;
 }
 
+/** An optional setting: empty strings count as unset. */
+function optional(name: string): string | undefined {
+  return process.env[name]?.trim() || undefined;
+}
+
 export const serverEnv = {
   supabaseServiceRoleKey: () => required("SUPABASE_SERVICE_ROLE_KEY"),
+  google: () => ({ apiKey: required("GOOGLE_GENERATIVE_AI_API_KEY"), model: optional("MODEL_GEMINI") ?? "gemini-2.5-flash" }),
+  openrouter: () => {
+    const apiKey = optional("OPENROUTER_API_KEY");
+    const model = optional("MODEL_OPENROUTER");
+    return apiKey && model ? { apiKey, model } : undefined;
+  },
+  anthropic: () => {
+    const apiKey = optional("ANTHROPIC_API_KEY");
+    return apiKey ? { apiKey, model: optional("MODEL_CLAUDE") } : undefined;
+  },
+  openai: () => {
+    const apiKey = optional("OPENAI_API_KEY");
+    return apiKey ? { apiKey, model: optional("MODEL_GPT") } : undefined;
+  },
   siteUrl: () => process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
 };

@@ -112,3 +112,37 @@ export async function creditsUsedThisPeriod(ctx: AppContext): Promise<number> {
     .gte("created_at", periodStart(ctx.workspace.creditsResetOn));
   return Math.round((data ?? []).reduce((s, r) => s + Number(r.credits), 0));
 }
+
+export type HelpContext = {
+  firstName: string;
+  /** Projects that are stuck, for the greeting: "Lead scorer is blocked at its budget". */
+  stuck: { name: string; phrase: string }[];
+  suggestions: string[];
+};
+
+/** What the Help panel opens with: a greeting that names what's stuck, and 3 suggested questions. */
+export async function getHelpContext(ctx: AppContext): Promise<HelpContext> {
+  const projects = await listProjects(ctx);
+  const stuck: HelpContext["stuck"] = [];
+  const suggestions: string[] = [];
+  for (const p of projects.filter((p) => p.summary.needsYou)) {
+    const t = p.summary.next.text;
+    if (t.startsWith("Blocked: raise budget")) {
+      stuck.push({ name: p.name, phrase: "is blocked at its budget" });
+      suggestions.push(`Why did ${p.name} stop?`);
+    } else if (t.startsWith("Waiting for IT")) {
+      stuck.push({ name: p.name, phrase: "is waiting for IT" });
+      suggestions.push(`Who approves ${p.name}?`);
+    } else if (t.startsWith("Needs you: connect")) {
+      stuck.push({ name: p.name, phrase: `needs you to ${t.replace("Needs you: ", "")}` });
+      suggestions.push(`How do I ${t.replace("Needs you: ", "")}?`);
+    } else {
+      stuck.push({ name: p.name, phrase: "is blocked" });
+      suggestions.push(`Why is ${p.name} blocked?`);
+    }
+  }
+  for (const q of ["How are credits worked out?", "How do I invite someone?", "What's simulated in this prototype?"]) {
+    if (suggestions.length < 3) suggestions.push(q);
+  }
+  return { firstName: ctx.name.split(" ")[0], stuck: stuck.slice(0, 2), suggestions: suggestions.slice(0, 3) };
+}

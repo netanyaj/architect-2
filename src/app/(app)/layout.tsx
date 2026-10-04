@@ -1,6 +1,7 @@
+import { HelpHost } from "@/components/ax/help-host";
 import { SideNav } from "@/components/ax/side-nav";
 import { createServerDb } from "@/server/db";
-import { getNavData } from "@/server/queries";
+import { getHelpContext, getNavData } from "@/server/queries";
 import { getAppContext } from "@/server/workspace";
 
 /** Pages outside a project: the tray side nav plus the white main surface. */
@@ -13,7 +14,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   if (!user) return <>{children}</>;
 
   const ctx = await getAppContext();
-  const nav = await getNavData(ctx);
+  const [nav, help] = await Promise.all([getNavData(ctx), getHelpContext(ctx)]);
   const isAdmin = ctx.role === "owner" || ctx.role === "admin";
 
   return (
@@ -29,6 +30,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         credits={nav.credits}
       />
       <main className="flex min-w-0 flex-1 flex-col rounded-pane border border-line bg-surface shadow-pane">{children}</main>
+      <HelpHost context={help} />
     </div>
   );
 }

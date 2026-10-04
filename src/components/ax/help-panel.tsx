@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, type FormEvent, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Icon } from "./icon";
+import { SimTag } from "./pill";
 
 export type HelpMessage = { role: "user" | "bot"; text: string };
 
@@ -23,6 +24,7 @@ export function HelpPanel({
   onTalkToPerson,
   ticketNote,
   peopleOnline,
+  personSimulated = false,
   className,
 }: {
   open: boolean;
@@ -38,6 +40,8 @@ export function HelpPanel({
   /** Replaces the "Talk to a person" line once a ticket exists, e.g. "Ticket #12 is open…" */
   ticketNote?: ReactNode;
   peopleOnline?: boolean;
+  /** Tickets aren't staffed in this prototype: show the Simulated tag on "Talk to a person". */
+  personSimulated?: boolean;
   className?: string;
 }) {
   const inputId = useId();
@@ -120,7 +124,10 @@ export function HelpPanel({
       <div className="flex items-center gap-3 border-t border-line px-4 py-3">
         {ticketNote ?? (
           <>
-            <p className="flex-1 text-small text-ink-2">A person replies within one working day. You get a ticket number.</p>
+            <p className="flex-1 text-small text-ink-2">
+              A person replies within one working day. You get a ticket number.
+              {personSimulated && <SimTag className="ml-1.5 align-middle" title="Tickets are saved, but nobody is staffing them in this prototype." />}
+            </p>
             <button
               type="button"
               onClick={onTalkToPerson}
