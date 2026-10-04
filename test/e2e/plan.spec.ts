@@ -58,9 +58,10 @@ test.describe("M2: plans and chat", () => {
     expect((await db.from("runs").select("id").eq("project_id", projectId)).data).toEqual([]); // still nothing
 
     await build.click();
-    await expect(page.getByRole("heading", { name: "Your build is queued" })).toBeVisible();
+    // Only the click starts the build, and it starts playing at once (M3).
+    await expect(page.getByRole("navigation", { name: "Project stage" })).toContainText(/\d+ of \d+ working/);
     const { data: runs } = await db.from("runs").select("kind, status, started_by").eq("project_id", projectId);
-    expect(runs).toEqual([{ kind: "build", status: "queued", started_by: user.id }]);
+    expect(runs).toEqual([{ kind: "build", status: "running", started_by: user.id }]);
     const { data: plan } = await db.from("blueprints").select("status, agreed_at").eq("project_id", projectId).single();
     expect(plan!.status).toBe("agreed");
     expect(plan!.agreed_at).not.toBeNull();

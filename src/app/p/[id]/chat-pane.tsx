@@ -8,6 +8,7 @@ import { ModelPicker } from "@/components/ax/model-picker";
 import { Option } from "@/components/ax/stage-banner";
 import type { ModelChoice } from "@/lib/models";
 import { canBuild } from "@/lib/permissions";
+import { useUi } from "@/lib/ui-store";
 import { applyChange, discardChange, sendMessage } from "@/server/actions/chat";
 import type { ChangeCardData, ProjectWorkspace } from "@/server/project";
 
@@ -190,11 +191,14 @@ function planIntro(project: ProjectWorkspace, writing: boolean): string {
 export function ChatPane({
   project,
   writing,
+  activity,
   onCollapse,
   onPickModel,
 }: {
   project: ProjectWorkspace;
   writing: boolean;
+  /** What the build is doing (after Build), at the end of the conversation. */
+  activity?: React.ReactNode;
   onCollapse: () => void;
   onPickModel: (m: ModelChoice) => void;
 }) {
@@ -207,6 +211,15 @@ export function ChatPane({
   const [error, setError] = useState<string>();
   const endRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
+
+  // Point at something and Fix with AI hand text to the composer.
+  const { chatDraft, takeChatDraft } = useUi();
+  useEffect(() => {
+    if (!chatDraft) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- taking text handed over from the preview once
+    setDraft((d) => (d ? `${d} ${chatDraft.text}` : chatDraft.text));
+    takeChatDraft();
+  }, [chatDraft, takeChatDraft]);
 
   // Queued messages run in order, one at a time (BL-4).
   useEffect(() => {
@@ -268,6 +281,7 @@ export function ChatPane({
             </Architect>
           );
         })}
+        {activity}
         {sending !== null && (
           <>
             <You>{sending}</You>

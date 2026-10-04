@@ -23,14 +23,11 @@ const ACTOR_LABEL = { architect_agent: "Architect agent", verifier: "Verifier", 
  * Returns false if the run was already started or isn't queued.
  */
 export async function startRun(admin: AdminDb, runId: string, sim: SimOptions = { variant: "default", speed: 1 }): Promise<boolean> {
-  const startedAt = new Date();
-  const { data: run } = await admin
-    .from("runs")
-    .update({ status: "running", started_at: startedAt.toISOString(), variant: sim.variant, speed: sim.speed, scenario: SCENARIO.id })
-    .eq("id", runId)
-    .eq("status", "queued")
-    .select("id, project_id, blueprint_id, kind")
-    .maybeSingle();
+  // Claimed and stamped by the database (only one caller wins); its clock is the run's clock.
+  const { data: started } = await admin.rpc("begin_run", { p_run: runId, p_variant: sim.variant, p_speed: sim.speed, p_scenario: SCENARIO.id });
+  if (!started) return false;
+  const startedAt = new Date(started);
+  const { data: run } = await admin.from("runs").select("id, project_id, blueprint_id, kind, outcome").eq("id", runId).maybeSingle();
   if (!run?.blueprint_id) return false;
 
   try {
@@ -39,7 +36,7 @@ export async function startRun(admin: AdminDb, runId: string, sim: SimOptions = 
     const [{ data: items }, { data: connections }, { data: policy }, { data: usage }] = await Promise.all([
       admin
         .from("items")
-        .select("id, key, grp, title, description, proved_when, item_class, size, provider, estimate_likely, position, status")
+        .select("id, key, grp, title, description, proved_when, item_class, size, provider, estimate_likely, position, status, fix_attempts")
         .eq("blueprint_id", run.blueprint_id),
       admin.from("connections").select("provider").eq("workspace_id", project.workspace_id).eq("status", "connected"),
       admin.from("policies").select("config").eq("workspace_id", project.workspace_id).eq("kind", "connectors").maybeSingle(),
@@ -48,6 +45,10 @@ export async function startRun(admin: AdminDb, runId: string, sim: SimOptions = 
     const ids = new Map((items ?? []).map((i) => [i.key, i.id]));
     const denied = ((policy?.config as { deny?: string[] } | null)?.deny ?? []).map(String);
 
+    // A follow-up run (Raise budget and continue, Try once more) says which parts it's for.
+    const focusKeys = ((run.outcome as { focus?: string[] | null } | null)?.focus ?? null) as string[] | null;
+    const retry = run.kind === "fix" && Boolean(focusKeys?.length);
+    const fromAttempt = retry ? Math.max(0, ...(items ?? []).filter((i) => focusKeys!.includes(i.key)).map((i) => i.fix_attempts)) : undefined;
     const t = buildTimeline({
       runId: run.id,
       items: (items ?? []) as SimItem[],
@@ -56,6 +57,7 @@ export async function startRun(admin: AdminDb, runId: string, sim: SimOptions = 
       budget: { limit: project.budget_credits === null ? null : Number(project.budget_credits), spent: (usage ?? []).reduce((s, u) => s + Number(u.credits), 0) },
       variant: sim.variant,
       speed: sim.speed,
+      focus: focusKeys?.length ? { keys: focusKeys, retry, fromAttempt } : null,
     });
 
     const at = (ms: number) => new Date(startedAt.getTime() + ms).toISOString();
@@ -82,11 +84,12 @@ export async function startRun(admin: AdminDb, runId: string, sim: SimOptions = 
     }
 
     const failure = SCENARIO.rules.find((r) => r.id === "fix-once") as { failure?: unknown };
-    const { error } = await admin
-      .from("runs")
-      .update({ ends_at: at(t.durationMs), outcome: { status: t.runStatus, failure: failure.failure ?? null, outcomes: t.outcomes } as unknown as Json })
-      .eq("id", run.id);
-    if (error) throw error;
+    const { data: endsAt, error } = await admin.rpc("set_run_timeline", {
+      p_run: run.id,
+      p_duration_ms: t.durationMs,
+      p_outcome: { status: t.runStatus, failure: failure.failure ?? null, outcomes: t.outcomes } as unknown as Json,
+    });
+    if (error || !endsAt) throw error ?? new Error("run not running");
     return true;
   } catch {
     // Nothing is charged for a run that couldn't start; the person can click Build again.
@@ -96,10 +99,46 @@ export async function startRun(admin: AdminDb, runId: string, sim: SimOptions = 
   }
 }
 
+/** The database's time now: the clock runs are replayed against. */
+export async function dbNow(admin: AdminDb): Promise<string> {
+  const { data } = await admin.rpc("db_now");
+  return data ?? new Date().toISOString();
+}
+
 /** Settles a run whose timeline is over (idempotent: the database function does it once, in one transaction). */
 export async function settleRun(admin: AdminDb, runId: string): Promise<string | null> {
   const { data, error } = await admin.rpc("settle_run", { p_run: runId });
   return error ? null : data;
+}
+
+const FOLLOWUP_REFUSALS: Record<string, string> = {
+  cannot_build: "Viewers can't build. Ask an Owner, Admin or Builder.",
+  run_in_progress: "A build is already running on this project. Wait for it to finish.",
+  over_budget: "That would go past the project's budget. Raise the budget first.",
+  plan_not_agreed: "Build the plan first.",
+};
+
+/**
+ * Starts a follow-up run on the agreed plan through the database's gate (role, one run at a time, budget), then
+ * plays it. `focus` names the parts (null: every part still waiting).
+ */
+export async function startFollowupRun(
+  admin: AdminDb,
+  input: { projectId: string; userId: string; kind: "build" | "fix"; focus: string[] | null; estimate: number },
+): Promise<{ ok: true; runId: string } | { ok: false; message: string }> {
+  const { data: runId, error } = await admin.rpc("start_followup_run", {
+    p_project: input.projectId,
+    p_user: input.userId,
+    p_kind: input.kind,
+    p_focus: input.focus as unknown as Json,
+    p_estimate: input.estimate,
+  });
+  if (error || !runId) {
+    const code = Object.keys(FOLLOWUP_REFUSALS).find((k) => error?.message.includes(k));
+    return { ok: false, message: code ? FOLLOWUP_REFUSALS[code] : "That couldn't start. Nothing was charged. Try again." };
+  }
+  await startRun(admin, runId);
+  return { ok: true, runId };
 }
 
 /**

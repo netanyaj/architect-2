@@ -39,6 +39,10 @@ export async function connectProvider(input: { connectionId: string }): Promise<
     target: conn.provider,
     details: { simulated: true },
   });
+  // Parts built against sample data while they waited for this service now work with real data (BL-9).
+  const { data: projects } = await admin.from("projects").select("id").eq("workspace_id", ctx.workspace.id);
+  const ids = (projects ?? []).map((p) => p.id);
+  if (ids.length) await admin.from("items").update({ status: "built", status_detail: null }).in("project_id", ids).eq("provider", conn.provider).eq("status", "needs_connection");
   revalidatePath("/connections");
   return { ok: true };
 }

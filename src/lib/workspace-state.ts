@@ -22,6 +22,18 @@ export type PlanState = {
   agreed: boolean;
 };
 
+/** The build as it plays (from the replayed run), for the stepper and the stage action. */
+export type BuildProgress = {
+  works: number;
+  total: number;
+  /** Parts Blocked after 3 fixes. */
+  blocked: number;
+  /** "about 6 min", while the run plays. */
+  eta: string | null;
+  playing: boolean;
+  budgetPaused: boolean;
+};
+
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /**
@@ -37,6 +49,7 @@ export function workspaceState(input: {
   writingNow?: boolean;
   runStatus?: string | null;
   creditsLeft: number;
+  build?: BuildProgress;
 }): WorkspaceState {
   const { status, role, summary, plan, creditsLeft } = input;
   const viewerReason = buildBlockedReason(role);
@@ -78,6 +91,21 @@ export function workspaceState(input: {
     };
   }
 
+  if ((status === "building" || status === "paused") && input.build) {
+    const b = input.build;
+    const working = `${b.works} of ${b.total} working`;
+    const launch = (reason: string, beside: string): StageAction => ({ label: "Launch", disabledReason: viewerReason ?? reason, beside: viewerReason ? "Viewers can't launch" : beside });
+    if (b.budgetPaused) {
+      return { stage: "build", progress: `paused at budget · ${working}`, paused: true, action: launch("The build is paused at its budget. Raise it, or set the waiting parts aside.", "Blocked: budget used") };
+    }
+    if (b.playing) {
+      return { stage: "build", progress: b.eta ? `${working} · ${b.eta}` : working, paused: false, action: launch("Launch opens when the build finishes.", `${b.works} of ${b.total} parts work`) };
+    }
+    if (b.blocked) {
+      return { stage: "build", progress: `${working} · ${b.blocked} blocked`, paused: true, action: launch(`Launch opens when no part is blocked. ${plural(b.blocked, "part")} needs a decision.`, `Blocked: ${plural(b.blocked, "part")}`) };
+    }
+  }
+
   if (status === "building" || status === "paused") {
     const paused = status === "paused";
     const queued = input.runStatus === "queued";
@@ -93,15 +121,15 @@ export function workspaceState(input: {
     };
   }
 
-  // built or live
+  // built or live: the stage action opens Launch, where sharing and going Live happen (screen 4).
   return {
     stage: "launch",
     progress: status === "live" ? "Live" : `${summary.works} of ${summary.total} working`,
     paused: false,
     action: {
-      label: "Share with your team",
-      disabledReason: viewerReason ?? "Sharing and going Live come with Launch (M3).",
-      beside: viewerReason ? "Viewers can't share" : summary.next.text,
+      label: status === "live" ? "Open Launch" : "Launch",
+      disabledReason: viewerReason,
+      beside: viewerReason ? "Viewers can't launch" : summary.next.text,
     },
   };
 }

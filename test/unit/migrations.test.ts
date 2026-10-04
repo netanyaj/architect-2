@@ -246,7 +246,7 @@ describe("agree_and_build (the Build gate, DATA-MODEL rule 1)", () => {
 
   it("API roles can't call the Build gate or the seed helpers directly", async () => {
     for (const role of ["anon", "authenticated"]) {
-      for (const fn of ["agree_and_build(uuid,uuid,text)", "settle_run(uuid)", "apply_seed_updates(uuid)"]) {
+      for (const fn of ["agree_and_build(uuid,uuid,text)", "settle_run(uuid)", "start_followup_run(uuid,uuid,text,jsonb,numeric)", "apply_seed_updates(uuid)"]) {
         expect((await one<{ ok: boolean }>(`select has_function_privilege('${role}', '${fn}', 'execute') as ok`)).ok, `${role} → ${fn}`).toBe(false);
       }
     }
@@ -351,6 +351,43 @@ describe("the simulator's runs (0007)", () => {
     expect(await one("select title, status, payload->>'provider' as provider from approvals where workspace_id = $1 and project_id = $2", [ws, project])).toEqual({ title: "Hubspot Crm connector", status: "waiting", provider: "hubspot_crm" });
     expect(await one("select status from projects where id = $1", [project])).toEqual({ status: "built" });
     expect(await one("select status from runs where id = $1", [run])).toEqual({ status: "done" });
+  });
+
+  it("follow-up runs need an agreed plan, a builder, no run going and room in the budget", async () => {
+    const { bp, project } = await plan({ budget: 100 });
+    await expect(db.query("select start_followup_run($1, $2, 'build', null, 5)", [project, MORGAN])).rejects.toThrow(/plan_not_agreed/);
+    const { run } = await one<{ run: string }>("select agree_and_build($1, $2) as run", [bp, MORGAN]);
+    await expect(db.query("select start_followup_run($1, $2, 'fix', '[\"writer\"]', 3)", [project, MORGAN])).rejects.toThrow(/run_in_progress/);
+    await db.query("update runs set status = 'paused_budget' where id = $1", [run]);
+    await db.query("insert into usage_ledger (workspace_id, project_id, kind, credits) select workspace_id, id, 'build', 98 from projects where id = $1", [project]);
+    await expect(db.query("select start_followup_run($1, $2, 'fix', '[\"writer\"]', 3)", [project, MORGAN])).rejects.toThrow(/over_budget/);
+    const { r } = await one<{ r: string }>("select start_followup_run($1, $2, 'fix', '[\"writer\"]', 2) as r", [project, MORGAN]);
+    expect(await one("select kind, status, outcome from runs where id = $1", [r])).toEqual({ kind: "fix", status: "queued", outcome: { focus: ["writer"] } });
+    expect(await one("select status from projects where id = $1", [project])).toEqual({ status: "building" });
+  });
+
+  it("a retry adds to the part's fixes and names the extra try", async () => {
+    const { bp, ids } = await plan();
+    await db.query("update items set fix_attempts = 3, status = 'paused' where id = $1", [ids.writer]);
+    const { run } = await one<{ run: string }>("select agree_and_build($1, $2) as run", [bp, MORGAN]);
+    await db.query("update runs set kind = 'fix' where id = $1", [run]);
+    await running(run, ids, {
+      status: "done",
+      outcomes: [{ key: "writer", status: "built", statusDetail: null, credits: 0, fixes: [{ attempt: 4, credits: 3, note: "Tried once more" }], attempts: [{ attempt: 4, result: "pass", note: "Tried once more" }], proof: { kind: "eval", assertions: [3, 3] } }],
+    });
+    await db.query("select settle_run($1)", [run]);
+    expect(await one("select status, fix_attempts from items where id = $1", [ids.writer])).toEqual({ status: "built", fix_attempts: 4 });
+    expect(await one("select kind, note from usage_ledger where run_id = $1", [run])).toEqual({ kind: "fix", note: "Fix · Brief writer, one more try" });
+    expect(await count("select count(*) as n from proofs where item_id = $1 and result = 'fail'", [ids.writer])).toBe(0);
+  });
+
+  it("a part whose service was connected while the build played settles as working", async () => {
+    const { ws, bp, ids } = await plan();
+    const { run } = await one<{ run: string }>("select agree_and_build($1, $2) as run", [bp, MORGAN]);
+    await running(run, ids, OUTCOME);
+    await db.query("update connections set status = 'connected' where workspace_id = $1 and provider = 'gmail'", [ws]);
+    await db.query("select settle_run($1)", [run]);
+    expect(await one("select status, status_detail from items where id = $1", [ids.mail])).toEqual({ status: "built", status_detail: null });
   });
 
   it("a paused run leaves the project paused", async () => {

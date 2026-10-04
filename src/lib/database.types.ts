@@ -1302,11 +1302,21 @@ export type Database = {
         Returns: string
       }
       apply_seed_updates: { Args: { p_workspace: string }; Returns: undefined }
+      begin_run: {
+        Args: {
+          p_run: string
+          p_scenario: string
+          p_speed: number
+          p_variant: string
+        }
+        Returns: string
+      }
       can_build: { Args: { ws: string }; Returns: boolean }
       create_demo_workspace: {
         Args: { p_email: string; p_name: string; p_user: string }
         Returns: string
       }
+      db_now: { Args: never; Returns: string }
       is_member: { Args: { ws: string }; Returns: boolean }
       reset_demo_workspace: {
         Args: { p_owner: string; p_workspace: string }
@@ -1316,7 +1326,21 @@ export type Database = {
         Args: { p_owner: string; p_workspace: string }
         Returns: undefined
       }
+      set_run_timeline: {
+        Args: { p_duration_ms: number; p_outcome: Json; p_run: string }
+        Returns: string
+      }
       settle_run: { Args: { p_run: string }; Returns: string }
+      start_followup_run: {
+        Args: {
+          p_estimate: number
+          p_focus: Json
+          p_kind: string
+          p_project: string
+          p_user: string
+        }
+        Returns: string
+      }
       workspace_name_for: {
         Args: { p_email: string; p_name: string }
         Returns: string

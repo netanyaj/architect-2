@@ -18,7 +18,8 @@
   ],
   "variants": {
     "paused": { "override": { "fix-once": { "outcome": "fail", "fail_attempts": 3, "measured_by_attempt": ["236 words", "212 words", "204 words"],
-      "notes_by_attempt": ["Told the agent about the word limit", "Trimmed the brief after writing it", "Shortened the talking points"] } } },
+      "notes_by_attempt": ["Told the agent about the word limit", "Trimmed the brief after writing it", "Shortened the talking points"],
+      "suggestion": { "title": "Allow up to 250 words", "button": "Allow 250 words", "why": "Briefs with 4 or more attendees need the room. The last try was 204 words, so this passes. No extra credits.", "from": "200 words", "to": "250 words" } } } },
     "budget": { "budget_share": 0.6 }
   },
   "checks_by_group": {

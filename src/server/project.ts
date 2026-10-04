@@ -1,12 +1,13 @@
 import "server-only";
 
 import type { Role } from "@/lib/db";
+import type { RunEvent, RunInfo } from "@/lib/sim/replay";
 import { modelAvailability } from "@/lib/gateway";
 import { MODEL_LABEL, toModelChoice, type ModelChoice, type ModelOption } from "@/lib/models";
 import { detectTools, projectIcon, summarizeProject, type ProjectInput } from "@/lib/project-status";
 import { allowedModels } from "./blueprint/write-plan";
 import { createAdminDb, createServerDb } from "./db";
-import { catchUpRuns } from "./sim/run";
+import { catchUpRuns, dbNow } from "./sim/run";
 import type { AppContext } from "./workspace";
 
 export type WorkspaceItem = {
@@ -97,6 +98,15 @@ export type ProjectWorkspace = {
   items: WorkspaceItem[];
   versions: PlanVersion[];
   runStatus: string | null;
+  /** The latest run with its events, replayed on the clock in the browser (SIMULATOR step 2). */
+  run: RunInfo | null;
+  /** Credits this project has spent (Usage). */
+  spent: { total: number; build: number; fix: number };
+  /** The database's time when the page was read: the clock runs replay against. */
+  serverNow: string;
+  /** Services this workspace has connected, and those its policy denies. */
+  connected: string[];
+  denied: string[];
   tools: string[];
   summary: ReturnType<typeof summarizeProject>;
   /** The person's role in the project's workspace. */
@@ -125,7 +135,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
   const { data: p } = await db
     .from("projects")
     .select(
-      "id, workspace_id, name, icon, status, prompt, model, owner_id, owner_display_name, updated_at, budget_credits, blueprints(id, version, status, generation, created_at, total_likely), runs(status, started_at, ends_at)",
+      "id, workspace_id, name, icon, status, prompt, model, owner_id, owner_display_name, updated_at, budget_credits, blueprints(id, version, status, generation, created_at, total_likely), runs(id, kind, status, variant, started_at, ends_at)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -157,6 +167,21 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
         db.from("defaults").select("id, label, value, alternatives, position").eq("blueprint_id", latestId).order("position"),
       ])
     : [{ data: null }, { data: [] }, { data: [] }, { data: [] }];
+
+  const latestRun = [...(p.runs ?? [])].filter((r) => r.started_at).sort((a, b) => (b.started_at ?? "").localeCompare(a.started_at ?? ""))[0];
+  const [{ data: events }, { data: usage }, { data: conns }, { data: connectorPolicy }] = await Promise.all([
+    latestRun
+      ? db.from("events").select("id, type, payload, actor_label").eq("run_id", latestRun.id).order("id").limit(2000)
+      : Promise.resolve({ data: [] as { id: number; type: string; payload: unknown; actor_label: string | null }[] }),
+    db.from("usage_ledger").select("kind, credits").eq("project_id", p.id),
+    db.from("connections").select("provider, status").eq("workspace_id", p.workspace_id),
+    db.from("policies").select("config").eq("workspace_id", p.workspace_id).eq("kind", "connectors").maybeSingle(),
+  ]);
+  const runEvents: RunEvent[] = (events ?? []).map((e) => {
+    const payload = (e.payload ?? {}) as Record<string, unknown>;
+    return { id: Number(e.id), type: e.type, itemKey: (payload.item_key as string) ?? null, atMs: Number(payload.at_ms ?? 0), actorLabel: e.actor_label, payload };
+  });
+  const credits = (kinds: string[]) => (usage ?? []).filter((u) => kinds.includes(u.kind)).reduce((s, u) => s + Number(u.credits), 0);
 
   const [{ data: msgs }, { data: props }, { data: files }] = await Promise.all([
     db.from("messages").select("id, role, mode, content, created_at").eq("project_id", p.id).order("created_at").limit(200),
@@ -268,6 +293,13 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     items: list,
     versions,
     runStatus: run?.status ?? null,
+    run: latestRun
+      ? { id: latestRun.id, kind: latestRun.kind, status: latestRun.status, variant: latestRun.variant, startedAt: latestRun.started_at, endsAt: latestRun.ends_at, events: runEvents }
+      : null,
+    spent: { total: credits(["build", "fix", "change", "blueprint", "running"]), build: credits(["build", "change"]), fix: credits(["fix"]) },
+    serverNow: await dbNow(createAdminDb()),
+    connected: (conns ?? []).filter((c) => c.status === "connected").map((c) => c.provider),
+    denied: ((connectorPolicy?.config as { deny?: string[] } | null)?.deny ?? []).map(String),
     tools: detectTools([p.prompt, ...list.map((i) => i.title)]),
     summary: summarizeProject({
       status: p.status as ProjectInput["status"],

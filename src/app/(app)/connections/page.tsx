@@ -2,21 +2,13 @@ import type { Metadata } from "next";
 import { EmptyState } from "@/components/ax/empty-state";
 import { SimTag } from "@/components/ax/pill";
 import { canBuild } from "@/lib/permissions";
+import { PROVIDERS } from "@/lib/providers";
 import { createServerDb } from "@/server/db";
 import { listProjects } from "@/server/queries";
 import { getAppContext } from "@/server/workspace";
 import { ConnectionsList, type ConnectionRow } from "./connections-list";
 
 export const metadata: Metadata = { title: "Connections · Architect" };
-
-const PROVIDERS: Record<string, { name: string; tool: string; what: string }> = {
-  google_calendar: { name: "Google Calendar", tool: "Calendar", what: "Reads your meetings and who's coming." },
-  gmail: { name: "Gmail", tool: "Gmail", what: "Reads email threads you choose. Never sends without asking." },
-  slack: { name: "Slack", tool: "Slack", what: "Posts messages to channels and DMs." },
-  hubspot: { name: "HubSpot", tool: "HubSpot", what: "Reads leads, companies and deals." },
-  zendesk: { name: "Zendesk", tool: "Zendesk", what: "Reads tickets and drafts replies." },
-  github: { name: "GitHub", tool: "GitHub", what: "Reads the repos you pick." },
-};
 
 export default async function ConnectionsPage() {
   const ctx = await getAppContext();

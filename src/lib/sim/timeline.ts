@@ -36,6 +36,11 @@ export type TimelineInput = {
   /** The project's budget and what it has spent already (null: no budget). */
   budget: { limit: number | null; spent: number };
   variant?: Variant;
+  /**
+   * A follow-up run on chosen parts only: Raise budget and continue (no focus: every agreed part), or
+   * Try once more on a Blocked part (`retry`: one more fix, which passes).
+   */
+  focus?: { keys: string[]; retry?: boolean; fromAttempt?: number } | null;
   /** 1 = the scenario's pace (~90 s for the demo); ?sim=fast uses 0.25. */
   speed?: number;
   scenario?: Scenario;
@@ -165,8 +170,9 @@ export function buildTimeline(input: TimelineInput): Timeline {
   const groupFactor = timing.size_factor as Record<string, number>;
   const order = scenario.order as string[];
 
+  const focus = input.focus?.keys.length ? new Set(input.focus.keys) : null;
   const todo = input.items
-    .filter((i) => i.status === "agreed" || i.status === "proposed")
+    .filter((i) => (focus ? focus.has(i.key) && i.status !== "dropped" : i.status === "agreed" || i.status === "proposed"))
     .sort((a, b) => order.indexOf(a.grp) - order.indexOf(b.grp) || a.position - b.position);
   const agents = todo.filter((i) => i.grp === "agents");
   const lastAgentKey = agents.length ? agents[agents.length - 1].key : null;
@@ -193,7 +199,7 @@ export function buildTimeline(input: TimelineInput): Timeline {
   step(600);
 
   for (const [index, item] of todo.entries()) {
-    const outcome = outcomeFor(item, ctx);
+    const outcome: Outcome = input.focus?.retry ? { kind: "pass", failingFixes: 0, measured: [], notes: [] } : outcomeFor(item, ctx);
     const estimate = Number(item.estimate_likely ?? 8);
     const credits = Math.max(1, Math.round(estimate * between(rand, scenario.cost.actual_factor)));
 
@@ -212,6 +218,31 @@ export function buildTimeline(input: TimelineInput): Timeline {
     }
 
     const check = checkFor(item, scenario);
+    if (input.focus?.retry) {
+      // Try once more: its check is already written; one more fix runs and passes (2–3 credits).
+      const attempt = (input.focus.fromAttempt ?? MAX_FIXES) + 1;
+      const fixCost = Math.round(between(rand, scenario.cost.fix_credits));
+      if (limit !== null && spent + fixCost > limit) {
+        events.push({ at_ms: at(), type: "run.paused_budget", actor: "system", payload: { used: Math.round(spent), budget: limit, remaining_items: 1, remaining_est: fixCost } });
+        outcomes.push({ key: item.key, status: "paused", statusDetail: "The next fix would pass the budget", credits: 0, fixes: [], proof: null, attempts: [] });
+        runStatus = "paused_budget";
+        break;
+      }
+      spent += fixCost;
+      fixCredits += fixCost;
+      events.push({ at_ms: at(), type: "item.fixing", item_key: item.key, actor: "architect_agent", payload: { item_key: item.key, attempt, credits: fixCost } });
+      for (const line of fixRule.fix_log ?? []) {
+        events.push({ at_ms: at(), type: "log.line", item_key: item.key, actor: "architect_agent", payload: { verb: line.verb, object: line.object.replace("{key}", item.key) } });
+      }
+      step(timing.base_ms * 0.6);
+      const passProof = { kind: check.kind, assertions: [check.assertions, check.assertions] as [number, number], screenshot: check.screenshot };
+      events.push({ at_ms: at(), type: "item.built", item_key: item.key, actor: "verifier", payload: { item_key: item.key, assertions: passProof.assertions, screenshot: passProof.screenshot, credits: 0 } });
+      const note = "Tried once more";
+      outcomes.push({ key: item.key, status: "built", statusDetail: null, credits: 0, fixes: [{ attempt, credits: fixCost, measured: null, note }], attempts: [{ attempt, measured: null, note, credits: fixCost, result: "pass" }], proof: passProof });
+      done++;
+      events.push({ at_ms: at(), type: "run.progress", actor: "system", payload: { done, total, eta_s: 0 } });
+      continue;
+    }
     events.push({ at_ms: at(), type: "check.written", item_key: item.key, actor: "verifier", payload: { item_key: item.key, kind: check.kind, description: item.proved_when ?? `${item.title} passes its check` } });
     step(timing.check_written_ms);
     events.push({ at_ms: at(), type: "item.building", item_key: item.key, actor: "architect_agent", payload: { item_key: item.key } });
@@ -230,11 +261,11 @@ export function buildTimeline(input: TimelineInput): Timeline {
       // Built against sample data; it works for real once the account is connected (BL-9, A-8).
       spent += credits;
       events.push({ at_ms: at(), type: "log.line", item_key: item.key, actor: "architect_agent", payload: { verb: "Waiting", object: `${item.provider} connection` } });
-      events.push({ at_ms: at(), type: "item.needs_connection", item_key: item.key, actor: "system", payload: { item_key: item.key, provider: item.provider } });
+      events.push({ at_ms: at(), type: "item.needs_connection", item_key: item.key, actor: "system", payload: { item_key: item.key, provider: item.provider, credits } });
       outcomes.push({ ...base, status: "needs_connection", statusDetail: "using sample data until connected", proof: passProof, provider: item.provider ?? undefined });
     } else if (outcome.kind === "sample_data") {
       spent += credits;
-      events.push({ at_ms: at(), type: "item.sample_data", item_key: item.key, actor: "system", payload: { item_key: item.key, reason: "No real data source connected yet" } });
+      events.push({ at_ms: at(), type: "item.sample_data", item_key: item.key, actor: "system", payload: { item_key: item.key, reason: "No real data source connected yet", credits } });
       outcomes.push({ ...base, status: "sample_data", statusDetail: "using sample data", proof: passProof });
       done++;
     } else if (outcome.kind === "fail_then_pass" || outcome.kind === "fail") {

@@ -9,6 +9,13 @@ type UiState = {
   helpProjectId: string | null;
   openHelp: (projectId?: string | null) => void;
   closeHelp: () => void;
+  /** The part whose drawer is open (by key), in the project workspace. */
+  partKey: string | null;
+  openPart: (key: string | null) => void;
+  /** Text handed to the chat composer (Point at something, Fix with AI); the composer takes it once. */
+  chatDraft: { text: string; n: number } | null;
+  sendToChat: (text: string) => void;
+  takeChatDraft: () => void;
 };
 
 export const useUi = create<UiState>((set) => ({
@@ -16,4 +23,9 @@ export const useUi = create<UiState>((set) => ({
   helpProjectId: null,
   openHelp: (projectId = null) => set({ helpOpen: true, helpProjectId: projectId }),
   closeHelp: () => set({ helpOpen: false }),
+  partKey: null,
+  openPart: (key) => set({ partKey: key }),
+  chatDraft: null,
+  sendToChat: (text) => set((s) => ({ chatDraft: { text, n: (s.chatDraft?.n ?? 0) + 1 } })),
+  takeChatDraft: () => set({ chatDraft: null }),
 }));

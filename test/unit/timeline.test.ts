@@ -136,3 +136,19 @@ describe("buildTimeline", () => {
     expect(paths).toEqual(["/settings/connections", "/today#talking-points"]);
   });
 });
+
+describe("follow-up runs", () => {
+  it("Try once more: one more fix on the Blocked part, which passes, with no build charge", () => {
+    const blocked = items.map((i) => (i.key === "talking-points-generator" ? { ...i, status: "paused" } : { ...i, status: "built" }));
+    const t = buildTimeline(input({ runId: "retry-1", items: blocked, focus: { keys: ["talking-points-generator"], retry: true, fromAttempt: 3 } }));
+    expect(t.events.filter((e) => e.item_key).map((e) => e.type)).toEqual(["item.fixing", "log.line", "log.line", "item.built"]);
+    expect(t.outcomes).toEqual([expect.objectContaining({ key: "talking-points-generator", status: "built", credits: 0, fixes: [expect.objectContaining({ attempt: 4, note: "Tried once more" })] })]);
+    expect(t.runStatus).toBe("done");
+  });
+
+  it("Raise budget and continue: builds only the parts still waiting", () => {
+    const waiting = items.map((i, n) => ({ ...i, status: n < 4 ? "built" : "agreed" }));
+    const t = buildTimeline(input({ runId: "more-1", items: waiting, budget: { limit: 200, spent: 40 } }));
+    expect(t.outcomes.map((o) => o.key).sort()).toEqual(["brief-schedule", "slack-brief-delivery"]);
+  });
+});

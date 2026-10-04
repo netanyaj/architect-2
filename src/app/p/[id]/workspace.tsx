@@ -10,46 +10,28 @@ import { IconTile } from "@/components/ax/list-row";
 import { NeedsYouCard } from "@/components/ax/needs-you-card";
 import { SimTag } from "@/components/ax/pill";
 import { PlanGroup, PlanPanel, PlanRow } from "@/components/ax/plan-panel";
-import { PreviewFrame } from "@/components/ax/preview-dock";
 import { Segmented } from "@/components/ax/segmented";
-import type { Status, StatusIcon } from "@/components/ax/status-mark";
 import { Stepper } from "@/components/ax/stepper";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MODEL_LABEL, type ModelChoice } from "@/lib/models";
 import { canBuild } from "@/lib/permissions";
 import { relativeTime } from "@/lib/project-status";
+import { etaWords, withLive, type LiveRun } from "@/lib/sim/replay";
 import { useUi } from "@/lib/ui-store";
 import { workspaceState } from "@/lib/workspace-state";
 import { buildPlan, setProjectModel } from "@/server/actions/plan";
 import { duplicateProject } from "@/server/actions/projects";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
+import { AppPreview, BudgetBanner, BuildActivity, BuildPanel, TestTheApp } from "./build-stage";
 import { ChatPane } from "./chat-pane";
+import { PartDrawer } from "./part-drawer";
+import { useRun } from "./use-run";
 import { fromStreamed, GROUP_LABEL, GROUP_ORDER, PlanDocument } from "./plan-document";
 import { usePlanWriter } from "./use-plan-writer";
 
 type View = "app" | "agents" | "data" | "files";
 const VIEWS: View[] = ["app", "agents", "data", "files"];
-
-/** How a part shows in the Plan panel after Build (DATA-MODEL "Item statuses"). */
-function rowFor(i: WorkspaceItem): { status: Status; icon?: StatusIcon; detail?: string; struck?: boolean } {
-  switch (i.status) {
-    case "built":
-      return { status: "works" };
-    case "sample_data":
-      return { status: "attention", icon: "lines", detail: "using sample data" };
-    case "building":
-      return { status: "building", detail: "Building now" };
-    case "failed":
-      return { status: "failed", detail: i.statusDetail ?? "A check failed. Fixing it." };
-    case "deferred":
-      return { status: "todo", icon: "pause", detail: "Set aside" };
-    case "dropped":
-      return { status: "todo", icon: "minus", struck: true };
-    default:
-      return { status: "todo" };
-  }
-}
 
 const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
@@ -101,59 +83,21 @@ function PlanStagePanel({ project, items, writing, failed }: { project: ProjectW
   );
 }
 
-/** Plan panel contents after Build: Needs you → In progress → Works → Up next. */
-function BuildStagePanel({ project }: { project: ProjectWorkspace }) {
-  const needs = project.items.filter((i) => ["needs_connection", "needs_approval", "paused"].includes(i.status));
-  const doing = project.items.filter((i) => ["building", "failed"].includes(i.status));
-  const works = project.items.filter((i) => ["built", "sample_data"].includes(i.status));
-  const next = project.items.filter((i) => ["proposed", "agreed", "deferred", "dropped"].includes(i.status));
-  return (
-    <>
-      {needs.length > 0 && (
-        <PlanGroup title="Needs you" count={needs.length}>
-          {needs.map((i) =>
-            i.status === "needs_approval" ? (
-              <NeedsYouCard key={i.id} status="approval" icon="lock" name={i.title} action={<TextLink href="/governance/approvals">See the request</TextLink>}>
-                {i.statusDetail ?? "Waiting for IT."} Everything else works.
-              </NeedsYouCard>
-            ) : i.status === "needs_connection" ? (
-              <NeedsYouCard key={i.id} status="attention" icon="plug" name={i.title} action={<Button variant="primary" size="sm" href="/connections">Open Connections</Button>}>
-                Works with sample data until the app is connected.
-              </NeedsYouCard>
-            ) : (
-              <NeedsYouCard key={i.id} status="blocked" icon="pause" name={i.title}>
-                Blocked. {i.statusDetail ?? "It needs a decision."}
-              </NeedsYouCard>
-            ),
-          )}
-        </PlanGroup>
-      )}
-      {doing.length > 0 && (
-        <PlanGroup title="In progress" count={doing.length}>
-          {doing.map((i) => (
-            <PlanRow key={i.id} title={i.title} {...rowFor(i)} />
-          ))}
-        </PlanGroup>
-      )}
-      {works.length > 0 && (
-        <PlanGroup title="Works" count={works.length} collapseAfter={3}>
-          {works.map((i) => (
-            <PlanRow key={i.id} title={i.title} {...rowFor(i)} />
-          ))}
-        </PlanGroup>
-      )}
-      {next.length > 0 && (
-        <PlanGroup title="Up next" count={next.length}>
-          {next.map((i) => (
-            <PlanRow key={i.id} title={i.title} {...rowFor(i)} />
-          ))}
-        </PlanGroup>
-      )}
-    </>
-  );
-}
-
-function StageBody({ view, project, planDocument }: { view: View; project: ProjectWorkspace; planDocument: ReactNode }) {
+function StageBody({
+  view,
+  project,
+  planDocument,
+  items,
+  live,
+  budgetPaused,
+}: {
+  view: View;
+  project: ProjectWorkspace;
+  planDocument: ReactNode;
+  items: WorkspaceItem[];
+  live: LiveRun;
+  budgetPaused: boolean;
+}) {
   if (view === "files") return planDocument;
   if (view === "agents") {
     const agents = project.items.filter((i) => i.grp === "agents");
@@ -172,26 +116,16 @@ function StageBody({ view, project, planDocument }: { view: View; project: Proje
   }
   if (project.runStatus === "queued") {
     return (
-      <EmptyState icon="window" title="Your build is queued">
-        You clicked Build, so the plan is agreed and saved as v{project.plan?.version ?? 1}. The simulated build that plays it, part by part with
-        checks, arrives in M3. Nothing else will start without you.
+      <EmptyState icon="window" title="Starting your build">
+        The plan is agreed and saved as v{project.plan?.version ?? 1}. Architect is about to build it, part by part, with a check for each.
       </EmptyState>
     );
   }
   return (
-    <PreviewFrame
-      url={`${project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}--test.architect.space`}
-      badge={
-        <span className="flex items-center gap-2">
-          <span className="inline-flex h-6 items-center rounded-full bg-building-bg px-2.5 text-small font-[650] text-building">Test version</span>
-          <SimTag />
-        </span>
-      }
-    >
-      <EmptyState icon="window" title="The preview arrives with the simulated build">
-        The running app shows here, full size, with device sizes and Point at something (M3).
-      </EmptyState>
-    </PreviewFrame>
+    <>
+      {budgetPaused && <BudgetBanner project={project} items={items} live={live} />}
+      <AppPreview project={project} items={items} />
+    </>
   );
 }
 
@@ -286,6 +220,17 @@ export function Workspace({ project }: { project: ProjectWorkspace }) {
       if (thenWrite) void write({ model: m });
     });
 
+  // The build as it plays: the run's events replayed on the clock, laid over the saved parts.
+  const live = useRun(project.id, project.run, project.serverNow);
+  const running = project.run?.status === "running";
+  const items = withLive(project.items, live, running).map((i) =>
+    // Connected while the build plays: it works with real data (settling agrees).
+    i.status === "needs_connection" && i.provider && project.connected.includes(i.provider) ? { ...i, status: "built", statusDetail: null } : i,
+  );
+  const counted = items.filter((i) => i.status !== "deferred" && i.status !== "dropped");
+  const worksNow = counted.filter((i) => i.status === "built" || i.status === "sample_data").length;
+  const budgetPaused = Boolean(live.budgetPause) && (running || (project.status === "paused" && project.run?.status === "paused_budget" && items.some((i) => i.status === "agreed")));
+
   const blockingOpen = project.plan?.questions.filter((q) => q.blocking && !q.answer).length ?? 0;
   const state = workspaceState({
     status: project.status,
@@ -295,6 +240,9 @@ export function Workspace({ project }: { project: ProjectWorkspace }) {
     writingNow,
     runStatus: project.runStatus,
     creditsLeft: project.creditsLeft,
+    build: project.run
+      ? { works: worksNow, total: counted.length, blocked: counted.filter((i) => i.status === "paused").length, eta: etaWords(live.etaSeconds), playing: live.playing, budgetPaused }
+      : undefined,
   });
 
   const setView = (v: View) => {
@@ -327,13 +275,18 @@ export function Workspace({ project }: { project: ProjectWorkspace }) {
       version={project.plan || writing ? `v${project.plan?.version ?? 1}${versionLabel ? ` · ${versionLabel}` : ""}` : undefined}
       intro={planStage && !writing && !failed ? "Read it, change anything in plain words, then click Build. Nothing is built or charged before that." : undefined}
       progress={
-        !planStage && project.summary.total
-          ? { value: project.summary.works / project.summary.total, label: `${project.summary.works} of ${project.summary.total} parts work` }
+        !planStage && counted.length
+          ? {
+              value: worksNow / counted.length,
+              label: `${worksNow} of ${counted.length} parts work · ${Math.round(project.spent.build + project.spent.fix + (running ? live.spent : 0))} of ${
+                project.budgetCredits ? `${project.budgetCredits} budget` : `~${Math.round(project.plan?.totals.likely ?? 0)} credits`
+              }`,
+            }
           : undefined
       }
       onToggleCollapsed={() => setPlanOpen(false)}
     >
-      {planStage ? <PlanStagePanel project={project} items={streamedItems} writing={writing} failed={failed} /> : <BuildStagePanel project={project} />}
+      {planStage ? <PlanStagePanel project={project} items={streamedItems} writing={writing} failed={failed} /> : <BuildPanel project={project} items={items} budgetPaused={budgetPaused} />}
     </PlanPanel>
   ) : (
     <Rail label="Plan" icon="panelLeft" onOpen={() => setPlanOpen(true)} />
@@ -354,20 +307,30 @@ export function Workspace({ project }: { project: ProjectWorkspace }) {
             </span>
           </div>
         </div>
-        <Stepper current={state.stage} progress={state.progress} paused={state.paused} />
+        <Stepper
+          current={state.stage}
+          progress={state.progress}
+          paused={state.paused}
+          onSelect={(stage) => {
+            if (stage === "launch" && (project.status === "built" || project.status === "live")) router.push(`/p/${project.id}/launch`);
+          }}
+        />
         <div className="flex items-center gap-2">
           <IconButton icon="help" label="Help with this project" onClick={() => openHelp(project.id)} />
           <Button disabledReason="Sharing comes with Launch (M3).">Share</Button>
           <MoreMenu project={project} canAct={canAct} />
           {state.action.beside && <span className="max-w-[190px] text-right text-small leading-tight text-ink-2 max-md:hidden">{state.action.beside}</span>}
           <Button
-            variant="primary"
+            // The stage action is the primary only when nothing on screen needs the person first (BUILD-SPEC §2).
+            variant={planStage || state.stage === "launch" ? "primary" : "secondary"}
             disabledReason={pending ? "Starting the build…" : state.action.disabledReason}
+            href={state.stage === "launch" ? `/p/${project.id}/launch` : undefined}
             onClick={() => {
               if (!planStage || !project.plan) return;
               setActionError(undefined);
               start(async () => {
-                const r = await buildPlan({ blueprintId: project.plan!.id });
+                // ?sim=paused, ?sim=budget, ?sim=fast: the demo variants (docs/SIMULATOR.md).
+                const r = await buildPlan({ blueprintId: project.plan!.id, sim: params.get("sim") ?? undefined });
                 if (!r.ok) setActionError(r.message);
                 else router.refresh();
               });
@@ -399,18 +362,29 @@ export function Workspace({ project }: { project: ProjectWorkspace }) {
                   { value: "files", label: "Files" },
                 ]}
               />
+              {view === "app" && (
+                <span className="ml-auto flex items-center gap-2">
+                  <span className="inline-flex h-7 items-center gap-1.5 rounded-full border border-line px-2.5 text-small font-[650] text-building">
+                    <i className="size-1.5 rounded-full bg-building" aria-hidden="true" />
+                    Test version
+                  </span>
+                  <TestTheApp items={items} />
+                </span>
+              )}
             </div>
           )}
           <div role={planStage ? undefined : "tabpanel"} aria-label={planStage ? "The plan" : view} className="flex min-h-0 flex-1 flex-col overflow-auto">
-            {planStage ? planDocument : <StageBody view={view} project={project} planDocument={planDocument} />}
+            {planStage ? planDocument : <StageBody view={view} project={project} planDocument={planDocument} items={items} live={live} budgetPaused={budgetPaused} />}
           </div>
         </section>
         {showChat ? (
-          <ChatPane project={project} writing={writing} onCollapse={() => setChatOpen(false)} onPickModel={(m) => (project.plan ? setModelAsk(m) : switchModel(m, false))} />
+          <ChatPane project={project} writing={writing} activity={planStage ? null : <BuildActivity project={project} items={items} live={live} />} onCollapse={() => setChatOpen(false)} onPickModel={(m) => (project.plan ? setModelAsk(m) : switchModel(m, false))} />
         ) : (
           <Rail label="Chat" icon="panelRight" onOpen={() => setChatOpen(true)} />
         )}
       </div>
+
+      {!planStage && <PartDrawer project={project} items={items} />}
 
       {/* Switching models mid-project asks first (BL-3). */}
       <Dialog open={modelAsk !== null} onOpenChange={(o) => !o && setModelAsk(null)}>

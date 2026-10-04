@@ -30,6 +30,22 @@ beforeEach(() => {
     events: [],
     checks: [],
   });
+  // The database's run clock (migration 0009), as Postgres would do it.
+  const base = db.rpc;
+  db.rpc = async (fn: string, args: Record<string, unknown>) => {
+    const run = db.tables.runs.find((r) => r.id === args.p_run);
+    if (fn === "begin_run") {
+      if (!run || run.status !== "queued") return { data: null, error: null };
+      Object.assign(run, { status: "running", started_at: "2026-10-06T10:00:00.000Z", variant: args.p_variant, speed: args.p_speed, scenario: args.p_scenario });
+      return { data: run.started_at, error: null };
+    }
+    if (fn === "set_run_timeline") {
+      if (!run || run.status !== "running") return { data: null, error: null };
+      Object.assign(run, { ends_at: new Date(Date.parse(String(run.started_at)) + Number(args.p_duration_ms)).toISOString(), outcome: args.p_outcome });
+      return { data: run.ends_at, error: null };
+    }
+    return base(fn, args);
+  };
 });
 
 describe("parseSim", () => {
@@ -99,6 +115,6 @@ describe("catchUpRuns", () => {
     db.tables.runs.push({ id: "run-old", project_id: PROJECT, status: "running", ends_at: new Date(Date.now() - 1000).toISOString() });
     await catchUpRuns(admin(), PROJECT);
     expect(db.tables.runs[0].status).toBe("running");
-    expect(db.rpcCalls).toEqual([{ fn: "settle_run", args: { p_run: "run-old" } }]);
+    expect(db.rpcCalls.filter((c) => c.fn === "settle_run")).toEqual([{ fn: "settle_run", args: { p_run: "run-old" } }]);
   });
 });

@@ -1,0 +1,340 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { Button, TextLink } from "@/components/ax/button";
+import { NeedsYouCard } from "@/components/ax/needs-you-card";
+import { SimTag } from "@/components/ax/pill";
+import { PlanGroup, PlanRow } from "@/components/ax/plan-panel";
+import { PreviewDock, PreviewFrame } from "@/components/ax/preview-dock";
+import { StageBanner } from "@/components/ax/stage-banner";
+import type { Status, StatusIcon } from "@/components/ax/status-mark";
+import { canBuild, canManageMembers } from "@/lib/permissions";
+import { providerAccount, providerName } from "@/lib/providers";
+import { previewState, sectionFor } from "@/lib/sim/preview";
+import type { LiveRun } from "@/lib/sim/replay";
+import { useUi } from "@/lib/ui-store";
+import { connectPart, raiseBudgetAndContinue, setWaitingAside, stopHere } from "@/server/actions/run";
+import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+const time = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+
+/** How a part shows in the Plan panel after Build (DATA-MODEL "Item statuses"). */
+export function rowFor(i: WorkspaceItem): { status: Status; icon?: StatusIcon; detail?: string; struck?: boolean } {
+  switch (i.status) {
+    case "built":
+      return { status: "works", detail: i.statusDetail ?? undefined };
+    case "sample_data":
+      return { status: "works", detail: "using sample data" };
+    case "building":
+      return { status: "building", detail: "Building now" };
+    case "failed":
+      return { status: "failed", detail: i.statusDetail ?? "A check failed. Fixing it." };
+    case "paused":
+      return { status: "blocked", icon: "pause", detail: i.statusDetail ?? "Blocked" };
+    case "deferred":
+      return { status: "todo", icon: "pause", detail: i.statusDetail ?? "Set aside" };
+    case "dropped":
+      return { status: "todo", icon: "minus", struck: true };
+    case "agreed":
+      return { status: "todo", detail: i.statusDetail ?? (i.estimate ? `About ${Math.round(i.estimate)} credits` : undefined) };
+    default:
+      return { status: "todo" };
+  }
+}
+
+function useAct() {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string>();
+  const act = (fn: () => Promise<{ ok: boolean; message?: string }>) =>
+    start(async () => {
+      setError(undefined);
+      const r = await fn();
+      if (!r.ok) setError(r.message);
+      router.refresh();
+    });
+  return { pending, error, act };
+}
+
+/** Plan panel after Build: Needs you → In progress → Works → Up next, or Waiting for budget (screens 3, 6, 7). */
+export function BuildPanel({ project, items, budgetPaused }: { project: ProjectWorkspace; items: WorkspaceItem[]; budgetPaused: boolean }) {
+  const { partKey, openPart } = useUi();
+  const { pending, error, act } = useAct();
+  const canAct = canBuild(project.role);
+  const connect = items.filter((i) => i.status === "needs_connection");
+  const blocked = items.filter((i) => i.status === "paused");
+  const approval = items.filter((i) => i.status === "needs_approval");
+  const doing = items.filter((i) => i.status === "building" || i.status === "failed");
+  const works = items.filter((i) => i.status === "built" || i.status === "sample_data");
+  const waiting = budgetPaused ? items.filter((i) => i.status === "agreed") : [];
+  const next = items.filter((i) => (!budgetPaused && i.status === "agreed") || ["proposed", "deferred", "dropped"].includes(i.status));
+  const needs = blocked.length + connect.length + approval.length;
+  const row = (i: WorkspaceItem) => <PlanRow key={i.id} title={i.title} {...rowFor(i)} selected={partKey === i.key} onClick={() => openPart(i.key)} />;
+
+  return (
+    <>
+      {needs > 0 && (
+        <PlanGroup title="Needs you" count={needs}>
+          {[
+            ...blocked.map((i) => (
+              <PlanRow key={i.id} status="blocked" icon="pause" title={`${i.title} is blocked`} detail="Stopped after 3 fixes to protect your credits" selected={partKey === i.key} onClick={() => openPart(i.key)} />
+            )),
+            ...connect.map((i, n) => (
+              <NeedsYouCard
+                key={i.id}
+                status="attention"
+                icon="plug"
+                name={`Connect ${providerName(i.provider)}`}
+                action={
+                  <Button
+                    variant={n === 0 && blocked.length === 0 ? "primary" : "secondary"}
+                    size="sm"
+                    disabledReason={!canAct ? "Viewers can't connect accounts." : pending ? "Connecting…" : undefined}
+                    onClick={() => act(() => connectPart({ itemId: i.id }))}
+                  >
+                    Connect {providerAccount(i.provider)}
+                  </Button>
+                }
+              >
+                {i.title} uses sample data until Architect can read yours. Everything else keeps building.
+              </NeedsYouCard>
+            )),
+            ...approval.map((i) => (
+              <NeedsYouCard key={i.id} status="approval" icon="lock" name={`${i.title} is waiting for IT`} action={<TextLink href="/governance/approvals">See the request</TextLink>}>
+                An Owner or Admin approves new tools. Everything else keeps building.
+              </NeedsYouCard>
+            )),
+          ]}
+        </PlanGroup>
+      )}
+      {error && (
+        <p role="alert" className="mx-3 mb-2 text-small font-semibold text-failed">
+          {error}
+        </p>
+      )}
+      {waiting.length > 0 && <PlanGroup title="Waiting for budget" count={waiting.length}>{waiting.map((i) => <PlanRow key={i.id} status="todo" icon="pause" title={i.title} detail={i.estimate ? `About ${Math.round(i.estimate)} credits` : undefined} onClick={() => openPart(i.key)} />)}</PlanGroup>}
+      {doing.length > 0 && <PlanGroup title="In progress" count={doing.length}>{doing.map(row)}</PlanGroup>}
+      {works.length > 0 && <PlanGroup title="Works" count={works.length} collapseAfter={3}>{works.map(row)}</PlanGroup>}
+      {next.length > 0 && <PlanGroup title="Up next" count={next.length}>{next.map(row)}</PlanGroup>}
+    </>
+  );
+}
+
+/** Paused at the budget (screen 7): what's kept, what's needed, what's spent, and three choices. */
+export function BudgetBanner({ project, items, live }: { project: ProjectWorkspace; items: WorkspaceItem[]; live: LiveRun }) {
+  const { pending, error, act } = useAct();
+  const waiting = items.filter((i) => i.status === "agreed");
+  const finished = items.filter((i) => i.status === "built" || i.status === "sample_data" || i.status === "needs_connection").length;
+  const need = Math.round(waiting.reduce((s, i) => s + (i.estimate ?? 0), 0));
+  const budget = project.budgetCredits ?? live.budgetPause?.budget ?? 0;
+  const raiseTo = Math.ceil((Math.max(project.spent.total, live.budgetPause?.used ?? 0) + need + 3) / 5) * 5;
+  const canRaise = canManageMembers(project.role);
+  const canAct = canBuild(project.role);
+  return (
+    <StageBanner
+      kind="paused"
+      className="mx-3 mb-3"
+      title={`Paused: this project used its ${budget}-credit budget`}
+      actions={
+        <>
+          <Button
+            variant={canRaise ? "primary" : "secondary"}
+            disabledReason={!canRaise ? "Only Owners and Admins can raise a budget." : pending ? "Starting…" : undefined}
+            onClick={() => act(() => raiseBudgetAndContinue({ projectId: project.id, budget: raiseTo }))}
+          >
+            Raise budget to {raiseTo} and continue
+          </Button>
+          <Button variant={canRaise ? "secondary" : "primary"} disabledReason={!canAct ? "Viewers can't change the build." : undefined} onClick={() => act(() => setWaitingAside({ projectId: project.id }))}>
+            Set the {plural(waiting.length, "part")} aside
+          </Button>
+          <Button variant="quiet" disabledReason={!canAct ? "Viewers can't change the build." : undefined} onClick={() => act(() => stopHere({ projectId: project.id }))}>
+            Stop here
+          </Button>
+        </>
+      }
+    >
+      The {plural(finished, "finished part")} are kept and working. The {waiting.length} left need about <b className="text-ink">{need}</b> credits. Nothing more is spent until you choose.
+      You have {project.creditsLeft.toLocaleString("en-US")} credits in your plan.
+      {error && (
+        <span role="alert" className="mt-1 block font-semibold text-failed">
+          {error}
+        </span>
+      )}
+    </StageBanner>
+  );
+}
+
+/** "Test the app": runs every check plus a browser pass over the preview (simulated). */
+export function TestTheApp({ items }: { items: WorkspaceItem[] }) {
+  const [state, setState] = useState<"idle" | "running" | "done">("idle");
+  const works = items.filter((i) => i.status === "built" || i.status === "sample_data" || i.status === "needs_connection").length;
+  const failing = items.filter((i) => i.status === "failed" || i.status === "paused").length;
+  return (
+    <span className="flex items-center gap-2">
+      {state === "done" && (
+        <span role="status" className="text-small text-ink-2">
+          {failing ? `${works} checks pass · ${plural(failing, "check")} failing` : `All ${works} checks pass · browser pass: no problems`}
+        </span>
+      )}
+      <Button
+        size="sm"
+        icon="play"
+        disabledReason={state === "running" ? "Testing…" : works === 0 ? "Nothing is built yet." : undefined}
+        onClick={() => {
+          setState("running");
+          setTimeout(() => setState("done"), 1800);
+        }}
+      >
+        {state === "running" ? "Testing…" : "Test the app"}
+      </Button>
+    </span>
+  );
+}
+
+/** The app in its Test version, with the dock: sizes, Point at something, N problems (BL-6). */
+export function AppPreview({ project, items }: { project: ProjectWorkspace; items: WorkspaceItem[] }) {
+  const { partKey, openPart, sendToChat } = useUi();
+  const frame = useRef<HTMLIFrameElement>(null);
+  const [size, setSize] = useState<"desktop" | "phone">("desktop");
+  const [pointing, setPointing] = useState(false);
+  const [console_, setConsole] = useState(false);
+  const preview = previewState(items, project.connected);
+  const selected = items.find((i) => i.key === partKey);
+  const slug = project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+  const post = (m: Record<string, unknown>) => frame.current?.contentWindow?.postMessage(m, window.location.origin);
+  // The selected part is outlined in the app, never isolated.
+  useEffect(() => {
+    post({ type: "highlight", part: selected ? sectionFor(selected) : null, label: selected?.title });
+  }, [selected]);
+  useEffect(() => post({ type: "point", on: pointing }), [pointing]);
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin || e.data?.type !== "select") return;
+      sendToChat(`About “${e.data.text}” in the app: `);
+      setPointing(false);
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [sendToChat]);
+
+  return (
+    <PreviewFrame
+      url={`${slug}--test.architect.space/today`}
+      badge={<SimTag title="The preview is a pre-built sample app in this prototype" />}
+      dock={
+        <>
+          {console_ && preview.problems.length > 0 && (
+            <div role="dialog" aria-label="Problems" className="absolute right-3 bottom-[70px] left-3 mx-auto flex max-w-[560px] flex-col gap-2 rounded-card border border-line bg-surface p-3 shadow-pop">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">{plural(preview.problems.length, "problem")}</h3>
+                <TextLink onClick={() => setConsole(false)}>Close</TextLink>
+              </div>
+              {preview.problems.map((p) => (
+                <div key={p.key} className="flex flex-wrap items-start gap-2 rounded-tile border border-line px-3 py-2">
+                  <span className="min-w-0 flex-1">
+                    <b>{p.title}</b>
+                    <span className="block text-small text-ink-2">{p.text}</span>
+                  </span>
+                  <TextLink onClick={() => openPart(p.key)}>Open</TextLink>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      sendToChat(`Fix ${p.title}: ${p.text}`);
+                      setConsole(false);
+                    }}
+                  >
+                    Fix with AI
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+          <PreviewDock size={size} onSizeChange={setSize} pointing={pointing} onPointToggle={() => setPointing((p) => !p)} problems={preview.problems.length} onOpenProblems={() => setConsole((c) => !c)} />
+        </>
+      }
+    >
+      {preview.reveal.length === 0 ? (
+        <div className="grid h-full place-items-center p-8 text-center text-ink-2">
+          <p>The app appears here, section by section, as its parts start to work.</p>
+        </div>
+      ) : (
+        <iframe
+          ref={frame}
+          title={`${project.name}, test version`}
+          src={preview.src}
+          onLoad={() => {
+            post({ type: "point", on: pointing });
+            if (selected) post({ type: "highlight", part: sectionFor(selected), label: selected.title });
+          }}
+          className={size === "phone" ? "mx-auto block h-full w-[390px] border-x border-line" : "block h-full w-full"}
+        />
+      )}
+    </PreviewFrame>
+  );
+}
+
+/** What Architect is doing, in chat: a short summary, then the steps behind it (screen 3). */
+export function BuildActivity({ project, items, live }: { project: ProjectWorkspace; items: WorkspaceItem[]; live: LiveRun }) {
+  const [open, setOpen] = useState(false);
+  const run = project.run;
+  if (!run || !run.startedAt) return null;
+  const counted = items.filter((i) => i.status !== "deferred" && i.status !== "dropped");
+  const works = counted.filter((i) => i.status === "built" || i.status === "sample_data").length;
+  const connect = counted.filter((i) => i.status === "needs_connection");
+  const approval = counted.filter((i) => i.status === "needs_approval");
+  const blocked = counted.filter((i) => i.status === "paused");
+  const pause = run.status === "paused_budget" || (live.playing && live.budgetPause) ? live.budgetPause : null;
+
+  const sentences: string[] = [];
+  if (live.playing) sentences.push(`Building your app. ${works} of ${counted.length} parts already work.`);
+  else if (pause) sentences.push(`I've paused at your ${project.budgetCredits ?? pause.budget}-credit budget. The ${plural(counted.filter((i) => i.status === "agreed").length, "part")} left should cost about ${pause.remainingEst} credits.`);
+  else sentences.push(`${run.kind === "change" ? "The change is built" : "Build finished"}. ${works} of ${counted.length} parts work.`);
+  if (blocked.length) sentences.push(`${blocked[0].title} is blocked after 3 fixes. Open it to see what I suggest.`);
+  if (connect.length) sentences.push(`I need you for one thing: connect ${providerName(connect[0].provider)} so ${connect[0].title.toLowerCase()} uses your real data.`);
+  if (approval.length) sentences.push(`${providerName(approval[0].provider)} is waiting for IT, and nothing else is blocked by it.`);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2 text-small font-semibold text-ink-2">
+        <span className="grid size-[22px] place-items-center rounded-[7px] bg-primary text-small font-bold text-on-primary" aria-hidden="true">
+          A
+        </span>
+        Architect
+        <SimTag title="The build is simulated in this prototype" />
+      </div>
+      <p>{sentences.join(" ")}</p>
+      {pause && (
+        <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 rounded-card border border-line px-3.5 py-3 text-small tabular-nums">
+          <dt className="text-ink-2">Finished parts</dt>
+          <dd className="text-right">{Math.round(project.spent.build)} cr</dd>
+          <dt className="text-ink-2">Fixes</dt>
+          <dd className="text-right">{Math.round(project.spent.fix)} cr</dd>
+          <dt className="border-t border-line pt-1 font-semibold">Spent</dt>
+          <dd className="border-t border-line pt-1 text-right font-semibold">{Math.round(project.spent.build + project.spent.fix)} cr</dd>
+          <dt className="text-ink-2">Still to build</dt>
+          <dd className="text-right">~{pause.remainingEst} cr</dd>
+        </dl>
+      )}
+      {live.activity.length > 0 && (
+        <>
+          <TextLink className="self-start" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+            {open ? "Hide the steps" : `Show what I did (${plural(live.activity.length, "step")})`}
+          </TextLink>
+          {open && (
+            <ol className="flex flex-col gap-1 border-l-2 border-line pl-3 text-small">
+              {live.activity.map((a) => (
+                <li key={a.id}>
+                  <span className="text-ink-3">{run.startedAt ? time(new Date(new Date(run.startedAt).getTime() + a.atMs).toISOString()) : ""} · </span>
+                  <span className="font-semibold">{a.verb}</span> <span className={/[/.]/.test(a.object) ? "font-mono" : undefined}>{a.object}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

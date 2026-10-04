@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Meeting Prep</title>
+<style>
+  :root { --ink: #16181d; --ink2: #5b616e; --line: #e4e6ea; --sel: #eef0f3; --blue: #1f4fd1; --amber: #8a5a00; --amber-bg: #fff4dc; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: #fff; }
+  .app { display: grid; grid-template-columns: 176px 1fr; min-height: 100vh; }
+  nav { border-right: 1px solid var(--line); padding: 18px 10px; display: flex; flex-direction: column; gap: 2px; }
+  nav h1 { font-size: 15px; margin: 0 8px 14px; }
+  nav a { padding: 8px 10px; border-radius: 8px; color: var(--ink2); text-decoration: none; }
+  nav a[aria-current="page"] { background: var(--sel); color: var(--ink); font-weight: 600; }
+  main { display: grid; grid-template-columns: 230px 1fr; min-width: 0; }
+  .list { border-right: 1px solid var(--line); padding: 14px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .meet { padding: 9px 11px; border-radius: 8px; }
+  .meet b { display: block; font-weight: 600; }
+  .meet span { color: var(--ink2); font-size: 14px; }
+  .meet.on { background: var(--sel); }
+  .detail { padding: 22px 26px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+  h2 { font-size: 20px; margin: 0; }
+  .muted { color: var(--ink2); }
+  section { position: relative; border-radius: 10px; }
+  section h3 { font-size: 14px; margin: 0 0 4px; }
+  .sample { display: inline-block; margin-left: 6px; padding: 0 7px; border: 1px dashed #c58b17; border-radius: 99px; background: var(--amber-bg); color: var(--amber); font-size: 12px; font-weight: 600; }
+  .pending { color: var(--ink2); border: 1px dashed var(--line); padding: 12px; font-size: 14px; }
+  .pending::before { content: "Being built… "; font-weight: 600; }
+  .hl { outline: 2px solid var(--blue); outline-offset: 4px; }
+  .tag { position: absolute; top: -14px; left: 0; background: var(--blue); color: #fff; font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 99px; }
+  .pointing * { cursor: crosshair !important; }
+  .pointing section:hover, .pointing .meet:hover { outline: 2px dashed var(--blue); outline-offset: 3px; }
+  .fade { animation: fade .5s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } }
+  .settings { padding: 22px 26px; display: none; flex-direction: column; gap: 10px; }
+  .row { display: flex; justify-content: space-between; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+  .ok { color: #1d6b3a; font-weight: 600; } .wait { color: var(--amber); font-weight: 600; }
+  @media (max-width: 640px) { .app { grid-template-columns: 1fr; } nav { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); } nav h1 { display: none; } main { grid-template-columns: 1fr; } .list { border-right: 0; border-bottom: 1px solid var(--line); } }
+  @media (prefers-reduced-motion: reduce) { .fade { animation: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav aria-label="Meeting Prep">
+    <h1>Meeting Prep</h1>
+    <a href="#today" data-view="today" aria-current="page">Today</a>
+    <a href="#week" data-view="today">This week</a>
+    <a href="#briefs" data-view="today">All briefs</a>
+    <a href="#attendees" data-view="today">Attendees</a>
+    <a href="#settings" data-view="settings">Settings</a>
+  </nav>
+  <main id="today">
+    <div class="list" aria-label="Meetings today">
+      <div class="meet on"><b>10:00 · Q4 pipeline review</b><span>Dana Whitfield, Marco Reyes</span></div>
+      <div class="meet"><b>13:30 · Vendor renewal</b><span>Lena Brooks</span></div>
+      <div class="meet"><b>16:00 · Hiring sync</b><span>Sam Ortiz</span></div>
+    </div>
+    <div class="detail">
+      <div><h2>Q4 pipeline review</h2><div class="muted">10:00–10:45 · Brief sent to Slack at 09:30</div></div>
+      <section data-part="email" data-name="Last email thread per attendee">
+        <h3>Last email thread<span class="sample" data-sample="email">sample</span></h3>
+        <div class="body">
+          <div><b>Dana Whitfield</b> · “Can we see the West region split before Tuesday?” · 2 days ago</div>
+          <div><b>Marco Reyes</b> · “Sent the revised forecast deck (v3).” · Yesterday</div>
+        </div>
+      </section>
+      <section data-part="agenda" data-name="Agenda summary">
+        <h3>Agenda, from the attached PDF</h3>
+        <div class="body">1. Pipeline by region · 2. Deals that slipped · 3. Q1 hiring plan</div>
+      </section>
+      <section data-part="talking-points" data-name="Talking points">
+        <h3>Talking points</h3>
+        <div class="body">Bring the West region split Dana asked for. Confirm whether Marco’s v3 deck replaces last week’s numbers.</div>
+      </section>
+    </div>
+  </main>
+  <div class="settings" id="settings">
+    <h2>Settings</h2>
+    <section data-part="connections" data-name="Connections">
+      <h3>Connections</h3>
+      <div class="row"><span>Google Calendar</span><span class="ok" data-conn="google_calendar">Connected</span></div>
+      <div class="row"><span>Gmail</span><span class="wait" data-conn="gmail">Not connected · sample emails</span></div>
+      <div class="row"><span>Slack</span><span class="ok" data-conn="slack">Connected</span></div>
+    </section>
+  </div>
+</div>
+<script>
+  // The workspace tells the preview what's built (?reveal=), what uses sample data (?sample=), what's connected
+  // (?connected=) and which part to outline (postMessage highlight). In Point at something mode, a click sends the
+  // element back to the workspace (postMessage select), which attaches it to chat.
+  const q = new URLSearchParams(location.search);
+  const list = (k) => (q.get(k) || "").split(",").filter(Boolean);
+  const reveal = new Set(list("reveal"));
+  const sample = new Set(list("sample"));
+  const connected = new Set(list("connected"));
+  const all = q.get("all") === "1";
+  const shown = (part) => all || reveal.has(part);
+
+  document.querySelectorAll("section[data-part]").forEach((s) => {
+    const part = s.dataset.part;
+    if (!shown(part)) {
+      const body = s.querySelector(".body");
+      if (body) { body.className = "pending"; body.textContent = s.dataset.name.toLowerCase() + " appears here once it works."; }
+    } else s.classList.add("fade");
+  });
+  document.querySelectorAll("[data-sample]").forEach((el) => { if (!sample.has(el.dataset.sample)) el.remove(); });
+  document.querySelectorAll("[data-conn]").forEach((el) => {
+    if (connected.has(el.dataset.conn)) { el.textContent = "Connected"; el.className = "ok"; }
+  });
+
+  function show(view) {
+    document.getElementById("today").style.display = view === "settings" ? "none" : "";
+    document.getElementById("settings").style.display = view === "settings" ? "flex" : "none";
+    document.querySelectorAll("nav a").forEach((a) => a.setAttribute("aria-current", (a.dataset.view === view && (view === "settings" || a.hash === "#today")) ? "page" : "false"));
+  }
+  const route = () => show(location.hash === "#settings" ? "settings" : "today");
+  window.addEventListener("hashchange", route);
+  route();
+
+  let pointing = false;
+  window.addEventListener("message", (e) => {
+    if (e.origin !== location.origin) return;
+    const m = e.data || {};
+    if (m.type === "highlight") {
+      document.querySelectorAll(".hl").forEach((el) => { el.classList.remove("hl"); el.querySelector(".tag")?.remove(); });
+      const s = m.part && document.querySelector('section[data-part="' + m.part + '"]');
+      if (s) {
+        s.classList.add("hl");
+        const t = document.createElement("span"); t.className = "tag"; t.textContent = m.label || s.dataset.name; s.prepend(t);
+        if (s.closest("#settings")) show("settings"); else show("today");
+        s.scrollIntoView({ block: "nearest" });
+      }
+    }
+    if (m.type === "point") { pointing = Boolean(m.on); document.body.classList.toggle("pointing", pointing); }
+  });
+  document.addEventListener("click", (e) => {
+    if (!pointing) return;
+    const el = e.target.closest("section, .meet, h2");
+    if (!el) return;
+    e.preventDefault();
+    const text = (el.querySelector("h3")?.textContent || el.textContent || "").trim().replace(/\s+/g, " ").slice(0, 120);
+    parent.postMessage({ type: "select", selector: el.dataset.part ? '[data-part="' + el.dataset.part + '"]' : el.tagName.toLowerCase(), text }, location.origin);
+  }, true);
+</script>
+</body>
+</html>
