@@ -27,12 +27,15 @@ Where the prototype differs from the spec, or fills a gap the spec left open. On
 
 | Area | The spec said | We did | Why |
 |---|---|---|---|
-| Model | BG: Gemini on the free tier | `gemini-3.5-flash-lite` | `gemini-3.8-flash` allows 20 free requests a day, used up quickly by plans, chat, Help and reviewers |
+| Model | BG: Gemini on the free tier | `gemini-3.5-flash-lite`, and Gemini is the default everywhere (Home, new projects: migration 0006) | `gemini-3.8-flash` allows 20 free requests a day, used up quickly by plans, chat, Help and reviewers. Gemini is the fastest (2–7 s a plan) |
+| OpenRouter speed | BG: under 60 s on the OpenRouter model | A 45 s limit for OpenRouter in the gateway (plans, chat, Help); past it the plan pauses with the paused banner and Switch model, keeping what was written and charging nothing. The picker labels it "Free · can be slow". Its acceptance check is "a valid plan, or a clean pause within the limit" | Free models run on shared capacity: the same plan took 19–148 s across runs |
 | OpenRouter model | BG: "a `:free` model" | `nvidia/nemotron-3-super-120b-a12b:free` | Timed the free models with structured output on the Meeting Prep plan: nemotron 25.6 s and valid; qwen3.8-27b 167 s (over the 60 s target); gemma-4-31b gave no structured output |
 | OpenRouter allowed | DATA-MODEL: Claude, GPT, Gemini allowed | OpenRouter added to the seeded model policy (migration 0004; kept by Reset demo data) | M2 acceptance requires the demo prompts on OpenRouter |
 | Structured output | BG: `streamObject()` with the Blueprint schema | `streamText` + `Output.object()` (AI SDK 7's replacement), with a relaxed draft schema; the strict schema is enforced by the server afterwards | AI SDK 7 replaced `streamObject`. Gemini rejects the strict schema as too complex ("Request contains an invalid argument") |
 | Server tidying | BG: on validation failure, retry once with the errors | Keys are tidied into valid unique keys, and quotes over 120 characters are cut at a word boundary, without a retry; anything else retries once | Keys are internal ids, and a quote's opening words are still the person's exact words. Retries cost time and quota |
-| Blocking questions | BG schema: the model sets `blocking` | The model labels `default_effect` (keep, reduce, remove, none); the server blocks Build for reduce, remove and none (migration 0005) | The model over-flagged questions that had a recommended answer, holding Build for no reason |
+| Blocking questions | BG schema: the model sets `blocking` | The model labels `default_effect` (keep, reduce, remove, none); the server blocks Build for reduce, remove and none (migration 0005), then applies rules a and b below | The model over-flagged questions that had a recommended answer, holding Build for no reason |
+| Rule a: services already there | Not specified | A question labelled reduce, remove or none doesn't block when it asks about a kind of service (calendar, email, CRM, tickets, files, chat) that the request already names ("my calendar", "email thread") or Connections already has | The plan can use that service, so there's nothing to wait for. Only this deterministic half: "are the options genuinely different?" was too fuzzy to trust |
+| Rule b: requested channels (safety) | Not specified | If the request asks to send by SMS, WhatsApp, Microsoft Teams, Discord or Telegram and that service isn't connected, a "Which … service?" question always blocks: the model's own, marked blocking whatever its label, or one the server adds. Naming the channel never unblocks it | A model once picked an SMS service silently; nothing would have stopped the build. This is the case that must never slip through |
 | Slack workspace | A blocking question when there's no safe default | Decided by the server: blocks only when the request asks for Slack and names no channel; a named channel, or Slack the planner chose itself, is a default | Without it the demo's key moment (the Slack question holding Build) depended on the model's mood |
 | Conflict guard: weaken | A-3: removing or weakening a part needs Keep / Defer / Drop | Every change carries a kind (add, modify, weaken, remove); weaken and remove both get the card. The server also marks a change as weaken if it cuts a part's acceptance lines or drops one, whatever the model said | The same pattern: the model labels, the server decides |
 | Weaken decisions | Keep / Defer / Drop | Keep = the part stays as asked; Defer = set aside; Drop = the stronger version goes and the part is built as changed, with the reason saved on it | The three words from the PRD, applied to a weakening |
@@ -45,7 +48,8 @@ Where the prototype differs from the spec, or fills a gap the spec left open. On
 | Apply after a build | A-11: Apply starts building the change | Apply makes the new version and queues a run through the same Build gate, as kind `build`. **Open: add `run_kind` (build, change) in M3** | The gate has no run-kind setting yet; harmless until the simulator reads it |
 | Viewers in chat | PRD: Viewers read and comment | Viewers can chat with Talk first only; it never changes the plan | Matches "comment, don't build" |
 | Fixtures | BG: `tests/fixtures/prompts/` | `test/fixtures/prompts/` and `test/fixtures/blueprints/` (recorded real output) | Matches the existing test folder |
-| Fixture prompts | The 3 demo prompts | The 3 demo prompts, plus "SMS reminder" (must block: no SMS service) and "vendor list" (must not block) | Pins down both sides of the blocking rule |
+| Fixture prompts | The 3 demo prompts | The 3 demo prompts, plus "SMS reminder" (must block: no SMS service) and "vendor list" (must not block); recorded from all four models (20 fixtures) | Pins down both sides of the blocking rule on every model |
+| Live checks use the demo Connections | Not specified | The live check runs the rules with the seeded workspace's Connections (Google Calendar and Slack connected) | Rules a and b depend on Connections; this matches what a reviewer's workspace has |
 
 ## Numbers we set, and how we picked them
 
@@ -63,6 +67,30 @@ Where the prototype differs from the spec, or fills a gap the spec left open. On
 | Question limit | Up to 5, blocking first | BG |
 | Chat context | The plan plus the last 8 messages | Enough for follow-ups without sending the whole history every time |
 | Help answers | Up to 400 tokens, 1–4 sentences, Gemini thinking "low" on non-lite models | Help should answer in a few seconds; thinking "low" took gemini-3.8-flash from about 19 s to 3.5 s |
-| Plan route time limit | 120 s (`maxDuration`) | Plans take 4–30 s; this leaves room for slower models and the one retry |
+| Plan route time limit | 120 s (`maxDuration`) | Plans take 3–40 s; this leaves room for slower models and the one retry |
+| OpenRouter time limit | 45 s per model call | Under the 60 s plan target, with room for the page to show the pause; OpenRouter's normal plans took 19–41 s in the final run |
 | Budget limit | 1 to 100,000 credits per project | Guards against typos; well above any demo plan |
 | Browser tests | 15 s per check, 3 browsers at a time locally, 2 in CI | The dev server compiles pages on first visit; seven parallel browsers made it slow enough to flake |
+
+## Live acceptance: 5 prompts × 4 models (5 Oct 2026)
+
+`EVAL_MODELS=gemini,openrouter,claude,gpt pnpm eval:blueprint`, with the demo workspace's Connections. Each plan is checked for: valid schema, every quote from the request, blocking only where expected, within 60 s (OpenRouter: or a clean pause at 45 s). Claude and GPT have no keys here, so Gemini answers for them (Simulated). **20 of 20 passed.** The run before rules a and b passed 18 of 20.
+
+| Model | Meeting Prep | Lead scorer | Support triage | SMS reminder (must block) | Vendor list (must not block) |
+|---|---|---|---|---|---|
+| Gemini | 7.1 s · 6 parts · Slack workspace | 3.1 s · 5 · none | 3.1 s · 5 · none | 2.7 s · 4 · SMS service | 4.5 s · 3 · none |
+| OpenRouter | 38.5 s · 8 · Slack workspace | 19.5 s · 6 · none | 40.5 s · 4 · none | 19.3 s · 3 · SMS service, and timing (see known limits) | 26.9 s · 3 · none |
+| Claude (simulated) | 6.7 s · 6 · Slack workspace | 3.3 s · 5 · none | 3.0 s · 5 · none | 2.4 s · 3 · SMS service | 3.6 s · 3 · none |
+| GPT (simulated) | 3.2 s · 5 · Slack workspace | 5.6 s · 4 · none | 3.1 s · 5 · none | 4.5 s · 3 · SMS service | 3.6 s · 3 · none |
+
+Browser acceptance on the same day: 15 of 15 (plans within 60 s, the Build gate, change cards and the conflict guard, the rate-limit banner, and M1's checks). Unit tests: 194.
+
+## Known limits
+
+| Limit | Effect | Why it's acceptable for now |
+|---|---|---|
+| A question that isn't about a service is decided by the model's label alone | OpenRouter labelled "How many minutes before the meeting should the SMS be sent?" as `none`, so the SMS plan asked one question more than it needed to | It errs safe: an extra question, never a missed one. Rules a and b cover the cases that matter (services and channels) |
+| The model can still miss a weakening that keeps every acceptance line | A change that narrows scope without touching the check ("only external meetings") counts as weaken only if the model labels it so | The server's test catches checks that lose a line or change a number; scope wording isn't measurable without another model call |
+| Plans vary between runs | Part titles, counts and defaults differ run to run and model to model | The rules that protect the person (what blocks, what's weakened, prices) are deterministic; the fixtures pin down the shape |
+| OpenRouter's free models are slow and variable | 19–148 s for the same plan across runs | The 45 s limit pauses cleanly with Switch model; Gemini is the default |
+| Apply after a build queues a `build` run | The simulator can't yet tell a change apart from a first build | Add `run_kind` (build, change) in M3 |

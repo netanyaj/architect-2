@@ -1,0 +1,104 @@
+{
+  "name": "Zendesk Ticket Triage",
+  "summary": "Classify incoming Zendesk support tickets by urgency and team, draft replies for simple ones, and escalate VIP tickets.",
+  "items": [
+    {
+      "key": "incoming-tickets",
+      "grp": "integrations",
+      "title": "Incoming Zendesk tickets",
+      "description": "Reads new incoming tickets from Zendesk as they arrive.",
+      "proved_when": "New tickets appear in the system feed from Zendesk",
+      "source_quote": "Classify incoming Zendesk tickets",
+      "item_class": "integration.read_email",
+      "size": "m",
+      "provider": "zendesk"
+    },
+    {
+      "key": "ticket-classification",
+      "grp": "agents",
+      "title": "Ticket classifier and router",
+      "description": "Categorizes tickets by urgency level and assigns them to the correct internal team.",
+      "proved_when": "Tickets are automatically tagged with urgency and team",
+      "source_quote": "by urgency and team",
+      "item_class": "agent.summariser",
+      "size": "m",
+      "framework": "lyzr"
+    },
+    {
+      "key": "simple-reply-drafts",
+      "grp": "agents",
+      "title": "Simple reply drafter",
+      "description": "Generates draft responses for straightforward support tickets.",
+      "proved_when": "A draft reply is generated and attached to simple tickets",
+      "source_quote": "draft a reply for simple ones",
+      "item_class": "agent.summariser",
+      "size": "m",
+      "framework": "lyzr"
+    },
+    {
+      "key": "vip-escalation",
+      "grp": "agents",
+      "title": "VIP ticket escalator",
+      "description": "Identifies high-value customers and flags their tickets for immediate escalation.",
+      "proved_when": "Tickets from VIP customers are marked as urgent and highlighted for managers",
+      "source_quote": "escalate anything from VIP customers",
+      "item_class": "agent.researcher",
+      "size": "m",
+      "framework": "lyzr"
+    },
+    {
+      "key": "ticket-dashboard",
+      "grp": "features",
+      "title": "Triage dashboard",
+      "description": "Shows all processed tickets, their classification, draft status, and VIP escalations.",
+      "proved_when": "Users can view a list of tickets with urgency, assigned team, and drafts",
+      "source_quote": "Classify incoming Zendesk tickets by urgency and team",
+      "item_class": "screen.list",
+      "size": "m"
+    }
+  ],
+  "defaults": [
+    {
+      "label": "Urgency categories",
+      "value": "Low, Medium, High, Urgent",
+      "alternatives": [
+        "Low, High",
+        "P1, P2, P3, P4, P5"
+      ]
+    },
+    {
+      "label": "Draft approval",
+      "value": "Require manual review before sending",
+      "alternatives": [
+        "Send automatically without review"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "text": "How should VIP customers be identified?",
+      "affects": [
+        "vip-escalation"
+      ],
+      "options": [
+        {
+          "label": "By Zendesk tags or organization",
+          "value": "zendesk_tags"
+        },
+        {
+          "label": "By domain name list",
+          "value": "domain_list"
+        }
+      ],
+      "recommended": "zendesk_tags",
+      "default_effect": "keep",
+      "blocking": false
+    }
+  ],
+  "not_in_this_version": [
+    {
+      "title": "Auto-sending replies",
+      "reason": "Drafts will be prepared for human review to ensure quality and prevent mistakes."
+    }
+  ]
+}

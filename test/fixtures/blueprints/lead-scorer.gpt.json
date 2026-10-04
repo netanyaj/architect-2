@@ -1,0 +1,98 @@
+{
+  "name": "Lead Scorer",
+  "summary": "Every morning, score new HubSpot leads from 0 to 100 using company size and recent activity, explain each score, and post the top 5 to #sales.",
+  "items": [
+    {
+      "key": "hubspot-leads",
+      "grp": "integrations",
+      "title": "HubSpot lead reader",
+      "description": "Reads new leads and their company size and recent activity from HubSpot.",
+      "proved_when": "Successfully fetches new leads from HubSpot.",
+      "source_quote": "score new HubSpot leads from 0 to 100 using company size and recent activity",
+      "item_class": "integration.crm_lookup",
+      "size": "m",
+      "provider": "hubspot"
+    },
+    {
+      "key": "lead-scorer-agent",
+      "grp": "agents",
+      "title": "Lead scoring and explanation writer",
+      "description": "Scores each lead from 0 to 100 and writes an explanation for the score.",
+      "proved_when": "Outputs a score and an explanation for every fetched lead.",
+      "source_quote": "score new HubSpot leads from 0 to 100 using company size and recent activity, explain each score",
+      "item_class": "agent.researcher",
+      "size": "m",
+      "framework": "lyzr"
+    },
+    {
+      "key": "slack-poster",
+      "grp": "integrations",
+      "title": "Slack poster",
+      "description": "Posts messages to the selected Slack channel.",
+      "proved_when": "Successfully sends messages to the designated Slack channel.",
+      "source_quote": "post the top 5 to #sales",
+      "item_class": "integration.chat_send",
+      "size": "s",
+      "provider": "slack"
+    },
+    {
+      "key": "morning-schedule",
+      "grp": "quality",
+      "title": "Morning run schedule",
+      "description": "Triggers the lead scoring and posting process every morning.",
+      "proved_when": "Runs automatically once every day in the morning.",
+      "source_quote": "Every morning",
+      "item_class": "quality.schedule",
+      "size": "s"
+    }
+  ],
+  "defaults": [
+    {
+      "label": "Scoring time",
+      "value": "8:00 AM",
+      "alternatives": [
+        "7:00 AM",
+        "9:00 AM"
+      ]
+    },
+    {
+      "label": "Scoring weight",
+      "value": "Equal weight for company size and recent activity",
+      "alternatives": [
+        "Heavier weight on company size",
+        "Heavier weight on recent activity"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "text": "Which Slack channel should the top 5 leads be posted to?",
+      "affects": [
+        "slack-poster"
+      ],
+      "options": [
+        {
+          "label": "#sales",
+          "value": "#sales"
+        },
+        {
+          "label": "#leads",
+          "value": "#leads"
+        },
+        {
+          "label": "#general",
+          "value": "#general"
+        }
+      ],
+      "recommended": "#sales",
+      "default_effect": "keep",
+      "blocking": false
+    }
+  ],
+  "not_in_this_version": [
+    {
+      "title": "Automatic lead assignment",
+      "reason": "Assigning leads directly in CRM is outside the requested scope of scoring and posting."
+    }
+  ]
+}

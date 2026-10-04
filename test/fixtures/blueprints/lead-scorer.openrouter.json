@@ -1,0 +1,123 @@
+{
+  "name": "Morning Lead Scorer",
+  "summary": "Every morning the app fetches new HubSpot leads, scores them 0‑100 using company size and recent activity, explains each score, and posts the top five to the #sales Slack channel.",
+  "items": [
+    {
+      "key": "fetch-hubspot-leads",
+      "grp": "integrations",
+      "title": "Fetch new HubSpot leads",
+      "description": "Retrieves leads created today from HubSpot CRM.",
+      "proved_when": "A list of leads created today is available in the system.",
+      "source_quote": "Every morning, score new HubSpot leads",
+      "item_class": "integration.crm_lookup",
+      "size": "m",
+      "provider": "hubspot",
+      "framework": "lyzr"
+    },
+    {
+      "key": "score-leads",
+      "grp": "agents",
+      "title": "Score each lead",
+      "description": "Assigns a score from 0 to 100 based on company size and recent activity.",
+      "proved_when": "Each lead has a numeric score and explanation attached.",
+      "source_quote": "score new HubSpot leads from 0 to 100 using company size and recent activity",
+      "item_class": "agent.researcher",
+      "size": "m",
+      "framework": "lyzr"
+    },
+    {
+      "key": "explain-scores",
+      "grp": "agents",
+      "title": "Explain lead scores",
+      "description": "Generates a short explanation for why each lead received its score.",
+      "proved_when": "Each lead includes a human‑readable explanation of its score.",
+      "source_quote": "explain each score",
+      "item_class": "agent.summariser",
+      "size": "s",
+      "framework": "lyzr"
+    },
+    {
+      "key": "leads-table",
+      "grp": "data",
+      "title": "Lead scores table",
+      "description": "Stores each lead with its score and explanation for later retrieval.",
+      "proved_when": "The table contains all scored leads with scores and explanations.",
+      "source_quote": "score new HubSpot leads from 0 to 100 using company size and recent activity",
+      "item_class": "data.table",
+      "size": "m"
+    },
+    {
+      "key": "post-top5-slack",
+      "grp": "integrations",
+      "title": "Post top 5 leads to #sales",
+      "description": "Sends a message to the #sales Slack channel with the five highest‑scoring leads and their explanations.",
+      "proved_when": "A message appears in #sales containing exactly five leads with scores and explanations.",
+      "source_quote": "post the top 5 to #sales",
+      "item_class": "integration.chat_send",
+      "size": "m",
+      "provider": "slack"
+    },
+    {
+      "key": "daily-morning-run",
+      "grp": "quality",
+      "title": "Run the lead scoring each morning",
+      "description": "Triggers the lead‑scoring workflow every day at a set time.",
+      "proved_when": "The workflow starts automatically each morning without manual input.",
+      "source_quote": "Every morning",
+      "item_class": "quality.schedule",
+      "size": "s"
+    }
+  ],
+  "defaults": [
+    {
+      "label": "Workflow start time",
+      "value": "8:00 AM each weekday",
+      "alternatives": [
+        "7:00 AM each weekday",
+        "9:00 AM each weekday"
+      ]
+    },
+    {
+      "label": "Company size score weight",
+      "value": "50 points max",
+      "alternatives": [
+        "30 points max",
+        "70 points max"
+      ]
+    },
+    {
+      "label": "Recent activity score weight",
+      "value": "50 points max",
+      "alternatives": [
+        "30 points max",
+        "70 points max"
+      ]
+    },
+    {
+      "label": "Explanation format",
+      "value": "one sentence",
+      "alternatives": [
+        "two sentences",
+        "bullet points"
+      ]
+    },
+    {
+      "label": "Number of top leads to post",
+      "value": "5",
+      "alternatives": [
+        "3",
+        "10"
+      ]
+    },
+    {
+      "label": "Slack channel",
+      "value": "#sales",
+      "alternatives": [
+        "#marketing",
+        "#execs"
+      ]
+    }
+  ],
+  "questions": [],
+  "not_in_this_version": []
+}

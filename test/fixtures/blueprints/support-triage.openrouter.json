@@ -1,0 +1,182 @@
+{
+  "name": "Ticket Triage Assistant",
+  "summary": "Automatically classifies Zendesk tickets by urgency and team, drafts replies for simple issues, and flags VIP tickets for escalation.",
+  "items": [
+    {
+      "key": "fetch-zendesk-tickets",
+      "grp": "features",
+      "title": "Fetch incoming Zendesk tickets",
+      "description": "Retrieves new tickets from Zendesk so they can be processed.",
+      "proved_when": "New tickets appear in the system within one minute of being created in Zendesk.",
+      "source_quote": "incoming Zendesk tickets",
+      "item_class": "integration.crm_lookup",
+      "size": "m",
+      "provider": "zendesk",
+      "framework": "lyzr"
+    },
+    {
+      "key": "classify-urgency-team",
+      "grp": "features",
+      "title": "Classify ticket urgency and team",
+      "description": "Reads each ticket and assigns an urgency level (low, medium, high) and the responsible team.",
+      "proved_when": "Every ticket has an urgency label (low, medium, high) and a team label visible in its details.",
+      "source_quote": "Classify incoming Zendesk tickets by urgency and team",
+      "item_class": "agent.summariser",
+      "size": "m",
+      "framework": "lyzr"
+    },
+    {
+      "key": "draft-reply-simple",
+      "grp": "features",
+      "title": "Draft a reply for simple tickets",
+      "description": "When a ticket is marked as simple, creates a suggested reply that agents can review and send.",
+      "proved_when": "Tickets marked as simple show a draft reply in the ticket notes.",
+      "source_quote": "draft a reply for simple ones",
+      "item_class": "agent.summariser",
+      "size": "m",
+      "framework": "lyzr"
+    },
+    {
+      "key": "escalate-vip",
+      "grp": "features",
+      "title": "Escalate VIP tickets to Slack",
+      "description": "When a ticket comes from a VIP customer, posts a notification to a designated Slack channel with ticket details.",
+      "proved_when": "VIP tickets trigger a message in the Slack channel within two minutes.",
+      "source_quote": "escalate anything from VIP customers",
+      "item_class": "integration.chat_send",
+      "size": "m",
+      "provider": "slack",
+      "framework": "lyzr"
+    }
+  ],
+  "defaults": [
+    {
+      "label": "Where to read tickets from",
+      "value": "Zendesk (alternatives: Salesforce, HubSpot)",
+      "alternatives": [
+        "Salesforce",
+        "HubSpot"
+      ]
+    },
+    {
+      "label": "Where to post escalations",
+      "value": "Slack (alternatives: Microsoft Teams, Email)",
+      "alternatives": [
+        "Microsoft Teams",
+        "Email"
+      ]
+    },
+    {
+      "label": "Agent framework",
+      "value": "Lyzr (alternatives: LangChain)",
+      "alternatives": [
+        "LangChain"
+      ]
+    },
+    {
+      "label": "Default size for agents and integrations",
+      "value": "Medium (alternatives: Small, Large)",
+      "alternatives": [
+        "Small",
+        "Large"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "text": "How should we determine the team responsible for a Zendesk ticket?",
+      "affects": [
+        "classify-urgency-team"
+      ],
+      "options": [
+        {
+          "label": "From the Zendesk group field",
+          "value": "zendesk-group"
+        },
+        {
+          "label": "From a custom field named 'team'",
+          "value": "custom-field-team"
+        },
+        {
+          "label": "From the requester's organization",
+          "value": "requester-org"
+        },
+        {
+          "label": "From a ticket tag",
+          "value": "ticket-tag"
+        }
+      ],
+      "recommended": "zendesk-group",
+      "default_effect": "reduce",
+      "blocking": false
+    },
+    {
+      "text": "What makes a ticket 'simple' enough to auto‑draft a reply?",
+      "affects": [
+        "draft-reply-simple"
+      ],
+      "options": [
+        {
+          "label": "Urgency is low",
+          "value": "urgency-low"
+        },
+        {
+          "label": "Urgency is low and team is support",
+          "value": "urgency-low-team-support"
+        },
+        {
+          "label": "Ticket description shorter than 100 characters",
+          "value": "short-description"
+        },
+        {
+          "label": "Any ticket not marked as high urgency",
+          "value": "not-high-urgency"
+        }
+      ],
+      "recommended": "urgency-low",
+      "default_effect": "keep",
+      "blocking": false
+    },
+    {
+      "text": "How should we identify VIP customers in Zendesk?",
+      "affects": [
+        "escalate-vip"
+      ],
+      "options": [
+        {
+          "label": "By a custom field 'vip' set to true",
+          "value": "vip-custom-field"
+        },
+        {
+          "label": "By a tag named 'vip'",
+          "value": "vip-tag"
+        },
+        {
+          "label": "By belonging to a specific organization",
+          "value": "vip-org"
+        },
+        {
+          "label": "By email domain ending in '@vipcompany.com'",
+          "value": "vip-email-domain"
+        }
+      ],
+      "recommended": "vip-custom-field",
+      "default_effect": "reduce",
+      "blocking": false
+    }
+  ],
+  "not_in_this_version": [
+    {
+      "title": "User interface for agents to edit draft replies",
+      "reason": "Out of scope for MVP; agents can review drafts in ticket notes."
+    },
+    {
+      "title": "Analytics dashboard for classification accuracy",
+      "reason": "Post‑MVP feature; can be added later."
+    },
+    {
+      "title": "Automatic ticket closure after reply sent",
+      "reason": "Not required for initial version."
+    }
+  ]
+}

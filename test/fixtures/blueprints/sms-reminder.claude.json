@@ -1,0 +1,76 @@
+{
+  "name": "Meeting SMS Reminder",
+  "summary": "Sends an automated SMS reminder with meeting links to all attendees before each calendar event.",
+  "items": [
+    {
+      "key": "calendar-events",
+      "grp": "integrations",
+      "title": "Calendar event sync",
+      "description": "Reads upcoming meetings and attendee lists from your calendar.",
+      "proved_when": "Upcoming calendar events and attendee lists are successfully loaded.",
+      "source_quote": "Before each meeting on my calendar",
+      "item_class": "integration.calendar",
+      "size": "m",
+      "provider": "google_calendar"
+    },
+    {
+      "key": "sms-sender",
+      "grp": "integrations",
+      "title": "Attendee text reminders",
+      "description": "Sends text message reminders with meeting links to each attendee.",
+      "proved_when": "SMS messages containing meeting links are successfully dispatched to attendees.",
+      "source_quote": "text each attendee an SMS reminder with the meeting link",
+      "item_class": "integration.chat_send",
+      "size": "m",
+      "provider": "slack"
+    },
+    {
+      "key": "reminder-schedule",
+      "grp": "quality",
+      "title": "Reminder schedule",
+      "description": "Triggers the reminder sender at the correct interval before each meeting starts.",
+      "proved_when": "Reminders are scheduled and triggered prior to meeting start times.",
+      "source_quote": "Before each meeting",
+      "item_class": "quality.schedule",
+      "size": "s"
+    }
+  ],
+  "defaults": [
+    {
+      "label": "Reminder timing",
+      "value": "15 minutes before",
+      "alternatives": [
+        "30 minutes before",
+        "5 minutes before",
+        "1 hour before"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "text": "Which SMS provider should be used to send text messages?",
+      "affects": [
+        "sms-sender"
+      ],
+      "options": [
+        {
+          "label": "Twilio",
+          "value": "twilio"
+        },
+        {
+          "label": "MessageBird",
+          "value": "messagebird"
+        }
+      ],
+      "recommended": "twilio",
+      "default_effect": "none",
+      "blocking": true
+    }
+  ],
+  "not_in_this_version": [
+    {
+      "title": "Two-way SMS replies",
+      "reason": "The request asks only for sending reminders, not handling replies."
+    }
+  ]
+}

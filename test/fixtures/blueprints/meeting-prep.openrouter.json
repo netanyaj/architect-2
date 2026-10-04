@@ -1,0 +1,175 @@
+{
+  "name": "Meeting Brief Bot",
+  "summary": "Before each meeting, the app pulls attendee email threads, summarizes any agenda PDF, creates three talking points, and sends a Slack brief.",
+  "items": [
+    {
+      "key": "upcoming-meetings",
+      "grp": "features",
+      "title": "List upcoming meetings",
+      "description": "Read the user's calendar to find meetings happening today.",
+      "proved_when": "System logs show a calendar read request for events in the next 24 hours.",
+      "source_quote": "Before each meeting on my calendar",
+      "item_class": "integration.calendar",
+      "size": "m",
+      "provider": "google_calendar"
+    },
+    {
+      "key": "attendee-list",
+      "grp": "data",
+      "title": "Get meeting attendees",
+      "description": "Extract the list of attendees from each calendar event.",
+      "proved_when": "For each upcoming meeting, attendee email addresses are extracted and stored.",
+      "source_quote": "Before each meeting on my calendar",
+      "item_class": "data.import",
+      "size": "s"
+    },
+    {
+      "key": "last-email-thread",
+      "grp": "integrations",
+      "title": "Last email thread per attendee",
+      "description": "Fetch the most recent email thread between the user and each meeting attendee.",
+      "proved_when": "For each attendee, the latest Gmail thread ID is retrieved and logged.",
+      "source_quote": "each attendee's last email thread",
+      "item_class": "integration.read_email",
+      "size": "m",
+      "provider": "gmail"
+    },
+    {
+      "key": "agenda-pdf-summary",
+      "grp": "agents",
+      "title": "Summarize attached agenda PDF",
+      "description": "If a meeting event includes a PDF attachment, extract its text and produce a brief summary.",
+      "proved_when": "For each meeting with a PDF attachment, a summary text under 200 characters is generated and saved.",
+      "source_quote": "summary of any attached agenda PDF",
+      "item_class": "agent.summariser",
+      "size": "l",
+      "framework": "lyzr"
+    },
+    {
+      "key": "talking-points",
+      "grp": "agents",
+      "title": "Generate three talking points",
+      "description": "Create three concise talking points based on the attendee email thread and agenda summary.",
+      "proved_when": "For each meeting, exactly three talking points are generated and stored.",
+      "source_quote": "three talking points",
+      "item_class": "agent.researcher",
+      "size": "m",
+      "framework": "lyzr"
+    },
+    {
+      "key": "compose-brief",
+      "grp": "features",
+      "title": "Compose Slack brief message",
+      "description": "Combine attendee email threads, agenda summary, and talking points into a formatted message for Slack.",
+      "proved_when": "A formatted Slack message payload is created for each upcoming meeting.",
+      "source_quote": "send me a Slack brief",
+      "item_class": "screen.detail",
+      "size": "m"
+    },
+    {
+      "key": "send-slack-brief",
+      "grp": "integrations",
+      "title": "Send brief via Slack",
+      "description": "Deliver the composed brief to the user as a direct message in Slack.",
+      "proved_when": "Slack API returns a success response for each brief message sent.",
+      "source_quote": "send me a Slack brief",
+      "item_class": "integration.chat_send",
+      "size": "m",
+      "provider": "slack"
+    },
+    {
+      "key": "schedule-brief",
+      "grp": "quality",
+      "title": "Schedule brief delivery",
+      "description": "Trigger the brief generation and delivery a set time before each meeting starts.",
+      "proved_when": "A scheduled job triggers at the configured lead time before each calendar event.",
+      "source_quote": "Before each meeting on my calendar",
+      "item_class": "quality.schedule",
+      "size": "s"
+    }
+  ],
+  "defaults": [
+    {
+      "label": "Lead time before meeting",
+      "value": "15 minutes before each meeting",
+      "alternatives": [
+        "5 minutes before each meeting",
+        "30 minutes before each meeting",
+        "At meeting start"
+      ]
+    },
+    {
+      "label": "Email provider",
+      "value": "gmail",
+      "alternatives": [
+        "outlook",
+        "exchange"
+      ]
+    },
+    {
+      "label": "Calendar provider",
+      "value": "google_calendar",
+      "alternatives": [
+        "outlook_calendar",
+        "apple_calendar"
+      ]
+    },
+    {
+      "label": "Slack destination",
+      "value": "direct message to the user",
+      "alternatives": [
+        "specific Slack channel",
+        "multiple channels"
+      ]
+    },
+    {
+      "label": "Number of talking points",
+      "value": "3",
+      "alternatives": [
+        "2",
+        "4",
+        "5"
+      ]
+    },
+    {
+      "label": "PDF summarisation length",
+      "value": "under 200 characters",
+      "alternatives": [
+        "under 100 characters",
+        "under 300 characters",
+        "full summary"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "text": "Which Slack workspace should this post to?",
+      "affects": [
+        "send-slack-brief"
+      ],
+      "options": [
+        {
+          "label": "The workspace you connected",
+          "value": "connected"
+        },
+        {
+          "label": "Another workspace",
+          "value": "other"
+        }
+      ],
+      "recommended": "connected",
+      "default_effect": "none",
+      "blocking": true
+    }
+  ],
+  "not_in_this_version": [
+    {
+      "title": "Non‑PDF attachment handling",
+      "reason": "Request only mentions agenda PDF; other file types are out of scope."
+    },
+    {
+      "title": "Slack channel posting",
+      "reason": "Default delivers brief as a direct message; posting to a channel was not requested."
+    }
+  ]
+}

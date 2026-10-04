@@ -1,0 +1,53 @@
+{
+  "name": "Vendor Tracker",
+  "summary": "Keep a list of our vendors with their renewal dates and view them sorted by the next renewal.",
+  "items": [
+    {
+      "key": "vendor-table",
+      "grp": "features",
+      "title": "Vendor renewal table",
+      "description": "Show them in a table sorted by the next renewal.",
+      "proved_when": "Table displays vendors and sorts them by upcoming renewal date automatically",
+      "source_quote": "show them in a table sorted by the next renewal",
+      "item_class": "screen.list",
+      "size": "m"
+    },
+    {
+      "key": "vendor-data-store",
+      "grp": "data",
+      "title": "Vendor records database",
+      "description": "Store vendor names, categories, and renewal dates securely.",
+      "proved_when": "Database successfully saves and retrieves vendor records",
+      "source_quote": "Keep a list of our vendors with their renewal dates",
+      "item_class": "data.table",
+      "size": "m"
+    },
+    {
+      "key": "vendor-form",
+      "grp": "features",
+      "title": "Add and edit vendor form",
+      "description": "Form to input and update vendor details and renewal dates.",
+      "proved_when": "New vendor details can be submitted and added to the table",
+      "source_quote": "Keep a list of our vendors with their renewal dates",
+      "item_class": "screen.form",
+      "size": "s"
+    }
+  ],
+  "defaults": [
+    {
+      "label": "Default table view",
+      "value": "All active vendors",
+      "alternatives": [
+        "Expiring this month",
+        "Archived vendors"
+      ]
+    }
+  ],
+  "questions": [],
+  "not_in_this_version": [
+    {
+      "title": "Automated email alerts",
+      "reason": "Not requested in the current scope focusing on the table view and vendor list"
+    }
+  ]
+}

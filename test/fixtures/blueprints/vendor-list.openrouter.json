@@ -1,0 +1,39 @@
+{
+  "name": "Vendor Renewal Tracker",
+  "summary": "Tracks vendor renewal dates and displays them in a sorted table.",
+  "items": [
+    {
+      "key": "vendor-renewals-data",
+      "grp": "data",
+      "title": "Vendor renewal database",
+      "description": "Stores each vendor's name and renewal date so the list can be kept up to date.",
+      "proved_when": "Vendor renewal records can be saved, retrieved, and updated.",
+      "source_quote": "Keep a list of our vendors with their renewal dates",
+      "item_class": "data.table",
+      "size": "m"
+    },
+    {
+      "key": "vendor-renewals-list",
+      "grp": "features",
+      "title": "Sorted vendor renewal table",
+      "description": "Shows vendors in a table ordered by the nearest renewal date.",
+      "proved_when": "The table lists vendors with the earliest renewal date at the top.",
+      "source_quote": "show them in a table sorted by the next renewal",
+      "item_class": "screen.list",
+      "size": "l"
+    },
+    {
+      "key": "vendor-initial-import",
+      "grp": "data",
+      "title": "Initial vendor import",
+      "description": "Loads vendor names and renewal dates from a file into the system.",
+      "proved_when": "After importing a CSV, the vendor table shows the imported rows.",
+      "source_quote": "Keep a list of our vendors with their renewal dates",
+      "item_class": "data.import",
+      "size": "s"
+    }
+  ],
+  "defaults": [],
+  "questions": [],
+  "not_in_this_version": []
+}

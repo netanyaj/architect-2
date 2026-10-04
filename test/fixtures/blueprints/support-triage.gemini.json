@@ -1,13 +1,13 @@
 {
-  "name": "Zendesk Ticket Assistant",
-  "summary": "Classifies incoming Zendesk support tickets, drafts replies for simple issues, and flags VIP customer escalations.",
+  "name": "Zendesk Ticket Triage",
+  "summary": "Automatically classifies Zendesk tickets, drafts replies for simple issues, and escalates VIP customer inquiries.",
   "items": [
     {
       "key": "incoming-tickets",
       "grp": "integrations",
       "title": "Incoming Zendesk tickets",
-      "description": "Reads incoming support tickets from Zendesk to process them.",
-      "proved_when": "Tickets are successfully fetched from Zendesk.",
+      "description": "Reads new incoming tickets from Zendesk to process them.",
+      "proved_when": "New tickets appear in the system feed.",
       "source_quote": "Classify incoming Zendesk tickets",
       "item_class": "integration.read_email",
       "size": "m",
@@ -16,59 +16,90 @@
     {
       "key": "ticket-classifier",
       "grp": "agents",
-      "title": "Ticket urgency and team classifier",
-      "description": "Analyzes the ticket content to determine urgency and assign the right team.",
-      "proved_when": "Each ticket receives an urgency level and team tag.",
-      "source_quote": "Classify incoming Zendesk tickets by urgency and team",
-      "item_class": "agent.summariser",
+      "title": "Ticket classifier and router",
+      "description": "Analyzes ticket content to determine urgency level and route to the correct internal team.",
+      "proved_when": "Tickets are successfully tagged with urgency and assigned team labels.",
+      "source_quote": "by urgency and team",
+      "item_class": "agent.researcher",
       "size": "m",
       "framework": "lyzr"
     },
     {
-      "key": "reply-drafter",
+      "key": "simple-reply-drafter",
       "grp": "agents",
       "title": "Simple reply drafter",
-      "description": "Creates a draft response for straightforward customer support requests.",
-      "proved_when": "A draft reply is generated and attached to simple tickets.",
+      "description": "Writes draft responses for straightforward tickets requiring standard answers.",
+      "proved_when": "Draft replies are generated and saved on tickets deemed simple.",
       "source_quote": "draft a reply for simple ones",
-      "item_class": "agent.researcher",
+      "item_class": "agent.summariser",
       "size": "m",
       "framework": "lyzr"
     },
     {
       "key": "vip-escalator",
       "grp": "features",
-      "title": "VIP customer escalation",
-      "description": "Identifies VIP customers and immediately flags their tickets for urgent handling.",
-      "proved_when": "VIP tickets are marked as escalated in the system.",
+      "title": "VIP ticket escalator",
+      "description": "Flags tickets from VIP customers and escalates them immediately for priority handling.",
+      "proved_when": "VIP customer tickets are marked urgent and highlighted in the dashboard.",
       "source_quote": "escalate anything from VIP customers",
       "item_class": "screen.form",
-      "size": "m"
+      "size": "s"
+    },
+    {
+      "key": "ticket-schedule",
+      "grp": "quality",
+      "title": "Continuous triage schedule",
+      "description": "Checks for new tickets every few minutes to ensure rapid response times.",
+      "proved_when": "Tickets are processed automatically without manual trigger.",
+      "source_quote": "Classify incoming Zendesk tickets",
+      "item_class": "quality.schedule",
+      "size": "s"
     }
   ],
   "defaults": [
     {
-      "label": "Urgency levels",
-      "value": "Low, Medium, High, Urgent",
+      "label": "Triage check frequency",
+      "value": "Every 5 minutes",
       "alternatives": [
-        "Low, High",
-        "Normal, Urgent"
+        "Every minute",
+        "Every 15 minutes",
+        "Hourly"
       ]
     },
     {
-      "label": "Draft placement",
-      "value": "Internal Zendesk draft",
+      "label": "VIP identification method",
+      "value": "Customer tag in Zendesk",
       "alternatives": [
-        "Direct email",
-        "Slack notification"
+        "Customer email domain list",
+        "Organization name matching"
       ]
     }
   ],
-  "questions": [],
+  "questions": [
+    {
+      "text": "Where should escalated VIP tickets be sent?",
+      "affects": [
+        "vip-escalator"
+      ],
+      "options": [
+        {
+          "label": "Slack channel #vip-support",
+          "value": "slack"
+        },
+        {
+          "label": "Direct email to support manager",
+          "value": "email"
+        }
+      ],
+      "recommended": "slack",
+      "default_effect": "keep",
+      "blocking": false
+    }
+  ],
   "not_in_this_version": [
     {
-      "title": "Automated ticket closing",
-      "reason": "Human review is required for all drafted replies before sending to ensure quality."
+      "title": "Auto-sending replies",
+      "reason": "Drafts are generated for agent review rather than sent automatically to prevent customer friction."
     }
   ]
 }

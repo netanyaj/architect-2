@@ -1,0 +1,119 @@
+{
+  "name": "Meeting SMS Reminder",
+  "summary": "Automatically sends an SMS with the meeting link to every attendee shortly before each calendar event starts.",
+  "items": [
+    {
+      "key": "schedule-trigger",
+      "grp": "quality",
+      "title": "Run before each meeting",
+      "description": "Starts a job a set number of minutes before each calendar event begins.",
+      "proved_when": "The system launches the reminder job X minutes before each event's start time.",
+      "source_quote": "Before each meeting on my calendar",
+      "item_class": "quality.schedule",
+      "size": "m"
+    },
+    {
+      "key": "calendar-read",
+      "grp": "data",
+      "title": "Read upcoming meetings and attendees",
+      "description": "Fetches the list of attendees and the meeting link for each upcoming calendar event.",
+      "proved_when": "For each upcoming meeting, the system retrieves attendee email addresses and the meeting URL.",
+      "source_quote": "text each attendee an SMS reminder with the meeting link",
+      "item_class": "integration.calendar",
+      "size": "m"
+    },
+    {
+      "key": "sms-send",
+      "grp": "integrations",
+      "title": "Send SMS reminder to each attendee",
+      "description": "Sends a text message containing the meeting link to every attendee using the chosen SMS provider.",
+      "proved_when": "An SMS with the meeting link is delivered to each attendee's phone number.",
+      "source_quote": "text each attendee an SMS reminder with the meeting link",
+      "item_class": "integration.chat_send",
+      "size": "m",
+      "provider": "twilio"
+    }
+  ],
+  "defaults": [
+    {
+      "label": "Minutes before each meeting to send SMS",
+      "value": "15 minutes",
+      "alternatives": [
+        "10 minutes",
+        "30 minutes",
+        "60 minutes"
+      ]
+    },
+    {
+      "label": "SMS provider to use",
+      "value": "Twilio",
+      "alternatives": [
+        "Nexmo",
+        "AWS SNS",
+        "Vonage"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "text": "Which SMS provider should be used to send the reminders?",
+      "affects": [
+        "sms-send"
+      ],
+      "options": [
+        {
+          "label": "Twilio",
+          "value": "twilio"
+        },
+        {
+          "label": "Nexmo",
+          "value": "nexmo"
+        },
+        {
+          "label": "AWS SNS",
+          "value": "aws-sns"
+        },
+        {
+          "label": "Vonage",
+          "value": "vonage"
+        }
+      ],
+      "recommended": "twilio",
+      "default_effect": "none",
+      "blocking": true
+    },
+    {
+      "text": "How many minutes before the meeting should the SMS be sent?",
+      "affects": [
+        "schedule-trigger"
+      ],
+      "options": [
+        {
+          "label": "10 minutes",
+          "value": "10"
+        },
+        {
+          "label": "15 minutes",
+          "value": "15"
+        },
+        {
+          "label": "30 minutes",
+          "value": "30"
+        },
+        {
+          "label": "60 minutes",
+          "value": "60"
+        }
+      ],
+      "recommended": "15",
+      "default_effect": "none",
+      "blocking": true
+    }
+  ],
+  "not_in_this_version": [
+    {
+      "title": "Fetching attendee phone numbers from external contacts or CRM",
+      "reason": "The request did not specify where to obtain phone numbers, so we assume they are already attached to the calendar attendee entry."
+    }
+  ]
+}

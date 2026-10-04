@@ -1,53 +1,52 @@
 {
   "name": "Vendor Renewal Tracker",
-  "summary": "Track all company vendors and their upcoming renewal dates in an organized table.",
+  "summary": "An application to keep a list of vendors with renewal dates, sorted automatically by the next renewal.",
   "items": [
     {
-      "key": "vendor-table",
-      "grp": "features",
-      "title": "Vendor renewal table",
-      "description": "Display all vendors and their renewal dates sorted by the next renewal",
-      "proved_when": "The table loads showing vendors sorted by closest renewal date first.",
-      "source_quote": "show them in a table sorted by the next renewal",
-      "item_class": "screen.list",
-      "size": "m"
-    },
-    {
-      "key": "vendor-data-store",
+      "key": "vendor-database",
       "grp": "data",
       "title": "Vendor database",
-      "description": "Store vendor details, contract terms, and renewal dates",
-      "proved_when": "Vendor records can be added, viewed, edited, and deleted successfully.",
+      "description": "Store all vendor records securely including names and renewal dates.",
+      "proved_when": "Vendor records can be successfully stored and retrieved.",
       "source_quote": "Keep a list of our vendors with their renewal dates",
       "item_class": "data.table",
       "size": "m"
     },
     {
-      "key": "vendor-form",
+      "key": "vendor-table-view",
+      "grp": "features",
+      "title": "Vendor renewal table",
+      "description": "Display vendors in a clear table sorted by the next upcoming renewal.",
+      "proved_when": "The user sees the vendor list ordered by the nearest renewal date.",
+      "source_quote": "show them in a table sorted by the next renewal",
+      "item_class": "screen.list",
+      "size": "m"
+    },
+    {
+      "key": "add-vendor-form",
       "grp": "features",
       "title": "Add vendor form",
-      "description": "Form to input new vendor information and renewal schedules",
-      "proved_when": "Submitting the form successfully creates a new entry in the vendor table.",
-      "source_quote": "Keep a list of our vendors with their renewal dates",
+      "description": "A simple form to input new vendor details and renewal dates.",
+      "proved_when": "A new vendor can be added through the interface and appears in the table.",
+      "source_quote": "Keep a list of our vendors",
       "item_class": "screen.form",
       "size": "s"
     }
   ],
   "defaults": [
     {
-      "label": "Table default view",
-      "value": "All active vendors",
+      "label": "Date sorting order",
+      "value": "Ascending (earliest renewal first)",
       "alternatives": [
-        "Upcoming renewals only",
-        "Archived vendors"
+        "Descending (latest renewal first)"
       ]
     }
   ],
   "questions": [],
   "not_in_this_version": [
     {
-      "title": "Automated email reminders",
-      "reason": "Not requested in the core scope."
+      "title": "Automated renewal email alerts",
+      "reason": "Not requested in the core requirements."
     }
   ]
 }

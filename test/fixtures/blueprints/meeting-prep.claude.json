@@ -1,0 +1,127 @@
+{
+  "name": "Meeting Brief Sender",
+  "summary": "Sends a detailed Slack brief before each calendar meeting with attendee email threads, PDF agenda summaries, and talking points.",
+  "items": [
+    {
+      "key": "calendar-events",
+      "grp": "integrations",
+      "title": "Calendar sync",
+      "description": "Reads upcoming meetings from the calendar",
+      "proved_when": "Upcoming meetings appear in the system schedule",
+      "source_quote": "Before each meeting on my calendar",
+      "item_class": "integration.calendar",
+      "size": "m",
+      "provider": "google_calendar"
+    },
+    {
+      "key": "attendee-email-threads",
+      "grp": "integrations",
+      "title": "Attendee email threads",
+      "description": "Fetches the last email thread for each meeting attendee",
+      "proved_when": "Email threads from attendees are successfully retrieved",
+      "source_quote": "each attendee's last email thread",
+      "item_class": "integration.read_email",
+      "size": "m",
+      "provider": "gmail"
+    },
+    {
+      "key": "agenda-pdf-summariser",
+      "grp": "agents",
+      "title": "Agenda PDF summariser",
+      "description": "Reads and summarises any attached agenda PDF",
+      "proved_when": "A summary of the attached PDF is generated",
+      "source_quote": "a summary of any attached agenda PDF",
+      "item_class": "agent.summariser",
+      "size": "m",
+      "framework": "lyzr"
+    },
+    {
+      "key": "talking-points-generator",
+      "grp": "agents",
+      "title": "Talking points generator",
+      "description": "Produces three relevant talking points for the meeting",
+      "proved_when": "Three talking points are generated for the meeting brief",
+      "source_quote": "three talking points",
+      "item_class": "agent.researcher",
+      "size": "m",
+      "framework": "lyzr"
+    },
+    {
+      "key": "slack-brief-sender",
+      "grp": "integrations",
+      "title": "Slack brief sender",
+      "description": "Sends the compiled brief to Slack",
+      "proved_when": "The brief message is posted to Slack",
+      "source_quote": "send me a Slack brief",
+      "item_class": "integration.chat_send",
+      "size": "m",
+      "provider": "slack"
+    },
+    {
+      "key": "brief-schedule",
+      "grp": "quality",
+      "title": "Brief schedule",
+      "description": "Triggers the brief generation before each meeting starts",
+      "proved_when": "Briefs are sent automatically prior to meeting times",
+      "source_quote": "Before each meeting on my calendar",
+      "item_class": "quality.schedule",
+      "size": "s"
+    }
+  ],
+  "defaults": [
+    {
+      "label": "Brief delivery time",
+      "value": "15 minutes before the meeting",
+      "alternatives": [
+        "30 minutes before the meeting",
+        "1 hour before the meeting"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "text": "Which Slack workspace should this post to?",
+      "affects": [
+        "slack-brief-sender"
+      ],
+      "options": [
+        {
+          "label": "The workspace you connected",
+          "value": "connected"
+        },
+        {
+          "label": "Another workspace",
+          "value": "other"
+        }
+      ],
+      "recommended": "connected",
+      "default_effect": "none",
+      "blocking": true
+    },
+    {
+      "text": "Where should the Slack brief be sent?",
+      "affects": [
+        "slack-brief-sender"
+      ],
+      "options": [
+        {
+          "label": "Direct message to me",
+          "value": "Direct message to me"
+        },
+        {
+          "label": "Specific channel",
+          "value": "Specific channel"
+        }
+      ],
+      "recommended": "Direct message to me",
+      "default_effect": "keep",
+      "blocking": false
+    }
+  ],
+  "not_in_this_version": [
+    {
+      "title": "Multi-calendar support",
+      "reason": "Only the primary calendar is connected in this version to keep setup simple."
+    }
+  ]
+}

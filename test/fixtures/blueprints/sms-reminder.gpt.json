@@ -1,0 +1,76 @@
+{
+  "name": "Meeting Reminder Sender",
+  "summary": "An automated system that texts every attendee an SMS reminder with the meeting link before each calendar event.",
+  "items": [
+    {
+      "key": "calendar-reader",
+      "grp": "integrations",
+      "title": "Calendar event reader",
+      "description": "Monitors the calendar for upcoming meetings and their scheduled start times.",
+      "proved_when": "Upcoming calendar events are successfully read.",
+      "source_quote": "Before each meeting on my calendar",
+      "item_class": "integration.calendar",
+      "size": "m",
+      "provider": "google_calendar"
+    },
+    {
+      "key": "sms-sender",
+      "grp": "integrations",
+      "title": "SMS text sender",
+      "description": "Sends text messages to meeting attendees via Twilio.",
+      "proved_when": "SMS messages are successfully dispatched to attendees.",
+      "source_quote": "text each attendee an SMS reminder",
+      "item_class": "integration.chat_send",
+      "size": "m",
+      "provider": "twilio"
+    },
+    {
+      "key": "reminder-scheduler",
+      "grp": "quality",
+      "title": "Reminder schedule checker",
+      "description": "Triggers the text message prior to the start of each meeting.",
+      "proved_when": "Reminders are sent out before the meeting starts.",
+      "source_quote": "Before each meeting",
+      "item_class": "quality.schedule",
+      "size": "s"
+    }
+  ],
+  "defaults": [
+    {
+      "label": "Reminder timing",
+      "value": "15 minutes before",
+      "alternatives": [
+        "30 minutes before",
+        "5 minutes before",
+        "1 hour before"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "text": "Which SMS provider should be used to send the text reminders?",
+      "affects": [
+        "sms-sender"
+      ],
+      "options": [
+        {
+          "label": "Twilio",
+          "value": "Twilio"
+        },
+        {
+          "label": "Vonage",
+          "value": "Vonage"
+        }
+      ],
+      "recommended": "Twilio",
+      "default_effect": "none",
+      "blocking": true
+    }
+  ],
+  "not_in_this_version": [
+    {
+      "title": "Two-way conversational SMS",
+      "reason": "The current version only sends one-way reminder texts with meeting links."
+    }
+  ]
+}

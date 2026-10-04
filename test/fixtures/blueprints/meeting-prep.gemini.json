@@ -1,12 +1,12 @@
 {
   "name": "Meeting Brief Assistant",
-  "summary": "Sends a Slack brief with attendee history, PDF agenda summaries, and talking points before every calendar meeting.",
+  "summary": "Sends a Slack brief with attendee emails, agenda summaries, and talking points before each calendar meeting.",
   "items": [
     {
       "key": "calendar-events",
       "grp": "integrations",
-      "title": "Google calendar sync",
-      "description": "Reads upcoming meetings from your calendar to trigger brief preparation.",
+      "title": "Calendar sync",
+      "description": "Reads upcoming meetings from your calendar to trigger briefs.",
       "proved_when": "Upcoming calendar events are fetched successfully",
       "source_quote": "Before each meeting on my calendar",
       "item_class": "integration.calendar",
@@ -14,22 +14,22 @@
       "provider": "google_calendar"
     },
     {
-      "key": "last-email-threads",
+      "key": "attendee-email-threads",
       "grp": "integrations",
       "title": "Last email thread per attendee",
-      "description": "Finds the most recent email thread with each meeting participant.",
-      "proved_when": "Email threads for attendees are retrieved successfully",
+      "description": "Finds the last email thread with each meeting attendee.",
+      "proved_when": "The last email thread for each attendee is retrieved",
       "source_quote": "each attendee's last email thread",
       "item_class": "integration.read_email",
       "size": "m",
       "provider": "gmail"
     },
     {
-      "key": "agenda-pdf-summary",
+      "key": "agenda-pdf-summariser",
       "grp": "agents",
       "title": "Agenda PDF summariser",
-      "description": "Reads attached PDF agendas from calendar invites and summarises them.",
-      "proved_when": "PDF text is parsed and summarised successfully",
+      "description": "Reads attached agenda PDFs and generates a short summary.",
+      "proved_when": "Agenda PDF attachments are summarised",
       "source_quote": "a summary of any attached agenda PDF",
       "item_class": "agent.summariser",
       "size": "m",
@@ -39,7 +39,7 @@
       "key": "talking-points-generator",
       "grp": "agents",
       "title": "Talking points generator",
-      "description": "Generates three relevant talking points based on emails and agenda.",
+      "description": "Produces three tailored talking points based on emails and agenda.",
       "proved_when": "Three talking points are generated for the meeting",
       "source_quote": "three talking points",
       "item_class": "agent.researcher",
@@ -47,11 +47,11 @@
       "framework": "lyzr"
     },
     {
-      "key": "slack-brief-sender",
+      "key": "slack-brief-delivery",
       "grp": "integrations",
-      "title": "Slack brief sender",
-      "description": "Delivers the prepared meeting brief to Slack.",
-      "proved_when": "Message is posted successfully to Slack",
+      "title": "Slack brief message",
+      "description": "Sends the compiled brief as a direct message on Slack.",
+      "proved_when": "The brief message appears in Slack",
       "source_quote": "send me a Slack brief",
       "item_class": "integration.chat_send",
       "size": "s",
@@ -60,21 +60,28 @@
     {
       "key": "brief-schedule",
       "grp": "quality",
-      "title": "Brief timing schedule",
-      "description": "Triggers brief generation before each meeting starts.",
-      "proved_when": "Briefs are sent prior to meeting start time",
-      "source_quote": "Before each meeting on my calendar",
+      "title": "Schedule brief timing",
+      "description": "Triggers the brief delivery before the meeting starts.",
+      "proved_when": "The brief is sent prior to the meeting start time",
+      "source_quote": "Before each meeting",
       "item_class": "quality.schedule",
       "size": "s"
     }
   ],
   "defaults": [
     {
-      "label": "Brief delivery time",
-      "value": "15 minutes before meeting",
+      "label": "Brief delivery timing",
+      "value": "15 minutes before",
       "alternatives": [
-        "30 minutes before meeting",
-        "1 hour before meeting"
+        "30 minutes before",
+        "1 hour before"
+      ]
+    },
+    {
+      "label": "Slack delivery channel",
+      "value": "Direct message to me",
+      "alternatives": [
+        "Dedicated channel"
       ]
     }
   ],
@@ -82,7 +89,7 @@
     {
       "text": "Which Slack workspace should this post to?",
       "affects": [
-        "slack-brief-sender"
+        "slack-brief-delivery"
       ],
       "options": [
         {
@@ -99,29 +106,33 @@
       "blocking": true
     },
     {
-      "text": "Where should the Slack brief be sent?",
+      "text": "How far in advance of each meeting should the brief be sent?",
       "affects": [
-        "slack-brief-sender"
+        "brief-schedule"
       ],
       "options": [
         {
-          "label": "Direct message to me",
-          "value": "Direct message to me"
+          "label": "15 minutes before",
+          "value": "15 minutes before"
         },
         {
-          "label": "A specific channel",
-          "value": "A specific channel"
+          "label": "30 minutes before",
+          "value": "30 minutes before"
+        },
+        {
+          "label": "1 hour before",
+          "value": "1 hour before"
         }
       ],
-      "recommended": "Direct message to me",
+      "recommended": "15 minutes before",
       "default_effect": "keep",
       "blocking": false
     }
   ],
   "not_in_this_version": [
     {
-      "title": "CRM data enrichment",
-      "reason": "Not requested; focus is on emails, PDFs, and talking points."
+      "title": "CRM data lookup",
+      "reason": "Not requested in the prompt."
     }
   ]
 }

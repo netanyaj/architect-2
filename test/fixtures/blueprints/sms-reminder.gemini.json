@@ -1,35 +1,45 @@
 {
-  "name": "Meeting SMS Reminder",
-  "summary": "Sends an SMS reminder with the meeting link to each attendee before each calendar event.",
+  "name": "Meeting SMS Reminders",
+  "summary": "An automated assistant that sends SMS meeting reminders with links to all attendees before each calendar event.",
   "items": [
     {
       "key": "calendar-events",
       "grp": "integrations",
-      "title": "Calendar event reader",
-      "description": "Reads upcoming meetings and attendee lists from your calendar.",
-      "proved_when": "Upcoming calendar events and attendee details are successfully retrieved.",
+      "title": "Calendar sync",
+      "description": "Reads upcoming meetings from your calendar to trigger the reminder process.",
+      "proved_when": "Upcoming calendar events are fetched successfully",
       "source_quote": "Before each meeting on my calendar",
       "item_class": "integration.calendar",
       "size": "m",
       "provider": "google_calendar"
     },
     {
-      "key": "sms-sender",
+      "key": "attendee-lookup",
+      "grp": "data",
+      "title": "Attendee contact directory",
+      "description": "Stores and retrieves phone numbers for meeting attendees.",
+      "proved_when": "Attendee phone numbers are correctly matched to calendar invitees",
+      "source_quote": "text each attendee",
+      "item_class": "data.table",
+      "size": "s"
+    },
+    {
+      "key": "sms-reminders",
       "grp": "integrations",
-      "title": "SMS reminder sender",
-      "description": "Sends text messages to meeting attendees.",
-      "proved_when": "SMS messages containing the meeting link are dispatched successfully.",
+      "title": "SMS text sender",
+      "description": "Sends text messages containing meeting links to each attendee.",
+      "proved_when": "SMS delivery report confirms messages sent to attendees",
       "source_quote": "text each attendee an SMS reminder with the meeting link",
       "item_class": "integration.chat_send",
       "size": "m",
       "provider": "twilio"
     },
     {
-      "key": "reminder-scheduler",
+      "key": "reminder-schedule",
       "grp": "quality",
-      "title": "Timing controller",
-      "description": "Triggers the reminder prior to the scheduled meeting time.",
-      "proved_when": "Reminders are sent at the designated interval before meetings.",
+      "title": "Reminder timing rule",
+      "description": "Schedules reminders to be sent out prior to the start of each meeting.",
+      "proved_when": "Reminders are triggered at the correct time interval before meetings",
       "source_quote": "Before each meeting",
       "item_class": "quality.schedule",
       "size": "s"
@@ -41,16 +51,16 @@
       "value": "15 minutes before the meeting",
       "alternatives": [
         "30 minutes before the meeting",
-        "5 minutes before the meeting",
-        "1 hour before the meeting"
+        "1 hour before the meeting",
+        "5 minutes before the meeting"
       ]
     }
   ],
   "questions": [
     {
-      "text": "Which SMS service should be used to send the text messages?",
+      "text": "Which SMS messaging service should be used to text attendees?",
       "affects": [
-        "sms-sender"
+        "sms-reminders"
       ],
       "options": [
         {
@@ -69,8 +79,8 @@
   ],
   "not_in_this_version": [
     {
-      "title": "Two-way text replies",
-      "reason": "The current version only supports one-way outgoing reminder messages."
+      "title": "Interactive RSVP replies",
+      "reason": "The current scope is strictly to send out reminders, not process incoming text replies."
     }
   ]
 }

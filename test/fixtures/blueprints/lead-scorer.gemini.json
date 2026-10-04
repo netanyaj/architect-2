@@ -1,56 +1,56 @@
 {
   "name": "Lead Scorer",
-  "summary": "Every morning, score new HubSpot leads using company size and recent activity, explain each score, and post the top 5 to Slack.",
+  "summary": "Every morning, score new HubSpot leads from 0 to 100 using company size and recent activity, explain each score, and post the top 5 to #sales.",
   "items": [
     {
-      "key": "hubspot-lead-sync",
+      "key": "hubspot-lead-reader",
       "grp": "integrations",
       "title": "HubSpot lead reader",
-      "description": "Reads newly added leads and their company size and activity data from HubSpot.",
-      "proved_when": "New leads are successfully fetched from HubSpot.",
+      "description": "Fetches new leads from HubSpot for daily scoring.",
+      "proved_when": "New leads are successfully retrieved from HubSpot.",
       "source_quote": "HubSpot leads",
       "item_class": "integration.crm_lookup",
       "size": "m",
       "provider": "hubspot"
     },
     {
-      "key": "slack-channel-poster",
-      "grp": "integrations",
-      "title": "Slack poster",
-      "description": "Posts messages to the designated Slack channel.",
-      "proved_when": "Messages appear in the specified Slack channel.",
-      "source_quote": "post the top 5 to #sales",
-      "item_class": "integration.chat_send",
-      "size": "s",
-      "provider": "slack"
-    },
-    {
       "key": "lead-scoring-agent",
       "grp": "agents",
-      "title": "Lead scoring and explanation writer",
-      "description": "Scores each new lead from 0 to 100 based on company size and recent activity, and explains the score.",
-      "proved_when": "Generated scores and explanations are attached to each lead.",
+      "title": "Lead scoring agent",
+      "description": "Scores new leads from 0 to 100 using company size and recent activity, and explains each score.",
+      "proved_when": "Leads are assigned a score between 0 and 100 with an explanation.",
       "source_quote": "score new HubSpot leads from 0 to 100 using company size and recent activity, explain each score",
       "item_class": "agent.researcher",
       "size": "l",
       "framework": "lyzr"
     },
     {
+      "key": "slack-poster",
+      "grp": "integrations",
+      "title": "Slack poster",
+      "description": "Posts the top 5 scored leads to the specified channel.",
+      "proved_when": "A message containing the top 5 leads is sent to Slack.",
+      "source_quote": "post the top 5 to #sales",
+      "item_class": "integration.chat_send",
+      "size": "s",
+      "provider": "slack"
+    },
+    {
       "key": "morning-schedule",
       "grp": "quality",
-      "title": "Morning schedule trigger",
+      "title": "Morning schedule",
       "description": "Triggers the lead scoring and posting process every morning.",
-      "proved_when": "The process runs automatically at the scheduled morning time.",
+      "proved_when": "The workflow executes automatically every morning.",
       "source_quote": "Every morning",
       "item_class": "quality.schedule",
       "size": "s"
     },
     {
-      "key": "lead-database",
+      "key": "scored-leads-table",
       "grp": "data",
-      "title": "Lead score history",
-      "description": "Stores scored leads and their explanations for reference.",
-      "proved_when": "Scored leads are saved and viewable in the data table.",
+      "title": "Scored leads table",
+      "description": "Stores leads, their calculated scores, explanations, and posting status.",
+      "proved_when": "Lead records and scores are saved in the database.",
       "source_quote": "score new HubSpot leads",
       "item_class": "data.table",
       "size": "m"
@@ -61,12 +61,13 @@
       "label": "Morning run time",
       "value": "8:00 AM",
       "alternatives": [
+        "6:00 AM",
         "7:00 AM",
         "9:00 AM"
       ]
     },
     {
-      "label": "Scoring criteria weight",
+      "label": "Scoring weight split",
       "value": "50% company size and 50% recent activity",
       "alternatives": [
         "70% company size and 30% recent activity",
@@ -76,29 +77,29 @@
   ],
   "questions": [
     {
-      "text": "Which Slack workspace and channel should the top leads be posted to?",
+      "text": "Which Slack workspace should the top 5 leads be posted to?",
       "affects": [
-        "slack-channel-poster"
+        "slack-poster"
       ],
       "options": [
         {
-          "label": "Post to #sales in the default workspace",
-          "value": "default_workspace"
+          "label": "Primary company Slack workspace",
+          "value": "primary"
         },
         {
-          "label": "Connect a different Slack workspace",
-          "value": "custom_workspace"
+          "label": "Connect a new Slack workspace",
+          "value": "new"
         }
       ],
-      "recommended": "default_workspace",
+      "recommended": "primary",
       "default_effect": "keep",
       "blocking": false
     }
   ],
   "not_in_this_version": [
     {
-      "title": "Email notifications",
-      "reason": "The user requested posting to Slack, so email delivery is excluded for now."
+      "title": "CRM write-back",
+      "reason": "The request only asked to post top leads to Slack and score them, not to update lead records back in HubSpot."
     }
   ]
 }

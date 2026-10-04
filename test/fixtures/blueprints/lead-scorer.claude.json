@@ -1,0 +1,104 @@
+{
+  "name": "Lead Scorer",
+  "summary": "Scores new HubSpot leads daily, explains the rating, and posts the top 5 to Slack.",
+  "items": [
+    {
+      "key": "hubspot-lead-reader",
+      "grp": "integrations",
+      "title": "HubSpot lead reader",
+      "description": "Fetches new leads from HubSpot every morning.",
+      "proved_when": "New leads are successfully retrieved from HubSpot.",
+      "source_quote": "score new HubSpot leads",
+      "item_class": "integration.crm_lookup",
+      "size": "m",
+      "provider": "hubspot"
+    },
+    {
+      "key": "lead-scoring-agent",
+      "grp": "agents",
+      "title": "Lead scoring agent",
+      "description": "Scores each lead from 0 to 100 based on company size and recent activity, and writes an explanation.",
+      "proved_when": "Every fetched lead receives a score and explanation.",
+      "source_quote": "score new HubSpot leads from 0 to 100 using company size and recent activity, explain each score",
+      "item_class": "agent.researcher",
+      "size": "l",
+      "framework": "lyzr"
+    },
+    {
+      "key": "slack-poster",
+      "grp": "integrations",
+      "title": "Slack poster",
+      "description": "Posts the top 5 scored leads to the sales channel.",
+      "proved_when": "A message containing the top 5 leads appears in the channel.",
+      "source_quote": "post the top 5 to #sales",
+      "item_class": "integration.chat_send",
+      "size": "s",
+      "provider": "slack"
+    },
+    {
+      "key": "daily-schedule",
+      "grp": "quality",
+      "title": "Morning run schedule",
+      "description": "Triggers the lead scoring and posting workflow every morning.",
+      "proved_when": "The workflow runs automatically at the scheduled morning hour.",
+      "source_quote": "Every morning",
+      "item_class": "quality.schedule",
+      "size": "s"
+    },
+    {
+      "key": "leads-database",
+      "grp": "data",
+      "title": "Leads database",
+      "description": "Stores scored leads and explanations for tracking.",
+      "proved_when": "Scores and explanations are saved and viewable.",
+      "source_quote": "score new HubSpot leads from 0 to 100",
+      "item_class": "data.table",
+      "size": "m"
+    }
+  ],
+  "defaults": [
+    {
+      "label": "Morning run time",
+      "value": "8:00 AM",
+      "alternatives": [
+        "6:00 AM",
+        "7:00 AM",
+        "9:00 AM"
+      ]
+    },
+    {
+      "label": "Slack workspace connection",
+      "value": "Primary Slack Workspace",
+      "alternatives": [
+        "Secondary Slack Workspace"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "text": "Which Slack workspace should the leads be posted to?",
+      "affects": [
+        "slack-poster"
+      ],
+      "options": [
+        {
+          "label": "Primary workspace",
+          "value": "primary"
+        },
+        {
+          "label": "Secondary workspace",
+          "value": "secondary"
+        }
+      ],
+      "recommended": "primary",
+      "default_effect": "keep",
+      "blocking": false
+    }
+  ],
+  "not_in_this_version": [
+    {
+      "title": "Manual lead trigger button",
+      "reason": "The request specifically asks for an automated morning schedule rather than on-demand runs."
+    }
+  ]
+}

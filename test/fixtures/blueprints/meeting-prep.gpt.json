@@ -1,0 +1,127 @@
+{
+  "name": "Meeting Brief Assistant",
+  "summary": "An agentic web app that automatically sends a Slack brief before each calendar meeting containing attendee email threads, PDF agenda summaries, and talking points.",
+  "items": [
+    {
+      "key": "calendar-reader",
+      "grp": "integrations",
+      "title": "Calendar integration",
+      "description": "Reads upcoming meetings from your calendar to trigger the brief generation.",
+      "proved_when": "The system successfully fetches upcoming meetings and attendee lists.",
+      "source_quote": "Before each meeting on my calendar",
+      "item_class": "integration.calendar",
+      "size": "m",
+      "provider": "google_calendar"
+    },
+    {
+      "key": "slack-sender",
+      "grp": "integrations",
+      "title": "Slack message sender",
+      "description": "Sends the generated meeting brief directly to your Slack workspace.",
+      "proved_when": "A message is successfully posted to Slack before a meeting.",
+      "source_quote": "send me a Slack brief",
+      "item_class": "integration.chat_send",
+      "size": "s",
+      "provider": "slack"
+    },
+    {
+      "key": "email-reader",
+      "grp": "integrations",
+      "title": "Email thread retriever",
+      "description": "Retrieves the last email thread with each meeting attendee.",
+      "proved_when": "The last email thread per attendee is successfully fetched.",
+      "source_quote": "each attendee's last email thread",
+      "item_class": "integration.read_email",
+      "size": "m",
+      "provider": "gmail"
+    },
+    {
+      "key": "brief-generator",
+      "grp": "agents",
+      "title": "Meeting brief generator",
+      "description": "Summarizes attached agenda PDFs and generates three relevant talking points.",
+      "proved_when": "An agent processes the agenda PDF and creates talking points and summaries.",
+      "source_quote": "a summary of any attached agenda PDF, and three talking points",
+      "item_class": "agent.summariser",
+      "size": "l",
+      "framework": "lyzr"
+    },
+    {
+      "key": "schedule-trigger",
+      "grp": "quality",
+      "title": "Pre-meeting scheduler",
+      "description": "Triggers the brief creation and delivery prior to the scheduled meeting time.",
+      "proved_when": "Briefs are sent automatically before meetings start.",
+      "source_quote": "Before each meeting on my calendar",
+      "item_class": "quality.schedule",
+      "size": "s"
+    }
+  ],
+  "defaults": [
+    {
+      "label": "Delivery timing",
+      "value": "15 minutes before each meeting",
+      "alternatives": [
+        "30 minutes before each meeting",
+        "1 hour before each meeting"
+      ]
+    },
+    {
+      "label": "Slack destination",
+      "value": "Direct message to you",
+      "alternatives": [
+        "A dedicated channel like #meetings"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "text": "Which Slack workspace should this post to?",
+      "affects": [
+        "slack-sender"
+      ],
+      "options": [
+        {
+          "label": "The workspace you connected",
+          "value": "connected"
+        },
+        {
+          "label": "Another workspace",
+          "value": "other"
+        }
+      ],
+      "recommended": "connected",
+      "default_effect": "none",
+      "blocking": true
+    },
+    {
+      "text": "How far in advance of each meeting should the brief arrive in Slack?",
+      "affects": [
+        "schedule-trigger"
+      ],
+      "options": [
+        {
+          "label": "15 minutes before",
+          "value": "15 minutes"
+        },
+        {
+          "label": "30 minutes before",
+          "value": "30 minutes"
+        },
+        {
+          "label": "1 hour before",
+          "value": "1 hour"
+        }
+      ],
+      "recommended": "15 minutes",
+      "default_effect": "keep",
+      "blocking": false
+    }
+  ],
+  "not_in_this_version": [
+    {
+      "title": "Custom PDF templates",
+      "reason": "Keeping the scope focused on text summaries and talking points in Slack."
+    }
+  ]
+}

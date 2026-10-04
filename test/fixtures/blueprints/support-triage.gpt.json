@@ -1,0 +1,110 @@
+{
+  "name": "Zendesk Ticket Assistant",
+  "summary": "Classify incoming Zendesk tickets by urgency and team, draft replies for simple ones, and escalate VIP tickets.",
+  "items": [
+    {
+      "key": "zendesk-ticket-reader",
+      "grp": "integrations",
+      "title": "Incoming Zendesk tickets",
+      "description": "Reads new incoming tickets from Zendesk as they arrive.",
+      "proved_when": "New support tickets appear in the app queue automatically.",
+      "source_quote": "Classify incoming Zendesk tickets",
+      "item_class": "integration.read_email",
+      "size": "m",
+      "provider": "zendesk"
+    },
+    {
+      "key": "ticket-classification-agent",
+      "grp": "agents",
+      "title": "Ticket classifier and router",
+      "description": "Classifies incoming tickets by urgency level and assigns them to the correct team.",
+      "proved_when": "Tickets in the list display assigned urgency and team labels.",
+      "source_quote": "Classify incoming Zendesk tickets by urgency and team",
+      "item_class": "agent.researcher",
+      "size": "m",
+      "framework": "lyzr"
+    },
+    {
+      "key": "reply-drafting-agent",
+      "grp": "agents",
+      "title": "Simple reply drafter",
+      "description": "Drafts polite response messages for simple tickets automatically.",
+      "proved_when": "A draft reply is generated and attached to simple tickets.",
+      "source_quote": "draft a reply for simple ones",
+      "item_class": "agent.summariser",
+      "size": "m",
+      "framework": "lyzr"
+    },
+    {
+      "key": "vip-escalation-rule",
+      "grp": "agents",
+      "title": "VIP ticket escalator",
+      "description": "Detects tickets from VIP customers and flags them for immediate human escalation.",
+      "proved_when": "Tickets from recognized VIP customers are marked as high priority and alerted.",
+      "source_quote": "escalate anything from VIP customers",
+      "item_class": "agent.researcher",
+      "size": "m",
+      "framework": "lyzr"
+    },
+    {
+      "key": "ticket-dashboard-screen",
+      "grp": "features",
+      "title": "Ticket review dashboard",
+      "description": "Displays all classified tickets, draft replies, and escalated VIP items in a single list view.",
+      "proved_when": "Users can view the list of tickets with their urgency, assigned team, and drafts.",
+      "source_quote": "Classify incoming Zendesk tickets by urgency and team, draft a reply for simple ones, and escalate anything from VIP",
+      "item_class": "screen.list",
+      "size": "l"
+    }
+  ],
+  "defaults": [
+    {
+      "label": "VIP identification method",
+      "value": "Zendesk organization tag",
+      "alternatives": [
+        "Zendesk organization tag",
+        "Email domain match",
+        "Custom field"
+      ]
+    },
+    {
+      "label": "Draft approval workflow",
+      "value": "Review before sending",
+      "alternatives": [
+        "Review before sending",
+        "Send automatically"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "text": "Where should VIP ticket escalations be sent?",
+      "affects": [
+        "vip-escalation-rule"
+      ],
+      "options": [
+        {
+          "label": "Slack channel",
+          "value": "slack"
+        },
+        {
+          "label": "Email notification",
+          "value": "email"
+        },
+        {
+          "label": "Zendesk urgent tag",
+          "value": "zendesk"
+        }
+      ],
+      "recommended": "slack",
+      "default_effect": "none",
+      "blocking": false
+    }
+  ],
+  "not_in_this_version": [
+    {
+      "title": "Automated ticket closing",
+      "reason": "Not requested; the scope focuses on classification, drafting, and escalation."
+    }
+  ]
+}

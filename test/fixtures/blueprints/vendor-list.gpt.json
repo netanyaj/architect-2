@@ -1,0 +1,53 @@
+{
+  "name": "Vendor Tracker",
+  "summary": "Keep a list of vendors and their renewal dates sorted by upcoming renewals.",
+  "items": [
+    {
+      "key": "vendor-table",
+      "grp": "features",
+      "title": "Vendor renewal table",
+      "description": "View all vendors and their renewal dates in a clean table.",
+      "proved_when": "Table renders with vendor names and renewal dates",
+      "source_quote": "show them in a table sorted by the next renewal",
+      "item_class": "screen.list",
+      "size": "m"
+    },
+    {
+      "key": "vendor-data",
+      "grp": "data",
+      "title": "Vendor records",
+      "description": "Store vendor details and renewal dates in a secure database.",
+      "proved_when": "Vendor records can be added, viewed, and updated",
+      "source_quote": "Keep a list of our vendors with their renewal dates",
+      "item_class": "data.table",
+      "size": "s"
+    },
+    {
+      "key": "renewal-sort",
+      "grp": "features",
+      "title": "Renewal sorting",
+      "description": "Automatically sort the vendor list by the next upcoming renewal date.",
+      "proved_when": "Vendors appear with the soonest renewal date at the top",
+      "source_quote": "sorted by the next renewal",
+      "item_class": "screen.list",
+      "size": "s"
+    }
+  ],
+  "defaults": [
+    {
+      "label": "Date format",
+      "value": "Month Day, Year",
+      "alternatives": [
+        "MM/DD/YYYY",
+        "DD/MM/YYYY"
+      ]
+    }
+  ],
+  "questions": [],
+  "not_in_this_version": [
+    {
+      "title": "Automated email alerts",
+      "reason": "Not requested in the current version."
+    }
+  ]
+}
