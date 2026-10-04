@@ -43,21 +43,16 @@ test.describe("pages and the project workspace", () => {
     await expect(page.getByRole("region", { name: "Stage" })).toBeVisible();
     await expect(page.getByRole("complementary", { name: "Chat" })).toBeVisible();
     await expect(page.getByRole("complementary", { name: "Chat" }).getByText(/Classify incoming Zendesk tickets/)).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Project stage" }).getByText("no plan yet")).toBeVisible();
+    // Write the plan writes it straight away; before Build the stage is the plan document (screen 2).
+    await expect(page.getByText(/Here's the plan: \d+ parts/)).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole("region", { name: "Stage" }).getByRole("heading", { name: "What it does" }).or(page.getByRole("region", { name: "Stage" }).getByRole("heading", { name: "AI agents" })).first()).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Files" })).toHaveCount(0);
 
-    // Nothing builds without a click, and nothing was charged.
-    const build = page.getByRole("button", { name: "Build", exact: true });
-    await expect(build).toHaveAttribute("aria-disabled", "true");
+    // Nothing builds without a click, and only writing the plan was charged.
     const id = page.url().split("/p/")[1];
     const db = adminDb();
     expect((await db.from("runs").select("id").eq("project_id", id)).data).toEqual([]);
-    expect((await db.from("usage_ledger").select("id").eq("project_id", id)).data).toEqual([]);
-
-    // Full-width views collapse the panels to rails.
-    await page.getByRole("tab", { name: "Files" }).click();
-    await expect(page).toHaveURL(/\?view=files$/);
-    await expect(page.getByRole("button", { name: "Open plan" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "No plan yet" })).toBeVisible();
+    expect((await db.from("usage_ledger").select("kind").eq("project_id", id)).data!.map((u) => u.kind)).toEqual(["blueprint"]);
   });
 
   test("Projects: filters count right, duplicate makes a draft copy, delete asks first", async ({ page }) => {
