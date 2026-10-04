@@ -36,15 +36,17 @@ export function PartDrawer({ project, items }: { project: ProjectWorkspace; item
   const [error, setError] = useState<string>();
   const canAct = canBuild(project.role);
   // A part can show Blocked while the rest of the build plays; its choices open once the run settles.
-  const playing = project.run?.status === "running";
-  const viewerReason = !canAct ? "Viewers can't change the build." : playing ? "The build is still running. This opens when it finishes." : undefined;
+
 
   // Reload when the part's state changes, and once its run settles (proofs are written then).
   const statusKey = part ? `${part.id}:${part.status}:${project.run?.status ?? ""}` : null;
+  // Keyed on the part's id, not the object: the build's clock re-renders every second, and a slow answer
+  // must not be thrown away by the next tick.
+  const partId = part?.id ?? null;
   useEffect(() => {
-    if (!part || loadedFor === statusKey) return;
+    if (!partId || loadedFor === statusKey) return;
     let stale = false;
-    void loadPart({ itemId: part.id }).then((r) => {
+    void loadPart({ itemId: partId }).then((r) => {
       if (stale) return;
       setDetail(r.ok ? r.detail : null);
       setLoadedFor(statusKey);
@@ -52,11 +54,15 @@ export function PartDrawer({ project, items }: { project: ProjectWorkspace; item
     return () => {
       stale = true;
     };
-  }, [part, statusKey, loadedFor]);
+  }, [partId, statusKey, loadedFor]);
 
   if (!part) return null;
   const blocked = part.status === "paused";
   const d = loadedFor === statusKey ? detail : null;
+  // Once the database shows the part Blocked (its suggestion is there), the run has settled, even if this page
+  // hasn't refreshed yet.
+  const playing = project.run?.status === "running" && !d?.suggestion;
+  const viewerReason = !canAct ? "Viewers can't change the build." : playing ? "The build is still running. This opens when it finishes." : undefined;
   const close = () => {
     openPart(null);
     setError(undefined);

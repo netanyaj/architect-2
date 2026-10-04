@@ -210,9 +210,12 @@ export function AppPreview({ project, items }: { project: ProjectWorkspace; item
 
   const post = (m: Record<string, unknown>) => frame.current?.contentWindow?.postMessage(m, window.location.origin);
   // The selected part is outlined in the app, never isolated.
+  // Keyed on what's shown, not the part object (rebuilt on every tick of the build's clock).
+  const section = selected ? sectionFor(selected) : null;
+  const label = selected?.title;
   useEffect(() => {
-    post({ type: "highlight", part: selected ? sectionFor(selected) : null, label: selected?.title });
-  }, [selected]);
+    post({ type: "highlight", part: section, label });
+  }, [section, label]);
   useEffect(() => post({ type: "point", on: pointing }), [pointing]);
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {

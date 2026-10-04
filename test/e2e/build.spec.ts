@@ -69,12 +69,12 @@ test.describe("M3: the simulated build", () => {
     await blocked.click();
 
     const drawer = page.getByRole("dialog", { name: "Talking points generator is blocked" });
-    await expect(drawer.getByText("What I tried")).toBeVisible();
+    await expect(drawer.getByRole("heading", { name: "What I tried" })).toBeVisible();
     await expect(drawer.getByRole("listitem")).toHaveCount(3);
     await expect(drawer.getByText("236 words · 2 cr").or(drawer.getByText("236 words · 3 cr"))).toBeVisible();
     await expect(drawer.getByText("Allow up to 250 words")).toBeVisible();
     await drawer.getByRole("button", { name: "Allow 250 words" }).click();
-
+    await expect(drawer).toHaveCount(0);
     await expect(blocked).toHaveCount(0);
     const db = adminDb();
     const { data: part } = await db.from("items").select("status, proved_when, fix_attempts").eq("project_id", id).eq("key", "talking-points-generator").single();
