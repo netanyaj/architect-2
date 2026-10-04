@@ -42,8 +42,10 @@ const tone: Record<Status, string> = {
   todo: "text-ink-2 shadow-[inset_0_0_0_1.5px_var(--line-ctl)]",
 };
 
+// Words take the status colour only where they need attention. Finished ("works") gets a quiet check
+// and an ink word, never a green one (design-system rule: finished rows get only a quiet check).
 const wordTone: Record<Status, string> = {
-  works: "text-works",
+  works: "text-ink",
   building: "text-building",
   attention: "text-attention",
   approval: "text-approval",
@@ -94,7 +96,7 @@ export function StatusWord({
 }) {
   return (
     <span className={cn("inline-flex items-center gap-1.5 text-body font-[650]", wordTone[status], className)}>
-      <i className="block size-2 flex-none rounded-full bg-current" aria-hidden="true" />
+      <i className={cn("block size-2 flex-none rounded-full bg-current", status === "works" && "bg-works")} aria-hidden="true" />
       {children}
     </span>
   );
