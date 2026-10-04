@@ -1302,7 +1302,6 @@ export type Database = {
         Returns: string
       }
       apply_seed_updates: { Args: { p_workspace: string }; Returns: undefined }
-      settle_run: { Args: { p_run: string }; Returns: string }
       can_build: { Args: { ws: string }; Returns: boolean }
       create_demo_workspace: {
         Args: { p_email: string; p_name: string; p_user: string }
@@ -1317,6 +1316,7 @@ export type Database = {
         Args: { p_owner: string; p_workspace: string }
         Returns: undefined
       }
+      settle_run: { Args: { p_run: string }; Returns: string }
       workspace_name_for: {
         Args: { p_email: string; p_name: string }
         Returns: string
