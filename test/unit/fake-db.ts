@@ -13,6 +13,25 @@ export class FakeDb {
     return { data: null, error: null };
   };
 
+  /** Stand-in for Supabase Storage: bucket → set of object paths. */
+  objects: Record<string, Set<string>> = {};
+  storage = {
+    from: (bucket: string) => {
+      this.objects[bucket] ??= new Set();
+      const set = this.objects[bucket];
+      return {
+        list: async (folder: string, opts?: { limit?: number }) => {
+          const names = [...set].filter((p) => p.startsWith(`${folder}/`)).map((p) => p.slice(folder.length + 1)).filter((n) => !n.includes("/"));
+          return { data: names.slice(0, opts?.limit ?? 100).map((name) => ({ name })), error: null };
+        },
+        remove: async (paths: string[]) => {
+          for (const p of paths) set.delete(p);
+          return { data: paths.map((name) => ({ name })), error: null };
+        },
+      };
+    },
+  };
+
   constructor(seed: Record<string, Row[]> = {}) {
     for (const [t, rows] of Object.entries(seed)) this.tables[t] = rows.map((r) => ({ ...r }));
   }

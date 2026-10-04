@@ -157,6 +157,11 @@ describe("deleteProject", () => {
     expect(db.tables.support_tickets[0]).toMatchObject({ question: "Why?", project_id: null });
     expect(audits()).toEqual(["project.deleted"]);
   });
+  it("removes the project's uploaded files from the bucket, and only those", async () => {
+    db.objects.uploads = new Set([`ws-1/${P1}/a-agenda.pdf`, `ws-1/${P1}/b-logo.png`, `ws-1/${P2}/c-other.pdf`]);
+    expect(await deleteProject({ projectId: P1 })).toEqual({ ok: true });
+    expect([...db.objects.uploads]).toEqual([`ws-1/${P2}/c-other.pdf`]);
+  });
   it("a Builder can delete their own project but not someone else's", async () => {
     role = "builder";
     expect(await deleteProject({ projectId: P2 })).toEqual({ ok: false, message: "Only the project's owner, an Owner or an Admin can delete it." });

@@ -10,6 +10,7 @@ import type { Role } from "@/lib/db";
 import { assignableRolesFor, canChangeMember, canManageMembers, canResetDemo, ROLE_INFO } from "@/lib/permissions";
 import { createAdminDb, createServerDb } from "../db";
 import { origin } from "../origin";
+import { removeProjectFiles } from "../uploads";
 import { displayNameFor, getAppContext, WORKSPACE_COOKIE } from "../workspace";
 
 export type ActionResult<T = object> = ({ ok: true } & T) | { ok: false; message: string };
@@ -189,12 +190,16 @@ export async function switchWorkspace(workspaceId: string): Promise<ActionResult
   return { ok: true };
 }
 
-/** Settings › Reset demo data (Owner only): restores the seeded Acme Ops. People and tickets are kept. */
+/** Settings › Reset demo data (Owner only): restores the seeded demo, removing projects' uploaded files. People and tickets are kept. */
 export async function resetDemoData(): Promise<ActionResult> {
   const ctx = await getAppContext();
   if (!canResetDemo(ctx.role)) return { ok: false, message: "Only the workspace Owner can reset demo data." };
-  const { error } = await createAdminDb().rpc("reset_demo_workspace", { p_workspace: ctx.workspace.id, p_owner: ctx.user.id });
+  const admin = createAdminDb();
+  // The reset deletes every project, so note which ones have files before it runs.
+  const { data: before } = await admin.from("projects").select("id").eq("workspace_id", ctx.workspace.id);
+  const { error } = await admin.rpc("reset_demo_workspace", { p_workspace: ctx.workspace.id, p_owner: ctx.user.id });
   if (error) return { ok: false, message: "Demo data couldn't be reset. Nothing was changed. Try again." };
+  for (const p of before ?? []) await removeProjectFiles(admin, ctx.workspace.id, p.id);
   revalidatePath("/", "layout");
   return { ok: true };
 }

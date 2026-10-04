@@ -8,7 +8,7 @@ import type { Json } from "@/lib/database.types";
 import { MODEL_CHOICES, MODEL_LABEL } from "@/lib/models";
 import { canBuild, canManageMembers } from "@/lib/permissions";
 import { allowedModels } from "../blueprint/write-plan";
-import { prepareUploads, type UploadSlot } from "../uploads";
+import { prepareUploads, removeProjectFiles, type UploadSlot } from "../uploads";
 import { createAdminDb } from "../db";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
@@ -139,7 +139,7 @@ export async function duplicateProject(input: { projectId: string }): Promise<Ac
   return { ok: true, projectId: copy.id };
 }
 
-/** Owners and Admins can delete any project; a Builder can delete their own. Usage history goes with it. */
+/** Owners and Admins can delete any project; a Builder can delete their own. Usage history and uploaded files go with it. */
 export async function deleteProject(input: { projectId: string }): Promise<ActionResult> {
   const ctx = await getAppContext();
   const project = await loadProject(input.projectId, ctx.workspace.id);
@@ -152,6 +152,8 @@ export async function deleteProject(input: { projectId: string }): Promise<Actio
   await admin.from("support_tickets").update({ project_id: null }).eq("project_id", project.id);
   const { error } = await admin.from("projects").delete().eq("id", project.id);
   if (error) return { ok: false, message: "The project couldn't be deleted. Try again." };
+  // Its rows are gone (file records with them); now the files themselves.
+  await removeProjectFiles(admin, ctx.workspace.id, project.id);
   await audit(ctx.workspace.id, ctx.name, "project.deleted", project.name);
   revalidatePath("/projects");
   revalidatePath("/home");

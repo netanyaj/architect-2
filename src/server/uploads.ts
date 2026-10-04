@@ -37,3 +37,25 @@ export async function prepareUploads(admin: AdminDb, workspaceId: string, projec
   return { slots } as const;
 }
 
+
+/**
+ * Removes a project's uploaded files from the private bucket (its folder: <workspace>/<project>/). Called after the
+ * project's database rows are gone, so nothing ever points at a missing file. Best effort: a failure leaves an
+ * unreachable file behind (the bucket is private), never a broken project.
+ */
+export async function removeProjectFiles(admin: AdminDb, workspaceId: string, projectId: string): Promise<number> {
+  const folder = `${workspaceId}/${projectId}`;
+  let removed = 0;
+  for (;;) {
+    const { data, error } = await admin.storage.from("uploads").list(folder, { limit: 100 });
+    if (error || !data?.length) break;
+    const { error: rmError } = await admin.storage.from("uploads").remove(data.map((o) => `${folder}/${o.name}`));
+    if (rmError) {
+      console.error("removeProjectFiles: couldn't remove files", rmError.message);
+      break;
+    }
+    removed += data.length;
+    if (data.length < 100) break;
+  }
+  return removed;
+}

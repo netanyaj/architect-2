@@ -216,9 +216,12 @@ describe("switchWorkspace", () => {
 /* ---------- resetDemoData ---------- */
 
 describe("resetDemoData", () => {
-  it("runs the reset for the Owner", async () => {
+  it("runs the reset for the Owner, and removes the old projects' uploaded files", async () => {
+    db.tables.projects = [{ id: "p-1", workspace_id: "ws-1" }, { id: "p-9", workspace_id: "ws-9" }];
+    db.objects.uploads = new Set(["ws-1/p-1/agenda.pdf", "ws-9/p-9/theirs.pdf"]);
     expect(await resetDemoData()).toEqual({ ok: true });
     expect(db.rpcCalls).toEqual([{ fn: "reset_demo_workspace", args: { p_workspace: "ws-1", p_owner: "owner-1" } }]);
+    expect([...db.objects.uploads]).toEqual(["ws-9/p-9/theirs.pdf"]);
   });
   it("refuses everyone else", async () => {
     ctx.role = "admin";
