@@ -216,12 +216,21 @@ export type Database = {
       blueprints: {
         Row: {
           agreed_at: string | null
+          based_on: number | null
           created_at: string
           created_by: string | null
+          drafting_credits: number | null
+          error: string | null
+          error_kind: string | null
           est_minutes: number | null
+          generation: string
           id: string
+          model: string | null
+          name: string | null
+          not_in_this_version: Json
           project_id: string
           prompt: string
+          simulated_model: boolean
           status: string
           summary: string | null
           total_high: number | null
@@ -231,12 +240,21 @@ export type Database = {
         }
         Insert: {
           agreed_at?: string | null
+          based_on?: number | null
           created_at?: string
           created_by?: string | null
+          drafting_credits?: number | null
+          error?: string | null
+          error_kind?: string | null
           est_minutes?: number | null
+          generation?: string
           id?: string
+          model?: string | null
+          name?: string | null
+          not_in_this_version?: Json
           project_id: string
           prompt: string
+          simulated_model?: boolean
           status?: string
           summary?: string | null
           total_high?: number | null
@@ -246,12 +264,21 @@ export type Database = {
         }
         Update: {
           agreed_at?: string | null
+          based_on?: number | null
           created_at?: string
           created_by?: string | null
+          drafting_credits?: number | null
+          error?: string | null
+          error_kind?: string | null
           est_minutes?: number | null
+          generation?: string
           id?: string
+          model?: string | null
+          name?: string | null
+          not_in_this_version?: Json
           project_id?: string
           prompt?: string
+          simulated_model?: boolean
           status?: string
           summary?: string | null
           total_high?: number | null
@@ -273,35 +300,47 @@ export type Database = {
         Row: {
           conflict: Json | null
           created_at: string
+          decided_at: string | null
+          decided_by: string | null
           diff: Json
           est_minutes: number | null
           estimate_likely: number | null
           id: string
           message_id: string | null
           project_id: string
+          reply: string | null
           status: string
+          version_created: number | null
         }
         Insert: {
           conflict?: Json | null
           created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
           diff: Json
           est_minutes?: number | null
           estimate_likely?: number | null
           id?: string
           message_id?: string | null
           project_id: string
+          reply?: string | null
           status?: string
+          version_created?: number | null
         }
         Update: {
           conflict?: Json | null
           created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
           diff?: Json
           est_minutes?: number | null
           estimate_likely?: number | null
           id?: string
           message_id?: string | null
           project_id?: string
+          reply?: string | null
           status?: string
+          version_created?: number | null
         }
         Relationships: [
           {
@@ -399,6 +438,7 @@ export type Database = {
           blueprint_id: string
           id: string
           label: string
+          position: number
           value: string
         }
         Insert: {
@@ -406,6 +446,7 @@ export type Database = {
           blueprint_id: string
           id?: string
           label: string
+          position?: number
           value: string
         }
         Update: {
@@ -413,6 +454,7 @@ export type Database = {
           blueprint_id?: string
           id?: string
           label?: string
+          position?: number
           value?: string
         }
         Relationships: [
@@ -559,29 +601,44 @@ export type Database = {
       files: {
         Row: {
           created_at: string
+          extracted_text: string | null
           id: string
           kind: string
+          mime: string | null
+          name: string | null
           path: string
           project_id: string
+          size_bytes: number | null
           storage_path: string | null
+          uploaded_by: string | null
           used_by: string[]
         }
         Insert: {
           created_at?: string
+          extracted_text?: string | null
           id?: string
           kind: string
+          mime?: string | null
+          name?: string | null
           path: string
           project_id: string
+          size_bytes?: number | null
           storage_path?: string | null
+          uploaded_by?: string | null
           used_by?: string[]
         }
         Update: {
           created_at?: string
+          extracted_text?: string | null
           id?: string
           kind?: string
+          mime?: string | null
+          name?: string | null
           path?: string
           project_id?: string
+          size_bytes?: number | null
           storage_path?: string | null
+          uploaded_by?: string | null
           used_by?: string[]
         }
         Relationships: [
@@ -599,18 +656,25 @@ export type Database = {
           blueprint_id: string
           confidence: string | null
           cost_actual: number
+          cost_driver: string | null
           description: string | null
           drop_reason: string | null
+          edited_at: string | null
+          est_seconds: number | null
           estimate_high: number | null
           estimate_likely: number | null
           estimate_low: number | null
           fix_attempts: number
+          framework: string | null
           grp: string
           id: string
+          item_class: string | null
           key: string
           position: number
           project_id: string
           proved_when: string
+          provider: string | null
+          size: string | null
           source_quote: string | null
           status: string
           status_detail: string | null
@@ -620,18 +684,25 @@ export type Database = {
           blueprint_id: string
           confidence?: string | null
           cost_actual?: number
+          cost_driver?: string | null
           description?: string | null
           drop_reason?: string | null
+          edited_at?: string | null
+          est_seconds?: number | null
           estimate_high?: number | null
           estimate_likely?: number | null
           estimate_low?: number | null
           fix_attempts?: number
+          framework?: string | null
           grp: string
           id?: string
+          item_class?: string | null
           key: string
           position?: number
           project_id: string
           proved_when: string
+          provider?: string | null
+          size?: string | null
           source_quote?: string | null
           status?: string
           status_detail?: string | null
@@ -641,18 +712,25 @@ export type Database = {
           blueprint_id?: string
           confidence?: string | null
           cost_actual?: number
+          cost_driver?: string | null
           description?: string | null
           drop_reason?: string | null
+          edited_at?: string | null
+          est_seconds?: number | null
           estimate_high?: number | null
           estimate_likely?: number | null
           estimate_low?: number | null
           fix_attempts?: number
+          framework?: string | null
           grp?: string
           id?: string
+          item_class?: string | null
           key?: string
           position?: number
           project_id?: string
           proved_when?: string
+          provider?: string | null
+          size?: string | null
           source_quote?: string | null
           status?: string
           status_detail?: string | null
@@ -925,10 +1003,12 @@ export type Database = {
           affects: string[]
           answer: string | null
           answered_at: string | null
+          answered_by: string | null
           blocking: boolean
           blueprint_id: string
           id: string
           options: Json
+          position: number
           recommended: string
           text: string
         }
@@ -936,10 +1016,12 @@ export type Database = {
           affects?: string[]
           answer?: string | null
           answered_at?: string | null
+          answered_by?: string | null
           blocking?: boolean
           blueprint_id: string
           id?: string
           options: Json
+          position?: number
           recommended: string
           text: string
         }
@@ -947,10 +1029,12 @@ export type Database = {
           affects?: string[]
           answer?: string | null
           answered_at?: string | null
+          answered_by?: string | null
           blocking?: boolean
           blueprint_id?: string
           id?: string
           options?: Json
+          position?: number
           recommended?: string
           text?: string
         }
@@ -1198,6 +1282,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      agree_and_build: {
+        Args: { p_blueprint: string; p_user: string }
+        Returns: string
+      }
+      apply_seed_updates: { Args: { p_workspace: string }; Returns: undefined }
       can_build: { Args: { ws: string }; Returns: boolean }
       create_demo_workspace: {
         Args: { p_email: string; p_name: string; p_user: string }

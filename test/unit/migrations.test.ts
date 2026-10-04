@@ -18,6 +18,8 @@ const SUPABASE_STUB = `
     select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
   $$;
   create publication supabase_realtime;
+  create schema storage;
+  create table storage.buckets (id text primary key, name text not null, public boolean, file_size_limit bigint);
 `;
 
 const MORGAN = "00000000-0000-0000-0000-00000000000a";
@@ -161,6 +163,91 @@ describe("function privileges", () => {
       for (const role of ["anon", "authenticated"]) {
         const r = await one<{ ok: boolean }>(`select has_function_privilege('${role}', '${fn}', 'execute') as ok`);
         expect(r.ok, `${role} → ${fn}`).toBe(false);
+      }
+    }
+  });
+});
+
+describe("agree_and_build (the Build gate, DATA-MODEL rule 1)", () => {
+  const VIEWER = "00000000-0000-0000-0000-00000000000d";
+
+  async function draftPlan(opts: { blocking?: boolean; answered?: boolean; total?: number; budget?: number | null } = {}) {
+    const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
+    const { id: project } = await one<{ id: string }>(
+      "insert into projects (workspace_id, name, owner_id, budget_credits) values ($1, 'Gate test', $2, $3) returning id",
+      [ws, MORGAN, opts.budget ?? null],
+    );
+    const { id: bp } = await one<{ id: string }>(
+      "insert into blueprints (project_id, version, prompt, total_likely) values ($1, 1, 'x', $2) returning id",
+      [project, opts.total ?? 40],
+    );
+    await db.query(
+      "insert into items (blueprint_id, project_id, key, grp, title, proved_when) values ($1, $2, 'a-part', 'features', 'A', 'p'), ($1, $2, 'b-part', 'features', 'B', 'p')",
+      [bp, project],
+    );
+    if (opts.blocking) {
+      await db.query(
+        "insert into questions (blueprint_id, text, options, recommended, blocking, answer) values ($1, 'Which Slack workspace?', '[]', 'connected', true, $2)",
+        [bp, opts.answered ? "connected" : null],
+      );
+    }
+    return { ws, project, bp };
+  }
+
+  it("refuses while a blocking question is open, and nothing changes", async () => {
+    const { bp, project } = await draftPlan({ blocking: true });
+    await expect(db.query("select agree_and_build($1, $2)", [bp, MORGAN])).rejects.toThrow(/blocking_questions_open/);
+    expect((await one<{ agreed_at: string | null }>("select agreed_at from blueprints where id = $1", [bp])).agreed_at).toBeNull();
+    expect(await count("select count(*) as n from runs where project_id = $1", [project])).toBe(0);
+  });
+
+  it("agrees the plan, its parts and queues a run started by the person who clicked, in one go", async () => {
+    const { bp, project } = await draftPlan({ blocking: true, answered: true });
+    const { run } = await one<{ run: string }>("select agree_and_build($1, $2) as run", [bp, MORGAN]);
+    const plan = await one<{ status: string; agreed_at: string | null }>("select status, agreed_at from blueprints where id = $1", [bp]);
+    expect(plan.status).toBe("agreed");
+    expect(plan.agreed_at).not.toBeNull();
+    expect(await count("select count(*) as n from items where blueprint_id = $1 and status = 'agreed'", [bp])).toBe(2);
+    expect(await one("select kind, status, started_by from runs where id = $1", [run])).toEqual({ kind: "build", status: "queued", started_by: MORGAN });
+    expect(await one("select status, current_version from projects where id = $1", [project])).toEqual({ status: "building", current_version: 1 });
+  });
+
+  it("supersedes older versions, and a plan can't be agreed twice", async () => {
+    const { bp, project } = await draftPlan();
+    const { id: v2 } = await one<{ id: string }>("insert into blueprints (project_id, version, prompt) values ($1, 2, 'x') returning id", [project]);
+    await db.query("select agree_and_build($1, $2)", [v2, MORGAN]);
+    expect((await one<{ status: string }>("select status from blueprints where id = $1", [bp])).status).toBe("superseded");
+    await expect(db.query("select agree_and_build($1, $2)", [v2, MORGAN])).rejects.toThrow(/already_agreed/);
+  });
+
+  it("refuses a Viewer, and an estimate over the project budget", async () => {
+    const { ws, bp } = await draftPlan({ total: 120, budget: 100 });
+    await db.query("insert into auth.users (id, email) values ($1, 'viewer@example.com') on conflict do nothing", [VIEWER]);
+    await db.query("insert into members (workspace_id, user_id, role, status, invite_token) values ($1, $2, 'viewer', 'active', null)", [ws, VIEWER]);
+    await expect(db.query("select agree_and_build($1, $2)", [bp, VIEWER])).rejects.toThrow(/cannot_build/);
+    await expect(db.query("select agree_and_build($1, $2)", [bp, MORGAN])).rejects.toThrow(/over_budget/);
+  });
+
+  it("new workspaces allow OpenRouter's free models; existing ones were updated", async () => {
+    const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
+    const { config } = await one<{ config: { allowed: string[] } }>("select config from policies where workspace_id = $1 and kind = 'models'", [ws]);
+    expect(config.allowed).toContain("openrouter");
+    expect(await count("select count(*) as n from policies where kind = 'models' and not (config->'allowed') ? 'openrouter'")).toBe(0);
+    // Reset demo data keeps it too.
+    await db.query("select reset_demo_workspace($1, $2)", [ws, MORGAN]);
+    expect((await one<{ config: { allowed: string[] } }>("select config from policies where workspace_id = $1 and kind = 'models'", [ws])).config.allowed).toContain("openrouter");
+  });
+
+  it("only one plan can be written at a time per project", async () => {
+    const { project } = await draftPlan();
+    await db.query("insert into blueprints (project_id, version, prompt, generation) values ($1, 7, 'x', 'writing')", [project]);
+    await expect(db.query("insert into blueprints (project_id, version, prompt, generation) values ($1, 8, 'x', 'writing')", [project])).rejects.toThrow(/blueprints_one_writing/);
+  });
+
+  it("API roles can't call the Build gate or the seed helpers directly", async () => {
+    for (const role of ["anon", "authenticated"]) {
+      for (const fn of ["agree_and_build(uuid,uuid)", "apply_seed_updates(uuid)"]) {
+        expect((await one<{ ok: boolean }>(`select has_function_privilege('${role}', '${fn}', 'execute') as ok`)).ok, `${role} → ${fn}`).toBe(false);
       }
     }
   });
