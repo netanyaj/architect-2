@@ -29,7 +29,7 @@ test.describe("sign-in", () => {
 
   test("the prompt typed on Home survives sign-in, and first sign-in seeds a private Acme Ops", async ({ page }) => {
     const prompt = "Every Friday, email me a summary of this week's closed support tickets.";
-    await page.goto("/home");
+    await page.goto("/home", { waitUntil: "networkidle" }); // the dev server compiles on first visit
     await page.getByLabel("Describe your app").fill(prompt);
     await page.getByRole("button", { name: "Write the plan" }).click();
     await expect(page).toHaveURL(/\/login\?next=%2Fhome/);
@@ -41,7 +41,7 @@ test.describe("sign-in", () => {
 
     await expect(page).toHaveURL(/\/home$/);
     await expect(page.getByLabel("Describe your app")).toHaveValue(prompt);
-    await expect(page.getByText(/Good (morning|afternoon|evening), Test/)).toBeVisible();
+    await expect(page.getByText(/Good (morning|afternoon|evening), Signin/)).toBeVisible();
 
     // The side nav reads the seeded workspace from the database.
     const nav = page.getByRole("navigation", { name: "Workspace" });
@@ -71,7 +71,7 @@ test.describe("sign-in", () => {
     await page.getByLabel("Password").fill(user.password);
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
     await expect(page).toHaveURL(/\/settings$/);
-    await expect(page.getByText("Acme Ops · you're an Owner.", { exact: false })).toBeVisible();
+    await expect(page.getByText("Signin's Acme Ops · you're an Owner.", { exact: false })).toBeVisible();
 
     const { count } = await adminDb().from("members").select("id", { count: "exact", head: true }).eq("user_id", user.id);
     expect(count).toBe(1);

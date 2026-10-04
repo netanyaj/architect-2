@@ -18,7 +18,8 @@ export async function createTestUser(label: string): Promise<TestUser> {
     email,
     password,
     email_confirm: true,
-    user_metadata: { full_name: `Test ${label}` },
+    // First name from the label ("viewer" → "Viewer Tester"), so each account's workspace name differs.
+    user_metadata: { full_name: `${label.charAt(0).toUpperCase()}${label.slice(1)} Tester` },
   });
   if (error || !data.user) throw new Error(`createUser failed: ${error?.message}`);
   return { id: data.user.id, email, password };

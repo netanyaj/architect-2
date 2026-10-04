@@ -33,7 +33,7 @@ vi.mock("@/server/workspace", async (orig) => ({
     role: ctx.role,
     workspace: { id: "ws-1", name: "Acme Ops" },
     memberships: [
-      { workspaceId: "ws-1", workspaceName: "Acme Ops", role: ctx.role, label: "Your Acme Ops" },
+      { workspaceId: "ws-1", workspaceName: "Acme Ops", role: ctx.role, label: "Morgan's Acme Ops" },
       { workspaceId: "ws-2", workspaceName: "Acme Ops", role: "viewer", label: "Sam's Acme Ops" },
     ],
   }),

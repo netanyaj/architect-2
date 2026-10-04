@@ -20,7 +20,7 @@ export function displayNameFor(user: Pick<User, "email" | "user_metadata">): str
 }
 
 /**
- * Every person gets their own seeded "Acme Ops" on first sign-in. Idempotent in the database
+ * Every person gets their own seeded Acme Ops, named after them ("Netanya's Acme Ops"), on first sign-in. Idempotent in the database
  * (create_demo_workspace returns the workspace they already own), so it's safe to call on every sign-in.
  */
 export async function ensureWorkspace(admin: AdminDb, user: Pick<User, "id" | "email" | "user_metadata">): Promise<string> {
@@ -37,7 +37,7 @@ export type Membership = {
   workspaceId: string;
   workspaceName: string;
   role: Role;
-  /** "Your Acme Ops" or "Morgan's Acme Ops": every person's demo workspace has the same name. */
+  /** What the switcher shows: the workspace's name, which carries its owner's ("Netanya's Acme Ops"). */
   label: string;
 };
 
@@ -85,22 +85,13 @@ export const getAppContext = cache(async (): Promise<AppContext> => {
     if (error || !rows?.length) throw new Error(`Couldn't load your workspace: ${error?.message ?? "none found"}`);
   }
 
-  const { data: owners } = await db
-    .from("members")
-    .select("workspace_id, user_id, display_name")
-    .in("workspace_id", rows.map((r) => r.workspace_id))
-    .eq("role", "owner")
-    .eq("status", "active");
-  const memberships: Membership[] = rows.map((r) => {
-    const owner = owners?.find((o) => o.workspace_id === r.workspace_id);
-    const ownerName = owner?.user_id === user.id ? null : owner?.display_name?.split(" ")[0];
-    return {
-      workspaceId: r.workspace_id,
-      workspaceName: r.workspaces.name,
-      role: r.role as Role,
-      label: ownerName ? `${ownerName}'s ${r.workspaces.name}` : `Your ${r.workspaces.name}`,
-    };
-  });
+  // Each workspace is named after its owner ("Netanya's Acme Ops"), so the name is the label.
+  const memberships: Membership[] = rows.map((r) => ({
+    workspaceId: r.workspace_id,
+    workspaceName: r.workspaces.name,
+    role: r.role as Role,
+    label: r.workspaces.name,
+  }));
   const chosen = (await cookies()).get(WORKSPACE_COOKIE)?.value;
   const current = pickWorkspace(memberships, chosen)!;
   const ws = rows.find((r) => r.workspace_id === current.workspaceId)!.workspaces;

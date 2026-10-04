@@ -25,7 +25,7 @@ test.describe("roles and invites", () => {
     // Owner: invite as Viewer from Settings.
     const ownerPage = await (await browser.newContext()).newPage();
     await signIn(ownerPage, owner, "/settings");
-    await expect(ownerPage.getByRole("heading", { name: "People in Acme Ops" })).toBeVisible();
+    await expect(ownerPage.getByRole("heading", { name: "People in Owner's Acme Ops" })).toBeVisible();
     // The seeded teammates are listed as invited.
     await expect(ownerPage.getByRole("list", { name: "Members" }).getByText("Jordan (IT)", { exact: true })).toBeVisible();
 
@@ -46,7 +46,7 @@ test.describe("roles and invites", () => {
     // Viewer: signed out → sign in from the invite → accept.
     const viewerPage = await (await browser.newContext()).newPage();
     await viewerPage.goto(link);
-    await expect(viewerPage.getByRole("heading", { name: "Join Acme Ops" })).toBeVisible();
+    await expect(viewerPage.getByRole("heading", { name: "Join Owner's Acme Ops" })).toBeVisible();
     await expect(viewerPage.getByText(/invited .* as Viewer/)).toBeVisible();
     await viewerPage.getByRole("link", { name: "Sign in to accept" }).click();
     await viewerPage.getByLabel("Email").fill(viewer.email);
@@ -58,7 +58,7 @@ test.describe("roles and invites", () => {
 
     // They're now in the Owner's workspace, as Viewer, and can switch back to their own.
     const nav = viewerPage.getByRole("navigation", { name: "Workspace" });
-    await expect(nav.getByText("Test's Acme Ops")).toBeVisible();
+    await expect(nav.getByText("Owner's Acme Ops")).toBeVisible();
     await expect(nav.getByText("Viewer", { exact: true })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Approvals" })).toHaveCount(0); // admin-only section hidden
 
@@ -68,9 +68,9 @@ test.describe("roles and invites", () => {
     await expect(viewerPage.getByRole("button", { name: "Reset demo data" })).toHaveCount(0);
 
     await nav.getByRole("button", { name: /Switch workspace/ }).click();
-    await viewerPage.getByRole("menuitem", { name: /Your Acme Ops/ }).click();
+    await viewerPage.getByRole("menuitem", { name: /Viewer's Acme Ops/ }).click();
     await viewerPage.waitForURL(/\/home$/);
-    await expect(nav.getByText("Your Acme Ops")).toBeVisible();
+    await expect(nav.getByText("Viewer's Acme Ops")).toBeVisible();
     await expect(nav.getByText("Owner", { exact: true })).toBeVisible();
 
     // The database agrees, and the join was audited.
@@ -87,7 +87,7 @@ test.describe("roles and invites", () => {
 
     // Owner changes the Viewer to Builder; it's audited.
     await ownerPage.reload();
-    await ownerPage.getByLabel(/^Role for Test viewer$/).selectOption("builder");
+    await ownerPage.getByLabel(/^Role for Viewer Tester$/).selectOption("builder");
     await expect.poll(async () => (await db.from("members").select("role").eq("workspace_id", ownerWs!.workspace_id).eq("user_id", viewer.id).single()).data?.role).toBe("builder");
     const { data: change } = await db.from("audit_log").select("details").eq("workspace_id", ownerWs!.workspace_id).eq("action", "member.role_changed").single();
     expect(change!.details).toEqual({ from: "viewer", to: "builder" });

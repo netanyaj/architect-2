@@ -1212,6 +1212,10 @@ export type Database = {
         Args: { p_owner: string; p_workspace: string }
         Returns: undefined
       }
+      workspace_name_for: {
+        Args: { p_email: string; p_name: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

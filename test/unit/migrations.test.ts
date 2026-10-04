@@ -22,6 +22,7 @@ const SUPABASE_STUB = `
 
 const MORGAN = "00000000-0000-0000-0000-00000000000a";
 const REVIEWER = "00000000-0000-0000-0000-00000000000b";
+const LEGACY = "00000000-0000-0000-0000-00000000000c";
 
 let db: PGlite;
 
@@ -37,17 +38,19 @@ async function count(sql: string, params: unknown[] = []): Promise<number> {
 beforeAll(async () => {
   db = new PGlite({ extensions: { pgcrypto } });
   await db.exec(SUPABASE_STUB);
+  await db.query("insert into auth.users (id, email) values ($1, 'morgan@example.com'), ($2, 'reviewer@example.com'), ($3, 'jane.doe@example.com')", [MORGAN, REVIEWER, LEGACY]);
+  // Apply migrations in order; just before 0003, make a workspace the 0002 way (as the live database had).
   for (const f of readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort()) {
+    if (f.startsWith("0003")) await db.query("select create_demo_workspace($1, 'jane.doe@example.com', 'Jane')", [LEGACY]);
     await db.exec(readFileSync(join(MIGRATIONS, f), "utf8"));
   }
-  await db.query("insert into auth.users (id, email) values ($1, 'morgan@example.com'), ($2, 'reviewer@example.com')", [MORGAN, REVIEWER]);
 }, 60_000);
 
 describe("create_demo_workspace", () => {
   it("gives a new person their own seeded Acme Ops, as Owner", async () => {
     const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
     const w = await one<{ name: string; governance_enabled: boolean }>("select name, governance_enabled from workspaces where id = $1", [ws]);
-    expect(w).toEqual({ name: "Acme Ops", governance_enabled: true });
+    expect(w).toEqual({ name: "Morgan's Acme Ops", governance_enabled: true });
     expect(await one("select role, status from members where workspace_id = $1 and user_id = $2", [ws, MORGAN])).toEqual({ role: "owner", status: "active" });
 
     const projects = await db.query<{ name: string; status: string; total: number; built: number }>(
@@ -68,11 +71,12 @@ describe("create_demo_workspace", () => {
 
   it("shows Sam as ticket-triage's owner while the real owner is the signed-in person", async () => {
     const p = await one<{ owner_id: string; owner_display_name: string }>(
-      "select owner_id, owner_display_name from projects where name = 'ticket-triage' limit 1",
+      "select owner_id, owner_display_name from projects where name = 'ticket-triage' and owner_id = $1",
+      [MORGAN],
     );
     expect(p).toEqual({ owner_id: MORGAN, owner_display_name: "Sam" });
     expect(
-      await count("select count(*) as n from approvals where kind in ('deploy','token') and payload->>'requested_by_name' = 'Sam'"),
+      await count("select count(*) as n from approvals a join members m on m.workspace_id = a.workspace_id where m.user_id = $1 and a.kind in ('deploy','token') and a.payload->>'requested_by_name' = 'Sam'", [MORGAN]),
     ).toBe(2);
     expect(await count("select count(*) as n from projects where name <> 'ticket-triage' and owner_display_name is not null")).toBe(0);
   });
@@ -95,7 +99,30 @@ describe("create_demo_workspace", () => {
     const m = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
     const r = await one<{ ws: string }>("select create_demo_workspace($1, 'reviewer@example.com', 'Reviewer') as ws", [REVIEWER]);
     expect(r.ws).not.toBe(m.ws);
-    expect(await count("select count(*) as n from workspaces")).toBe(2);
+    expect(await count("select count(*) as n from workspaces")).toBe(3); // Morgan's, the reviewer's, and Jane's from before 0003
+  });
+});
+
+describe("distinct workspace names (0003)", () => {
+  it("names each workspace after its owner, so two people's are never the same", async () => {
+    const m = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
+    const r = await one<{ ws: string }>("select create_demo_workspace($1, 'reviewer@example.com', '') as ws", [REVIEWER]);
+    const name = async (ws: string) => (await one<{ name: string }>("select name from workspaces where id = $1", [ws])).name;
+    expect(await name(m.ws)).toBe("Morgan's Acme Ops");
+    expect(await name(r.ws)).toBe("Reviewer's Acme Ops"); // no name: from the email
+  });
+
+  it("renamed the workspace that existed before, and its seeded log line", async () => {
+    const { ws } = await one<{ ws: string }>("select workspace_id as ws from members where user_id = $1 and role = 'owner'", [LEGACY]);
+    expect((await one<{ name: string }>("select name from workspaces where id = $1", [ws])).name).toBe("Jane's Acme Ops");
+    expect(await count("select count(*) as n from audit_log where workspace_id = $1 and action = 'workspace.seeded' and target = 'Jane''s Acme Ops'", [ws])).toBe(1);
+  });
+
+  it("the name rule handles empty and odd input", async () => {
+    const rule = async (n: string | null, e: string | null) => (await one<{ v: string }>("select workspace_name_for($1, $2) as v", [n, e])).v;
+    expect(await rule("  netanya jaison ", null)).toBe("Netanya's Acme Ops");
+    expect(await rule(null, "sam.rivera@example.com")).toBe("Sam's Acme Ops");
+    expect(await rule("", "")).toBe("Acme Ops");
   });
 });
 
