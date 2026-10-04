@@ -51,6 +51,13 @@ Where the prototype differs from the spec, or fills a gap the spec left open. On
 | Fixture prompts | The 3 demo prompts | The 3 demo prompts, plus "SMS reminder" (must block: no SMS service) and "vendor list" (must not block); recorded from all four models (20 fixtures) | Pins down both sides of the blocking rule on every model |
 | Live checks use the demo Connections | Not specified | The live check runs the rules with the seeded workspace's Connections (Google Calendar and Slack connected) | Rules a and b depend on Connections; this matches what a reviewer's workspace has |
 
+## M3 · Build, preview, launch
+
+| Area | The spec said | We did | Why |
+|---|---|---|---|
+| `?sim=budget` | SIMULATOR: the budget variant sets a 100-credit project budget | The variant sets the budget to about 60% of the build's likely total, rounded to 5 | Real plans cost 20–82 credits (the 20 recorded plans), so a 100-credit budget never paused. Screen 7 needs a pause part-way |
+| Fix attempts | "Up to 3 attempts"; `?sim=paused` "fails all 3 attempts" | The build's check fails, then up to 3 fixes run; each fix has its own result, note and Usage line. With `?sim=paused` all 3 fixes fail (236, 212, 204 words) and the part is Blocked | Screen 6 lists three fixes, each with a result and a cost; "Fixing 1/3" is the first fix |
+
 ## Numbers we set, and how we picked them
 
 | Number | Value | How we picked it |

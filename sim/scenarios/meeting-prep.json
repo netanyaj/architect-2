@@ -17,8 +17,9 @@
     { "id": "default", "match": {}, "outcome": "pass" }
   ],
   "variants": {
-    "paused": { "override": { "fix-once": { "outcome": "fail", "fail_attempts": 3, "measured_by_attempt": ["236 words", "212 words", "204 words"] } } },
-    "budget": { "project_budget": 100 }
+    "paused": { "override": { "fix-once": { "outcome": "fail", "fail_attempts": 3, "measured_by_attempt": ["236 words", "212 words", "204 words"],
+      "notes_by_attempt": ["Told the agent about the word limit", "Trimmed the brief after writing it", "Shortened the talking points"] } } },
+    "budget": { "budget_share": 0.6 }
   },
   "checks_by_group": {
     "features": { "kind": "ui_test", "assertions": 4, "screenshot": true },
