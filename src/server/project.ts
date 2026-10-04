@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Role } from "@/lib/db";
+import type { Deployment } from "@/lib/launch";
 import type { RunEvent, RunInfo } from "@/lib/sim/replay";
 import { modelAvailability } from "@/lib/gateway";
 import { MODEL_LABEL, toModelChoice, type ModelChoice, type ModelOption } from "@/lib/models";
@@ -120,7 +121,34 @@ export type ProjectWorkspace = {
   messages: ChatMessage[];
   changes: ChangeCardData[];
   uploads: { id: string; name: string; mime: string | null; size: number | null; read: boolean }[];
+  /** Launch (screen 4): loaded only on the Launch page. */
+  launch: LaunchData | null;
 };
+
+export type LaunchData = {
+  deployments: Deployment[];
+  envLive: { staging: boolean; production: boolean };
+  liveRequested: boolean;
+  testsPassed: number;
+};
+
+async function loadLaunch(db: Awaited<ReturnType<typeof createServerDb>>, projectId: string, workspaceId: string, names: Map<string, string>): Promise<LaunchData> {
+  const [{ data: deps }, { data: envs }, { data: approvals }, { data: proofs }] = await Promise.all([
+    db.from("deployments").select("id, environment, blueprint_version, status, created_at, created_by").eq("project_id", projectId).order("created_at", { ascending: false }),
+    db.from("environments").select("name, status").eq("project_id", projectId),
+    db.from("approvals").select("id").eq("workspace_id", workspaceId).eq("project_id", projectId).eq("kind", "deploy").eq("status", "waiting"),
+    db.from("proofs").select("assertions_passed, items!inner(project_id)").eq("items.project_id", projectId).eq("result", "pass"),
+  ]);
+  const env = (n: string) => (envs ?? []).some((e) => e.name === n && e.status === "live");
+  return {
+    deployments: (deps ?? [])
+      .filter((d) => d.environment === "staging" || d.environment === "production")
+      .map((d) => ({ id: d.id, environment: d.environment as Deployment["environment"], version: d.blueprint_version, status: d.status, createdAt: d.created_at, by: d.created_by ? (names.get(d.created_by) ?? "someone") : null })),
+    envLive: { staging: env("staging"), production: env("production") },
+    liveRequested: (approvals ?? []).length > 0,
+    testsPassed: (proofs ?? []).reduce((s, p) => s + Number(p.assertions_passed ?? 0), 0),
+  };
+}
 
 /** The models a person may pick in this workspace: allowed by policy, marked simulated when there's no key. */
 export async function modelOptionsFor(workspaceId: string): Promise<ModelOption[]> {
@@ -129,7 +157,7 @@ export async function modelOptionsFor(workspaceId: string): Promise<ModelOption[
 }
 
 /** One project for its workspace screen, read under RLS (so only members see it). Null when it doesn't exist. */
-export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLeft: number, opts: { catchUp?: boolean } = {}): Promise<ProjectWorkspace | null> {
+export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLeft: number, opts: { catchUp?: boolean; launch?: boolean } = {}): Promise<ProjectWorkspace | null> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   const db = await createServerDb();
   const { data: p } = await db
@@ -143,7 +171,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
   // A run left queued, or one whose time is up, is started or settled now (SIMULATOR step 3), then read again.
   if (opts.catchUp && (p.runs ?? []).some((r) => r.status === "queued" || (r.status === "running" && r.ends_at && new Date(r.ends_at).getTime() <= Date.now()))) {
     await catchUpRuns(createAdminDb(), p.id);
-    return getProjectWorkspace(id, ctx, creditsLeft);
+    return getProjectWorkspace(id, ctx, creditsLeft, { launch: opts.launch });
   }
 
   const versions: PlanVersion[] = [...(p.blueprints ?? [])]
@@ -250,6 +278,12 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     edited: Boolean(i.edited_at),
   }));
   const projectModel = toModelChoice(p.model);
+  let launch: LaunchData | null = null;
+  if (opts.launch) {
+    const { data: people } = await db.from("members").select("user_id, display_name").eq("workspace_id", p.workspace_id);
+    const names = new Map((people ?? []).filter((m) => m.user_id).map((m) => [m.user_id!, m.user_id === ctx.user.id ? "you" : (m.display_name?.split(" ")[0] ?? "someone")]));
+    launch = await loadLaunch(db, p.id, p.workspace_id, names);
+  }
 
   return {
     id: p.id,
@@ -314,6 +348,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     models: await modelOptionsFor(p.workspace_id),
     messages: (msgs ?? []).map((m) => ({ id: m.id, role: m.role as ChatMessage["role"], mode: m.mode as ChatMessage["mode"], content: m.content, createdAt: m.created_at })),
     changes,
+    launch,
     uploads: (files ?? []).map((f) => ({
       id: f.id,
       name: f.name ?? f.path,

@@ -142,7 +142,7 @@ export async function startFollowupRun(
 }
 
 /**
- * On page load: start any run left queued (e.g. Build clicked before M3), and settle any run whose time is up,
+ * On page load: start any run left queued (e.g. one queued before the simulator existed), and settle any run whose time is up,
  * so a project nobody watched still ends in the right state.
  */
 export async function catchUpRuns(admin: AdminDb, projectId: string): Promise<void> {

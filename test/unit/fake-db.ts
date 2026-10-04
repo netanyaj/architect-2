@@ -86,6 +86,12 @@ class Query implements PromiseLike<Result> {
     this.filters.push((r) => values.includes(r[col]));
     return this;
   }
+  /** Only `.not(col, "is", null)` (is not null) is needed so far. */
+  not(col: string, op: string, value: unknown) {
+    if (op === "is" && value === null) this.filters.push((r) => r[col] !== null && r[col] !== undefined);
+    else this.filters.push((r) => r[col] !== value);
+    return this;
+  }
   order() {
     return this;
   }

@@ -16,7 +16,7 @@ export default defineConfig({
   // The dev server compiles pages on first visit and the tests share one Supabase project and a free-tier
   // model, so allow slower answers and fewer browsers at once than the defaults.
   expect: { timeout: 15_000 },
-  workers: process.env.CI ? 2 : 3,
+  workers: 2,
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"]],
   use: { baseURL, trace: "retain-on-failure" },

@@ -47,8 +47,9 @@ export type LiveRun = {
   nextInMs: number | null;
   /** Fix attempts so far, per part (for "try n of 3"). */
   fixes: Record<string, number>;
-  /** Credits the run has used so far (charged to Usage when it settles). */
+  /** Credits the run has used so far (charged to Usage when it settles), and how much of it went on fixes. */
   spent: number;
+  fixSpent: number;
 };
 
 /** "brief is 200 words or fewer" → "too long"; otherwise what was measured. */
@@ -59,7 +60,7 @@ export function failedBecause(reason: unknown, measured: unknown): string {
   return String(measured ?? "it didn't pass");
 }
 
-const EMPTY: LiveRun = { parts: {}, done: 0, total: 0, etaSeconds: null, activity: [], revealed: [], budgetPause: null, playing: false, due: false, nextInMs: null, fixes: {}, spent: 0 };
+const EMPTY: LiveRun = { parts: {}, done: 0, total: 0, etaSeconds: null, activity: [], revealed: [], budgetPause: null, playing: false, due: false, nextInMs: null, fixes: {}, spent: 0, fixSpent: 0 };
 
 export function replay(run: RunInfo | null, nowMs: number): LiveRun {
   if (!run || !run.startedAt) return EMPTY;
@@ -86,7 +87,10 @@ export function replay(run: RunInfo | null, nowMs: number): LiveRun {
   for (const e of visible) {
     const key = e.itemKey;
     const p = e.payload;
-    if (typeof p.credits === "number" && ["item.built", "item.fixing", "item.needs_connection", "item.sample_data"].includes(e.type)) live.spent += p.credits;
+    if (typeof p.credits === "number" && ["item.built", "item.fixing", "item.needs_connection", "item.sample_data"].includes(e.type)) {
+      live.spent += p.credits;
+      if (e.type === "item.fixing") live.fixSpent += p.credits;
+    }
     switch (e.type) {
       case "run.started":
         live.total = Number(p.total_items ?? 0);

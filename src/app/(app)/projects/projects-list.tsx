@@ -54,11 +54,16 @@ function RowMenu({ p, canStart, onDelete, onError }: { p: Row; canStart: boolean
         >
           Duplicate
         </DropdownMenuItem>
-        <DropdownMenuItem className={item} disabled title="Downloading the code comes with the build (M3).">
+        <DropdownMenuItem className={item} disabled title="Downloading the code comes with Developer view (M4).">
           <span className="flex-1">Download code</span>
           <SimTag />
         </DropdownMenuItem>
-        <DropdownMenuItem className={item} disabled title="Sharing comes with Launch (M3).">
+        <DropdownMenuItem
+          className={item}
+          disabled={!p.launchable}
+          title={p.launchable ? undefined : "Share opens once the app is built."}
+          onSelect={() => router.push(`/p/${p.id}/launch`)}
+        >
           <span className="flex-1">Share</span>
           <SimTag />
         </DropdownMenuItem>

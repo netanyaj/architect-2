@@ -88,14 +88,18 @@ export function BuildPanel({ project, items, budgetPaused }: { project: ProjectW
                 icon="plug"
                 name={`Connect ${providerName(i.provider)}`}
                 action={
+                  <span className="flex flex-wrap items-center gap-2">
                   <Button
-                    variant={n === 0 && blocked.length === 0 ? "primary" : "secondary"}
+                    // One primary per screen: a blocked part or the budget banner comes first.
+                    variant={n === 0 && blocked.length === 0 && !budgetPaused ? "primary" : "secondary"}
                     size="sm"
                     disabledReason={!canAct ? "Viewers can't connect accounts." : pending ? "Connecting…" : undefined}
                     onClick={() => act(() => connectPart({ itemId: i.id }))}
                   >
                     Connect {providerAccount(i.provider)}
                   </Button>
+                  <SimTag title="Connecting is simulated in this prototype: no real sign-in happens" />
+                  </span>
                 }
               >
                 {i.title} uses sample data until Architect can read yours. Everything else keeps building.
@@ -286,10 +290,14 @@ export function BuildActivity({ project, items, live }: { project: ProjectWorksp
   const connect = counted.filter((i) => i.status === "needs_connection");
   const approval = counted.filter((i) => i.status === "needs_approval");
   const blocked = counted.filter((i) => i.status === "paused");
-  const pause = run.status === "paused_budget" || (live.playing && live.budgetPause) ? live.budgetPause : null;
+  const pause = run.status === "paused_budget" || run.status === "running" ? live.budgetPause : null;
+  // Until the run settles its credits aren't in Usage yet; show what the run has used so far.
+  const unsettled = run.status === "running";
+  const build = project.spent.build + (unsettled ? live.spent - live.fixSpent : 0);
+  const fix = project.spent.fix + (unsettled ? live.fixSpent : 0);
 
   const sentences: string[] = [];
-  if (live.playing) sentences.push(`Building your app. ${works} of ${counted.length} parts already work.`);
+  if (live.playing && !pause) sentences.push(`Building your app. ${works} of ${counted.length} parts already work.`);
   else if (pause) sentences.push(`I've paused at your ${project.budgetCredits ?? pause.budget}-credit budget. The ${plural(counted.filter((i) => i.status === "agreed").length, "part")} left should cost about ${pause.remainingEst} credits.`);
   else sentences.push(`${run.kind === "change" ? "The change is built" : "Build finished"}. ${works} of ${counted.length} parts work.`);
   if (blocked.length) sentences.push(`${blocked[0].title} is blocked after 3 fixes. Open it to see what I suggest.`);
@@ -309,11 +317,11 @@ export function BuildActivity({ project, items, live }: { project: ProjectWorksp
       {pause && (
         <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 rounded-card border border-line px-3.5 py-3 text-small tabular-nums">
           <dt className="text-ink-2">Finished parts</dt>
-          <dd className="text-right">{Math.round(project.spent.build)} cr</dd>
+          <dd className="text-right">{Math.round(build)} cr</dd>
           <dt className="text-ink-2">Fixes</dt>
-          <dd className="text-right">{Math.round(project.spent.fix)} cr</dd>
+          <dd className="text-right">{Math.round(fix)} cr</dd>
           <dt className="border-t border-line pt-1 font-semibold">Spent</dt>
-          <dd className="border-t border-line pt-1 text-right font-semibold">{Math.round(project.spent.build + project.spent.fix)} cr</dd>
+          <dd className="border-t border-line pt-1 text-right font-semibold">{Math.round(build + fix)} cr</dd>
           <dt className="text-ink-2">Still to build</dt>
           <dd className="text-right">~{pause.remainingEst} cr</dd>
         </dl>

@@ -51,6 +51,8 @@ export type ProjectRow = {
   summary: ProjectSummary;
   prompt: string | null;
   budgetCredits: number | null;
+  /** Built or live: Launch (Share) is open. */
+  launchable: boolean;
 };
 
 /** Every project in the current workspace with its summary, newest first. */
@@ -98,6 +100,7 @@ export async function listProjects(ctx: AppContext): Promise<ProjectRow[]> {
       }),
       prompt: p.prompt,
       budgetCredits: p.budget_credits === null ? null : Number(p.budget_credits),
+      launchable: p.status === "built" || p.status === "live",
     };
   });
 }

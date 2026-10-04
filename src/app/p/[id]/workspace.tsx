@@ -20,12 +20,15 @@ import { relativeTime } from "@/lib/project-status";
 import { etaWords, withLive, type LiveRun } from "@/lib/sim/replay";
 import { useUi } from "@/lib/ui-store";
 import { workspaceState } from "@/lib/workspace-state";
+import { launchState } from "@/lib/launch";
+import { shareWithTeam } from "@/server/actions/launch";
 import { buildPlan, setProjectModel } from "@/server/actions/plan";
 import { duplicateProject } from "@/server/actions/projects";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 import { AppPreview, BudgetBanner, BuildActivity, BuildPanel, TestTheApp } from "./build-stage";
 import { ChatPane } from "./chat-pane";
 import { PartDrawer } from "./part-drawer";
+import { LaunchView } from "./launch-view";
 import { useRun } from "./use-run";
 import { fromStreamed, GROUP_LABEL, GROUP_ORDER, PlanDocument } from "./plan-document";
 import { usePlanWriter } from "./use-plan-writer";
@@ -167,7 +170,7 @@ function MoreMenu({ project, canAct }: { project: ProjectWorkspace; canAct: bool
         >
           Duplicate
         </DropdownMenuItem>
-        {later("Download code", "M3", true)}
+        {later("Download code", "M4", true)}
         {later("GitHub", "M4")}
         <DropdownMenuSeparator />
         <DropdownMenuItem className={item} onSelect={() => router.push("/settings")}>
@@ -178,8 +181,47 @@ function MoreMenu({ project, canAct }: { project: ProjectWorkspace; canAct: bool
   );
 }
 
+/** Share: copy a version's address, or open Launch to share with the team and go live. */
+function ShareMenu({ project }: { project: ProjectWorkspace }) {
+  const router = useRouter();
+  const [copied, setCopied] = useState<string | null>(null);
+  const slug = project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "app";
+  const built = project.status === "built" || project.status === "live";
+  const item = "flex min-h-10 items-center gap-2.5 rounded-tile px-2.5";
+  const copy = (label: string, url: string) => {
+    void navigator.clipboard?.writeText(`https://${url}`);
+    setCopied(label);
+    setTimeout(() => setCopied(null), 1500);
+  };
+  if (project.status === "draft") return <Button disabledReason="Build the plan first. Then you can share a test version.">Share</Button>;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="inline-flex min-h-[38px] items-center rounded-full border border-line-ctl bg-surface px-4 font-[550] hover:bg-selected">{copied ? "Copied" : "Share"}</DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-72 rounded-card border border-line bg-surface p-1.5 shadow-pop">
+        <DropdownMenuItem className={item} onSelect={() => copy("test", `${slug}--test.architect.space`)}>
+          <Icon name="copy" size="sm" />
+          <span className="flex-1">Copy the test version link</span>
+          <SimTag />
+        </DropdownMenuItem>
+        {project.status === "live" && (
+          <DropdownMenuItem className={item} onSelect={() => copy("live", `${slug}.architect.app`)}>
+            <Icon name="copy" size="sm" />
+            <span className="flex-1">Copy the live link</span>
+            <SimTag />
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem className={item} disabled={!built} title={built ? undefined : "Launch opens when the build finishes."} onSelect={() => router.push(`/p/${project.id}/launch`)}>
+          Share with your team or go live…
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 /** The project workspace: header on the canvas, Plan panel, stage, Chat (BUILD-SPEC §2, screens 2, 3, 16). */
-export function Workspace({ project }: { project: ProjectWorkspace }) {
+export function Workspace({ project, page = "workspace" }: { project: ProjectWorkspace; page?: "workspace" | "launch" }) {
+  const onLaunch = page === "launch" && project.launch !== null;
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -187,10 +229,11 @@ export function Workspace({ project }: { project: ProjectWorkspace }) {
   const raw = params.get("view");
   const planStage = project.status === "draft";
   const view: View = VIEWS.includes(raw as View) ? (raw as View) : "app";
-  const fullWidth = !planStage && view !== "app";
+  const fullWidth = onLaunch || (!planStage && view !== "app");
   const [planOpen, setPlanOpen] = useState<boolean | null>(null);
   const [chatOpen, setChatOpen] = useState<boolean | null>(null);
-  const showPlan = planOpen ?? !fullWidth;
+  // Launch keeps the plan open and folds chat to a rail (screen 4).
+  const showPlan = planOpen ?? (onLaunch || !fullWidth);
   const showChat = chatOpen ?? !fullWidth;
   const canAct = canBuild(project.role);
 
@@ -232,7 +275,19 @@ export function Workspace({ project }: { project: ProjectWorkspace }) {
   const budgetPaused = Boolean(live.budgetPause) && (running || (project.status === "paused" && project.run?.status === "paused_budget" && items.some((i) => i.status === "agreed")));
 
   const blockingOpen = project.plan?.questions.filter((q) => q.blocking && !q.answer).length ?? 0;
-  const state = workspaceState({
+  const launch = onLaunch
+    ? launchState({
+        parts: items.map((i) => ({ id: i.id, key: i.key, title: i.title, status: i.status, provider: i.provider, estimate: i.estimate })),
+        deployments: project.launch!.deployments,
+        envLive: project.launch!.envLive,
+        currentVersion: project.plan?.version ?? 1,
+        role: project.role,
+        liveRequested: project.launch!.liveRequested,
+        testsPassed: project.launch!.testsPassed,
+      })
+    : null;
+
+  const baseState = workspaceState({
     status: project.status,
     role: project.role,
     summary: project.summary,
@@ -244,6 +299,10 @@ export function Workspace({ project }: { project: ProjectWorkspace }) {
       ? { works: worksNow, total: counted.length, blocked: counted.filter((i) => i.status === "paused").length, eta: etaWords(live.etaSeconds), playing: live.playing, budgetPaused }
       : undefined,
   });
+  // On Launch the stage action is Share with your team, disabled until the checklist is clear (BUILD-SPEC §2).
+  const state = launch
+    ? { stage: "launch" as const, progress: launch.progress, paused: false, action: { label: launch.share.label, disabledReason: launch.share.disabledReason, beside: undefined } }
+    : baseState;
 
   const setView = (v: View) => {
     const next = new URLSearchParams(params);
@@ -313,19 +372,37 @@ export function Workspace({ project }: { project: ProjectWorkspace }) {
           paused={state.paused}
           onSelect={(stage) => {
             if (stage === "launch" && (project.status === "built" || project.status === "live")) router.push(`/p/${project.id}/launch`);
+            else if (stage !== "launch" && onLaunch) router.push(`/p/${project.id}`);
           }}
         />
         <div className="flex items-center gap-2">
           <IconButton icon="help" label="Help with this project" onClick={() => openHelp(project.id)} />
-          <Button disabledReason="Sharing comes with Launch (M3).">Share</Button>
+          <ShareMenu project={project} />
           <MoreMenu project={project} canAct={canAct} />
           {state.action.beside && <span className="max-w-[190px] text-right text-small leading-tight text-ink-2 max-md:hidden">{state.action.beside}</span>}
           <Button
             // The stage action is the primary only when nothing on screen needs the person first (BUILD-SPEC §2).
-            variant={planStage || state.stage === "launch" ? "primary" : "secondary"}
-            disabledReason={pending ? "Starting the build…" : state.action.disabledReason}
-            href={state.stage === "launch" ? `/p/${project.id}/launch` : undefined}
+            variant={
+              launch
+                ? launch.share.disabledReason
+                  ? "secondary"
+                  : "primary"
+                : planStage || (state.stage === "launch" && !items.some((i) => i.status === "needs_connection" || i.status === "paused"))
+                  ? "primary"
+                  : "secondary"
+            }
+            disabledReason={pending ? (launch ? "Sharing…" : "Starting the build…") : state.action.disabledReason}
+            href={!launch && state.stage === "launch" ? `/p/${project.id}/launch` : undefined}
             onClick={() => {
+              if (launch) {
+                setActionError(undefined);
+                start(async () => {
+                  const r = await shareWithTeam({ projectId: project.id });
+                  if (!r.ok) setActionError(r.message);
+                  router.refresh();
+                });
+                return;
+              }
               if (!planStage || !project.plan) return;
               setActionError(undefined);
               start(async () => {
@@ -349,6 +426,12 @@ export function Workspace({ project }: { project: ProjectWorkspace }) {
       <div className="flex min-h-0 flex-1 gap-2.5 max-lg:flex-col">
         {planPanel}
         <section aria-label="Stage" className="flex min-h-[480px] min-w-0 flex-1 flex-col overflow-hidden rounded-pane border border-line bg-surface shadow-pane">
+          {launch ? (
+            <div className="min-h-0 flex-1 overflow-auto">
+              <LaunchView project={project} state={launch} />
+            </div>
+          ) : (
+            <>
           {!planStage && (
             <div className="flex items-center gap-2.5 px-3 py-2.5">
               <Segmented
@@ -376,6 +459,8 @@ export function Workspace({ project }: { project: ProjectWorkspace }) {
           <div role={planStage ? undefined : "tabpanel"} aria-label={planStage ? "The plan" : view} className="flex min-h-0 flex-1 flex-col overflow-auto">
             {planStage ? planDocument : <StageBody view={view} project={project} planDocument={planDocument} items={items} live={live} budgetPaused={budgetPaused} />}
           </div>
+            </>
+          )}
         </section>
         {showChat ? (
           <ChatPane project={project} writing={writing} activity={planStage ? null : <BuildActivity project={project} items={items} live={live} />} onCollapse={() => setChatOpen(false)} onPickModel={(m) => (project.plan ? setModelAsk(m) : switchModel(m, false))} />
