@@ -5,7 +5,9 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { Json } from "@/lib/database.types";
+import { MODEL_CHOICES, MODEL_LABEL } from "@/lib/models";
 import { canBuild, canManageMembers } from "@/lib/permissions";
+import { allowedModels } from "../blueprint/write-plan";
 import { createAdminDb } from "../db";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
@@ -37,15 +39,20 @@ const promptSchema = z
  * Write the plan: creates a draft project holding the prompt and opens its workspace.
  * Nothing is built or charged here; the plan is written in the project (M2), and building waits for a click.
  */
-export async function startProject(input: { prompt: string; talkFirst?: boolean }): Promise<ActionResult> {
+export async function startProject(input: { prompt: string; talkFirst?: boolean; model?: string }): Promise<ActionResult> {
   const ctx = await getAppContext();
   if (!canBuild(ctx.role)) return { ok: false, message: "Viewers can't start projects. Ask an Owner, Admin or Builder." };
   const prompt = promptSchema.safeParse(input.prompt);
   if (!prompt.success) return { ok: false, message: prompt.error.issues[0].message };
+  const admin = createAdminDb();
+  const model = z.enum(MODEL_CHOICES).catch("gemini").parse(input.model ?? "gemini");
+  if (!(await allowedModels(admin, ctx.workspace.id)).includes(model)) {
+    return { ok: false, message: `${MODEL_LABEL[model]} isn't allowed in this workspace. Pick another model.` };
+  }
 
-  const { data, error } = await createAdminDb()
+  const { data, error } = await admin
     .from("projects")
-    .insert({ workspace_id: ctx.workspace.id, name: "Untitled app", owner_id: ctx.user.id, prompt: prompt.data, status: "draft" })
+    .insert({ workspace_id: ctx.workspace.id, name: "Untitled app", owner_id: ctx.user.id, prompt: prompt.data, status: "draft", model })
     .select("id")
     .single();
   if (error || !data) return { ok: false, message: "The project couldn't be created. Nothing was charged. Try again." };

@@ -3,10 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { Composer } from "@/components/ax/composer";
+import { ModelPicker } from "@/components/ax/model-picker";
 import { Pill } from "@/components/ax/pill";
 import { TemplatesDialog } from "@/components/ax/templates-dialog";
 import { loginUrl, PENDING_PROMPT_KEY } from "@/lib/auth-paths";
 import { useHomePrompt } from "@/lib/home-prompt";
+import type { ModelChoice, ModelOption } from "@/lib/models";
 import { startProject } from "@/server/actions/projects";
 
 function greeting(now: Date) {
@@ -23,6 +25,7 @@ export function HomeComposer({
   firstName,
   startBlockedReason,
   initialPrompt,
+  models,
 }: {
   signedIn: boolean;
   firstName?: string;
@@ -30,10 +33,13 @@ export function HomeComposer({
   startBlockedReason?: string;
   /** From a Marketplace pick (?starter=). A prompt kept through sign-in wins. */
   initialPrompt?: string;
+  /** The models this workspace allows (all of them when signed out). */
+  models: ModelOption[];
 }) {
   const router = useRouter();
   const { prompt, setPrompt, templatesOpen, setTemplatesOpen } = useHomePrompt();
   const [talkFirst, setTalkFirst] = useState(false);
+  const [model, setModel] = useState<ModelChoice>(models.find((m) => m.choice === "gemini")?.choice ?? models[0]?.choice ?? "gemini");
   const [hello, setHello] = useState<string | null>(null);
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();
@@ -69,7 +75,7 @@ export function HomeComposer({
     }
     start(async () => {
       // On success the action opens the new project; it only returns when something's wrong.
-      const r = await startProject({ prompt: text, talkFirst });
+      const r = await startProject({ prompt: text, talkFirst, model });
       if (r && !r.ok) setError(r.message);
     });
   };
@@ -93,11 +99,7 @@ export function HomeComposer({
           placeholder="Describe the app you want. For example: before each meeting, send me a Slack brief with each attendee’s last email."
           label="Describe your app"
           submitDisabledReason={signedIn ? startBlockedReason : undefined}
-          modelPicker={
-            <Pill soft iconAfter="chevronDown" disabledReason="Picking a model comes with plan writing (M2). Gemini writes plans for now.">
-              Gemini
-            </Pill>
-          }
+          modelPicker={<ModelPicker value={model} options={models} onChange={setModel} />}
           contextPills={
             <>
               <Pill icon="plus" disabledReason="Adding files, agents and tools comes with plan writing (M2).">

@@ -4,7 +4,7 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { APICallError, generateText, RetryError, type LanguageModel } from "ai";
+import { APICallError, generateText, Output, RetryError, type LanguageModel } from "ai";
 import { serverEnv } from "@/server/env";
 import { MODEL_CHOICES, MODEL_LABEL, type ModelChoice } from "./models";
 
@@ -124,6 +124,32 @@ export async function ask(input: {
       providerOptions: input.fast && !serverEnv.google().model.includes("lite") ? { google: { thinkingConfig: { thinkingLevel: "low" } } } : undefined,
     });
     return { text: text.trim(), label: resolved.label, simulated: resolved.simulated };
+  } catch (err) {
+    throw classifyGatewayError(err, resolved.label) ?? new GatewayUnavailable(resolved.label, err instanceof Error ? err.message : String(err));
+  }
+}
+
+/** A structured answer (zod schema) through the same gateway rules: retries, 429 → GatewayRateLimited. */
+export async function askObject<T>(input: {
+  instructions: string;
+  prompt: string;
+  schema: import("zod").ZodType<T>;
+  model?: ModelChoice;
+  fast?: boolean;
+}): Promise<{ object: T; label: string; simulated: boolean; tokens: number }> {
+  const resolved = resolveModel(input.model);
+  try {
+    const result = await generateText({
+      model: resolved.model,
+      instructions: input.instructions,
+      prompt: input.prompt,
+      output: Output.object({ schema: input.schema }),
+      temperature: 0.2,
+      maxRetries: 3,
+      timeout: 45_000,
+      providerOptions: input.fast && !serverEnv.google().model.includes("lite") ? { google: { thinkingConfig: { thinkingLevel: "low" } } } : undefined,
+    });
+    return { object: result.output as T, label: resolved.label, simulated: resolved.simulated, tokens: result.totalUsage.totalTokens ?? 0 };
   } catch (err) {
     throw classifyGatewayError(err, resolved.label) ?? new GatewayUnavailable(resolved.label, err instanceof Error ? err.message : String(err));
   }

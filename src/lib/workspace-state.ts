@@ -5,7 +5,7 @@ import type { ProjectInput, ProjectSummary } from "./project-status";
 
 export type StageAction = {
   label: string;
-  /** Why it can't be pressed (always set while disabled; shown as the title and beside the button). */
+  /** Why it can't be pressed (set only while disabled; shown as the title and beside the button). */
   disabledReason?: string;
   /** The short line beside the button, e.g. "Answer 1 question to build · 1,240 credits available". */
   beside?: string;
@@ -13,44 +13,82 @@ export type StageAction = {
 
 export type WorkspaceState = { stage: Stage; progress?: string; paused: boolean; action: StageAction };
 
+export type PlanState = {
+  generation: "writing" | "ready" | "failed";
+  /** Blocking questions still without an answer (they hold Build, A-0). */
+  blockingOpen: number;
+  total: number | null;
+  parts: number;
+  agreed: boolean;
+};
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
 /**
  * Where the project is (the stepper) and its one stage action (BUILD-SPEC §2).
- * Nothing builds without a click, and in M1 nothing can build yet: Build arrives with the plan (M2) and the
- * simulated build (M3), so the action is shown with its cost and the honest reason it's off.
+ * Build is the only way a build starts, and only once the plan is written and every blocking question answered.
  */
 export function workspaceState(input: {
   status: ProjectInput["status"];
   role: Role;
   summary: ProjectSummary;
-  planTotal: number | null;
-  hasPlan: boolean;
+  plan: PlanState | null;
+  /** The writer in this tab is streaming (before the database says so). */
+  writingNow?: boolean;
+  runStatus?: string | null;
   creditsLeft: number;
 }): WorkspaceState {
-  const { status, role, summary, planTotal, hasPlan, creditsLeft } = input;
+  const { status, role, summary, plan, creditsLeft } = input;
   const viewerReason = buildBlockedReason(role);
   const available = `${creditsLeft.toLocaleString("en-US")} credits available`;
 
   if (status === "draft") {
-    const label = hasPlan && planTotal ? `Build · ~${Math.round(planTotal).toLocaleString("en-US")} credits` : "Build";
-    const reason = viewerReason ?? (hasPlan ? "Building starts with the simulated build (M3). Nothing has been built or charged." : "Write the plan first. Plans are written in M2.");
+    const writing = input.writingNow || plan?.generation === "writing";
+    const label = plan?.generation === "ready" && plan.total ? `Build · ~${Math.round(plan.total).toLocaleString("en-US")} credits` : "Build";
+    if (!plan && !writing) {
+      return { stage: "plan", progress: "no plan yet", paused: false, action: { label, disabledReason: viewerReason ?? "The plan comes first.", beside: viewerReason ? "Viewers can't build" : `Plan first · ${available}` } };
+    }
+    if (writing) {
+      return {
+        stage: "plan",
+        progress: "writing the plan…",
+        paused: false,
+        action: { label, disabledReason: viewerReason ?? "The plan is still being written.", beside: viewerReason ? "Viewers can't build" : "Writing the plan…" },
+      };
+    }
+    if (plan!.generation === "failed") {
+      return {
+        stage: "plan",
+        progress: `stopped at ${plural(plan!.parts, "part")}`,
+        paused: false,
+        action: { label: "Build", disabledReason: viewerReason ?? "Finish the plan first: try again, or switch model.", beside: viewerReason ? "Viewers can't build" : undefined },
+      };
+    }
+    const open = plan!.blockingOpen;
+    const questionReason = open ? `Answer ${plural(open, "question")} to build` : undefined;
     return {
       stage: "plan",
-      progress: hasPlan ? `${summary.total} ${summary.total === 1 ? "part" : "parts"}` : "no plan yet",
+      progress: open ? `${plural(open, "question")} left` : plural(plan!.parts, "part"),
       paused: false,
-      action: { label, disabledReason: reason, beside: viewerReason ? "Viewers can't build" : `${hasPlan ? "Not built yet" : "Plan first"} · ${available}` },
+      action: {
+        label,
+        disabledReason: viewerReason ?? (questionReason ? `${questionReason}. Build waits because there's no safe default.` : undefined),
+        beside: viewerReason ? "Viewers can't build" : questionReason ? `${questionReason} · ${available}` : available,
+      },
     };
   }
 
   if (status === "building" || status === "paused") {
     const paused = status === "paused";
+    const queued = input.runStatus === "queued";
     return {
       stage: "build",
-      progress: paused ? "paused at budget" : `${summary.works} of ${summary.total} working`,
+      progress: paused ? "paused at budget" : queued ? "build queued" : `${summary.works} of ${summary.total} working`,
       paused,
       action: {
         label: "Launch",
         disabledReason: viewerReason ?? (paused ? "The build is paused at its budget. Raise it or set parts aside first." : "Launch opens when every part works."),
-        beside: viewerReason ? "Viewers can't launch" : paused ? "Blocked: budget used" : `${summary.works} of ${summary.total} parts work`,
+        beside: viewerReason ? "Viewers can't launch" : paused ? "Blocked: budget used" : queued ? "Build queued" : `${summary.works} of ${summary.total} parts work`,
       },
     };
   }
