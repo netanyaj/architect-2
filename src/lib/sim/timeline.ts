@@ -14,12 +14,13 @@ export type SimItem = {
   grp: "features" | "data" | "integrations" | "agents" | "quality" | string;
   title: string;
   description?: string | null;
+  proved_when?: string | null;
   item_class?: string | null;
   size?: "s" | "m" | "l" | string | null;
   provider?: string | null;
   estimate_likely?: number | null;
   position: number;
-  /** Parts already built (a change run) or set aside / dropped are skipped. */
+  /** Only agreed parts are built: a change run skips what's built, set aside or dropped. */
   status: string;
 };
 
@@ -165,7 +166,7 @@ export function buildTimeline(input: TimelineInput): Timeline {
   const order = scenario.order as string[];
 
   const todo = input.items
-    .filter((i) => !["built", "deferred", "dropped", "sample_data"].includes(i.status))
+    .filter((i) => i.status === "agreed" || i.status === "proposed")
     .sort((a, b) => order.indexOf(a.grp) - order.indexOf(b.grp) || a.position - b.position);
   const agents = todo.filter((i) => i.grp === "agents");
   const lastAgentKey = agents.length ? agents[agents.length - 1].key : null;
@@ -205,13 +206,13 @@ export function buildTimeline(input: TimelineInput): Timeline {
         actor: "system",
         payload: { used: Math.round(spent), budget: limit, remaining_items: remaining.length, remaining_est: Math.round(remaining.reduce((s, i) => s + Number(i.estimate_likely ?? 0), 0)) },
       });
-      for (const r of remaining) outcomes.push({ key: r.key, status: "agreed", statusDetail: null, credits: 0, fixes: [], proof: null, attempts: [] });
+      for (const r of remaining) outcomes.push({ key: r.key, status: "agreed", statusDetail: "Waiting for budget", credits: 0, fixes: [], proof: null, attempts: [] });
       runStatus = "paused_budget";
       break;
     }
 
     const check = checkFor(item, scenario);
-    events.push({ at_ms: at(), type: "check.written", item_key: item.key, actor: "verifier", payload: { item_key: item.key, kind: check.kind, description: `Done when ${item.title.toLowerCase()} passes its check` } });
+    events.push({ at_ms: at(), type: "check.written", item_key: item.key, actor: "verifier", payload: { item_key: item.key, kind: check.kind, description: item.proved_when ?? `${item.title} passes its check` } });
     step(timing.check_written_ms);
     events.push({ at_ms: at(), type: "item.building", item_key: item.key, actor: "architect_agent", payload: { item_key: item.key } });
     events.push({ at_ms: at(), type: "log.line", item_key: item.key, actor: "architect_agent", payload: { verb: "Building", object: item.title } });

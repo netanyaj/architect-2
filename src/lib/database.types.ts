@@ -1092,36 +1092,48 @@ export type Database = {
       runs: {
         Row: {
           blueprint_id: string | null
+          ends_at: string | null
           finished_at: string | null
           id: string
           kind: string
+          outcome: Json | null
           project_id: string
           scenario: string
+          speed: number
           started_at: string | null
           started_by: string | null
           status: string
+          variant: string
         }
         Insert: {
           blueprint_id?: string | null
+          ends_at?: string | null
           finished_at?: string | null
           id?: string
           kind: string
+          outcome?: Json | null
           project_id: string
           scenario?: string
+          speed?: number
           started_at?: string | null
           started_by?: string | null
           status?: string
+          variant?: string
         }
         Update: {
           blueprint_id?: string | null
+          ends_at?: string | null
           finished_at?: string | null
           id?: string
           kind?: string
+          outcome?: Json | null
           project_id?: string
           scenario?: string
+          speed?: number
           started_at?: string | null
           started_by?: string | null
           status?: string
+          variant?: string
         }
         Relationships: [
           {
@@ -1286,10 +1298,11 @@ export type Database = {
     }
     Functions: {
       agree_and_build: {
-        Args: { p_blueprint: string; p_user: string }
+        Args: { p_blueprint: string; p_kind?: string; p_user: string }
         Returns: string
       }
       apply_seed_updates: { Args: { p_workspace: string }; Returns: undefined }
+      settle_run: { Args: { p_run: string }; Returns: string }
       can_build: { Args: { ws: string }; Returns: boolean }
       create_demo_workspace: {
         Args: { p_email: string; p_name: string; p_user: string }

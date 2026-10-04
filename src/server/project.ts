@@ -6,6 +6,7 @@ import { MODEL_LABEL, toModelChoice, type ModelChoice, type ModelOption } from "
 import { detectTools, projectIcon, summarizeProject, type ProjectInput } from "@/lib/project-status";
 import { allowedModels } from "./blueprint/write-plan";
 import { createAdminDb, createServerDb } from "./db";
+import { catchUpRuns } from "./sim/run";
 import type { AppContext } from "./workspace";
 
 export type WorkspaceItem = {
@@ -118,17 +119,22 @@ export async function modelOptionsFor(workspaceId: string): Promise<ModelOption[
 }
 
 /** One project for its workspace screen, read under RLS (so only members see it). Null when it doesn't exist. */
-export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLeft: number): Promise<ProjectWorkspace | null> {
+export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLeft: number, opts: { catchUp?: boolean } = {}): Promise<ProjectWorkspace | null> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   const db = await createServerDb();
   const { data: p } = await db
     .from("projects")
     .select(
-      "id, workspace_id, name, icon, status, prompt, model, owner_id, owner_display_name, updated_at, budget_credits, blueprints(id, version, status, generation, created_at, total_likely), runs(status, started_at)",
+      "id, workspace_id, name, icon, status, prompt, model, owner_id, owner_display_name, updated_at, budget_credits, blueprints(id, version, status, generation, created_at, total_likely), runs(status, started_at, ends_at)",
     )
     .eq("id", id)
     .maybeSingle();
   if (!p) return null;
+  // A run left queued, or one whose time is up, is started or settled now (SIMULATOR step 3), then read again.
+  if (opts.catchUp && (p.runs ?? []).some((r) => r.status === "queued" || (r.status === "running" && r.ends_at && new Date(r.ends_at).getTime() <= Date.now()))) {
+    await catchUpRuns(createAdminDb(), p.id);
+    return getProjectWorkspace(id, ctx, creditsLeft);
+  }
 
   const versions: PlanVersion[] = [...(p.blueprints ?? [])]
     .sort((a, b) => b.version - a.version)

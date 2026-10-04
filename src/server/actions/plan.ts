@@ -6,6 +6,7 @@ import { MODEL_CHOICES, MODEL_LABEL } from "@/lib/models";
 import { canBuild } from "@/lib/permissions";
 import { allowedModels } from "../blueprint/write-plan";
 import type { VersionItem } from "@/lib/plan-diff";
+import { parseSim, startRun } from "../sim/run";
 import { createAdminDb, createServerDb, type AdminDb } from "../db";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
@@ -116,13 +117,14 @@ const BUILD_REFUSALS: Record<string, string> = {
   cannot_build: "Viewers can't build. Ask an Owner, Admin or Builder.",
   plan_not_ready: "Wait for the plan to finish writing.",
   already_agreed: "This version is already agreed and its build is queued.",
+  run_in_progress: "A build is already running on this project. Wait for it to finish.",
 };
 
 /**
  * Build · ~N credits. The only way a build starts (CLAUDE.md rule 1): the database's Build gate agrees this version,
  * agrees its parts and queues a run started by this person, in one transaction. Refuses with the reason otherwise.
  */
-export async function buildPlan(input: { blueprintId: string }): Promise<ActionResult<{ runId: string }>> {
+export async function buildPlan(input: { blueprintId: string; sim?: string }): Promise<ActionResult<{ runId: string }>> {
   const ctx = await getAppContext();
   if (!canBuild(ctx.role)) return { ok: false, message: BUILD_REFUSALS.cannot_build };
   if (!uuid.safeParse(input.blueprintId).success) return { ok: false, message: "That plan isn't in this workspace." };
@@ -130,7 +132,7 @@ export async function buildPlan(input: { blueprintId: string }): Promise<ActionR
   const { data: bp } = await admin.from("blueprints").select("id, project_id, total_likely, projects!inner(workspace_id, budget_credits)").eq("id", input.blueprintId).maybeSingle();
   if (!bp || bp.projects.workspace_id !== ctx.workspace.id) return { ok: false, message: "That plan isn't in this workspace." };
 
-  const { data: runId, error } = await admin.rpc("agree_and_build", { p_blueprint: bp.id, p_user: ctx.user.id });
+  const { data: runId, error } = await admin.rpc("agree_and_build", { p_blueprint: bp.id, p_user: ctx.user.id, p_kind: "build" });
   if (error || !runId) {
     const code = Object.keys(BUILD_REFUSALS).find((k) => error?.message.includes(k));
     if (error?.message.includes("over_budget")) {
@@ -141,6 +143,7 @@ export async function buildPlan(input: { blueprintId: string }): Promise<ActionR
     }
     return { ok: false, message: code ? BUILD_REFUSALS[code] : "Build couldn't start. Nothing was charged. Try again." };
   }
+  await startRun(admin, runId, parseSim(input.sim));
   revalidatePath(`/p/${bp.project_id}`);
   revalidatePath("/projects");
   return { ok: true, runId };

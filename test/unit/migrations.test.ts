@@ -246,7 +246,7 @@ describe("agree_and_build (the Build gate, DATA-MODEL rule 1)", () => {
 
   it("API roles can't call the Build gate or the seed helpers directly", async () => {
     for (const role of ["anon", "authenticated"]) {
-      for (const fn of ["agree_and_build(uuid,uuid)", "apply_seed_updates(uuid)"]) {
+      for (const fn of ["agree_and_build(uuid,uuid,text)", "settle_run(uuid)", "apply_seed_updates(uuid)"]) {
         expect((await one<{ ok: boolean }>(`select has_function_privilege('${role}', '${fn}', 'execute') as ok`)).ok, `${role} → ${fn}`).toBe(false);
       }
     }
@@ -271,5 +271,93 @@ describe("Gemini default and the slow error kind (0006)", () => {
     expect(model).toBe("gemini");
     await db.query("insert into blueprints (project_id, version, prompt, generation, error_kind) values ($1, 1, 'x', 'failed', 'slow')", [project]);
     await expect(db.query("insert into blueprints (project_id, version, prompt, generation, error_kind) values ($1, 2, 'x', 'failed', 'sleepy')", [project])).rejects.toThrow(/check/);
+  });
+});
+
+describe("the simulator's runs (0007)", () => {
+  async function plan(opts: { budget?: number | null } = {}) {
+    const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
+    const { id: project } = await one<{ id: string }>("insert into projects (workspace_id, name, owner_id, budget_credits) values ($1, 'Sim test', $2, $3) returning id", [ws, MORGAN, opts.budget ?? null]);
+    const { id: bp } = await one<{ id: string }>("insert into blueprints (project_id, version, prompt, total_likely) values ($1, 1, 'x', 30) returning id", [project]);
+    const ids: Record<string, string> = {};
+    for (const [key, title] of [["writer", "Brief writer"], ["mail", "Gmail read"], ["crm", "HubSpot sync"], ["later", "Later part"]]) {
+      ids[key] = (await one<{ id: string }>("insert into items (blueprint_id, project_id, key, grp, title, proved_when, estimate_likely) values ($1, $2, $3, 'agents', $4, 'p', 10) returning id", [bp, project, key, title])).id;
+    }
+    return { ws, project, bp, ids };
+  }
+
+  /** What startRun writes: the running run with its outcome, and a check per part written before its code. */
+  async function running(run: string, ids: Record<string, string>, outcome: unknown, endsAgoMs = 1000) {
+    await db.query("update runs set status = 'running', started_at = now() - interval '2 minutes', ends_at = now() - ($2 || ' milliseconds')::interval, outcome = $3 where id = $1", [run, String(endsAgoMs), JSON.stringify(outcome)]);
+    for (const id of Object.values(ids)) await db.query("insert into checks (item_id, kind, description) values ($1, 'eval', 'p')", [id]);
+  }
+
+  const OUTCOME = {
+    status: "done",
+    failure: { check: "brief is 200 words or fewer", measured: "236 words" },
+    outcomes: [
+      { key: "writer", status: "built", statusDetail: null, credits: 11, fixes: [{ attempt: 1, credits: 2, measured: null, note: null }], attempts: [{ attempt: 1, measured: null, note: null, credits: 2, result: "pass" }], proof: { kind: "eval", assertions: [3, 3], screenshot: false } },
+      { key: "mail", status: "needs_connection", statusDetail: "using sample data until connected", credits: 9, fixes: [], attempts: [], proof: { kind: "api_test", assertions: [3, 3], screenshot: false }, provider: "gmail" },
+      { key: "crm", status: "needs_approval", statusDetail: "IT admin reviews", credits: 0, fixes: [], attempts: [], proof: null, provider: "hubspot_crm" },
+    ],
+  };
+
+  it("the gate records the run's kind, and refuses a second run while one is going", async () => {
+    const { bp, project } = await plan();
+    const { run } = await one<{ run: string }>("select agree_and_build($1, $2, 'build') as run", [bp, MORGAN]);
+    expect(await one("select kind, status, variant, speed from runs where id = $1", [run])).toEqual({ kind: "build", status: "queued", variant: "default", speed: "1" });
+    const { id: v2 } = await one<{ id: string }>("insert into blueprints (project_id, version, prompt) values ($1, 2, 'x') returning id", [project]);
+    await expect(db.query("select agree_and_build($1, $2, 'change')", [v2, MORGAN])).rejects.toThrow(/run_in_progress/);
+    await expect(db.query("select agree_and_build($1, $2, 'deploy')", [v2, MORGAN])).rejects.toThrow(/bad_run_kind/);
+  });
+
+  it("a change is checked against the budget for the parts it builds, not the whole plan", async () => {
+    const { bp, project } = await plan({ budget: 50 });
+    await db.query("update items set status = 'built' where blueprint_id = $1 and key <> 'later'", [bp]);
+    await db.query("insert into usage_ledger (workspace_id, project_id, kind, credits) select workspace_id, id, 'build', 35 from projects where id = $1", [project]);
+    // The whole plan (30) would pass 50 with 35 spent; the one new part (10) doesn't.
+    const { run } = await one<{ run: string }>("select agree_and_build($1, $2, 'change') as run", [bp, MORGAN]);
+    expect((await one<{ kind: string }>("select kind from runs where id = $1", [run])).kind).toBe("change");
+  });
+
+  it("settles once the time is up: statuses, proofs, Usage lines and an approval request, then never again", async () => {
+    const { ws, bp, project, ids } = await plan();
+    const { run } = await one<{ run: string }>("select agree_and_build($1, $2) as run", [bp, MORGAN]);
+    await running(run, ids, OUTCOME, -60_000); // ends in a minute
+    expect((await one<{ s: string }>("select settle_run($1) as s", [run])).s).toBe("running");
+    expect(await count("select count(*) as n from usage_ledger where run_id = $1", [run])).toBe(0);
+
+    await db.query("update runs set ends_at = now() - interval '1 second' where id = $1", [run]);
+    expect((await one<{ s: string }>("select settle_run($1) as s", [run])).s).toBe("done");
+    expect((await one<{ s: string }>("select settle_run($1) as s", [run])).s).toBe("done"); // idempotent
+
+    const items = await db.query<{ key: string; status: string; cost_actual: string; fix_attempts: number }>("select key, status, cost_actual, fix_attempts from items where blueprint_id = $1 order by key", [bp]);
+    expect(items.rows).toEqual([
+      { key: "crm", status: "needs_approval", cost_actual: "0", fix_attempts: 0 },
+      { key: "later", status: "agreed", cost_actual: "0", fix_attempts: 0 },
+      { key: "mail", status: "needs_connection", cost_actual: "9", fix_attempts: 0 },
+      { key: "writer", status: "built", cost_actual: "13", fix_attempts: 1 },
+    ]);
+    const usage = await db.query<{ kind: string; credits: string; note: string }>("select kind, credits, note from usage_ledger where run_id = $1 order by kind", [run]);
+    expect(usage.rows).toEqual([
+      { kind: "build", credits: "20", note: "Build · 2 parts" },
+      { kind: "fix", credits: "2", note: "Fix · Brief writer, try 1 of 3" },
+    ]);
+    const proofs = await db.query<{ attempt: number; result: string; summary: string }>("select attempt, result, summary from proofs where item_id = $1 order by attempt", [ids.writer]);
+    expect(proofs.rows).toEqual([
+      { attempt: 0, result: "fail", summary: "Failed: 236 words" },
+      { attempt: 1, result: "pass", summary: "All assertions passed" },
+    ]);
+    expect(await one("select title, status, payload->>'provider' as provider from approvals where workspace_id = $1 and project_id = $2", [ws, project])).toEqual({ title: "Hubspot Crm connector", status: "waiting", provider: "hubspot_crm" });
+    expect(await one("select status from projects where id = $1", [project])).toEqual({ status: "built" });
+    expect(await one("select status from runs where id = $1", [run])).toEqual({ status: "done" });
+  });
+
+  it("a paused run leaves the project paused", async () => {
+    const { bp, project, ids } = await plan();
+    const { run } = await one<{ run: string }>("select agree_and_build($1, $2) as run", [bp, MORGAN]);
+    await running(run, ids, { ...OUTCOME, status: "paused_budget" });
+    expect((await one<{ s: string }>("select settle_run($1) as s", [run])).s).toBe("paused_budget");
+    expect(await one("select status from projects where id = $1", [project])).toEqual({ status: "paused" });
   });
 });

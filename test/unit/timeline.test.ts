@@ -120,7 +120,7 @@ describe("buildTimeline", () => {
   });
 
   it("skips parts already built, set aside or dropped (a change run builds only what's new)", () => {
-    const t = buildTimeline(input({ items: items.map((i, n) => ({ ...i, status: n < 4 ? "built" : n === 4 ? "deferred" : "agreed" })) }));
+    const t = buildTimeline(input({ items: items.map((i, n) => ({ ...i, status: n < 3 ? "built" : n === 3 ? "needs_connection" : n === 4 ? "deferred" : "agreed" })) }));
     expect(t.outcomes.map((o) => o.key)).toEqual(["brief-schedule"]);
   });
 

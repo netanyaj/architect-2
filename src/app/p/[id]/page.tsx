@@ -18,7 +18,7 @@ export default async function ProjectPage({ params }: PageProps<"/p/[id]">) {
   const { id } = await params;
   const ctx = await getAppContext();
   const [nav, help] = await Promise.all([getNavData(ctx), getHelpContext(ctx)]);
-  const project = await getProjectWorkspace(id, ctx, nav.credits.left);
+  const project = await getProjectWorkspace(id, ctx, nav.credits.left, { catchUp: true });
   if (!project) notFound();
   if (project.otherWorkspace) return <SwitchWorkspaceCard name={project.name} workspace={project.otherWorkspace} />;
   return (

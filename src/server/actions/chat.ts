@@ -9,6 +9,7 @@ import { canBuild } from "@/lib/permissions";
 import { applyDiff, ChangeDraft, conflictsOf, isEmpty, normalizeChange, type Decision, type Diff, type VersionItem } from "@/lib/plan-diff";
 import { createAdminDb, type AdminDb } from "../db";
 import { estimate, totals as planTotals } from "../estimate";
+import { startRun } from "../sim/run";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
 
@@ -273,8 +274,18 @@ export async function applyChange(input: { proposalId: string; decisions?: Recor
   let note = `Applied. This is now plan v${version}.`;
   if (built) {
     // After a build, Apply is the click that builds the change.
-    const { error: gate } = await admin.rpc("agree_and_build", { p_blueprint: bp.id, p_user: ctx.user.id });
-    note = gate ? `Applied as plan v${version}. It isn't building yet: ${gate.message.includes("over_budget") ? "it would go past the budget" : "answer the open question first"}.` : `Applied as plan v${version}. Building the change is queued.`;
+    const { data: runId, error: gate } = await admin.rpc("agree_and_build", { p_blueprint: bp.id, p_user: ctx.user.id, p_kind: "change" });
+    if (gate || !runId) {
+      const why = gate?.message.includes("over_budget")
+        ? "it would go past the budget"
+        : gate?.message.includes("run_in_progress")
+          ? "a build is still running. Apply it again when that finishes"
+          : "answer the open question first";
+      note = `Applied as plan v${version}. It isn't building yet: ${why}.`;
+    } else {
+      await startRun(admin, runId);
+      note = `Applied as plan v${version}. Building the change now.`;
+    }
   }
   await admin.from("messages").insert({ project_id: project.id, role: "system", mode: "build", content: note });
   revalidatePath(`/p/${project.id}`);

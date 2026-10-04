@@ -11,6 +11,8 @@ vi.mock("@/server/workspace", () => ({
   getAppContext: async () => ({ user: { id: "me" }, name: "Morgan", role, workspace: { id: "ws-1", name: "Acme" }, memberships: [] }),
 }));
 vi.mock("@/server/blueprint/write-plan", () => ({ allowedModels: async () => ["gemini", "openrouter", "claude"] }));
+const startRun = vi.fn();
+vi.mock("@/server/sim/run", async (orig) => ({ ...(await orig<object>()), startRun: (...a: unknown[]) => startRun(...a) }));
 
 const { answerQuestion, editItem, buildPlan, setProjectModel, changeDefault } = await import("@/server/actions/plan");
 
@@ -23,6 +25,7 @@ const PROJECT = "55555555-5555-4555-8555-555555555555";
 beforeEach(() => {
   role = "owner";
   rpc.mockReset();
+  startRun.mockReset();
   db = new FakeDb({
     blueprints: [{ id: BP, project_id: PROJECT, agreed_at: null, generation: "ready", total_likely: 120, projects: { workspace_id: "ws-1", budget_credits: 100 } }],
     questions: [{ id: Q, blueprint_id: BP, options: [{ value: "connected" }, { value: "other" }], answer: null }],
@@ -64,10 +67,16 @@ describe("editItem", () => {
 });
 
 describe("buildPlan (the only way a build starts)", () => {
-  it("goes through the database's Build gate as the person who clicked", async () => {
+  it("goes through the database's Build gate as the person who clicked, then starts that run", async () => {
     rpc.mockResolvedValue({ data: "run-1", error: null });
     expect(await buildPlan({ blueprintId: BP })).toEqual({ ok: true, runId: "run-1" });
-    expect(rpc).toHaveBeenCalledWith("agree_and_build", { p_blueprint: BP, p_user: "me" });
+    expect(rpc).toHaveBeenCalledWith("agree_and_build", { p_blueprint: BP, p_user: "me", p_kind: "build" });
+    expect(startRun).toHaveBeenCalledWith(expect.anything(), "run-1", { variant: "default", speed: 1 });
+  });
+  it("passes the demo variant from ?sim= through", async () => {
+    rpc.mockResolvedValue({ data: "run-1", error: null });
+    await buildPlan({ blueprintId: BP, sim: "paused,fast" });
+    expect(startRun).toHaveBeenCalledWith(expect.anything(), "run-1", { variant: "paused", speed: 0.25 });
   });
   it("turns the gate's refusals into plain reasons", async () => {
     rpc.mockResolvedValue({ data: null, error: { message: "blocking_questions_open" } });
@@ -82,6 +91,7 @@ describe("buildPlan (the only way a build starts)", () => {
     db.tables.blueprints[0].projects = { workspace_id: "ws-other" };
     expect(await buildPlan({ blueprintId: BP })).toMatchObject({ ok: false });
     expect(rpc).not.toHaveBeenCalled();
+    expect(startRun).not.toHaveBeenCalled();
   });
 });
 
