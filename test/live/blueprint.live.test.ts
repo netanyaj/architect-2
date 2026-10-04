@@ -4,7 +4,7 @@
  *   EVAL_MODELS=gemini,openrouter pnpm eval:blueprint
  *   RECORD=1 pnpm eval:blueprint              → also saves the plans as fixtures for the offline tests
  */
-import { writeFileSync } from "node:fs";
+import { appendFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MODEL_CHOICES, type ModelChoice } from "@/lib/models";
@@ -20,6 +20,20 @@ describe.each(models.filter((m) => MODEL_CHOICES.includes(m)))("plans on %s", (m
     let streamed = 0;
     const r = await generateBlueprint({ prompt, model }, { onItem: () => void streamed++ });
     console.log(`${model} · ${id}: ${r.blueprint.items.length} parts, ${r.blueprint.questions.length} questions, ${(r.ms / 1000).toFixed(1)} s, ${r.tokens} tokens${r.simulated ? " (simulated via Gemini)" : ""}`);
+    if (process.env.EVAL_LOG) {
+      appendFileSync(
+        process.env.EVAL_LOG,
+        JSON.stringify({
+          model,
+          id,
+          seconds: +(r.ms / 1000).toFixed(1),
+          simulated: r.simulated,
+          parts: r.blueprint.items.length,
+          blocking: r.blueprint.questions.filter((q) => q.blocking).map((q) => `${q.text} [${q.default_effect}]`),
+          defaulted: r.blueprint.questions.filter((q) => !q.blocking).length,
+        }) + "\n",
+      );
+    }
     checkFixture(r.blueprint, prompt, blocking);
     expect(streamed).toBeGreaterThanOrEqual(r.blueprint.items.length);
     expect(r.ms).toBeLessThan(60_000);

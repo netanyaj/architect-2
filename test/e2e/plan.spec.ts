@@ -87,13 +87,13 @@ test.describe("M2: plans and chat", () => {
     // Conflict guard (A-3): removing a part needs Keep / Set aside / Drop before Apply.
     await chat.getByLabel("Message Architect").fill("Remove the Monday Slack message, I'll check renewals myself.");
     await chat.getByRole("button", { name: "Send" }).click();
-    const guard = chat.locator("div.rounded-card").filter({ hasText: /This change (removes|weakens) it/ });
-    await expect(guard).toBeVisible({ timeout: 45_000 });
+    await expect(chat.getByText(/This change (removes|weakens) it/)).toBeVisible({ timeout: 45_000 });
+    const guard = chat.getByRole("group", { name: /^What happens to / }).first();
     const apply = chat.getByRole("button", { name: "Apply" }).last();
     await expect(apply).toHaveAttribute("aria-disabled", "true");
     await expect(apply).toHaveAttribute("title", /^Decide what happens to/);
     await guard.getByRole("button", { name: "Drop" }).click();
-    await guard.getByLabel(/Why \(saved on the plan\)/).fill("I'll check renewals myself");
+    await chat.getByLabel(/Why \(saved on the plan\)/).fill("I'll check renewals myself");
     await apply.click();
     await expect(chat.getByText("Applied. This is now plan v3.")).toBeVisible();
     const { data: v3 } = await db.from("blueprints").select("id").eq("project_id", id).eq("version", 3).single();
