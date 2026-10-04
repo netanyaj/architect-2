@@ -189,14 +189,17 @@ const WORKSPACE_WORD = /workspace/i;
  * - Posting to Slack needs a workspace. If the request names a channel ("#sales"), the destination is settled and
  *   any workspace question is just a default. If it doesn't ("send me a Slack brief"), there's no safe default, so
  *   exactly one blocking "Which Slack workspace?" question holds Build (A-0, A-2).
+ * - Every other question has a recommended answer, so it's a safe default: the model tends to over-flag questions as
+ *   blocking ("Which calendar provider?" with Google recommended), which would hold Build for no reason. Those become
+ *   defaulted choices the person can still change. Removing or weakening a part is guarded separately (A-3).
  */
 export function applyQuestionRules(bp: Blueprint, prompt: string): Blueprint {
   const slackItems = bp.items.filter((i) => i.provider?.toLowerCase() === "slack" || (i.item_class === "integration.chat_send" && /slack/i.test(`${i.title} ${i.description} ${i.source_quote}`)));
   const isWorkspaceQ = (q: Question) => SLACK_WORKSPACE_Q.test(q.text) && WORKSPACE_WORD.test(q.text);
-  const others = bp.questions.filter((q) => !isWorkspaceQ(q));
+  const others = bp.questions.filter((q) => !isWorkspaceQ(q)).map((q) => ({ ...q, blocking: false }));
   const existing = bp.questions.find(isWorkspaceQ);
 
-  if (slackItems.length === 0) return bp;
+  if (slackItems.length === 0) return { ...bp, questions: others };
   const channelNamed = /(^|\s)#[a-z0-9][\w-]*/i.test(prompt);
   if (channelNamed) {
     return { ...bp, questions: [...others, ...(existing ? [{ ...existing, blocking: false }] : [])] };

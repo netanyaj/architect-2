@@ -119,6 +119,15 @@ describe("applyQuestionRules (Slack workspace)", () => {
     const noSlack = { ...base(), items: base().items.filter((i) => i.key !== "slack-brief") };
     expect(applyQuestionRules(noSlack as BlueprintT, PROMPT)).toEqual(noSlack);
   });
+  it("other questions the model marks blocking have a safe default, so they don't hold Build", () => {
+    const over = {
+      ...base(),
+      questions: [{ text: "Which calendar and email provider should be used?", affects: ["calendar-read"], options: [{ label: "Google Workspace", value: "google" }, { label: "Microsoft 365", value: "microsoft" }], recommended: "google", blocking: true }],
+    };
+    const bp = applyQuestionRules(over, PROMPT);
+    expect(bp.questions.filter((q) => q.blocking).map((q) => q.text)).toEqual(["Which Slack workspace should this post to?"]);
+    expect(bp.questions.find((q) => q.text.startsWith("Which calendar"))).toMatchObject({ blocking: false, recommended: "google" });
+  });
 });
 
 /* ---------- estimator (A-4) ---------- */
