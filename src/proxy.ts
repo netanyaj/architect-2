@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isPublicPath, loginUrl } from "@/lib/auth-paths";
 import type { Database } from "@/lib/database.types";
+import { supabaseAnonKey, supabaseUrl } from "@/lib/db";
 
 /**
  * Refreshes the Supabase session cookie on every page request, and sends signed-out visitors
@@ -10,8 +11,8 @@ import type { Database } from "@/lib/database.types";
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
   const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll: () => request.cookies.getAll(),

@@ -12,5 +12,7 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts", "test/unit/**/*.test.ts"],
     environment: "node",
+    // Unit tests never call Supabase; a well-formed placeholder satisfies the URL check in src/lib/db.ts.
+    env: { NEXT_PUBLIC_SUPABASE_URL: "https://unittest.supabase.co", NEXT_PUBLIC_SUPABASE_ANON_KEY: "unit-test-anon-key" },
   },
 });
