@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import { useId, useRef, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Icon } from "./icon";
 import { Pill } from "./pill";
@@ -31,7 +31,8 @@ export function Composer({
   variant: "home" | "chat";
   value: string;
   onChange: (value: string) => void;
-  onSubmit: () => void;
+  /** Gets the text as the box holds it at submit (it can differ from `value` if typed before the page was ready). */
+  onSubmit: (value: string) => void;
   talkFirst: boolean;
   onTalkFirstChange: (on: boolean) => void;
   /** The model pill (a picker); rendered by the caller so it can own the model list. */
@@ -50,10 +51,13 @@ export function Composer({
   const id = useId();
   const empty = value.trim().length === 0;
   const blockedReason = submitDisabledReason ?? (empty ? "Type what you want first" : undefined);
+  const textRef = useRef<HTMLTextAreaElement>(null);
   const submit = (e?: FormEvent) => {
     e?.preventDefault();
-    if (blockedReason || pending) return;
-    onSubmit();
+    const current = textRef.current?.value ?? value;
+    if (current !== value) onChange(current);
+    if (submitDisabledReason || pending || current.trim().length === 0) return;
+    onSubmit(current);
   };
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
@@ -74,6 +78,8 @@ export function Composer({
       </label>
       <textarea
         id={id}
+        ref={textRef}
+        name="prompt"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}

@@ -61,6 +61,7 @@ export function ListRow({
   trailing,
   href,
   selected,
+  footer,
   className,
 }: {
   icon: IconName;
@@ -72,17 +73,20 @@ export function ListRow({
   trailing?: ReactNode;
   href?: string;
   selected?: boolean;
+  /** Shown under the row, inside the same card (an error, an invite link). */
+  footer?: ReactNode;
   className?: string;
 }) {
   return (
     <li
       className={cn(
-        "relative flex items-center gap-3.5 rounded-card border border-line bg-surface px-4 py-3.5 text-ink",
+        "relative flex flex-col gap-2 rounded-card border border-line bg-surface px-4 py-3.5 text-ink",
         href && "hover:border-line-ctl",
         selected && "border-2 border-ink",
         className,
       )}
     >
+      <div className="flex items-center gap-3.5">
       <IconTile icon={icon} dark={darkTile} />
       <div className="flex min-w-0 flex-1 flex-col">
         {href ? (
@@ -100,6 +104,8 @@ export function ListRow({
       {tools && <ToolInitials tools={tools} />}
       {status && <span className="relative flex-none max-sm:hidden">{status}</span>}
       {trailing && <span className="relative z-10 flex-none">{trailing}</span>}
+      </div>
+      {footer && <div className="relative z-10">{footer}</div>}
     </li>
   );
 }

@@ -12,19 +12,26 @@ export function Pill({
   iconAfter,
   pressed,
   soft = false,
+  disabledReason,
   className,
   children,
+  onClick,
+  title,
   type = "button",
   ...rest
-}: ComponentProps<"button"> & { icon?: IconName; iconAfter?: IconName; pressed?: boolean; soft?: boolean }) {
+}: ComponentProps<"button"> & { icon?: IconName; iconAfter?: IconName; pressed?: boolean; soft?: boolean; disabledReason?: string }) {
   return (
     <button
       type={type}
       aria-pressed={pressed}
+      aria-disabled={disabledReason ? true : undefined}
+      title={disabledReason ?? title}
+      onClick={(e) => (disabledReason ? e.preventDefault() : onClick?.(e))}
       className={cn(
         "inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-body font-[550] whitespace-nowrap text-ink transition-colors",
         soft ? "border-line bg-tray hover:bg-selected" : "border-line-ctl bg-surface hover:bg-selected",
         pressed && "border-ink bg-selected",
+        disabledReason && "cursor-not-allowed border-line text-ink-3 hover:bg-surface",
         className,
       )}
       {...rest}

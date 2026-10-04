@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { buttonClasses } from "@/components/ax/button";
 import type { Role } from "@/lib/db";
 import { assignableRolesFor, canChangeMember, canManageMembers, canResetDemo, ROLE_INFO } from "@/lib/permissions";
 import { signOut } from "@/server/actions/auth";
 import { createAdminDb, createServerDb } from "@/server/db";
 import { origin } from "@/server/origin";
+import { listProjects } from "@/server/queries";
 import { getAppContext } from "@/server/workspace";
+import { AppearanceSection } from "./appearance-section";
+import { BudgetsSection } from "./budgets-section";
 import { DemoDataSection } from "./demo-data-section";
 import { MembersSection, type MemberRow } from "./members-section";
 
@@ -21,6 +25,8 @@ export default async function SettingsPage() {
     .order("created_at");
 
   const manage = canManageMembers(ctx.role);
+  const projects = await listProjects(ctx);
+  const theme = (await cookies()).get("ax_theme")?.value === "dark" ? "dark" : "light";
   // Invite links are only for people who can manage members; read them with the service role.
   const links = new Map<string, string>();
   if (manage) {
@@ -66,6 +72,13 @@ export default async function SettingsPage() {
         canManage={manage}
         assignable={assignableRolesFor(ctx.role)}
       />
+
+      <BudgetsSection
+        canEdit={manage}
+        projects={projects.map((p) => ({ id: p.id, name: p.name, budget: p.budgetCredits, spent: p.creditsUsed }))}
+      />
+
+      <AppearanceSection theme={theme} />
 
       <section aria-labelledby="account" className="flex flex-col gap-3">
         <h2 id="account" className="text-heading font-[650]">

@@ -28,7 +28,7 @@ let nextId = 1;
 class Query implements PromiseLike<Result> {
   private filters: ((r: Row) => boolean)[] = [];
   private op: "select" | "insert" | "update" | "delete" = "select";
-  private payload: Row = {};
+  private payload: Row | Row[] = {};
 
   constructor(
     private rows: Row[],
@@ -38,7 +38,7 @@ class Query implements PromiseLike<Result> {
   select() {
     return this;
   }
-  insert(values: Row) {
+  insert(values: Row | Row[]) {
     this.op = "insert";
     this.payload = values;
     return this;
@@ -75,9 +75,10 @@ class Query implements PromiseLike<Result> {
   private exec(): Row[] {
     const match = (r: Row) => this.filters.every((f) => f(r));
     if (this.op === "insert") {
-      const row = { id: `id-${nextId++}`, invite_token: `tok-${nextId}`, ...this.payload };
-      this.rows.push(row);
-      return [row];
+      const values = Array.isArray(this.payload) ? (this.payload as Row[]) : [this.payload];
+      const rows = values.map((v) => ({ id: `id-${nextId++}`, invite_token: `tok-${nextId}`, ...v }));
+      this.rows.push(...rows);
+      return rows;
     }
     if (this.op === "update") {
       const hit = this.rows.filter(match);

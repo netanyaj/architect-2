@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Figtree, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -20,9 +21,11 @@ export const metadata: Metadata = {
   description: "Describe an app. Architect writes the plan, you build it with one click.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // The person's theme setting (Settings › Appearance). Light unless they chose dark.
+  const theme = (await cookies()).get("ax_theme")?.value === "dark" ? "dark" : "light";
   return (
-    <html lang="en" data-theme="light" className={`${figtree.variable} ${geistMono.variable} h-full`}>
+    <html lang="en" data-theme={theme} className={`${figtree.variable} ${geistMono.variable} h-full`}>
       <body className="min-h-full">
         <TooltipProvider>{children}</TooltipProvider>
       </body>
