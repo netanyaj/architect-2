@@ -32,6 +32,22 @@ describe("resolveModel", () => {
   });
 });
 
+describe("timeLimit (OpenRouter's 45 s)", () => {
+  it("stops OpenRouter after 45 s and says it was our limit; other models have none", async () => {
+    vi.useFakeTimers();
+    const { timeLimit, MODEL_TIME_LIMIT_MS } = await vi.importActual<typeof import("@/lib/gateway")>("@/lib/gateway");
+    expect(MODEL_TIME_LIMIT_MS).toEqual({ openrouter: 45_000 });
+    const l = timeLimit("openrouter");
+    vi.advanceTimersByTime(44_999);
+    expect([l.signal?.aborted, l.timedOut()]).toEqual([false, false]);
+    vi.advanceTimersByTime(1);
+    expect([l.signal?.aborted, l.timedOut(), l.seconds]).toEqual([true, true, 45]);
+    const g = timeLimit("gemini");
+    expect([g.signal, g.timedOut()]).toEqual([undefined, false]);
+    vi.useRealTimers();
+  });
+});
+
 /* ---------- support actions ---------- */
 
 const ask = vi.fn();

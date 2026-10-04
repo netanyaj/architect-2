@@ -10,7 +10,7 @@ import { loginUrl, PENDING_PROMPT_KEY } from "@/lib/auth-paths";
 import { createBrowserDb } from "@/lib/db";
 import { useHomePrompt } from "@/lib/home-prompt";
 import { formatBytes, UPLOAD_LIMITS } from "@/lib/uploads";
-import type { ModelChoice, ModelOption } from "@/lib/models";
+import { DEFAULT_MODEL, type ModelChoice, type ModelOption } from "@/lib/models";
 import { startProject } from "@/server/actions/projects";
 import { finishUploads } from "@/server/actions/uploads";
 
@@ -42,7 +42,7 @@ export function HomeComposer({
   const router = useRouter();
   const { prompt, setPrompt, templatesOpen, setTemplatesOpen } = useHomePrompt();
   const [talkFirst, setTalkFirst] = useState(false);
-  const [model, setModel] = useState<ModelChoice>(models.find((m) => m.choice === "gemini")?.choice ?? models[0]?.choice ?? "gemini");
+  const [model, setModel] = useState<ModelChoice>(models.find((m) => m.choice === DEFAULT_MODEL)?.choice ?? models[0]?.choice ?? DEFAULT_MODEL);
   const [hello, setHello] = useState<string | null>(null);
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();

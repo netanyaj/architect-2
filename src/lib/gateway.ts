@@ -34,6 +34,33 @@ export class GatewayRateLimited extends Error {
   }
 }
 
+/** The model took longer than its limit (OpenRouter's free models: 45 s). Shown like a rate limit: paused, Switch model. */
+export class GatewaySlow extends Error {
+  constructor(
+    public label: string,
+    public seconds: number,
+  ) {
+    super(`${label} took longer than ${seconds} s.`);
+    this.name = "GatewaySlow";
+  }
+}
+
+/** How long a model may take before the request is stopped and the person is offered Switch model. */
+export const MODEL_TIME_LIMIT_MS: Partial<Record<ModelChoice, number>> = { openrouter: 45_000 };
+
+/** An abort signal for a model's time limit; `timedOut()` tells our own stop apart from any other abort. */
+export function timeLimit(choice: ModelChoice) {
+  const ms = MODEL_TIME_LIMIT_MS[choice];
+  if (!ms) return { signal: undefined, timedOut: () => false, clear: () => {}, seconds: 0 };
+  const controller = new AbortController();
+  let fired = false;
+  const timer = setTimeout(() => {
+    fired = true;
+    controller.abort();
+  }, ms);
+  return { signal: controller.signal, timedOut: () => fired, clear: () => clearTimeout(timer), seconds: ms / 1000 };
+}
+
 export class GatewayUnavailable extends Error {
   constructor(
     public label: string,
@@ -90,8 +117,8 @@ function statusOf(err: unknown): number | undefined {
  * any other API failure GatewayUnavailable. Returns null for everything else (e.g. output that didn't match the
  * schema), which callers treat as the model's mistake and may retry.
  */
-export function classifyGatewayError(err: unknown, label: string): GatewayRateLimited | GatewayUnavailable | null {
-  if (err instanceof GatewayRateLimited || err instanceof GatewayUnavailable) return err;
+export function classifyGatewayError(err: unknown, label: string): GatewayRateLimited | GatewayUnavailable | GatewaySlow | null {
+  if (err instanceof GatewayRateLimited || err instanceof GatewayUnavailable || err instanceof GatewaySlow) return err;
   if (statusOf(err) === 429) return new GatewayRateLimited(label);
   if (APICallError.isInstance(err) || RetryError.isInstance(err)) {
     return new GatewayUnavailable(label, err instanceof Error ? err.message : String(err));
@@ -110,8 +137,10 @@ export async function ask(input: {
   fast?: boolean;
 }): Promise<{ text: string; label: string; simulated: boolean }> {
   const resolved = resolveModel(input.model);
+  const limit = timeLimit(resolved.choice);
   try {
     const { text } = await generateText({
+      abortSignal: limit.signal,
       model: resolved.model,
       instructions: input.instructions,
       prompt: input.prompt,
@@ -125,7 +154,10 @@ export async function ask(input: {
     });
     return { text: text.trim(), label: resolved.label, simulated: resolved.simulated };
   } catch (err) {
+    if (limit.timedOut()) throw new GatewaySlow(resolved.label, limit.seconds);
     throw classifyGatewayError(err, resolved.label) ?? new GatewayUnavailable(resolved.label, err instanceof Error ? err.message : String(err));
+  } finally {
+    limit.clear();
   }
 }
 
@@ -138,8 +170,10 @@ export async function askObject<T>(input: {
   fast?: boolean;
 }): Promise<{ object: T; label: string; simulated: boolean; tokens: number }> {
   const resolved = resolveModel(input.model);
+  const limit = timeLimit(resolved.choice);
   try {
     const result = await generateText({
+      abortSignal: limit.signal,
       model: resolved.model,
       instructions: input.instructions,
       prompt: input.prompt,
@@ -151,6 +185,9 @@ export async function askObject<T>(input: {
     });
     return { object: result.output as T, label: resolved.label, simulated: resolved.simulated, tokens: result.totalUsage.totalTokens ?? 0 };
   } catch (err) {
+    if (limit.timedOut()) throw new GatewaySlow(resolved.label, limit.seconds);
     throw classifyGatewayError(err, resolved.label) ?? new GatewayUnavailable(resolved.label, err instanceof Error ? err.message : String(err));
+  } finally {
+    limit.clear();
   }
 }

@@ -266,10 +266,10 @@ export function PlanDocument({
 
       {failed && !writing && (
         <>
-          {failed.kind === "rate_limited" ? (
+          {failed.kind === "rate_limited" || failed.kind === "slow" ? (
             <StageBanner
               kind="paused"
-              title={`${modelLabel} is busy right now`}
+              title={failed.kind === "slow" ? `${modelLabel} is taking too long` : `${modelLabel} is busy right now`}
               actions={
                 <>
                   {switchTo && (
@@ -281,8 +281,9 @@ export function PlanDocument({
                 </>
               }
             >
-              The free model reached its limit. {items.length ? `The ${items.length} parts written so far are kept. ` : ""}Nothing was built or
-              charged. {switchTo ? `Switch to ${switchTo.label}, or try again in a minute.` : "Try again in a minute."}
+              {failed.kind === "slow" ? "The free model didn't finish within 45 seconds." : "The free model reached its limit."}{" "}
+              {items.length ? `The ${items.length} parts written so far are kept. ` : ""}Nothing was built or charged.{" "}
+              {switchTo ? `Switch to ${switchTo.label}, or try again${failed.kind === "slow" ? "" : " in a minute"}.` : "Try again in a minute."}
             </StageBanner>
           ) : (
             <StageBanner

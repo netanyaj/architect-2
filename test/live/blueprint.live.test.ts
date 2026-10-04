@@ -8,6 +8,7 @@ import { appendFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MODEL_CHOICES, type ModelChoice } from "@/lib/models";
+import { GatewaySlow } from "@/lib/gateway";
 import { generateBlueprint } from "@/server/blueprint/generate";
 import { DEMO_PROMPTS, promptText } from "../fixtures/demo-prompts";
 import { checkFixture } from "../fixtures/check-fixture";
@@ -15,11 +16,24 @@ import { checkFixture } from "../fixtures/check-fixture";
 const models = (process.env.EVAL_MODELS ?? "gemini").split(",").map((m) => m.trim()) as ModelChoice[];
 
 describe.each(models.filter((m) => MODEL_CHOICES.includes(m)))("plans on %s", (model) => {
-  it.each(DEMO_PROMPTS)("$id: valid, quoted from the request, within 60 s", async ({ id, blocking }) => {
+  it.each(DEMO_PROMPTS)("$id: valid and quoted within 60 s (OpenRouter: or pauses cleanly at 45 s)", async ({ id, blocking }) => {
     const prompt = promptText(id);
     let streamed = 0;
+    const started = Date.now();
     // The seeded demo workspace's Connections: Google Calendar and Slack connected.
-    const r = await generateBlueprint({ prompt, model, connected: ["google_calendar", "slack"] }, { onItem: () => void streamed++ });
+    let r;
+    try {
+      r = await generateBlueprint({ prompt, model, connected: ["google_calendar", "slack"] }, { onItem: () => void streamed++ });
+    } catch (err) {
+      // OpenRouter's acceptance is "a valid plan, or a clean pause": past 45 s it stops with GatewaySlow (Switch model).
+      if (model === "openrouter" && err instanceof GatewaySlow) {
+        const seconds = (Date.now() - started) / 1000;
+        if (process.env.EVAL_LOG) appendFileSync(process.env.EVAL_LOG, JSON.stringify({ model, id, seconds: +seconds.toFixed(1), paused: true }) + "\n");
+        expect(seconds).toBeLessThan(60);
+        return;
+      }
+      throw err;
+    }
     console.log(`${model} · ${id}: ${r.blueprint.items.length} parts, ${r.blueprint.questions.length} questions, ${(r.ms / 1000).toFixed(1)} s, ${r.tokens} tokens${r.simulated ? " (simulated via Gemini)" : ""}`);
     if (process.env.EVAL_LOG) {
       appendFileSync(
@@ -37,7 +51,7 @@ describe.each(models.filter((m) => MODEL_CHOICES.includes(m)))("plans on %s", (m
     }
     checkFixture(r.blueprint, prompt, blocking);
     expect(streamed).toBeGreaterThanOrEqual(r.blueprint.items.length);
-    expect(r.ms).toBeLessThan(60_000);
+    expect(r.ms).toBeLessThan(model === "openrouter" ? 50_000 : 60_000);
     if (process.env.RECORD === "1") {
       writeFileSync(join(__dirname, "..", "fixtures", "blueprints", `${id}.${model}.json`), JSON.stringify(r.blueprint, null, 2) + "\n");
     }

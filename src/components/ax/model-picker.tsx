@@ -1,7 +1,7 @@
 "use client";
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MODEL_LABEL, type ModelChoice, type ModelOption } from "@/lib/models";
+import { MODEL_LABEL, MODEL_NOTE, type ModelChoice, type ModelOption } from "@/lib/models";
 import { cn } from "@/lib/utils";
 import { Icon } from "./icon";
 import { SimTag } from "./pill";
@@ -31,7 +31,7 @@ export function ModelPicker({
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Model: ${MODEL_LABEL[value]}${current?.simulated ? ` (simulated, ${SIMULATED_NOTE.toLowerCase()})` : ""}. Change`}
-        title={disabledReason ?? (current?.simulated ? SIMULATED_NOTE : undefined)}
+        title={disabledReason ?? (current?.simulated ? SIMULATED_NOTE : MODEL_NOTE[value])}
         disabled={Boolean(disabledReason)}
         className={cn(
           "inline-flex min-h-8 items-center gap-1.5 rounded-full border border-line bg-tray px-3 text-body font-[550] whitespace-nowrap text-ink hover:bg-selected",
@@ -53,6 +53,7 @@ export function ModelPicker({
           >
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="font-semibold">{o.label}</span>
+              {MODEL_NOTE[o.choice] && <span className="text-small text-ink-2">{MODEL_NOTE[o.choice]}</span>}
               {o.simulated && <span className="text-small text-ink-2">{SIMULATED_NOTE}</span>}
             </span>
             {o.simulated && <SimTag title={SIMULATED_NOTE} />}

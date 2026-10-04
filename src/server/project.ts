@@ -47,7 +47,7 @@ export type PlanDetails = {
   version: number;
   status: "draft" | "agreed" | "superseded";
   generation: "writing" | "ready" | "failed";
-  errorKind: "rate_limited" | "invalid" | "unavailable" | null;
+  errorKind: "rate_limited" | "slow" | "invalid" | "unavailable" | null;
   name: string | null;
   summary: string | null;
   prompt: string;

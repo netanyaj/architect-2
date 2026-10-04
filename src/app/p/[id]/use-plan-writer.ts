@@ -9,7 +9,7 @@ import type { PlanEvent, PlanItem } from "@/server/blueprint/write-plan";
 export type WriterState =
   | { phase: "idle" }
   | { phase: "writing"; items: PlanItem[]; model?: { label: string; simulated: boolean }; retrying: boolean }
-  | { phase: "failed"; kind: "rate_limited" | "invalid" | "unavailable" | "refused"; message: string; items: PlanItem[] };
+  | { phase: "failed"; kind: "rate_limited" | "slow" | "invalid" | "unavailable" | "refused"; message: string; items: PlanItem[] };
 
 /** Reads newline-delimited JSON events from the plan route. */
 async function* readEvents(body: ReadableStream<Uint8Array>): AsyncGenerator<PlanEvent> {

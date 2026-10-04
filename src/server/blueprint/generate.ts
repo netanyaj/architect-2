@@ -2,7 +2,7 @@ import "server-only";
 
 import { Output, streamText, type FilePart, type TextPart } from "ai";
 import { applyQuestionRules, BlueprintDraft, Item, normalizeDraft, shortenQuote, strictProblems, toKey, validateBlueprint, type Blueprint as BlueprintT, type Item as ItemT } from "@/lib/blueprint";
-import { classifyGatewayError, resolveModel, type ModelChoice } from "@/lib/gateway";
+import { classifyGatewayError, GatewaySlow, resolveModel, timeLimit, type ModelChoice } from "@/lib/gateway";
 import { BLUEPRINT_SYSTEM, blueprintPrompt } from "../prompts/blueprint";
 
 export type Attachment = { name: string; text?: string; image?: { data: Uint8Array; mediaType: string } };
@@ -47,7 +47,10 @@ async function attempt(
 
   // Errors inside the stream (a 429, an outage) surface later only as "No output generated"; keep the real one.
   let streamError: unknown;
+  // OpenRouter's free models can be slow: stop at the time limit and offer Switch model, rather than hang.
+  const limit = timeLimit(resolved.choice);
   const result = streamText({
+    abortSignal: limit.signal,
     model: resolved.model,
     instructions: BLUEPRINT_SYSTEM,
     messages: [{ role: "user", content }],
@@ -89,8 +92,12 @@ async function attempt(
     }
     output = await result.output;
   } catch (err) {
+    if (limit.timedOut()) throw new GatewaySlow(resolved.label, limit.seconds);
     throw streamError && classifyGatewayError(streamError, resolved.label) ? streamError : err;
+  } finally {
+    limit.clear();
   }
+  if (limit.timedOut()) throw new GatewaySlow(resolved.label, limit.seconds);
   if (streamError && classifyGatewayError(streamError, resolved.label)) throw streamError;
   await emitUpTo(output.items, output.items.length);
   const usage = await result.totalUsage;

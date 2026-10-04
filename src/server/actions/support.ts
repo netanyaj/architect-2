@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { ask, GatewayRateLimited } from "@/lib/gateway";
+import { ask, GatewayRateLimited, GatewaySlow } from "@/lib/gateway";
 import type { Json } from "@/lib/database.types";
 import { createAdminDb } from "../db";
 import { listProjects } from "../queries";
@@ -44,7 +44,7 @@ export async function askSupport(input: { question: string; history?: { role: "u
     if (!text) return { ok: false, message: "I couldn't come up with an answer. Try asking another way, or talk to a person." };
     return { ok: true, answer: text };
   } catch (err) {
-    if (err instanceof GatewayRateLimited) {
+    if (err instanceof GatewayRateLimited || err instanceof GatewaySlow) {
       return { ok: false, rateLimited: true, message: "Help is busy right now (the free model's limit). Try again in a minute, or talk to a person." };
     }
     return { ok: false, message: "Help can't answer right now. Try again in a moment, or talk to a person." };

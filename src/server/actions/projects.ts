@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { Json } from "@/lib/database.types";
-import { MODEL_CHOICES, MODEL_LABEL } from "@/lib/models";
+import { DEFAULT_MODEL, MODEL_CHOICES, MODEL_LABEL } from "@/lib/models";
 import { canBuild, canManageMembers } from "@/lib/permissions";
 import { allowedModels } from "../blueprint/write-plan";
 import { prepareUploads, removeProjectFiles, type UploadSlot } from "../uploads";
@@ -52,7 +52,7 @@ export async function startProject(input: {
   const prompt = promptSchema.safeParse(input.prompt);
   if (!prompt.success) return { ok: false, message: prompt.error.issues[0].message };
   const admin = createAdminDb();
-  const model = z.enum(MODEL_CHOICES).catch("gemini").parse(input.model ?? "gemini");
+  const model = z.enum(MODEL_CHOICES).catch(DEFAULT_MODEL).parse(input.model ?? DEFAULT_MODEL);
   if (!(await allowedModels(admin, ctx.workspace.id)).includes(model)) {
     return { ok: false, message: `${MODEL_LABEL[model]} isn't allowed in this workspace. Pick another model.` };
   }

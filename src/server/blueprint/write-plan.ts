@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { Item as ItemT } from "@/lib/blueprint";
-import { GatewayRateLimited, GatewayUnavailable, resolveModel } from "@/lib/gateway";
+import { GatewayRateLimited, GatewaySlow, GatewayUnavailable, resolveModel } from "@/lib/gateway";
 import { canBuild } from "@/lib/permissions";
 import { MODEL_LABEL, toModelChoice, type ModelChoice } from "@/lib/models";
 import type { AdminDb } from "../db";
@@ -21,7 +21,7 @@ export type PlanEvent =
   | { type: "item"; item: PlanItem }
   | { type: "reset"; problems: string[] }
   | { type: "done"; blueprintId: string; name: string; summary: string; totals: { low: number; likely: number; high: number; minutes: number }; questions: number; blocking: number }
-  | { type: "error"; kind: "rate_limited" | "invalid" | "unavailable" | "refused"; message: string; kept: number };
+  | { type: "error"; kind: "rate_limited" | "slow" | "invalid" | "unavailable" | "refused"; message: string; kept: number };
 
 export class PlanRefused extends Error {
   constructor(
@@ -215,18 +215,20 @@ export async function writePlan(
     const blocking = plan.questions.filter((q) => q.blocking).length; // decided by the server (applyQuestionRules)
     emit({ type: "done", blueprintId: bp.id, name: plan.name, summary: plan.summary, totals: t, questions: plan.questions.length, blocking });
   } catch (err) {
-    const kind = err instanceof GatewayRateLimited ? "rate_limited" : err instanceof BlueprintInvalid ? "invalid" : "unavailable";
+    const kind = err instanceof GatewayRateLimited ? "rate_limited" : err instanceof GatewaySlow ? "slow" : err instanceof BlueprintInvalid ? "invalid" : "unavailable";
     const message =
       kind === "rate_limited"
         ? `${resolved.label} is busy right now (the free model's limit). The parts written so far are kept. Switch model, or try again in a minute.`
-        : kind === "invalid"
+        : kind === "slow"
+          ? `${resolved.label} is taking too long (over ${(err as GatewaySlow).seconds} s). The parts written so far are kept. Switch model, or try again.`
+          : kind === "invalid"
           ? "The plan stopped part-way: it didn't pass its checks. The parts written so far are kept."
           : `${resolved.label} didn't answer. The parts written so far are kept.`;
     await admin
       .from("blueprints")
       .update({ generation: "failed", error_kind: kind, error: err instanceof Error ? err.message.slice(0, 500) : String(err) })
       .eq("id", bp.id);
-    if (!(err instanceof GatewayRateLimited) && !(err instanceof GatewayUnavailable) && !(err instanceof BlueprintInvalid)) {
+    if (!(err instanceof GatewayRateLimited) && !(err instanceof GatewaySlow) && !(err instanceof GatewayUnavailable) && !(err instanceof BlueprintInvalid)) {
       console.error("writePlan failed", err instanceof Error ? err.name : "unknown");
     }
     emit({ type: "error", kind, message, kept: saved.size });

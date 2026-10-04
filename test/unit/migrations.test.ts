@@ -263,3 +263,13 @@ describe("questions.default_effect (0005)", () => {
     await expect(db.query("insert into questions (blueprint_id, text, options, recommended, default_effect) values ($1, 'q', '[]', 'r', 'maybe')", [bp])).rejects.toThrow(/check/);
   });
 });
+
+describe("Gemini default and the slow error kind (0006)", () => {
+  it("new projects default to Gemini, and a plan can stop as slow", async () => {
+    const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
+    const { id: project, model } = await one<{ id: string; model: string }>("insert into projects (workspace_id, name) values ($1, 'Defaults') returning id, model", [ws]);
+    expect(model).toBe("gemini");
+    await db.query("insert into blueprints (project_id, version, prompt, generation, error_kind) values ($1, 1, 'x', 'failed', 'slow')", [project]);
+    await expect(db.query("insert into blueprints (project_id, version, prompt, generation, error_kind) values ($1, 2, 'x', 'failed', 'sleepy')", [project])).rejects.toThrow(/check/);
+  });
+});

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { Json } from "@/lib/database.types";
-import { askObject, GatewayRateLimited, ask } from "@/lib/gateway";
+import { askObject, GatewayRateLimited, GatewaySlow, ask } from "@/lib/gateway";
 import { toModelChoice } from "@/lib/models";
 import { canBuild } from "@/lib/permissions";
 import { applyDiff, ChangeDraft, conflictsOf, isEmpty, normalizeChange, type Decision, type Diff, type VersionItem } from "@/lib/plan-diff";
@@ -153,11 +153,13 @@ export async function sendMessage(input: { projectId: string; content: string; t
     revalidatePath(`/p/${project.id}`);
     return { ok: true, proposalId: proposal?.id };
   } catch (err) {
-    const busy = err instanceof GatewayRateLimited;
+    const busy = err instanceof GatewayRateLimited || err instanceof GatewaySlow;
     await say(
-      busy
-        ? "The model is busy right now (the free model's limit), so I couldn't answer. Your message is saved. Switch model, or try again in a minute."
-        : "I couldn't reach the model just now. Your message is saved. Try again in a moment.",
+      err instanceof GatewaySlow
+        ? "The free model took too long, so I stopped it. Your message is saved. Switch model, or try again."
+        : busy
+          ? "The model is busy right now (the free model's limit), so I couldn't answer. Your message is saved. Switch model, or try again in a minute."
+          : "I couldn't reach the model just now. Your message is saved. Try again in a moment.",
     );
     revalidatePath(`/p/${project.id}`);
     return { ok: false, rateLimited: busy, message: busy ? "The model is busy right now. Switch model, or try again in a minute." : "The model didn't answer. Try again." };

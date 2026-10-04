@@ -9,6 +9,12 @@ export const MODEL_LABEL: Record<ModelChoice, string> = {
   gpt: "GPT",
 };
 
+/** A short note under a model in the picker. */
+export const MODEL_NOTE: Partial<Record<ModelChoice, string>> = { openrouter: "Free · can be slow" };
+
+/** Gemini is the default everywhere a model isn't chosen yet. */
+export const DEFAULT_MODEL: ModelChoice = "gemini";
+
 export type ModelOption = { choice: ModelChoice; label: string; simulated: boolean };
 
 /** Older rows say "claude-sonnet"; anything unknown falls back to Gemini. */

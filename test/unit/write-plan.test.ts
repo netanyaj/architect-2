@@ -17,16 +17,25 @@ vi.mock("@/server/blueprint/generate", async (orig) => ({
 vi.mock("@/lib/gateway", async () => {
   class GatewayRateLimited extends Error {}
   class GatewayUnavailable extends Error {}
+  class GatewaySlow extends Error {
+    constructor(
+      public label: string,
+      public seconds: number,
+    ) {
+      super("slow");
+    }
+  }
   return {
     GatewayRateLimited,
     GatewayUnavailable,
+    GatewaySlow,
     resolveModel: (m: string) => ({ choice: m, label: m === "claude" ? "Claude Sonnet" : "Gemini", simulated: m === "claude", model: null }),
   };
 });
 
 const { writePlan, PlanRefused } = await import("@/server/blueprint/write-plan");
 const { BlueprintInvalid } = await import("@/server/blueprint/generate");
-const { GatewayRateLimited } = await import("@/lib/gateway");
+const { GatewayRateLimited, GatewaySlow } = await import("@/lib/gateway");
 
 const PROJECT = "11111111-1111-4111-8111-111111111111";
 let db: FakeDb;
@@ -113,6 +122,17 @@ describe("writePlan", () => {
     expect(db.tables.blueprints[0]).toMatchObject({ generation: "failed", error_kind: "rate_limited" });
     expect(db.tables.items).toHaveLength(2);
     expect(db.tables.usage_ledger).toEqual([]); // nothing charged for a plan that didn't finish
+  });
+
+  it("a slow model pauses cleanly: the paused banner (Switch model), parts kept, nothing charged", async () => {
+    generate.mockImplementation(async (_input, ev) => {
+      await ev.onItem(plan.items[0], 0);
+      throw new GatewaySlow("OpenRouter (free)", 45);
+    });
+    await run();
+    expect(events.at(-1)).toMatchObject({ type: "error", kind: "slow", kept: 1, message: expect.stringContaining("taking too long (over 45 s)") });
+    expect(db.tables.blueprints[0]).toMatchObject({ generation: "failed", error_kind: "slow" });
+    expect(db.tables.usage_ledger).toEqual([]);
   });
 
   it("a plan that fails its checks twice is the stopped-part-way error", async () => {
