@@ -190,7 +190,7 @@ describe("signInWithProvider", () => {
     expect(await redirectOf(signInWithProvider("google", "/projects"))).toBe("https://accounts.google.com/o/oauth2");
     expect(auth.signInWithOAuth).toHaveBeenCalledWith({
       provider: "google",
-      options: { redirectTo: "http://localhost:3000/auth/callback?next=%2Fprojects" },
+      options: { redirectTo: "http://localhost:3000/auth/callback?next=%2Fprojects", queryParams: { prompt: "select_account" } },
     });
   });
   it("comes back to login with a reason when the provider is off", async () => {

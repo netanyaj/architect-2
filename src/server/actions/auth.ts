@@ -46,7 +46,12 @@ export async function signInWithProvider(provider: "google" | "github", next: st
   const db = await createServerDb();
   const { data, error } = await db.auth.signInWithOAuth({
     provider: parsed.data,
-    options: { redirectTo: callbackUrl(await origin(), next) },
+    options: {
+      redirectTo: callbackUrl(await origin(), next),
+      // Always show Google's and GitHub's account chooser, even when one account is already signed in,
+      // so people can pick which account to use (both providers support prompt=select_account).
+      queryParams: { prompt: "select_account" },
+    },
   });
   if (error || !data.url) {
     redirect(`/login?error=${encodeURIComponent(await friendlyAuthError(error?.message ?? ""))}&next=${encodeURIComponent(safeNext(next))}`);
