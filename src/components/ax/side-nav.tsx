@@ -3,13 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { ROLE_INFO } from "@/lib/permissions";
 import { useUi } from "@/lib/ui-store";
 import { Icon, type IconName } from "./icon";
+import { WorkspaceSwitcher, type WorkspaceOption } from "./workspace-switcher";
 
 type NavItem = { href: string; label: string; icon: IconName; count?: number };
 
 export type SideNavProps = {
   workspaceName: string;
+  currentWorkspaceId: string;
+  workspaces: WorkspaceOption[];
   userName: string;
   isAdmin: boolean;
   projectCount?: number;
@@ -83,6 +87,7 @@ export function CreditsCard({ left, total, resetsOn }: SideNavProps["credits"]) 
 export function SideNav(props: SideNavProps) {
   const pathname = usePathname();
   const openHelp = useUi((s) => s.openHelp);
+  const current = props.workspaces.find((w) => w.workspaceId === props.currentWorkspaceId);
   const main: NavItem[] = [
     { href: "/home", label: "Home", icon: "home" },
     { href: "/projects", label: "Projects", icon: "projects", count: props.projectCount },
@@ -109,8 +114,14 @@ export function SideNav(props: SideNavProps) {
         </span>
         Architect
         <span className="flex-1" />
-        <span className="sr-only">Workspace: {props.workspaceName}</span>
+        <WorkspaceSwitcher current={props.currentWorkspaceId} options={props.workspaces} />
       </div>
+      {current && (props.workspaces.length > 1 || current.role !== "owner") && (
+        <div className="mx-1.5 mb-2 flex items-center justify-between gap-2 rounded-tile bg-surface px-2.5 py-1.5 text-small">
+          <span className="truncate font-semibold">{current.label}</span>
+          <span className="flex-none text-ink-2">{ROLE_INFO[current.role].label}</span>
+        </div>
+      )}
       {main.map((item) => (
         <NavLink key={item.href} item={item} active={isActive(item.href)} />
       ))}

@@ -1,24 +1,16 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { safeNext } from "@/lib/auth-paths";
 import { createAdminDb, createServerDb } from "../db";
+import { origin } from "../origin";
 import { ensureWorkspace } from "../workspace";
 
 export type EmailAuthState =
   | { status: "idle" }
   | { status: "error"; message: string; field?: "email" | "password" }
   | { status: "check_email"; email: string };
-
-/** This site's origin as the browser sees it, so callbacks work on localhost, previews and production. */
-async function origin(): Promise<string> {
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? (host?.startsWith("localhost") ? "http" : "https");
-  return host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000");
-}
 
 function callbackUrl(base: string, next: string): string {
   return `${base}/auth/callback?next=${encodeURIComponent(safeNext(next))}`;

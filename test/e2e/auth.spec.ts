@@ -71,7 +71,7 @@ test.describe("sign-in", () => {
     await page.getByLabel("Password").fill(user.password);
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
     await expect(page).toHaveURL(/\/settings$/);
-    await expect(page.getByText("Acme Ops · owner")).toBeVisible();
+    await expect(page.getByText("Acme Ops · you're an Owner.", { exact: false })).toBeVisible();
 
     const { count } = await adminDb().from("members").select("id", { count: "exact", head: true }).eq("user_id", user.id);
     expect(count).toBe(1);

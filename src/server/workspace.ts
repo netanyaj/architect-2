@@ -37,6 +37,8 @@ export type Membership = {
   workspaceId: string;
   workspaceName: string;
   role: Role;
+  /** "Your Acme Ops" or "Morgan's Acme Ops": every person's demo workspace has the same name. */
+  label: string;
 };
 
 export type AppContext = {
@@ -83,11 +85,22 @@ export const getAppContext = cache(async (): Promise<AppContext> => {
     if (error || !rows?.length) throw new Error(`Couldn't load your workspace: ${error?.message ?? "none found"}`);
   }
 
-  const memberships: Membership[] = rows.map((r) => ({
-    workspaceId: r.workspace_id,
-    workspaceName: r.workspaces.name,
-    role: r.role as Role,
-  }));
+  const { data: owners } = await db
+    .from("members")
+    .select("workspace_id, user_id, display_name")
+    .in("workspace_id", rows.map((r) => r.workspace_id))
+    .eq("role", "owner")
+    .eq("status", "active");
+  const memberships: Membership[] = rows.map((r) => {
+    const owner = owners?.find((o) => o.workspace_id === r.workspace_id);
+    const ownerName = owner?.user_id === user.id ? null : owner?.display_name?.split(" ")[0];
+    return {
+      workspaceId: r.workspace_id,
+      workspaceName: r.workspaces.name,
+      role: r.role as Role,
+      label: ownerName ? `${ownerName}'s ${r.workspaces.name}` : `Your ${r.workspaces.name}`,
+    };
+  });
   const chosen = (await cookies()).get(WORKSPACE_COOKIE)?.value;
   const current = pickWorkspace(memberships, chosen)!;
   const ws = rows.find((r) => r.workspace_id === current.workspaceId)!.workspaces;

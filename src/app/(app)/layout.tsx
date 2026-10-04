@@ -20,6 +20,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     <div className="flex min-h-dvh gap-2.5 bg-canvas p-2.5 max-md:flex-col">
       <SideNav
         workspaceName={ctx.workspace.name}
+        currentWorkspaceId={ctx.workspace.id}
+        workspaces={ctx.memberships.map((m) => ({ workspaceId: m.workspaceId, label: m.label, role: m.role }))}
         userName={ctx.name}
         isAdmin={isAdmin && ctx.workspace.governanceEnabled}
         projectCount={nav.projectCount}

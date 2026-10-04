@@ -9,7 +9,7 @@ class Redirect extends Error {
   }
 }
 vi.mock("next/navigation", () => ({ redirect: (url: string) => { throw new Redirect(url); } }));
-vi.mock("next/headers", () => ({
+vi.mock("next/headers", () => ({ // used by src/server/origin.ts
   headers: async () => new Map([["host", "localhost:3000"]]),
   cookies: async () => ({ get: () => undefined, getAll: () => [], set: () => {} }),
 }));
@@ -108,8 +108,8 @@ describe("ensureWorkspace", () => {
 
 describe("pickWorkspace", () => {
   const ms = [
-    { workspaceId: "invited", workspaceName: "Acme Ops", role: "viewer" as const },
-    { workspaceId: "own", workspaceName: "Acme Ops", role: "owner" as const },
+    { workspaceId: "invited", workspaceName: "Acme Ops", role: "viewer" as const, label: "Morgan's Acme Ops" },
+    { workspaceId: "own", workspaceName: "Acme Ops", role: "owner" as const, label: "Your Acme Ops" },
   ];
   it("uses the chosen workspace while they still belong to it", () => {
     expect(pickWorkspace(ms, "invited")?.workspaceId).toBe("invited");
