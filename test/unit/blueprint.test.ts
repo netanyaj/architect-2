@@ -6,6 +6,7 @@ import {
   Blueprint,
   normalizeDraft,
   quoteInPrompt,
+  shortenQuote,
   strictProblems,
   toKey,
   validateBlueprint,
@@ -98,6 +99,16 @@ describe("normalizeDraft / toKey", () => {
   });
 });
 
+describe("shortenQuote", () => {
+  it("cuts an over-long quote at a word boundary, so it's still the request's exact words", () => {
+    const triage = promptText("support-triage");
+    const q = shortenQuote(triage);
+    expect(q.length).toBeLessThanOrEqual(120);
+    expect(quoteInPrompt(q, triage)).toBe(true);
+    expect(shortenQuote("short")).toBe("short");
+  });
+});
+
 describe("applyQuestionRules (Slack workspace)", () => {
   it("adds one blocking workspace question when the request posts to Slack without naming a channel", () => {
     const bp = applyQuestionRules(base(), PROMPT);
@@ -114,6 +125,11 @@ describe("applyQuestionRules (Slack workspace)", () => {
     const withQ = { ...base(), questions: [{ text: "Which Slack workspace?", affects: ["slack-brief"], options: [{ label: "A", value: "a" }, { label: "B", value: "b" }], recommended: "a", blocking: true }] };
     expect(applyQuestionRules(withQ, lead).questions[0].blocking).toBe(false);
     expect(applyQuestionRules(base(), lead).questions).toEqual([]);
+  });
+  it("Slack the planner chose on its own (not in the request) is a default, not a blocking question", () => {
+    const triage = promptText("support-triage");
+    const bp = applyQuestionRules(base(), triage);
+    expect(bp.questions.filter((q) => q.blocking)).toEqual([]);
   });
   it("leaves plans without Slack alone", () => {
     const noSlack = { ...base(), items: base().items.filter((i) => i.key !== "slack-brief") };

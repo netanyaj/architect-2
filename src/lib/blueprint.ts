@@ -161,11 +161,21 @@ export function toKey(raw: string, fallback = "part"): string {
   return k;
 }
 
-type DraftShape = { items?: { key?: string; title?: string }[]; questions?: { affects?: string[] }[] };
+type DraftShape = { items?: { key?: string; title?: string; source_quote?: string }[]; questions?: { affects?: string[] }[] };
+
+/** A quote over 120 characters is cut at a word boundary: the start of a quote is still the person's exact words. */
+export function shortenQuote(quote: string, max = 120): string {
+  const q = quote.trim();
+  if (q.length <= max) return q;
+  const cut = q.slice(0, max);
+  const space = cut.lastIndexOf(" ");
+  return (space > max / 2 ? cut.slice(0, space) : cut).replace(/[\s,;:]+$/, "");
+}
 
 /**
  * Keys are internal ids, so the server tidies them instead of spending a retry: each becomes a valid, unique key,
- * and questions' "affects" follow the rename. Nothing a person reads (titles, quotes, descriptions) is changed.
+ * and questions' "affects" follow the rename. Over-long quotes are shortened to their opening words (still exact).
+ * Titles and descriptions are never changed.
  */
 export function normalizeDraft<T extends DraftShape>(draft: T): T {
   const rename = new Map<string, string>();
@@ -175,7 +185,7 @@ export function normalizeDraft<T extends DraftShape>(draft: T): T {
     for (let n = 2; used.has(key); n++) key = toKey(`${key.slice(0, 36)}-${n}`);
     used.add(key);
     if (item.key) rename.set(item.key, key);
-    return { ...item, key };
+    return { ...item, key, ...(typeof item.source_quote === "string" ? { source_quote: shortenQuote(item.source_quote) } : {}) };
   });
   const questions = (draft.questions ?? []).map((q) => ({ ...q, affects: (q.affects ?? []).map((k) => rename.get(k) ?? toKey(k)) }));
   return { ...draft, items, questions };
@@ -186,7 +196,7 @@ const WORKSPACE_WORD = /workspace/i;
 
 /**
  * Deterministic question rules applied after generation, so the plan doesn't depend on the model's mood:
- * - Posting to Slack needs a workspace. If the request names a channel ("#sales"), the destination is settled and
+ * - Posting to Slack needs a workspace when the request asks for Slack. If it names a channel ("#sales"), the destination is settled and
  *   any workspace question is just a default. If it doesn't ("send me a Slack brief"), there's no safe default, so
  *   exactly one blocking "Which Slack workspace?" question holds Build (A-0, A-2).
  * - Every other question has a recommended answer, so it's a safe default: the model tends to over-flag questions as
@@ -199,7 +209,10 @@ export function applyQuestionRules(bp: Blueprint, prompt: string): Blueprint {
   const others = bp.questions.filter((q) => !isWorkspaceQ(q)).map((q) => ({ ...q, blocking: false }));
   const existing = bp.questions.find(isWorkspaceQ);
 
-  if (slackItems.length === 0) return { ...bp, questions: others };
+  // Only when the person asked for Slack: if the planner chose Slack itself (say, for escalations), it's a default.
+  if (slackItems.length === 0 || !/\bslack\b/i.test(prompt)) {
+    return { ...bp, questions: [...others, ...(existing ? [{ ...existing, blocking: false }] : [])] };
+  }
   const channelNamed = /(^|\s)#[a-z0-9][\w-]*/i.test(prompt);
   if (channelNamed) {
     return { ...bp, questions: [...others, ...(existing ? [{ ...existing, blocking: false }] : [])] };
