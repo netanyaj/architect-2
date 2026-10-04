@@ -1,0 +1,109 @@
+{
+  "name": "Zendesk Ticket Assistant",
+  "summary": "Classifies incoming Zendesk tickets by urgency and team, drafts replies for simple ones, and escalates VIP tickets.",
+  "items": [
+    {
+      "key": "zendesk-ticket-reader",
+      "grp": "integrations",
+      "title": "Incoming tickets",
+      "description": "Reads incoming tickets from Zendesk to process them.",
+      "proved_when": "Tickets are successfully fetched from Zendesk.",
+      "source_quote": "Classify incoming Zendesk tickets",
+      "item_class": "integration.read_email",
+      "size": "m",
+      "provider": "zendesk"
+    },
+    {
+      "key": "ticket-classifier",
+      "grp": "agents",
+      "title": "Urgency and team classifier",
+      "description": "Classifies incoming tickets by urgency and team.",
+      "proved_when": "Each ticket receives an urgency score and team assignment tag.",
+      "source_quote": "by urgency and team",
+      "item_class": "agent.summariser",
+      "size": "m",
+      "framework": "lyzr"
+    },
+    {
+      "key": "simple-reply-drafter",
+      "grp": "agents",
+      "title": "Simple reply drafter",
+      "description": "Drafts a reply for simple tickets.",
+      "proved_when": "A draft reply is generated and attached to simple tickets.",
+      "source_quote": "draft a reply for simple ones",
+      "item_class": "agent.summariser",
+      "size": "m",
+      "framework": "lyzr"
+    },
+    {
+      "key": "vip-escalation-handler",
+      "grp": "agents",
+      "title": "VIP escalation handler",
+      "description": "Escalates tickets from VIP customers to management or senior support.",
+      "proved_when": "VIP tickets are flagged and moved to an escalation queue.",
+      "source_quote": "escalate anything from VIP customers",
+      "item_class": "agent.researcher",
+      "size": "m",
+      "framework": "lyzr"
+    },
+    {
+      "key": "ticket-dashboard",
+      "grp": "features",
+      "title": "Ticket dashboard",
+      "description": "Displays classified tickets, drafts, and escalations in a clear list.",
+      "proved_when": "The user can view tickets categorized by urgency, team, and VIP status.",
+      "source_quote": "Classify incoming Zendesk tickets",
+      "item_class": "screen.list",
+      "size": "m"
+    }
+  ],
+  "defaults": [
+    {
+      "label": "Ticket polling frequency",
+      "value": "Every 5 minutes",
+      "alternatives": [
+        "Every 1 minute",
+        "Every 15 minutes",
+        "Manual check"
+      ]
+    },
+    {
+      "label": "VIP identification method",
+      "value": "Customer tag in Zendesk",
+      "alternatives": [
+        "Organization domain",
+        "Spending threshold"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "text": "Where should VIP tickets be escalated to?",
+      "affects": [
+        "vip-escalation-handler"
+      ],
+      "options": [
+        {
+          "label": "A dedicated Slack channel",
+          "value": "slack"
+        },
+        {
+          "label": "A manager's email inbox",
+          "value": "email"
+        },
+        {
+          "label": "Zendesk high-priority view",
+          "value": "zendesk"
+        }
+      ],
+      "recommended": "zendesk",
+      "blocking": false
+    }
+  ],
+  "not_in_this_version": [
+    {
+      "title": "Automatic sending of drafted replies",
+      "reason": "The request specifies to draft a reply, not to send them automatically without human review."
+    }
+  ]
+}

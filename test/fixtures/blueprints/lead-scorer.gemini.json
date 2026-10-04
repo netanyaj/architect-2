@@ -1,0 +1,94 @@
+{
+  "name": "Lead Scorer Daily",
+  "summary": "Scores new HubSpot leads every morning based on company size and recent activity, explains the score, and posts the top 5 to Slack.",
+  "items": [
+    {
+      "key": "hubspot-lead-fetch",
+      "grp": "integrations",
+      "title": "New HubSpot lead reader",
+      "description": "Pulls newly created leads from HubSpot including company size and recent activity details.",
+      "proved_when": "New leads from HubSpot appear in the pipeline daily.",
+      "source_quote": "score new HubSpot leads",
+      "item_class": "integration.crm_lookup",
+      "size": "m",
+      "provider": "hubspot"
+    },
+    {
+      "key": "morning-schedule",
+      "grp": "quality",
+      "title": "Daily morning trigger",
+      "description": "Triggers the scoring workflow every morning automatically.",
+      "proved_when": "Workflow runs once a day at the specified morning time.",
+      "source_quote": "Every morning",
+      "item_class": "quality.schedule",
+      "size": "s"
+    },
+    {
+      "key": "lead-scoring-agent",
+      "grp": "agents",
+      "title": "Lead scorer and explainer",
+      "description": "Scores each lead from 0 to 100 using company size and activity, and writes an explanation for the score.",
+      "proved_when": "Each lead receives a numeric score and a written reason.",
+      "source_quote": "score new HubSpot leads from 0 to 100 using company size and recent activity, explain each score",
+      "item_class": "agent.summariser",
+      "size": "m",
+      "framework": "lyzr"
+    },
+    {
+      "key": "slack-poster",
+      "grp": "integrations",
+      "title": "Top leads Slack poster",
+      "description": "Posts the top 5 highest-scoring leads and their explanations to the designated Slack channel.",
+      "proved_when": "A message containing the top 5 leads appears in the Slack channel every morning.",
+      "source_quote": "post the top 5 to #sales",
+      "item_class": "integration.chat_send",
+      "size": "s",
+      "provider": "slack"
+    }
+  ],
+  "defaults": [
+    {
+      "label": "Morning run time",
+      "value": "8:00 AM",
+      "alternatives": [
+        "6:00 AM",
+        "7:00 AM",
+        "9:00 AM"
+      ]
+    },
+    {
+      "label": "Scoring weight balance",
+      "value": "Equal weight between company size and recent activity",
+      "alternatives": [
+        "Heavier weight on company size",
+        "Heavier weight on recent activity"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "text": "Which Slack workspace should the top 5 leads be posted to?",
+      "affects": [
+        "slack-poster"
+      ],
+      "options": [
+        {
+          "label": "Primary company workspace",
+          "value": "primary"
+        },
+        {
+          "label": "Secondary workspace",
+          "value": "secondary"
+        }
+      ],
+      "recommended": "primary",
+      "blocking": false
+    }
+  ],
+  "not_in_this_version": [
+    {
+      "title": "Automated email outreach",
+      "reason": "Outreach automation was not requested and is reserved for a future version."
+    }
+  ]
+}

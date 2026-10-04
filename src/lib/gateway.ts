@@ -6,6 +6,9 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { APICallError, generateText, RetryError, type LanguageModel } from "ai";
 import { serverEnv } from "@/server/env";
+import { MODEL_CHOICES, MODEL_LABEL, type ModelChoice } from "./models";
+
+export type { ModelChoice };
 
 /**
  * The model gateway. Every model call goes through here, never a provider SDK directly (CLAUDE.md).
@@ -15,7 +18,6 @@ import { serverEnv } from "@/server/env";
  * - A free-tier rate limit (429) is retried with backoff, then thrown as GatewayRateLimited so the UI can show
  *   the paused banner with "Switch model". Never fail over to another model silently.
  */
-export type ModelChoice = "gemini" | "openrouter" | "claude" | "gpt";
 
 export type ResolvedModel = {
   choice: ModelChoice;
@@ -51,27 +53,27 @@ export function resolveModel(choice: ModelChoice = "gemini"): ResolvedModel {
   switch (choice) {
     case "openrouter": {
       const cfg = serverEnv.openrouter();
-      if (!cfg) return { choice, label: "OpenRouter (free)", simulated: true, model: gemini() };
-      return { choice, label: "OpenRouter (free)", simulated: false, model: createOpenRouter({ apiKey: cfg.apiKey }).chat(cfg.model) };
+      if (!cfg) return { choice, label: MODEL_LABEL.openrouter, simulated: true, model: gemini() };
+      return { choice, label: MODEL_LABEL.openrouter, simulated: false, model: createOpenRouter({ apiKey: cfg.apiKey }).chat(cfg.model) };
     }
     case "claude": {
       const cfg = serverEnv.anthropic();
-      if (!cfg?.model) return { choice, label: "Claude Sonnet", simulated: true, model: gemini() };
-      return { choice, label: "Claude Sonnet", simulated: false, model: createAnthropic({ apiKey: cfg.apiKey })(cfg.model) };
+      if (!cfg?.model) return { choice, label: MODEL_LABEL.claude, simulated: true, model: gemini() };
+      return { choice, label: MODEL_LABEL.claude, simulated: false, model: createAnthropic({ apiKey: cfg.apiKey })(cfg.model) };
     }
     case "gpt": {
       const cfg = serverEnv.openai();
-      if (!cfg?.model) return { choice, label: "GPT", simulated: true, model: gemini() };
-      return { choice, label: "GPT", simulated: false, model: createOpenAI({ apiKey: cfg.apiKey })(cfg.model) };
+      if (!cfg?.model) return { choice, label: MODEL_LABEL.gpt, simulated: true, model: gemini() };
+      return { choice, label: MODEL_LABEL.gpt, simulated: false, model: createOpenAI({ apiKey: cfg.apiKey })(cfg.model) };
     }
     default:
-      return { choice: "gemini", label: "Gemini", simulated: false, model: gemini() };
+      return { choice: "gemini", label: MODEL_LABEL.gemini, simulated: false, model: gemini() };
   }
 }
 
 /** Which models the picker can show, and whether each is real here. (No keys are sent to the client.) */
 export function modelAvailability(): { choice: ModelChoice; label: string; simulated: boolean }[] {
-  return (["gemini", "openrouter", "claude", "gpt"] as const).map((c) => {
+  return MODEL_CHOICES.map((c) => {
     const { choice, label, simulated } = resolveModel(c);
     return { choice, label, simulated };
   });
@@ -81,6 +83,20 @@ function statusOf(err: unknown): number | undefined {
   if (APICallError.isInstance(err)) return err.statusCode;
   if (RetryError.isInstance(err)) return statusOf(err.lastError);
   return undefined;
+}
+
+/**
+ * Provider failures become gateway errors: a 429 is GatewayRateLimited (the paused banner with "Switch model"),
+ * any other API failure GatewayUnavailable. Returns null for everything else (e.g. output that didn't match the
+ * schema), which callers treat as the model's mistake and may retry.
+ */
+export function classifyGatewayError(err: unknown, label: string): GatewayRateLimited | GatewayUnavailable | null {
+  if (err instanceof GatewayRateLimited || err instanceof GatewayUnavailable) return err;
+  if (statusOf(err) === 429) return new GatewayRateLimited(label);
+  if (APICallError.isInstance(err) || RetryError.isInstance(err)) {
+    return new GatewayUnavailable(label, err instanceof Error ? err.message : String(err));
+  }
+  return null;
 }
 
 /** A single text answer. Retries with backoff on transient errors (the SDK's maxRetries). */
@@ -104,11 +120,11 @@ export async function ask(input: {
       maxRetries: 3,
       timeout: 30_000,
       // Only Gemini reads this; other providers ignore options keyed to "google".
-      providerOptions: input.fast ? { google: { thinkingConfig: { thinkingLevel: "low" } } } : undefined,
+      // Lite models barely think already (and may not accept the setting).
+      providerOptions: input.fast && !serverEnv.google().model.includes("lite") ? { google: { thinkingConfig: { thinkingLevel: "low" } } } : undefined,
     });
     return { text: text.trim(), label: resolved.label, simulated: resolved.simulated };
   } catch (err) {
-    if (statusOf(err) === 429) throw new GatewayRateLimited(resolved.label);
-    throw new GatewayUnavailable(resolved.label, err instanceof Error ? err.message : String(err));
+    throw classifyGatewayError(err, resolved.label) ?? new GatewayUnavailable(resolved.label, err instanceof Error ? err.message : String(err));
   }
 }

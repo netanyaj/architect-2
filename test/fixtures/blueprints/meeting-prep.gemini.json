@@ -1,0 +1,137 @@
+{
+  "name": "Meeting Brief Agent",
+  "summary": "Sends a Slack brief before each calendar meeting containing attendee email context, agenda summaries, and talking points.",
+  "items": [
+    {
+      "key": "calendar-events",
+      "grp": "integrations",
+      "title": "Calendar integration",
+      "description": "Reads upcoming meetings from your calendar to trigger briefs.",
+      "proved_when": "The app successfully fetches upcoming calendar events.",
+      "source_quote": "Before each meeting on my calendar",
+      "item_class": "integration.calendar",
+      "size": "m",
+      "provider": "google_calendar"
+    },
+    {
+      "key": "slack-brief",
+      "grp": "integrations",
+      "title": "Slack brief delivery",
+      "description": "Sends the generated meeting brief directly to you on Slack.",
+      "proved_when": "A message appears in Slack with the complete brief.",
+      "source_quote": "send me a Slack brief",
+      "item_class": "integration.chat_send",
+      "size": "s",
+      "provider": "slack"
+    },
+    {
+      "key": "attendee-email-thread",
+      "grp": "integrations",
+      "title": "Last email thread",
+      "description": "Finds the most recent email thread with each meeting attendee.",
+      "proved_when": "The latest email exchange with an attendee is successfully retrieved.",
+      "source_quote": "each attendee's last email thread",
+      "item_class": "integration.read_email",
+      "size": "m",
+      "provider": "gmail"
+    },
+    {
+      "key": "agenda-pdf-summary",
+      "grp": "agents",
+      "title": "Agenda summariser",
+      "description": "Reads attached PDF agendas from calendar invites and summarises them.",
+      "proved_when": "A clear summary of the attached PDF agenda is produced.",
+      "source_quote": "a summary of any attached agenda PDF",
+      "item_class": "agent.summariser",
+      "size": "m",
+      "framework": "lyzr"
+    },
+    {
+      "key": "talking-points-generator",
+      "grp": "agents",
+      "title": "Talking points generator",
+      "description": "Generates three relevant talking points based on emails and agenda.",
+      "proved_when": "Three tailored talking points are included in the output.",
+      "source_quote": "and three talking points",
+      "item_class": "agent.researcher",
+      "size": "m",
+      "framework": "lyzr"
+    },
+    {
+      "key": "schedule-trigger",
+      "grp": "quality",
+      "title": "Pre-meeting scheduler",
+      "description": "Triggers the brief creation process before each meeting starts.",
+      "proved_when": "The brief arrives before the scheduled meeting time.",
+      "source_quote": "Before each meeting on my calendar",
+      "item_class": "quality.schedule",
+      "size": "s"
+    }
+  ],
+  "defaults": [
+    {
+      "label": "Delivery timing",
+      "value": "15 minutes before meeting",
+      "alternatives": [
+        "30 minutes before meeting",
+        "1 hour before meeting"
+      ]
+    },
+    {
+      "label": "Email search depth",
+      "value": "Last 30 days",
+      "alternatives": [
+        "Last 7 days",
+        "Last 90 days"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "text": "Which Slack workspace should this post to?",
+      "affects": [
+        "slack-brief"
+      ],
+      "options": [
+        {
+          "label": "The workspace you connected",
+          "value": "connected"
+        },
+        {
+          "label": "Another workspace",
+          "value": "other"
+        }
+      ],
+      "recommended": "connected",
+      "blocking": true
+    },
+    {
+      "text": "How far in advance of each meeting should the brief be sent?",
+      "affects": [
+        "schedule-trigger"
+      ],
+      "options": [
+        {
+          "label": "15 minutes before",
+          "value": "15 minutes"
+        },
+        {
+          "label": "30 minutes before",
+          "value": "30 minutes"
+        },
+        {
+          "label": "1 hour before",
+          "value": "1 hour"
+        }
+      ],
+      "recommended": "15 minutes",
+      "blocking": false
+    }
+  ],
+  "not_in_this_version": [
+    {
+      "title": "CRM context lookup",
+      "reason": "Not requested in the prompt, focusing purely on emails, PDFs, and talking points."
+    }
+  ]
+}
