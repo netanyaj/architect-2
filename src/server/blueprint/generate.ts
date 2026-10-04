@@ -45,6 +45,8 @@ async function attempt(
     .map((a) => ({ type: "file", data: a.image!.data, mediaType: a.image!.mediaType, filename: a.name }));
   const content: (TextPart | FilePart)[] = [{ type: "text", text }, ...images];
 
+  // Errors inside the stream (a 429, an outage) surface later only as "No output generated"; keep the real one.
+  let streamError: unknown;
   const result = streamText({
     model: resolved.model,
     instructions: BLUEPRINT_SYSTEM,
@@ -54,6 +56,9 @@ async function attempt(
     temperature: 0.2,
     maxRetries: 2,
     timeout: 90_000,
+    onError: ({ error }) => {
+      streamError = error;
+    },
   });
 
   let emitted = 0;
@@ -66,12 +71,18 @@ async function attempt(
       emitted++;
     }
   };
-  for await (const partial of result.partialOutputStream) {
-    const items = (partial as { items?: unknown[] }).items;
-    // An item is finished once the model has moved on to the next one.
-    if (Array.isArray(items) && items.length > 1) await emitUpTo(items, items.length - 1);
+  let output;
+  try {
+    for await (const partial of result.partialOutputStream) {
+      const items = (partial as { items?: unknown[] }).items;
+      // An item is finished once the model has moved on to the next one.
+      if (Array.isArray(items) && items.length > 1) await emitUpTo(items, items.length - 1);
+    }
+    output = await result.output;
+  } catch (err) {
+    throw streamError && classifyGatewayError(streamError, resolved.label) ? streamError : err;
   }
-  const output = await result.output;
+  if (streamError && classifyGatewayError(streamError, resolved.label)) throw streamError;
   await emitUpTo(output.items, output.items.length);
   const usage = await result.totalUsage;
   return { output, tokens: usage.totalTokens ?? 0, label: resolved.label, simulated: resolved.simulated };
