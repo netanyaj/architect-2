@@ -31,7 +31,11 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname, search } = request.nextUrl;
-  if (!user && !isPublicPath(pathname)) {
+  // Server actions (buttons, forms) aren't page loads: redirecting them returns the login page's HTML where the
+  // browser expects an action result ("An unexpected response was received from the server"). Let them through;
+  // every action checks sign-in itself and sends the person to /login properly.
+  const isServerAction = request.headers.has("next-action");
+  if (!user && !isPublicPath(pathname) && !isServerAction) {
     const url = request.nextUrl.clone();
     const target = new URL(loginUrl(pathname + search), request.url);
     url.pathname = target.pathname;

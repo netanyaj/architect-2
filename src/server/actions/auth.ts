@@ -16,18 +16,24 @@ function callbackUrl(base: string, next: string): string {
   return `${base}/auth/callback?next=${encodeURIComponent(safeNext(next))}`;
 }
 
-/** Supabase's error text → what happened and what to do, in plain words. */
-export async function friendlyAuthError(message: string): Promise<string> {
+/** Supabase's error → what happened and what to do, in plain words. Uses the error code when there is one. */
+export async function friendlyAuthError(message: string, code?: string): Promise<string> {
   const m = message.toLowerCase();
+  if (code === "over_email_send_rate_limit" || m.includes("email rate limit"))
+    return "We couldn't send the confirmation email: this prototype's email limit is used up for now. Continue with GitHub instead, or try again in an hour.";
+  if (m.includes("not authorized") && m.includes("email"))
+    return "This prototype can't send email to that address yet. Continue with GitHub instead.";
   if (m.includes("invalid login credentials")) return "That email and password don't match. Try again, or create an account.";
   if (m.includes("already registered") || m.includes("already been registered"))
     return "There's already an account with that email. Sign in instead.";
   if (m.includes("email not confirmed")) return "Confirm your email first. The link is in your inbox.";
-  if (m.includes("rate limit") || m.includes("too many")) return "Too many tries in a row. Wait a minute, then try again.";
+  if (code === "over_request_rate_limit" || m.includes("rate limit") || m.includes("too many"))
+    return "Too many tries in a row. Wait a minute, then try again.";
   if (m.includes("provider is not enabled") || m.includes("unsupported provider"))
     return "That sign-in option isn't turned on yet. Use another one, or ask your admin.";
   if (m.includes("password") && (m.includes("at least") || m.includes("weak")))
     return "Use a password of at least 8 characters.";
+  if (m.includes("invalid") && m.includes("email")) return "That email address can't be used. Check it, or use another.";
   return "Sign-in didn't work. Try again, or use another sign-in option.";
 }
 
@@ -74,7 +80,7 @@ export async function signInWithEmail(_prev: EmailAuthState, form: FormData): Pr
 
   if (mode === "sign_in") {
     const { data, error } = await db.auth.signInWithPassword({ email, password });
-    if (error || !data.user) return { status: "error", message: await friendlyAuthError(error?.message ?? "") };
+    if (error || !data.user) return { status: "error", message: await friendlyAuthError(error?.message ?? "", error?.code) };
     await ensureWorkspace(createAdminDb(), data.user);
     redirect(next);
   }
@@ -84,7 +90,7 @@ export async function signInWithEmail(_prev: EmailAuthState, form: FormData): Pr
     password,
     options: { emailRedirectTo: callbackUrl(await origin(), next) },
   });
-  if (error) return { status: "error", message: await friendlyAuthError(error.message) };
+  if (error) return { status: "error", message: await friendlyAuthError(error.message, error.code) };
   // With "Confirm email" on, there's no session until they click the link.
   if (!data.session || !data.user) return { status: "check_email", email };
   await ensureWorkspace(createAdminDb(), data.user);

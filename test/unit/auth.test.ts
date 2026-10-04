@@ -219,6 +219,17 @@ describe("friendlyAuthError", () => {
     expect(await friendlyAuthError("Some internal thing: 500")).toBe("Sign-in didn't work. Try again, or use another sign-in option.");
     expect(await friendlyAuthError("User already registered")).toBe("There's already an account with that email. Sign in instead.");
   });
+  it("says plainly when the confirmation email can't be sent", async () => {
+    expect(await friendlyAuthError("email rate limit exceeded", "over_email_send_rate_limit")).toContain(
+      "We couldn't send the confirmation email",
+    );
+    expect(await friendlyAuthError("Email address not authorized")).toBe(
+      "This prototype can't send email to that address yet. Continue with GitHub instead.",
+    );
+    expect(await friendlyAuthError("Request rate limit reached", "over_request_rate_limit")).toBe(
+      "Too many tries in a row. Wait a minute, then try again.",
+    );
+  });
 });
 
 /* ---------- OAuth / email-link callback ---------- */
