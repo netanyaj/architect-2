@@ -18,7 +18,8 @@ describe.each(models.filter((m) => MODEL_CHOICES.includes(m)))("plans on %s", (m
   it.each(DEMO_PROMPTS)("$id: valid, quoted from the request, within 60 s", async ({ id, blocking }) => {
     const prompt = promptText(id);
     let streamed = 0;
-    const r = await generateBlueprint({ prompt, model }, { onItem: () => void streamed++ });
+    // The seeded demo workspace's Connections: Google Calendar and Slack connected.
+    const r = await generateBlueprint({ prompt, model, connected: ["google_calendar", "slack"] }, { onItem: () => void streamed++ });
     console.log(`${model} · ${id}: ${r.blueprint.items.length} parts, ${r.blueprint.questions.length} questions, ${(r.ms / 1000).toFixed(1)} s, ${r.tokens} tokens${r.simulated ? " (simulated via Gemini)" : ""}`);
     if (process.env.EVAL_LOG) {
       appendFileSync(

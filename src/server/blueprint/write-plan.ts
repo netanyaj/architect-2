@@ -143,8 +143,9 @@ export async function writePlan(
       throw new GatewayRateLimited(resolved.label);
     }
     const attachments = await loadAttachments(admin, project.id);
+    const { data: conns } = await admin.from("connections").select("provider").eq("workspace_id", ctx.workspace.id).eq("status", "connected");
     const result = await generateBlueprint(
-      { prompt, attachments, model },
+      { prompt, attachments, model, connected: (conns ?? []).map((c) => c.provider) },
       {
         onItem: async (item, index) => emit({ type: "item", item: await saveItem(item, index) }),
         onRetry: async (problems) => {

@@ -102,7 +102,7 @@ async function attempt(
  * with the problems appended, then throws BlueprintInvalid. Gateway errors (rate limit, outage) pass through.
  */
 export async function generateBlueprint(
-  input: { prompt: string; attachments?: Attachment[]; model?: ModelChoice },
+  input: { prompt: string; attachments?: Attachment[]; model?: ModelChoice; /** Connected providers, for the question rules. */ connected?: string[] },
   events: GenerateEvents = {},
 ): Promise<GenerateResult> {
   const started = Date.now();
@@ -128,7 +128,7 @@ export async function generateBlueprint(
     const strict = strictProblems(normalizeDraft(out.output));
     problems = strict.blueprint ? validateBlueprint(strict.blueprint, input.prompt) : strict.problems;
     if (strict.blueprint && problems.length === 0) {
-      return { blueprint: applyQuestionRules(strict.blueprint, input.prompt), tokens, label: out.label, simulated: out.simulated, ms: Date.now() - started };
+      return { blueprint: applyQuestionRules(strict.blueprint, input.prompt, { connected: input.connected }), tokens, label: out.label, simulated: out.simulated, ms: Date.now() - started };
     }
     if (round === 0) await events.onRetry?.(problems);
   }

@@ -138,8 +138,9 @@ describe("applyQuestionRules (Slack workspace)", () => {
   });
   it("questions block by their label: reduce, remove or none hold Build; keep doesn't", () => {
     const q = (text: string, effect: "keep" | "reduce" | "remove" | "none") => ({ text, affects: ["calendar-read"], options: [{ label: "A", value: "a" }, { label: "B", value: "b" }], recommended: "a", default_effect: effect });
-    const bp = applyQuestionRules({ ...base(), items: base().items.filter((i) => i.key !== "slack-brief"), questions: [q("Keep?", "keep"), q("Fewer?", "reduce"), q("Skip?", "remove"), q("Which SMS service?", "none")] }, PROMPT);
-    expect(bp.questions.map((x) => [x.text, x.blocking])).toEqual([["Keep?", false], ["Fewer?", true], ["Skip?", true], ["Which SMS service?", true]]);
+    const bp = applyQuestionRules({ ...base(), items: base().items.filter((i) => i.key !== "slack-brief"), questions: [q("Keep?", "keep"), q("Fewer?", "reduce"), q("Skip?", "remove"), q("Which budget code?", "none")] }, PROMPT);
+    // Blocking questions are listed first; compare regardless of order.
+    expect(Object.fromEntries(bp.questions.map((x) => [x.text, x.blocking]))).toEqual({ "Keep?": false, "Fewer?": true, "Skip?": true, "Which budget code?": true });
   });
   it("a question labelled keep doesn't hold Build, even one that sounds important", () => {
     const calendar = {
@@ -182,5 +183,71 @@ describe("estimate", () => {
     expect(toModelChoice("claude-sonnet")).toBe("claude");
     expect(toModelChoice("openrouter")).toBe("openrouter");
     expect(toModelChoice("mystery")).toBe("gemini");
+  });
+});
+
+describe("rule b: a requested channel that isn't connected always gets a blocking question", () => {
+  const SMS = promptText("sms-reminder");
+  const smsPlan = (): BlueprintT => ({
+    ...base(),
+    items: [
+      { key: "calendar-read", grp: "integrations", title: "Meetings on your calendar", description: "d", proved_when: "p", source_quote: "each meeting on my calendar", item_class: "integration.calendar", size: "m" },
+      { key: "sms-reminder", grp: "integrations", title: "SMS reminder to each attendee", description: "d", proved_when: "p", source_quote: "text each attendee an SMS reminder", item_class: "integration.chat_send", size: "m" },
+      { key: "meeting-link", grp: "features", title: "Meeting link in the reminder", description: "d", proved_when: "p", source_quote: "with the meeting link", item_class: "screen.detail", size: "s" },
+    ],
+  });
+  const q = (text: string, effect: "keep" | "reduce" | "remove" | "none", options = [{ label: "Twilio", value: "twilio" }, { label: "Vonage", value: "vonage" }]) => ({
+    text,
+    affects: ["sms-reminder"],
+    options,
+    recommended: options[0].value,
+    default_effect: effect,
+  });
+
+  it("adds one when the model didn't ask (it picked a service silently)", () => {
+    const bp = applyQuestionRules(smsPlan(), SMS, { connected: ["google_calendar", "slack"] });
+    expect(bp.questions).toEqual([expect.objectContaining({ text: "Which SMS service should send these messages?", blocking: true, default_effect: "none", affects: ["sms-reminder"] })]);
+  });
+  it("marks the model's own SMS question blocking, whatever it was labelled, instead of adding another", () => {
+    const bp = applyQuestionRules({ ...smsPlan(), questions: [q("Which text messaging service should send the reminders?", "keep")] }, SMS, { connected: [] });
+    expect(bp.questions).toHaveLength(1);
+    expect(bp.questions[0]).toMatchObject({ blocking: true, default_effect: "none" });
+  });
+  it("naming SMS in the request never unblocks it (rule a doesn't apply to channels)", () => {
+    const bp = applyQuestionRules({ ...smsPlan(), questions: [q("Which SMS provider?", "reduce")] }, SMS, { connected: [] });
+    expect(bp.questions[0].blocking).toBe(true);
+  });
+  it("once an SMS service is connected, nothing blocks and nothing is added", () => {
+    const bp = applyQuestionRules({ ...smsPlan(), questions: [q("Which SMS provider?", "none")] }, SMS, { connected: ["twilio"] });
+    expect(bp.questions.map((x) => x.blocking)).toEqual([false]);
+    expect(applyQuestionRules(smsPlan(), SMS, { connected: ["twilio"] }).questions).toEqual([]);
+  });
+  it("doesn't mistake ordinary words for channels ('team', 'text of the ticket')", () => {
+    expect(applyQuestionRules({ ...base(), items: base().items.filter((i) => i.key !== "slack-brief") }, "Classify tickets by urgency and team, and keep the text of each ticket.").questions).toEqual([]);
+  });
+});
+
+describe("rule a: a service the request names, or Connections has, doesn't block", () => {
+  const MP = promptText("meeting-prep");
+  const q = (text: string, effect: "keep" | "reduce" | "remove" | "none") => ({ text, affects: ["calendar-read"], options: [{ label: "A", value: "a" }, { label: "B", value: "b" }], recommended: "a", default_effect: effect });
+
+  it("the OpenRouter Meeting Prep case: calendar (connected) and email (named in the request) don't block", () => {
+    const bp = applyQuestionRules(
+      { ...base(), questions: [q("Which calendar service should the app read meetings from?", "reduce"), q("Which email service should the app use to fetch attendee threads?", "reduce")] },
+      MP,
+      { connected: ["google_calendar", "slack"] },
+    );
+    expect(bp.questions.filter((x) => x.blocking).map((x) => x.text)).toEqual(["Which Slack workspace should this post to?"]);
+  });
+  it("the Zendesk case: an escalation channel doesn't block when a chat service is connected", () => {
+    const triage = promptText("support-triage");
+    const plan = { ...base(), items: base().items.filter((i) => i.key !== "slack-brief"), questions: [q("Which communication channel should receive VIP escalation alerts?", "none")] };
+    expect(applyQuestionRules(plan, triage, { connected: ["slack"] }).questions[0].blocking).toBe(false);
+    // With nothing connected and nothing named, the label stands: it blocks.
+    expect(applyQuestionRules(plan, triage, { connected: [] }).questions[0].blocking).toBe(true);
+  });
+  it("questions that aren't about a service still block by their label", () => {
+    const bp = applyQuestionRules({ ...base(), items: base().items.filter((i) => i.key !== "slack-brief"), questions: [q("Should the brief skip internal meetings?", "remove")] }, MP, { connected: ["google_calendar", "slack"] });
+    expect(bp.questions[0].blocking).toBe(true);
   });
 });
