@@ -3,6 +3,7 @@
 import { useId, useState, useTransition, type FormEvent } from "react";
 import { Button } from "@/components/ax/button";
 import { Tag } from "@/components/ax/pill";
+import { Select } from "@/components/ax/select";
 import type { Role } from "@/lib/db";
 import { ROLE_INFO } from "@/lib/permissions";
 import { changeRole, inviteMember, removeMember } from "@/server/actions/members";
@@ -17,9 +18,6 @@ export type MemberRow = {
   changeBlockedReason?: string;
   inviteLink?: string;
 };
-
-const selectClasses =
-  "min-h-8 rounded-full border border-line-ctl bg-surface px-3 text-body font-[550] text-ink aria-disabled:cursor-not-allowed aria-disabled:bg-selected aria-disabled:text-ink-3";
 
 function CopyLink({ link }: { link: string }) {
   const [copied, setCopied] = useState(false);
@@ -80,7 +78,7 @@ function MemberItem({ m, canManage, assignable }: { m: MemberRow; canManage: boo
         <label htmlFor={selectId} className="sr-only">
           Role for {m.name}
         </label>
-        <select
+        <Select
           id={selectId}
           value={m.role}
           aria-disabled={blocked || pending || undefined}
@@ -90,14 +88,13 @@ function MemberItem({ m, canManage, assignable }: { m: MemberRow; canManage: boo
             const role = e.target.value;
             run(() => changeRole({ memberId: m.id, role }));
           }}
-          className={selectClasses}
         >
           {options.map((r) => (
             <option key={r} value={r} disabled={blocked && r !== m.role}>
               {ROLE_INFO[r].label}
             </option>
           ))}
-        </select>
+        </Select>
         {canManage && !m.changeBlockedReason && (
           <Button size="sm" variant="quiet" onClick={() => run(() => removeMember({ memberId: m.id }))}>
             {m.invited ? "Cancel invite" : "Remove"}
@@ -179,13 +176,13 @@ export function MembersSection({
               <label htmlFor={roleId} className="text-small font-semibold">
                 Role
               </label>
-              <select id={roleId} value={role} onChange={(e) => setRole(e.target.value as typeof role)} className={`${selectClasses} min-h-[38px]`}>
+              <Select id={roleId} controlSize="md" value={role} onChange={(e) => setRole(e.target.value as typeof role)}>
                 {assignable.map((r) => (
                   <option key={r} value={r}>
                     {ROLE_INFO[r].label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <Button type="submit" variant="primary" disabledReason={pending ? "Creating the link…" : undefined}>
               {pending ? "Creating…" : "Create invite link"}
