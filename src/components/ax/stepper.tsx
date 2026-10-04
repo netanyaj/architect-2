@@ -36,7 +36,7 @@ export function Stepper({
         const on = i === currentIndex;
         return (
           <Fragment key={s.id}>
-            {i > 0 && <span className={cn("h-px w-[18px] bg-line-ctl", !on && "max-[900px]:hidden")} aria-hidden="true" />}
+            {i > 0 && <span className="h-px w-[18px] bg-line-ctl max-[900px]:hidden" aria-hidden="true" />}
             <button
               type="button"
               aria-current={on ? "step" : undefined}

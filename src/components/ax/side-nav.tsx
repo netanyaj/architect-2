@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ROLE_INFO } from "@/lib/permissions";
 import { useUi } from "@/lib/ui-store";
@@ -88,6 +89,13 @@ export function SideNav(props: SideNavProps) {
   const pathname = usePathname();
   const openHelp = useUi((s) => s.openHelp);
   const current = props.workspaces.find((w) => w.workspaceId === props.currentWorkspaceId);
+  // On phones the nav folds into a bar with a Menu button, so the page starts on the first screen.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [lastPath, setLastPath] = useState(pathname);
+  if (lastPath !== pathname) {
+    setLastPath(pathname);
+    setMenuOpen(false);
+  }
   const main: NavItem[] = [
     { href: "/home", label: "Home", icon: "home" },
     { href: "/projects", label: "Projects", icon: "projects", count: props.projectCount },
@@ -108,14 +116,24 @@ export function SideNav(props: SideNavProps) {
       aria-label="Workspace"
       className="flex flex-col gap-0.5 rounded-pane border border-line bg-tray px-3 py-3.5 md:sticky md:top-2.5 md:h-[calc(100dvh-20px)] md:w-[248px] md:flex-none"
     >
-      <div className="flex items-center gap-2.5 px-1.5 pt-0.5 pb-3 text-sub font-bold">
+      <div className="flex items-center gap-2.5 px-1.5 pt-0.5 pb-3 text-sub font-bold max-md:pb-0">
         <span className="grid size-[30px] flex-none place-items-center rounded-[9px] bg-primary text-body font-bold text-on-primary" aria-hidden="true">
           A
         </span>
         Architect
         <span className="flex-1" />
         <WorkspaceSwitcher current={props.currentWorkspaceId} options={props.workspaces} />
+        <button
+          type="button"
+          aria-expanded={menuOpen}
+          aria-controls="side-nav-items"
+          onClick={() => setMenuOpen(!menuOpen)}
+          className="min-h-8 rounded-full border border-line-ctl bg-surface px-3 text-body font-[550] md:hidden"
+        >
+          {menuOpen ? "Close" : "Menu"}
+        </button>
       </div>
+      <div id="side-nav-items" className={cn("flex flex-1 flex-col gap-0.5", !menuOpen && "max-md:hidden")}>
       {current && (props.workspaces.length > 1 || current.role !== "owner") && (
         <div className="mx-1.5 mb-2 flex items-center justify-between gap-2 rounded-tile bg-surface px-2.5 py-1.5 text-small">
           <span className="truncate font-semibold">{current.label}</span>
@@ -162,6 +180,7 @@ export function SideNav(props: SideNavProps) {
           <span className="text-small text-ink-2">Settings</span>
         </span>
       </Link>
+      </div>
     </nav>
   );
 }
