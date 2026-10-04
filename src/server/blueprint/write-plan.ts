@@ -41,10 +41,19 @@ export async function allowedModels(admin: AdminDb, workspaceId: string): Promis
   return allowed.map(toModelChoice).filter((m, i, a) => a.indexOf(m) === i);
 }
 
-/** Text from uploaded PDFs (and later images) on this project, for the planner. */
+/** The project's uploads for the planner: PDF text, and images passed to the model as images. */
 async function loadAttachments(admin: AdminDb, projectId: string): Promise<Attachment[]> {
-  const { data } = await admin.from("files").select("name, path, extracted_text").eq("project_id", projectId).eq("kind", "upload");
-  return (data ?? []).filter((f) => f.extracted_text).map((f) => ({ name: f.name ?? f.path, text: f.extracted_text! }));
+  const { data } = await admin.from("files").select("name, path, mime, storage_path, extracted_text").eq("project_id", projectId).eq("kind", "upload");
+  const out: Attachment[] = [];
+  for (const f of data ?? []) {
+    const name = f.name ?? f.path;
+    if (f.extracted_text) out.push({ name, text: f.extracted_text });
+    else if (f.mime?.startsWith("image/") && f.storage_path) {
+      const { data: blob } = await admin.storage.from("uploads").download(f.storage_path);
+      if (blob) out.push({ name, image: { data: new Uint8Array(await blob.arrayBuffer()), mediaType: f.mime } });
+    }
+  }
+  return out;
 }
 
 /**

@@ -9,6 +9,7 @@ import { Select } from "@/components/ax/select";
 import { Option, StageBanner } from "@/components/ax/stage-banner";
 import { StatusMark } from "@/components/ax/status-mark";
 import { MODEL_LABEL, type ModelChoice } from "@/lib/models";
+import { formatBytes } from "@/lib/uploads";
 import { answerQuestion, changeDefault, editItem } from "@/server/actions/plan";
 import type { PlanItem } from "@/server/blueprint/write-plan";
 import type { PlanQuestion, ProjectWorkspace, WorkspaceItem } from "@/server/project";
@@ -370,6 +371,24 @@ export function PlanDocument({
               <li key={n.title} className="flex flex-col border-t border-line px-3.5 py-3 first:border-t-0">
                 <span className="font-semibold">{n.title}</span>
                 <span className="text-small text-ink-2">{n.reason}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {project.uploads.length > 0 && (
+        <section id="group-uploads" className="flex scroll-mt-4 flex-col gap-2">
+          <h3 className="text-sub font-[650]">Your uploads</h3>
+          <ul className="flex flex-col rounded-card border border-line">
+            {project.uploads.map((f) => (
+              <li key={f.id} className="flex items-center gap-3 border-t border-line px-3.5 py-3 first:border-t-0">
+                <Icon name={f.mime?.startsWith("image/") ? "image" : "file"} size="sm" />
+                <span className="min-w-0 flex-1 truncate font-mono text-small">{f.name}</span>
+                <span className="text-small text-ink-2">
+                  {f.size ? `${formatBytes(f.size)} · ` : ""}
+                  {f.read ? (f.mime?.startsWith("image/") ? "Shown to the planner" : "Read for the plan") : "No text could be read"}
+                </span>
               </li>
             ))}
           </ul>

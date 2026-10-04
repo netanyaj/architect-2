@@ -1,15 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
-import { Composer } from "@/components/ax/composer";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { AttachmentChip, Composer } from "@/components/ax/composer";
 import { ModelPicker } from "@/components/ax/model-picker";
 import { Pill } from "@/components/ax/pill";
 import { TemplatesDialog } from "@/components/ax/templates-dialog";
 import { loginUrl, PENDING_PROMPT_KEY } from "@/lib/auth-paths";
+import { createBrowserDb } from "@/lib/db";
 import { useHomePrompt } from "@/lib/home-prompt";
+import { formatBytes, UPLOAD_LIMITS } from "@/lib/uploads";
 import type { ModelChoice, ModelOption } from "@/lib/models";
 import { startProject } from "@/server/actions/projects";
+import { finishUploads } from "@/server/actions/uploads";
 
 function greeting(now: Date) {
   const h = now.getHours();
@@ -43,6 +46,31 @@ export function HomeComposer({
   const [hello, setHello] = useState<string | null>(null);
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();
+  const [files, setFiles] = useState<File[]>([]);
+  const [progress, setProgress] = useState<string>();
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const addFiles = (list: FileList | null) => {
+    if (!list) return;
+    setError(undefined);
+    const next = [...files];
+    for (const f of Array.from(list)) {
+      if (!UPLOAD_LIMITS.types.includes(f.type)) {
+        setError(`${f.name} isn't a PDF or an image (PNG, JPG, WebP).`);
+        continue;
+      }
+      if (f.size > UPLOAD_LIMITS.maxBytes) {
+        setError(`${f.name} is ${formatBytes(f.size)}. Files can be up to ${formatBytes(UPLOAD_LIMITS.maxBytes)}.`);
+        continue;
+      }
+      if (next.length >= UPLOAD_LIMITS.maxFiles) {
+        setError(`Attach up to ${UPLOAD_LIMITS.maxFiles} files.`);
+        break;
+      }
+      if (!next.some((x) => x.name === f.name && x.size === f.size)) next.push(f);
+    }
+    setFiles(next);
+  };
 
   useEffect(() => {
     // Browser-only values, read after mount: the local time of day and a prompt kept through sign-in.
@@ -74,9 +102,24 @@ export function HomeComposer({
       return;
     }
     start(async () => {
-      // On success the action opens the new project; it only returns when something's wrong.
-      const r = await startProject({ prompt: text, talkFirst, model });
-      if (r && !r.ok) setError(r.message);
+      // Without files the action opens the new project itself; it only returns when something's wrong.
+      const r = await startProject({ prompt: text, talkFirst, model, files: files.map((f) => ({ name: f.name, type: f.type, size: f.size })) });
+      if (!r) return;
+      if (!r.ok) return setError(r.message);
+      if (!r.projectId || !r.uploads) return;
+      // Files go straight to private storage (no size limit from our server in between), then the server reads them.
+      const db = createBrowserDb();
+      const done: { name: string; path: string }[] = [];
+      for (const [i, slot] of r.uploads.entries()) {
+        setProgress(`Uploading ${i + 1} of ${r.uploads.length}: ${slot.name}`);
+        const file = files.find((f) => f.name === slot.name)!;
+        const { error: upErr } = await db.storage.from("uploads").uploadToSignedUrl(slot.path, slot.token, file, { contentType: file.type });
+        if (!upErr) done.push({ name: slot.name, path: slot.path });
+      }
+      setProgress("Reading your files…");
+      const fin = await finishUploads({ projectId: r.projectId, uploads: done });
+      if (fin.ok && fin.unreadable.length) setProgress(`Couldn't read text from ${fin.unreadable.join(", ")}. The plan is written without it.`);
+      router.push(`/p/${r.projectId}`);
     });
   };
 
@@ -98,11 +141,22 @@ export function HomeComposer({
           pending={pending}
           placeholder="Describe the app you want. For example: before each meeting, send me a Slack brief with each attendee’s last email."
           label="Describe your app"
+          attachments={
+            files.length ? (
+              <>
+                {files.map((f) => (
+                  <AttachmentChip key={`${f.name}-${f.size}`} icon="file" onRemove={() => setFiles(files.filter((x) => x !== f))}>
+                    {f.name} <span className="text-small text-ink-3">{formatBytes(f.size)}</span>
+                  </AttachmentChip>
+                ))}
+              </>
+            ) : undefined
+          }
           submitDisabledReason={signedIn ? startBlockedReason : undefined}
           modelPicker={<ModelPicker value={model} options={models} onChange={setModel} />}
           contextPills={
             <>
-              <Pill icon="plus" disabledReason="Adding files, agents and tools comes with plan writing (M2).">
+              <Pill icon="plus" onClick={() => fileInput.current?.click()}>
                 Add files, agents or tools
               </Pill>
               <Pill icon="repo" disabledReason="Importing a repo comes in M4.">
@@ -117,6 +171,24 @@ export function HomeComposer({
             </>
           }
         />
+        <input
+          ref={fileInput}
+          type="file"
+          multiple
+          accept={UPLOAD_LIMITS.accept}
+          aria-label="Add files: PDFs or images"
+          className="sr-only"
+          tabIndex={-1}
+          onChange={(e) => {
+            addFiles(e.target.files);
+            e.target.value = "";
+          }}
+        />
+        {progress && (
+          <p role="status" className="text-small text-ink-2">
+            {progress}
+          </p>
+        )}
         {signedIn && startBlockedReason && <p className="text-small text-ink-2">{startBlockedReason}</p>}
         {error && (
           <p role="alert" className="text-small font-semibold text-failed">

@@ -104,6 +104,7 @@ export type ProjectWorkspace = {
   models: ModelOption[];
   messages: ChatMessage[];
   changes: ChangeCardData[];
+  uploads: { id: string; name: string; mime: string | null; size: number | null; read: boolean }[];
 };
 
 /** The models a person may pick in this workspace: allowed by policy, marked simulated when there's no key. */
@@ -147,9 +148,10 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
       ])
     : [{ data: null }, { data: [] }, { data: [] }, { data: [] }];
 
-  const [{ data: msgs }, { data: props }] = await Promise.all([
+  const [{ data: msgs }, { data: props }, { data: files }] = await Promise.all([
     db.from("messages").select("id, role, mode, content, created_at").eq("project_id", p.id).order("created_at").limit(200),
     db.from("change_proposals").select("id, message_id, diff, reply, estimate_likely, est_minutes, conflict, status, version_created").eq("project_id", p.id).order("created_at"),
+    db.from("files").select("id, name, path, mime, size_bytes, extracted_text").eq("project_id", p.id).eq("kind", "upload").order("created_at"),
   ]);
   const titleOf = (key: string) => (items ?? []).find((i) => i.key === key)?.title ?? key.replace(/-/g, " ");
   const changes: ChangeCardData[] = (props ?? []).map((c) => {
@@ -260,5 +262,12 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     models: await modelOptionsFor(p.workspace_id),
     messages: (msgs ?? []).map((m) => ({ id: m.id, role: m.role as ChatMessage["role"], mode: m.mode as ChatMessage["mode"], content: m.content, createdAt: m.created_at })),
     changes,
+    uploads: (files ?? []).map((f) => ({
+      id: f.id,
+      name: f.name ?? f.path,
+      mime: f.mime,
+      size: f.size_bytes,
+      read: Boolean(f.extracted_text) || Boolean(f.mime?.startsWith("image/")),
+    })),
   };
 }

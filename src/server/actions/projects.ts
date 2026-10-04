@@ -8,6 +8,7 @@ import type { Json } from "@/lib/database.types";
 import { MODEL_CHOICES, MODEL_LABEL } from "@/lib/models";
 import { canBuild, canManageMembers } from "@/lib/permissions";
 import { allowedModels } from "../blueprint/write-plan";
+import { prepareUploads, type UploadSlot } from "../uploads";
 import { createAdminDb } from "../db";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
@@ -39,7 +40,13 @@ const promptSchema = z
  * Write the plan: creates a draft project holding the prompt and opens its workspace.
  * Nothing is built or charged here; the plan is written in the project (M2), and building waits for a click.
  */
-export async function startProject(input: { prompt: string; talkFirst?: boolean; model?: string }): Promise<ActionResult> {
+export async function startProject(input: {
+  prompt: string;
+  talkFirst?: boolean;
+  model?: string;
+  /** Files to attach: the project is created and upload slots come back instead of a redirect. */
+  files?: { name: string; type: string; size: number }[];
+}): Promise<ActionResult<{ projectId?: string; uploads?: UploadSlot[] }>> {
   const ctx = await getAppContext();
   if (!canBuild(ctx.role)) return { ok: false, message: "Viewers can't start projects. Ask an Owner, Admin or Builder." };
   const prompt = promptSchema.safeParse(input.prompt);
@@ -56,6 +63,14 @@ export async function startProject(input: { prompt: string; talkFirst?: boolean;
     .select("id")
     .single();
   if (error || !data) return { ok: false, message: "The project couldn't be created. Nothing was charged. Try again." };
+  if (input.files?.length) {
+    const prepared = await prepareUploads(admin, ctx.workspace.id, data.id, input.files);
+    if ("error" in prepared) {
+      await admin.from("projects").delete().eq("id", data.id);
+      return { ok: false, message: prepared.error ?? "The files couldn't be prepared." };
+    }
+    return { ok: true, projectId: data.id, uploads: prepared.slots };
+  }
   redirect(`/p/${data.id}`);
 }
 
