@@ -37,3 +37,5 @@
 - [ ] Every simulated surface shows the Simulated tag. The README's Real vs Simulated table matches the app.
 - [ ] No keys in the client bundle (search the build output for `sk-`, `AIza` and the key names). `.env*` is ignored.
 - [ ] Nothing was pushed, deployed or published without Netanya's OK.
+- [ ] No milestone labels in the UI: search the app for `(M2)`, `(M3)`, `(M4)`, `(M5)` and "comes in M"; none may show on any screen, tooltip or disabled reason.
+- [ ] No disabled Launch settings rows: who can open it, web address, sign-in, keys and passwords all work (sign-in from M4, keys from M4 or M5).

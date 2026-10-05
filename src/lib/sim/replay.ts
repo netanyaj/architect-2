@@ -121,6 +121,9 @@ export function replay(run: RunInfo | null, nowMs: number): LiveRun {
       case "item.needs_approval":
         if (key) live.parts[key] = { status: "needs_approval", statusDetail: "IT admin reviews" };
         break;
+      case "item.deferred":
+        if (key) live.parts[key] = { status: "deferred", statusDetail: "Set aside" };
+        break;
       case "item.paused":
         if (key) live.parts[key] = { status: "paused", statusDetail: "Stopped after 3 fixes to protect your credits" };
         break;

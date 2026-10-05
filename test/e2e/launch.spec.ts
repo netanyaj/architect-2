@@ -37,6 +37,8 @@ test.describe("M3: Launch", () => {
     await expect(share).toHaveAttribute("aria-disabled", "true");
     await expect(share).toHaveAttribute("title", "Fix 1 thing in the checklist first.");
     await page.getByRole("button", { name: "Connect Gmail" }).click();
+    await page.getByRole("dialog", { name: "Connect Gmail" }).getByRole("button", { name: "Allow" }).click();
+    await expect(page.getByRole("dialog", { name: "Connect Gmail" })).toHaveCount(0);
     await expect(stepper(page)).toContainText("ready to share");
 
     await share.click();

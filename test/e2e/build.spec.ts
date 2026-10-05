@@ -46,6 +46,11 @@ test.describe("M3: the simulated build", () => {
 
     // Connect flips the part to Works (BL-9).
     await panel(page).getByRole("button", { name: "Connect Google account" }).click();
+    // The simulated OAuth step: what's being granted, tagged Simulated, then Allow.
+    const consent = page.getByRole("dialog", { name: "Connect Gmail" });
+    await expect(consent).toContainText("In the real product this opens Gmail's own sign-in");
+    await consent.getByRole("button", { name: "Allow" }).click();
+    await expect(consent).toHaveCount(0); // closed once connected (the page behind is hidden while it's open)
     await expect(panel(page).getByRole("button", { name: "Connect Google account" })).toHaveCount(0);
     const { data: after } = await db.from("items").select("status").eq("project_id", id).eq("key", "attendee-email-threads").single();
     expect(after!.status).toBe("built");
@@ -103,5 +108,66 @@ test.describe("M3: the simulated build", () => {
     const db = adminDb();
     const { data: runs } = await db.from("runs").select("status").eq("project_id", id).order("started_at");
     expect(runs!.map((r) => r.status)).toEqual(["paused_budget", "done"]);
+  });
+
+  test("A-9 and the preview dock: a Blocked part's choice works while the build plays; sizes, Point at something, problems, Test the app", async ({ page }) => {
+    await signIn(page, user);
+    const id = await seedPlan(user, "Field Notes");
+    // Three more screens after the agents keep the build playing for a few seconds after the part is Blocked.
+    const db = adminDb();
+    const { data: bp } = await db.from("blueprints").select("id").eq("project_id", id).single();
+    await db.from("items").insert(
+      ["Weekly view", "Search", "Settings page"].map((title, n) => ({
+        blueprint_id: bp!.id, project_id: id, key: `extra-${n}`, grp: "features", title, proved_when: `Done when the ${title.toLowerCase()} loads`, item_class: "screen.list", size: "m", estimate_likely: 10, position: 20 + n,
+      })),
+    );
+    await page.goto(`/p/${id}?sim=paused,fast`);
+    await page.getByRole("button", { name: /^Build · ~\d+ credits$/ }).click();
+
+    // The generic shell shows this project's name, not Meeting Prep.
+    const app = page.frameLocator('iframe[title="Field Notes, test version"]');
+    await expect(app.getByRole("heading", { name: "Field Notes", level: 2 })).toBeVisible({ timeout: 30_000 });
+
+    // Blocked while the other parts still build: decide at once.
+    const blocked = panel(page).getByRole("button", { name: /Talking points generator is blocked/ });
+    await expect(blocked).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByRole("navigation", { name: "Project stage" })).toContainText(/working · /); // still playing
+    await blocked.click();
+    const drawer = page.getByRole("dialog", { name: "Talking points generator is blocked" });
+    await expect(drawer.getByRole("listitem")).toHaveCount(3);
+    await drawer.getByRole("button", { name: "Allow 250 words" }).click();
+    await expect(drawer).toHaveCount(0);
+    const { data: changed } = await db.from("audit_log").select("details").eq("action", "check.changed").eq("target", "Talking points generator").order("created_at", { ascending: false }).limit(1);
+    expect(changed![0].details).toMatchObject({ during_build: true });
+
+    // The build finishes with that part working.
+    await expect(page.getByRole("link", { name: "Launch", exact: true })).toBeVisible({ timeout: 90_000 });
+    const { data: part } = await db.from("items").select("status").eq("project_id", id).eq("key", "talking-points-generator").single();
+    expect(part!.status).toBe("built");
+
+    // The dock: phone size, Point at something into chat, Test the app.
+    const dock = page.getByRole("toolbar", { name: "Preview tools" });
+    await dock.getByRole("button", { name: "Phone size" }).click();
+    await expect(page.locator('iframe[title="Field Notes, test version"]')).toHaveClass(/w-\[390px\]/);
+    await dock.getByRole("button", { name: "Desktop size" }).click();
+    await dock.getByRole("button", { name: "Point at something" }).click();
+    await app.locator('section[data-part="extra-1"]').click();
+    await expect(page.getByLabel("Message Architect")).toHaveValue(/About “Search” in the app:/);
+    await page.getByRole("button", { name: "Test the app" }).click();
+    await expect(page.getByText(/checks pass/)).toBeVisible();
+  });
+
+  test("N problems opens the console, and Fix with AI hands the problem to chat", async ({ page }) => {
+    await signIn(page, user);
+    const id = await seedPlan(user, "Problem Prep");
+    await page.goto(`/p/${id}?sim=paused,fast`);
+    await page.getByRole("button", { name: /^Build · ~\d+ credits$/ }).click();
+    const problems = page.getByRole("toolbar", { name: "Preview tools" }).getByRole("button", { name: "1 problem" });
+    await expect(problems).toBeVisible({ timeout: 90_000 });
+    await problems.click();
+    const console_ = page.getByRole("dialog", { name: "Problems" });
+    await expect(console_).toContainText("Talking points generator");
+    await console_.getByRole("button", { name: "Fix with AI" }).click();
+    await expect(page.getByLabel("Message Architect")).toHaveValue(/^Fix Talking points generator: /);
   });
 });

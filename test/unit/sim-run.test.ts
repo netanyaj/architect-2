@@ -6,7 +6,7 @@ import { estimate } from "@/server/estimate";
 import { FakeDb } from "./fake-db";
 
 vi.mock("server-only", () => ({}));
-const { startRun, parseSim, catchUpRuns } = await import("@/server/sim/run");
+const { startRun, parseSim, catchUpRuns, blockedInRun, amendRun } = await import("@/server/sim/run");
 
 const plan: Blueprint = JSON.parse(readFileSync(join(__dirname, "..", "fixtures", "blueprints", "meeting-prep.gemini.json"), "utf8"));
 const PROJECT = "p-1";
@@ -116,5 +116,32 @@ describe("catchUpRuns", () => {
     await catchUpRuns(admin(), PROJECT);
     expect(db.tables.runs[0].status).toBe("running");
     expect(db.rpcCalls.filter((c) => c.fn === "settle_run")).toEqual([{ fn: "settle_run", args: { p_run: "run-old" } }]);
+  });
+});
+
+describe("a Blocked part during the run (A-9)", () => {
+  it("counts as Blocked only once its moment has played; amending moves the outcome, the end and the events", async () => {
+    await startRun(admin(), "run-1", { variant: "paused", speed: 1 });
+    const run = db.tables.runs[0];
+    const pausedAt = (db.tables.events.find((e) => e.type === "item.paused")!.payload as { at_ms: number }).at_ms;
+    // The database's "now": just before, then just after the part is Blocked.
+    const base = db.rpc;
+    let now = Date.parse(String(run.started_at)) + pausedAt - 1000;
+    db.rpc = async (fn: string, args: Record<string, unknown>) => (fn === "db_now" ? { data: new Date(now).toISOString(), error: null } : base(fn, args));
+    expect(await blockedInRun(admin(), PROJECT, "talking-points-generator")).toBeNull();
+    now += 2000;
+    const b = (await blockedInRun(admin(), PROJECT, "talking-points-generator"))!;
+    expect(b.part).toMatchObject({ status: "paused" });
+
+    const before = db.tables.events.length;
+    const ok = await amendRun(admin(), b, { ...b.part, status: "built" }, [{ type: "item.built", delayMs: 3000, actor: "verifier", payload: {} }], "item-x");
+    expect(ok).toBe(true);
+    const outcome = run.outcome as { status: string; outcomes: { key: string; status: string }[] };
+    expect(outcome.status).toBe("done");
+    expect(outcome.outcomes.find((o) => o.key === "talking-points-generator")!.status).toBe("built");
+    expect(db.tables.events.length).toBe(before + 1);
+    expect((db.tables.events.at(-1)!.payload as { at_ms: number }).at_ms).toBe(b.elapsedMs + 3000);
+    run.status = "done";
+    expect(await amendRun(admin(), b, b.part, [], "item-x")).toBe(false);
   });
 });

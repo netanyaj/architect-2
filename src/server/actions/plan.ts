@@ -5,7 +5,7 @@ import { z } from "zod";
 import { MODEL_CHOICES, MODEL_LABEL } from "@/lib/models";
 import { canBuild } from "@/lib/permissions";
 import { allowedModels } from "../blueprint/write-plan";
-import type { VersionItem } from "@/lib/plan-diff";
+import { weakensCheck, type VersionItem } from "@/lib/plan-diff";
 import { parseSim, startRun } from "../sim/run";
 import { createAdminDb, createServerDb, type AdminDb } from "../db";
 import { getAppContext } from "../workspace";
@@ -77,16 +77,50 @@ const itemEdit = z.object({
 });
 
 /** Edit a part's wording before Build. Its price doesn't change; its check is what gets built and tested. */
-export async function editItem(input: { itemId: string; title: string; description: string; provedWhen: string }): Promise<ActionResult> {
+export async function editItem(input: {
+  itemId: string;
+  title: string;
+  description: string;
+  provedWhen: string;
+  /** Required when the edit weakens the part's check (A-3): keep it as asked, set the part aside, or drop the stronger check. */
+  decision?: { decision: "keep" | "defer" | "drop"; reason?: string };
+}): Promise<ActionResult<{ applied?: "edit" | "kept" | "deferred" }> & { conflict?: { before: string; after: string } }> {
   const { ctx, refused } = await guard();
   if (refused) return { ok: false, message: refused };
   const parsed = itemEdit.safeParse(input);
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0].message };
   const admin = createAdminDb();
-  const { data: item } = await admin.from("items").select("id, blueprint_id").eq("id", parsed.data.itemId).maybeSingle();
+  const { data: item } = await admin.from("items").select("id, blueprint_id, proved_when").eq("id", parsed.data.itemId).maybeSingle();
   if (!item) return { ok: false, message: "That part isn't in this plan." };
   const plan = await draftPlanOf(admin, item.blueprint_id, ctx.workspace.id);
   if ("error" in plan) return { ok: false, message: plan.error };
+
+  // The conflict guard covers edits too: a check that loses a line or a number needs a decision first.
+  if (weakensCheck(item.proved_when, parsed.data.provedWhen)) {
+    const d = input.decision;
+    if (!d) {
+      return { ok: false, message: "This edit weakens what the part is checked for. Keep it, set the part aside, or drop the stronger check.", conflict: { before: item.proved_when, after: parsed.data.provedWhen } };
+    }
+    const now = new Date().toISOString();
+    if (d.decision === "keep") {
+      await admin.from("items").update({ title: parsed.data.title, description: parsed.data.description, edited_at: now }).eq("id", item.id);
+      revalidatePath(`/p/${plan.projectId}`);
+      return { ok: true, applied: "kept" };
+    }
+    if (d.decision === "defer") {
+      await admin.from("items").update({ status: "deferred", status_detail: "Set aside", edited_at: now }).eq("id", item.id);
+      revalidatePath(`/p/${plan.projectId}`);
+      return { ok: true, applied: "deferred" };
+    }
+    const reason = (d.reason ?? "").trim();
+    if (!reason) return { ok: false, message: "Say why you're dropping the stronger check. It's saved on the plan." };
+    await admin
+      .from("items")
+      .update({ title: parsed.data.title, description: parsed.data.description, proved_when: parsed.data.provedWhen, drop_reason: `Weakened: ${reason.slice(0, 200)}`, edited_at: now })
+      .eq("id", item.id);
+    revalidatePath(`/p/${plan.projectId}`);
+    return { ok: true, applied: "edit" };
+  }
 
   await admin
     .from("items")

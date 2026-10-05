@@ -14,8 +14,9 @@ import { relativeTime } from "@/lib/project-status";
 import { useUi } from "@/lib/ui-store";
 import { cn } from "@/lib/utils";
 import { goBack, shareTestLink, shareWithTeam } from "@/server/actions/launch";
-import { connectPart, setPartAside, setWaitingAside } from "@/server/actions/run";
+import { setPartAside, setWaitingAside } from "@/server/actions/run";
 import type { ProjectWorkspace } from "@/server/project";
+import { ConnectButton } from "./connect-button";
 import { AccessSetting, AnalyticsSetting, DomainSetting, LaterRow, MarketplaceSetting } from "./launch-settings";
 
 const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "app";
@@ -305,7 +306,7 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
         >
           {/* Running cost before going live (review gap 5). */}
           <span className="text-small text-ink-2 tabular-nums">
-            About {monthly} credits a month at current use
+            About {monthly} credits a month (estimate)
             {project.budgetCredits ? ` · within the ${project.budgetCredits}-credit project budget` : " · no project budget set"}
           </span>
         </VersionCard>
@@ -337,9 +338,13 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
                   <span className="block text-small text-ink-2">{r.detail}</span>
                 </span>
                 {r.kind === "connect" && (
-                  <Button variant={primary ? "primary" : "secondary"} size="sm" disabledReason={!canAct ? "Viewers can't connect accounts." : busy} onClick={() => act(() => connectPart({ itemId: r.itemId }))}>
-                    Connect {r.title.replace(/^Connect (.+) for your team$/, "$1")}
-                  </Button>
+                  <ConnectButton
+                    itemId={r.itemId}
+                    provider={r.provider}
+                    label={`Connect ${r.title.replace(/^Connect (.+) for your team$/, "$1")}`}
+                    variant={primary ? "primary" : "secondary"}
+                    disabledReason={!canAct ? "Viewers can't connect accounts." : busy}
+                  />
                 )}
                 {r.kind === "sample" && (
                   <Button variant={primary ? "primary" : "secondary"} size="sm" disabledReason={!canAct ? "Viewers can't change the plan." : busy} onClick={() => act(() => setPartAside({ itemId: r.itemId }))}>
@@ -373,7 +378,8 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
           {!state.fast && <DomainSetting projectId={project.id} env="staging" state={settings.domains?.staging} fallback={`${s}--team.architect.space`} readOnly={readOnly} />}
           <DomainSetting projectId={project.id} env="production" state={settings.domains?.production} fallback={`${s}.architect.app`} readOnly={readOnly} />
           <AnalyticsSetting projectId={project.id} on={Boolean(settings.analytics)} readOnly={readOnly} />
-          <LaterRow title="Keys and passwords" detail="Saved per version, never in the code" label="Manage" reason="Simulated: keys per version come with the governance layer (M5)." />
+          <LaterRow title="Sign-in for the people using it" detail="Google, email or your company's single sign-on" label="Change" reason="Not in this prototype yet: sign-in options are planned next." />
+          <LaterRow title="Keys and passwords" detail="Saved per version, never in the code" label="Manage" reason="Not in this prototype yet: keys per version are planned next." />
         </div>
       </section>
 

@@ -101,17 +101,30 @@ function ItemRow({ item, editReason }: { item: WorkspaceItem; editReason?: strin
   const [error, setError] = useState<string>();
   const ids = { title: useId(), desc: useId(), check: useId() };
 
+  // An edit that weakens the check needs Keep / Set aside / Drop first (A-3), as a chat change does.
+  const [conflict, setConflict] = useState<{ before: string; after: string; fields: { title: string; description: string; provedWhen: string } } | null>(null);
+  const [choice, setChoice] = useState<"keep" | "defer" | "drop" | null>(null);
+  const [reason, setReason] = useState("");
+  const send = (fields: { title: string; description: string; provedWhen: string }, decision?: { decision: "keep" | "defer" | "drop"; reason?: string }) =>
+    start(async () => {
+      setError(undefined);
+      const r = await editItem({ itemId: item.id, ...fields, decision });
+      if (!r.ok) {
+        if (r.conflict) {
+          setConflict({ ...r.conflict, fields });
+          setChoice(null);
+        }
+        setError(r.conflict ? undefined : r.message);
+        return;
+      }
+      setConflict(null);
+      setEditing(false);
+      router.refresh();
+    });
   const save = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    start(async () => {
-      const r = await editItem({ itemId: item.id, title: String(f.get("title")), description: String(f.get("description")), provedWhen: String(f.get("provedWhen")) });
-      if (!r.ok) setError(r.message);
-      else {
-        setEditing(false);
-        router.refresh();
-      }
-    });
+    send({ title: String(f.get("title")), description: String(f.get("description")), provedWhen: String(f.get("provedWhen")) });
   };
 
   const field = "w-full rounded-tile border border-line-ctl bg-surface px-3 py-2 text-body";
@@ -132,9 +145,57 @@ function ItemRow({ item, editReason }: { item: WorkspaceItem; editReason?: strin
             Done when
           </label>
           <textarea id={ids.check} name="provedWhen" defaultValue={item.provedWhen} maxLength={160} rows={2} className={field} />
+          {conflict && (
+            <div className="flex flex-col gap-2 rounded-card border-[1.5px] border-attention px-3 py-2.5">
+              <p className="text-small">
+                This edit weakens <b>{item.title}</b>.
+              </p>
+              <p className="text-small text-ink-2">
+                Checked now: {conflict.before}
+                <br />
+                After the edit: {conflict.after}
+              </p>
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label={`What happens to ${item.title}`}>
+                <Option selected={choice === "keep"} onClick={() => setChoice("keep")}>
+                  Keep
+                </Option>
+                <Option selected={choice === "defer"} onClick={() => setChoice("defer")}>
+                  Set aside
+                </Option>
+                <Option selected={choice === "drop"} onClick={() => setChoice("drop")}>
+                  Drop
+                </Option>
+              </div>
+              <p className="text-small text-ink-3">
+                {choice === "keep"
+                  ? "Keep: the check stays as it is; your other changes are saved."
+                  : choice === "defer"
+                    ? "Set aside: the part waits in Up next and isn't built or charged."
+                    : choice === "drop"
+                      ? "Drop: the stronger check goes, and the part is built as edited. Your reason is saved on it."
+                      : "Choose one to save the edit."}
+              </p>
+              {choice === "drop" && (
+                <>
+                  <label htmlFor={`${ids.check}-why`} className="text-small font-semibold">
+                    Why (saved on the plan)
+                  </label>
+                  <input id={`${ids.check}-why`} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} className="min-h-8 rounded-full border border-line-ctl bg-surface px-3" />
+                </>
+              )}
+              <Button
+                size="sm"
+                className="self-start"
+                disabledReason={!choice ? "Choose Keep, Set aside or Drop first." : choice === "drop" && !reason.trim() ? "Say why first." : pending ? "Saving…" : undefined}
+                onClick={() => send(conflict.fields, { decision: choice!, reason })}
+              >
+                Save with this choice
+              </Button>
+            </div>
+          )}
           <Message error={error} />
           <div className="flex gap-2">
-            <Button size="sm" type="submit" disabledReason={pending ? "Saving…" : undefined}>
+            <Button size="sm" type="submit" disabledReason={pending ? "Saving…" : conflict ? "Choose what happens to the part above." : undefined}>
               {pending ? "Saving…" : "Save"}
             </Button>
             <Button size="sm" variant="quiet" onClick={() => setEditing(false)}>

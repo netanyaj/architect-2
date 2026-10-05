@@ -102,3 +102,29 @@ describe("setProjectModel", () => {
     expect(await setProjectModel({ projectId: PROJECT, model: "gpt" })).toEqual({ ok: false, message: "GPT isn't allowed in this workspace." });
   });
 });
+
+describe("editItem: the conflict guard covers edits too (A-3)", () => {
+  const strong = "Done when briefs stay under 200 words and name every attendee";
+  beforeEach(() => {
+    db.tables.items[0].proved_when = strong;
+  });
+  it("an edit that drops a line of the check needs a decision; nothing is saved until then", async () => {
+    const r = await editItem({ itemId: ITEM, title: "Brief", description: "d", provedWhen: "Done when briefs name every attendee" });
+    expect(r).toMatchObject({ ok: false, conflict: { before: strong, after: "Done when briefs name every attendee" } });
+    expect(db.tables.items[0].proved_when).toBe(strong);
+  });
+  it("Keep saves the wording but not the weaker check; Set aside defers the part; Drop needs a reason and records it", async () => {
+    const weaker = { itemId: ITEM, title: "Brief v2", description: "d", provedWhen: "Done when briefs stay under 400 words and name every attendee" };
+    expect(await editItem({ ...weaker, decision: { decision: "keep" } })).toEqual({ ok: true, applied: "kept" });
+    expect(db.tables.items[0]).toMatchObject({ title: "Brief v2", proved_when: strong });
+    expect(await editItem({ ...weaker, decision: { decision: "drop" } })).toMatchObject({ ok: false, message: expect.stringContaining("Say why") });
+    expect(await editItem({ ...weaker, decision: { decision: "drop", reason: "Long meetings need room" } })).toEqual({ ok: true, applied: "edit" });
+    expect(db.tables.items[0]).toMatchObject({ proved_when: weaker.provedWhen, drop_reason: "Weakened: Long meetings need room" });
+    db.tables.items[0].proved_when = strong;
+    expect(await editItem({ ...weaker, decision: { decision: "defer" } })).toEqual({ ok: true, applied: "deferred" });
+    expect(db.tables.items[0].status).toBe("deferred");
+  });
+  it("an edit that keeps every line goes straight through", async () => {
+    expect(await editItem({ itemId: ITEM, title: "Brief", description: "d", provedWhen: `${strong}, sent by Slack` })).toEqual({ ok: true });
+  });
+});

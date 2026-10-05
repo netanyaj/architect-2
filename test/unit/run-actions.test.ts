@@ -11,7 +11,14 @@ vi.mock("@/server/workspace", () => ({
 }));
 const startFollowupRun = vi.fn();
 const settleRun = vi.fn();
-vi.mock("@/server/sim/run", () => ({ startFollowupRun: (...a: unknown[]) => startFollowupRun(...a), settleRun: (...a: unknown[]) => settleRun(...a) }));
+const blockedInRun = vi.fn();
+const amendRun = vi.fn();
+vi.mock("@/server/sim/run", () => ({
+  startFollowupRun: (...a: unknown[]) => startFollowupRun(...a),
+  settleRun: (...a: unknown[]) => settleRun(...a),
+  blockedInRun: (...a: unknown[]) => blockedInRun(...a),
+  amendRun: (...a: unknown[]) => amendRun(...a),
+}));
 
 const actions = await import("@/server/actions/run");
 
@@ -24,6 +31,8 @@ beforeEach(() => {
   role = "owner";
   startFollowupRun.mockReset().mockResolvedValue({ ok: true, runId: "run-2" });
   settleRun.mockReset().mockResolvedValue("done");
+  blockedInRun.mockReset().mockResolvedValue(null);
+  amendRun.mockReset().mockResolvedValue(true);
   const item = (n: number, key: string, status: string, extra: Record<string, unknown> = {}) => ({
     id: ITEM(n), key, title: key, status, provider: null, proved_when: "Done when briefs stay under 200 words and name every attendee.", estimate_likely: 10,
     blueprint_id: BP, project_id: P, fix_attempts: 0, projects: project, ...extra,
@@ -116,5 +125,46 @@ describe("settleRunNow", () => {
     expect(await actions.settleRunNow({ runId: "33333333-3333-4333-8333-333333333333" })).toMatchObject({ ok: false });
     db.tables.runs.push({ id: "33333333-3333-4333-8333-333333333333", project_id: P, status: "running" });
     expect(await actions.settleRunNow({ runId: "33333333-3333-4333-8333-333333333333" })).toEqual({ ok: true, status: "done" });
+  });
+});
+
+describe("a Blocked part while the build still plays (A-9)", () => {
+  const live = () => ({
+    runId: "run-9",
+    projectId: P,
+    startedAt: "2026-10-06T10:00:00Z",
+    endsAt: "2026-10-06T10:01:30Z",
+    elapsedMs: 40_000,
+    outcome: { status: "paused_item", outcomes: [] },
+    part: { key: "writer", status: "paused", statusDetail: "Stopped after 3 fixes", credits: 11, proof: null, attempts: [], fixes: [1, 2, 3].map((attempt) => ({ attempt, credits: 2, measured: "236 words", note: null })) },
+  });
+  beforeEach(() => {
+    db.tables.items.find((i) => i.key === "writer")!.status = "agreed"; // not settled yet
+    blockedInRun.mockResolvedValue(live());
+  });
+  it("the suggestion changes the check now; the run settles the part as working", async () => {
+    expect(await actions.acceptSuggestion({ itemId: ITEM(2) })).toEqual({ ok: true });
+    const [, , part, events] = amendRun.mock.calls[0];
+    expect(part).toMatchObject({ key: "writer", status: "built", statusDetail: "Check changed: allow up to 250 words" });
+    expect(events).toEqual([expect.objectContaining({ type: "item.built" })]);
+    expect(db.tables.items.find((i) => i.key === "writer")!.proved_when).toContain("250 words");
+  });
+  it("Try once more joins the running build: a fourth fix that passes, its own cost", async () => {
+    expect(await actions.retryPart({ itemId: ITEM(2) })).toEqual({ ok: true });
+    expect(startFollowupRun).not.toHaveBeenCalled();
+    const [, , part, events] = amendRun.mock.calls[0];
+    expect(part.fixes.at(-1)).toMatchObject({ attempt: 4, credits: 3, note: "Tried once more" });
+    expect(events.map((e: { type: string }) => e.type)).toEqual(["item.fixing", "log.line", "item.built"]);
+  });
+  it("Set aside works at once too; and if the run ends first, the person is told", async () => {
+    expect(await actions.setPartAside({ itemId: ITEM(2) })).toEqual({ ok: true });
+    expect(amendRun.mock.calls[0][2]).toMatchObject({ status: "deferred" });
+    amendRun.mockResolvedValue(false);
+    expect(await actions.setPartAside({ itemId: ITEM(2) })).toEqual({ ok: false, message: "The build just finished. Open the part again to decide." });
+  });
+  it("its drawer shows the tries from the run, with the suggestion", async () => {
+    const r = await actions.loadPart({ itemId: ITEM(2) });
+    expect(r.ok && r.detail.suggestion).toMatchObject({ button: "Allow 250 words" });
+    expect(r.ok && r.detail.credits).toBe(17);
   });
 });

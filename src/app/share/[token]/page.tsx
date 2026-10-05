@@ -24,6 +24,7 @@ export default async function SharedTestPage({ params }: PageProps<"/share/[toke
   const preview = previewState(
     (items ?? []).map((i) => ({ key: i.key, grp: i.grp, title: i.title, provider: i.provider, status: i.status, statusDetail: i.status_detail })),
     (conns ?? []).map((c) => c.provider),
+    { name: project.name },
   );
   const sample = preview.sample.length > 0 || (items ?? []).some((i) => i.status === "sample_data" || i.status === "needs_connection");
 
@@ -44,7 +45,7 @@ export default async function SharedTestPage({ params }: PageProps<"/share/[toke
         </p>
       )}
       <div className="min-h-0 flex-1 overflow-hidden rounded-pane border border-line bg-white">
-        {preview.reveal.length ? (
+        {preview.kind === "shell" || preview.reveal.length ? (
           <iframe title={`${project.name}, test version`} src={preview.src} className="block h-full w-full" />
         ) : (
           <p className="grid h-full place-items-center p-8 text-ink-2">Nothing is built yet.</p>

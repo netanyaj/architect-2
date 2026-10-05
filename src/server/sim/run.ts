@@ -152,3 +152,64 @@ export async function catchUpRuns(admin: AdminDb, projectId: string): Promise<vo
     else if (r.ends_at && new Date(r.ends_at).getTime() <= Date.now()) await settleRun(admin, r.id);
   }
 }
+
+/* A Blocked part while the rest of the build plays (A-9). Its Blocked state lives in the running run's outcome
+   until the run settles, so the person's choice amends that outcome (settling then writes it) and adds events, so
+   every viewer's replay shows the change at once. */
+
+type OutcomeRow = import("@/lib/sim/timeline").ItemOutcome;
+type RunOutcome = { status: string; failure?: unknown; outcomes: OutcomeRow[]; focus?: unknown };
+
+export type BlockedInRun = { runId: string; projectId: string; startedAt: string; endsAt: string; outcome: RunOutcome; part: OutcomeRow; elapsedMs: number };
+
+/** The running run in which this part is Blocked, once its "blocked" moment has played; null otherwise. */
+export async function blockedInRun(admin: AdminDb, projectId: string, key: string): Promise<BlockedInRun | null> {
+  const { data: run } = await admin.from("runs").select("id, started_at, ends_at, outcome").eq("project_id", projectId).eq("status", "running").maybeSingle();
+  if (!run?.started_at || !run.ends_at || !run.outcome) return null;
+  const outcome = run.outcome as unknown as RunOutcome;
+  const part = outcome.outcomes?.find((o) => o.key === key);
+  if (!part || part.status !== "paused") return null;
+  const elapsedMs = Date.parse(await dbNow(admin)) - Date.parse(run.started_at);
+  const { data: events } = await admin.from("events").select("type, payload").eq("run_id", run.id).eq("type", "item.paused");
+  const at = (events ?? []).map((e) => e.payload as { item_key?: string; at_ms?: number }).find((p) => p.item_key === key)?.at_ms;
+  if (at === undefined || at > elapsedMs) return null;
+  return { runId: run.id, projectId, startedAt: run.started_at, endsAt: run.ends_at, outcome, part, elapsedMs };
+}
+
+/**
+ * Replaces the part's outcome in the running run, adds events at "now" (plus each event's own delay), and moves the
+ * run's end if the new events run past it. Only while the run is still running.
+ */
+export async function amendRun(
+  admin: AdminDb,
+  b: BlockedInRun,
+  part: OutcomeRow,
+  events: { type: string; delayMs?: number; actor: "architect_agent" | "verifier" | "system" | "user"; payload: Record<string, unknown> }[],
+  itemId: string,
+): Promise<boolean> {
+  const outcomes = b.outcome.outcomes.map((o) => (o.key === part.key ? part : o));
+  const status = b.outcome.status === "paused_item" && !outcomes.some((o) => o.status === "paused") ? "done" : b.outcome.status;
+  const last = Math.max(b.elapsedMs, ...events.map((e) => b.elapsedMs + (e.delayMs ?? 0)));
+  const endsAt = new Date(Math.max(Date.parse(b.endsAt), Date.parse(b.startedAt) + last + 300)).toISOString();
+  const { data: updated } = await admin
+    .from("runs")
+    .update({ outcome: { ...b.outcome, status, outcomes } as unknown as Json, ends_at: endsAt })
+    .eq("id", b.runId)
+    .eq("status", "running")
+    .select("id");
+  if (!updated?.length) return false;
+  if (events.length) {
+    await admin.from("events").insert(
+      events.map((e) => ({
+        project_id: b.projectId,
+        run_id: b.runId,
+        item_id: itemId,
+        type: e.type,
+        actor: e.actor,
+        actor_label: e.actor === "architect_agent" ? "Architect agent" : e.actor === "verifier" ? "Verifier" : null,
+        payload: { ...e.payload, item_key: part.key, at_ms: b.elapsedMs + (e.delayMs ?? 0) } as Json,
+      })),
+    );
+  }
+  return true;
+}

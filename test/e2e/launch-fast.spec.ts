@@ -36,6 +36,8 @@ test.describe("M3: Launch, fast path and options", () => {
     await page.goto(`/p/${id}/launch?sim=deployfail`);
     await expect(page.getByText("Optional", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Connect Gmail" }).click();
+    await page.getByRole("dialog", { name: "Connect Gmail" }).getByRole("button", { name: "Allow" }).click();
+    await expect(page.getByRole("dialog", { name: "Connect Gmail" })).toHaveCount(0);
     await expect(stepper(page)).toContainText("ready to go live");
     await page.getByRole("button", { name: "Go live", exact: true }).click();
     await expect(page.getByRole("alert").filter({ hasText: "Going live failed at the health check" })).toBeVisible();
@@ -45,7 +47,7 @@ test.describe("M3: Launch, fast path and options", () => {
     await page.goto(`/p/${id}/launch`);
     await page.getByRole("button", { name: "Go live", exact: true }).click();
     await expect(page.getByRole("status", { name: "It's live" })).toContainText("v1 is live");
-    await expect(page.getByText(/About \d+ credits a month at current use/)).toBeVisible();
+    await expect(page.getByText(/About \d+ credits a month \(estimate\)/)).toBeVisible();
     const db = adminDb();
     const { data: deps } = await db.from("deployments").select("environment, status").eq("project_id", id).order("created_at");
     expect(deps).toEqual([

@@ -10,12 +10,13 @@ import { PreviewDock, PreviewFrame } from "@/components/ax/preview-dock";
 import { StageBanner } from "@/components/ax/stage-banner";
 import type { Status, StatusIcon } from "@/components/ax/status-mark";
 import { canBuild, canManageMembers } from "@/lib/permissions";
-import { providerAccount, providerName } from "@/lib/providers";
-import { previewState, sectionFor } from "@/lib/sim/preview";
+import { providerName } from "@/lib/providers";
+import { previewState } from "@/lib/sim/preview";
 import type { LiveRun } from "@/lib/sim/replay";
 import { useUi } from "@/lib/ui-store";
-import { connectPart, raiseBudgetAndContinue, setWaitingAside, stopHere } from "@/server/actions/run";
+import { raiseBudgetAndContinue, setWaitingAside, stopHere } from "@/server/actions/run";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
+import { ConnectButton } from "./connect-button";
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const time = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
@@ -61,9 +62,11 @@ function useAct() {
 /** Plan panel after Build: Needs you → In progress → Works → Up next, or Waiting for budget (screens 3, 6, 7). */
 export function BuildPanel({ project, items, budgetPaused }: { project: ProjectWorkspace; items: WorkspaceItem[]; budgetPaused: boolean }) {
   const { partKey, openPart } = useUi();
-  const { pending, error, act } = useAct();
+  const { pending, error } = useAct();
   const canAct = canBuild(project.role);
-  const connect = items.filter((i) => i.status === "needs_connection");
+  // Parts connected in this tab leave Needs you at once, even if a slower page refresh lands later.
+  const [connectedHere, setConnectedHere] = useState<Set<string>>(new Set());
+  const connect = items.filter((i) => i.status === "needs_connection" && !connectedHere.has(i.id));
   const blocked = items.filter((i) => i.status === "paused");
   const approval = items.filter((i) => i.status === "needs_approval");
   const doing = items.filter((i) => i.status === "building" || i.status === "failed");
@@ -89,15 +92,14 @@ export function BuildPanel({ project, items, budgetPaused }: { project: ProjectW
                 name={`Connect ${providerName(i.provider)}`}
                 action={
                   <span className="flex flex-wrap items-center gap-2">
-                  <Button
+                  <ConnectButton
+                    itemId={i.id}
+                    provider={i.provider}
                     // One primary per screen: a blocked part or the budget banner comes first.
                     variant={n === 0 && blocked.length === 0 && !budgetPaused ? "primary" : "secondary"}
-                    size="sm"
                     disabledReason={!canAct ? "Viewers can't connect accounts." : pending ? "Connecting…" : undefined}
-                    onClick={() => act(() => connectPart({ itemId: i.id }))}
-                  >
-                    Connect {providerAccount(i.provider)}
-                  </Button>
+                    onDone={() => setConnectedHere((prev) => new Set(prev).add(i.id))}
+                  />
                   <SimTag title="Connecting is simulated in this prototype: no real sign-in happens" />
                   </span>
                 }
@@ -204,14 +206,14 @@ export function AppPreview({ project, items }: { project: ProjectWorkspace; item
   const [size, setSize] = useState<"desktop" | "phone">("desktop");
   const [pointing, setPointing] = useState(false);
   const [console_, setConsole] = useState(false);
-  const preview = previewState(items, project.connected);
+  const preview = previewState(items, project.connected, { name: project.name });
   const selected = items.find((i) => i.key === partKey);
   const slug = project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
   const post = (m: Record<string, unknown>) => frame.current?.contentWindow?.postMessage(m, window.location.origin);
   // The selected part is outlined in the app, never isolated.
   // Keyed on what's shown, not the part object (rebuilt on every tick of the build's clock).
-  const section = selected ? sectionFor(selected) : null;
+  const section = selected ? preview.highlight(selected) : null;
   const label = selected?.title;
   useEffect(() => {
     post({ type: "highlight", part: section, label });
@@ -230,7 +232,7 @@ export function AppPreview({ project, items }: { project: ProjectWorkspace; item
   return (
     <PreviewFrame
       url={`${slug}--test.architect.space/today`}
-      badge={<SimTag title="The preview is a pre-built sample app in this prototype" />}
+      badge={<SimTag title={preview.kind === "shell" ? "The preview is a stand-in shell showing this plan's parts" : "The preview is a pre-built sample app in this prototype"} />}
       dock={
         <>
           {console_ && preview.problems.length > 0 && (
@@ -263,7 +265,7 @@ export function AppPreview({ project, items }: { project: ProjectWorkspace; item
         </>
       }
     >
-      {preview.reveal.length === 0 ? (
+      {preview.kind === "meeting-prep" && preview.reveal.length === 0 ? (
         <div className="grid h-full place-items-center p-8 text-center text-ink-2">
           <p>The app appears here, section by section, as its parts start to work.</p>
         </div>
@@ -274,7 +276,7 @@ export function AppPreview({ project, items }: { project: ProjectWorkspace; item
           src={preview.src}
           onLoad={() => {
             post({ type: "point", on: pointing });
-            if (selected) post({ type: "highlight", part: sectionFor(selected), label: selected.title });
+            if (selected) post({ type: "highlight", part: preview.highlight(selected), label: selected.title });
           }}
           className={size === "phone" ? "mx-auto block h-full w-[390px] border-x border-line" : "block h-full w-full"}
         />

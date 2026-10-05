@@ -41,7 +41,13 @@ test.describe("M2: plans and chat", () => {
     // Within 60 s: every part with a price, and the Slack workspace question (no safe default).
     await expect(page.getByText(/Here's the plan: \d+ parts/)).toBeVisible({ timeout: 60_000 });
     expect(Date.now() - started).toBeLessThan(60_000);
-    await expect(page.getByRole("heading", { name: "Which Slack workspace should this post to?" })).toBeVisible();
+    // The server decides what blocks (the model only labels): exactly one blocking question, the Slack workspace one
+    // (the request asks for Slack and names no channel). Its wording is the model's, so read it from the database.
+    const { data: bpRow } = await adminDb().from("blueprints").select("id").eq("project_id", projectId).single();
+    const { data: blocking } = await adminDb().from("questions").select("text").eq("blueprint_id", bpRow!.id).eq("blocking", true);
+    expect(blocking).toHaveLength(1);
+    expect(blocking![0].text).toMatch(/slack/i);
+    await expect(page.getByRole("heading", { name: blocking![0].text })).toBeVisible();
     await expect(page.getByText(/~\d+ cr/).first()).toBeVisible();
 
     const build = page.getByRole("button", { name: /^Build · ~\d+ credits$/ });
@@ -53,7 +59,9 @@ test.describe("M2: plans and chat", () => {
     const { data: usage } = await db.from("usage_ledger").select("kind").eq("project_id", projectId);
     expect(usage!.map((u) => u.kind)).toEqual(["blueprint"]); // drafting is shown; nothing else charged
 
-    await page.getByRole("button", { name: /The workspace you connected/ }).click();
+    // Answer it with its first option, whatever the model called it.
+    const question = page.locator("section").filter({ has: page.getByRole("heading", { name: blocking![0].text }) }).first();
+    await question.getByRole("button").first().click();
     await expect(build).not.toHaveAttribute("aria-disabled", "true");
     expect((await db.from("runs").select("id").eq("project_id", projectId)).data).toEqual([]); // still nothing
 

@@ -9,9 +9,10 @@ import { StatusMark } from "@/components/ax/status-mark";
 import { canBuild } from "@/lib/permissions";
 import { providerAccount } from "@/lib/providers";
 import { useUi } from "@/lib/ui-store";
-import { acceptSuggestion, connectPart, loadPart, retryPart, setPartAside, type PartDetail } from "@/server/actions/run";
+import { acceptSuggestion, loadPart, retryPart, setPartAside, type PartDetail } from "@/server/actions/run";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 import { rowFor } from "./build-stage";
+import { ConnectButton } from "./connect-button";
 
 const CHECK_KIND: Record<string, string> = { ui_test: "UI test", api_test: "API test", type_check: "Type check", http: "HTTP check", eval: "Eval", rubric: "Rubric" };
 const time = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
@@ -39,7 +40,7 @@ export function PartDrawer({ project, items }: { project: ProjectWorkspace; item
 
 
   // Reload when the part's state changes, and once its run settles (proofs are written then).
-  const statusKey = part ? `${part.id}:${part.status}:${project.run?.status ?? ""}` : null;
+  const statusKey = part ? `${part.id}:${part.status}:${project.run?.status ?? ""}:${project.run?.events.length ?? 0}` : null;
   // Keyed on the part's id, not the object: the build's clock re-renders every second, and a slow answer
   // must not be thrown away by the next tick.
   const partId = part?.id ?? null;
@@ -59,10 +60,8 @@ export function PartDrawer({ project, items }: { project: ProjectWorkspace; item
   if (!part) return null;
   const blocked = part.status === "paused";
   const d = loadedFor === statusKey ? detail : null;
-  // Once the database shows the part Blocked (its suggestion is there), the run has settled, even if this page
-  // hasn't refreshed yet.
-  const playing = project.run?.status === "running" && !d?.suggestion;
-  const viewerReason = !canAct ? "Viewers can't change the build." : playing ? "The build is still running. This opens when it finishes." : undefined;
+  // A-9: the choices work at once, even while the other parts keep building.
+  const viewerReason = !canAct ? "Viewers can't change the build." : undefined;
   const close = () => {
     openPart(null);
     setError(undefined);
@@ -115,9 +114,7 @@ export function PartDrawer({ project, items }: { project: ProjectWorkspace; item
       </div>
     </>
   ) : part.status === "needs_connection" ? (
-    <Button variant="primary" disabledReason={viewerReason ?? (pending ? "Connecting…" : undefined)} onClick={() => act(() => connectPart({ itemId: part.id }))}>
-      Connect {providerAccount(part.provider)}
-    </Button>
+    <ConnectButton itemId={part.id} provider={part.provider} variant="primary" size="md" disabledReason={viewerReason} onDone={close} />
   ) : part.status === "built" || part.status === "sample_data" ? (
     <TextLink href={`/p/${project.id}/launch#history`}>History and go back</TextLink>
   ) : undefined;
@@ -174,8 +171,6 @@ export function PartDrawer({ project, items }: { project: ProjectWorkspace; item
           </ol>
         </section>
       )}
-
-      {blocked && playing && <p className="text-small text-ink-2">The rest of the build is still running. What I tried and what I suggest show here when it finishes.</p>}
 
       {blocked && d?.suggestion && (
         <section className="rounded-card border-[1.5px] border-ink px-4 py-3">
