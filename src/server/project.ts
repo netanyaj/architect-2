@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { Role } from "@/lib/db";
-import type { Deployment } from "@/lib/launch";
+import type { Deployment, LaunchSettings } from "@/lib/launch";
 import type { RunEvent, RunInfo } from "@/lib/sim/replay";
 import { modelAvailability } from "@/lib/gateway";
 import { MODEL_LABEL, toModelChoice, type ModelChoice, type ModelOption } from "@/lib/models";
@@ -126,24 +126,60 @@ export type ProjectWorkspace = {
 };
 
 export type LaunchData = {
+  /** The workspace's governance setting: off is the fast path (Test → Go live). */
+  governance: boolean;
+  settings: LaunchSettings;
+  /** The view-only test link's token, when it's shared. */
+  testShareToken: string | null;
+  /** The domain of the person's email, for "Signed-in people at your domain". */
+  domain: string;
+  /** What each plan version changed, for the go-back confirmation. */
+  versionNotes: Record<number, string>;
   deployments: Deployment[];
   envLive: { staging: boolean; production: boolean };
   liveRequested: boolean;
   testsPassed: number;
 };
 
-async function loadLaunch(db: Awaited<ReturnType<typeof createServerDb>>, projectId: string, workspaceId: string, names: Map<string, string>): Promise<LaunchData> {
-  const [{ data: deps }, { data: envs }, { data: approvals }, { data: proofs }] = await Promise.all([
-    db.from("deployments").select("id, environment, blueprint_version, status, created_at, created_by").eq("project_id", projectId).order("created_at", { ascending: false }),
+async function loadLaunch(
+  db: Awaited<ReturnType<typeof createServerDb>>,
+  projectId: string,
+  workspaceId: string,
+  names: Map<string, string>,
+  extra: { governance: boolean; settings: LaunchSettings; testShareToken: string | null; domain: string },
+): Promise<LaunchData> {
+  const [{ data: deps }, { data: envs }, { data: approvals }, { data: proofs }, { data: changes }] = await Promise.all([
+    db.from("deployments").select("id, environment, blueprint_version, status, created_at, created_by, checks").eq("project_id", projectId).order("created_at", { ascending: false }),
     db.from("environments").select("name, status").eq("project_id", projectId),
     db.from("approvals").select("id").eq("workspace_id", workspaceId).eq("project_id", projectId).eq("kind", "deploy").eq("status", "waiting"),
     db.from("proofs").select("assertions_passed, items!inner(project_id)").eq("items.project_id", projectId).eq("result", "pass"),
+    db.from("change_proposals").select("version_created, diff").eq("project_id", projectId).eq("status", "applied"),
   ]);
+  const versionNotes: Record<number, string> = {};
+  for (const c of changes ?? []) {
+    if (!c.version_created) continue;
+    const d = (c.diff ?? {}) as { add?: { title: string }[]; change?: { key: string; title?: string }[]; remove?: { key: string }[] };
+    versionNotes[c.version_created] = [
+      ...(d.add ?? []).map((a) => `added ${a.title}`),
+      ...(d.change ?? []).map((x) => `changed ${x.title ?? x.key.replace(/-/g, " ")}`),
+      ...(d.remove ?? []).map((r) => `removed ${r.key.replace(/-/g, " ")}`),
+    ].join(", ");
+  }
   const env = (n: string) => (envs ?? []).some((e) => e.name === n && e.status === "live");
   return {
+    ...extra,
+    versionNotes,
     deployments: (deps ?? [])
       .filter((d) => d.environment === "staging" || d.environment === "production")
-      .map((d) => ({ id: d.id, environment: d.environment as Deployment["environment"], version: d.blueprint_version, status: d.status, createdAt: d.created_at, by: d.created_by ? (names.get(d.created_by) ?? "someone") : null })),
+      .map((d) => ({
+        id: d.id,
+        environment: d.environment as Deployment["environment"],
+        version: d.blueprint_version,
+        status: d.status,
+        createdAt: d.created_at,
+        by: d.created_by ? (names.get(d.created_by) ?? "someone") : null,
+        failure: d.status === "failed" ? ((d.checks as { failure?: Deployment["failure"] } | null)?.failure ?? null) : null,
+      })),
     envLive: { staging: env("staging"), production: env("production") },
     liveRequested: (approvals ?? []).length > 0,
     testsPassed: (proofs ?? []).reduce((s, p) => s + Number(p.assertions_passed ?? 0), 0),
@@ -163,7 +199,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
   const { data: p } = await db
     .from("projects")
     .select(
-      "id, workspace_id, name, icon, status, prompt, model, owner_id, owner_display_name, updated_at, budget_credits, blueprints(id, version, status, generation, created_at, total_likely), runs(id, kind, status, variant, started_at, ends_at)",
+      "id, workspace_id, name, icon, status, prompt, model, owner_id, owner_display_name, updated_at, budget_credits, launch_settings, test_share_token, blueprints(id, version, status, generation, created_at, total_likely), runs(id, kind, status, variant, started_at, ends_at)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -282,7 +318,12 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
   if (opts.launch) {
     const { data: people } = await db.from("members").select("user_id, display_name").eq("workspace_id", p.workspace_id);
     const names = new Map((people ?? []).filter((m) => m.user_id).map((m) => [m.user_id!, m.user_id === ctx.user.id ? "you" : (m.display_name?.split(" ")[0] ?? "someone")]));
-    launch = await loadLaunch(db, p.id, p.workspace_id, names);
+    launch = await loadLaunch(db, p.id, p.workspace_id, names, {
+      governance: p.workspace_id === ctx.workspace.id ? ctx.workspace.governanceEnabled : true,
+      settings: (p.launch_settings ?? {}) as LaunchSettings,
+      testShareToken: p.test_share_token,
+      domain: ctx.user.email?.split("@")[1] ?? "your company",
+    });
   }
 
   return {

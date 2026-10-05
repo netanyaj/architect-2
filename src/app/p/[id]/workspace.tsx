@@ -21,7 +21,7 @@ import { etaWords, withLive, type LiveRun } from "@/lib/sim/replay";
 import { useUi } from "@/lib/ui-store";
 import { workspaceState } from "@/lib/workspace-state";
 import { launchState } from "@/lib/launch";
-import { shareWithTeam } from "@/server/actions/launch";
+import { goLive, shareWithTeam } from "@/server/actions/launch";
 import { buildPlan, setProjectModel } from "@/server/actions/plan";
 import { duplicateProject } from "@/server/actions/projects";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
@@ -282,6 +282,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
         envLive: project.launch!.envLive,
         currentVersion: project.plan?.version ?? 1,
         role: project.role,
+        governance: project.launch!.governance,
         liveRequested: project.launch!.liveRequested,
         testsPassed: project.launch!.testsPassed,
       })
@@ -300,8 +301,10 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
       : undefined,
   });
   // On Launch the stage action is Share with your team, disabled until the checklist is clear (BUILD-SPEC §2).
+  // Without governance it's Go live (the team version is optional); with it, Share first, then Go live.
+  const launchAction = launch ? (launch.fast || launch.team.current ? { ...launch.goLive, kind: "live" as const } : { ...launch.share, kind: "share" as const }) : null;
   const state = launch
-    ? { stage: "launch" as const, progress: launch.progress, paused: false, action: { label: launch.share.label, disabledReason: launch.share.disabledReason, beside: undefined } }
+    ? { stage: "launch" as const, progress: launch.progress, paused: false, action: { label: launchAction!.label, disabledReason: launchAction!.disabledReason, beside: undefined } }
     : baseState;
 
   const setView = (v: View) => {
@@ -384,7 +387,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
             // The stage action is the primary only when nothing on screen needs the person first (BUILD-SPEC §2).
             variant={
               launch
-                ? launch.share.disabledReason
+                ? launchAction!.disabledReason
                   ? "secondary"
                   : "primary"
                 : planStage || (state.stage === "launch" && !items.some((i) => i.status === "needs_connection" || i.status === "paused"))
@@ -397,8 +400,11 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
               if (launch) {
                 setActionError(undefined);
                 start(async () => {
-                  const r = await shareWithTeam({ projectId: project.id });
-                  if (!r.ok) setActionError(r.message);
+                  // ?sim=deployfail: the deploy fails at its health check (docs/SIMULATOR.md "Deploys").
+                  const sim = params.get("sim") ?? undefined;
+                  const r = launchAction!.kind === "share" ? await shareWithTeam({ projectId: project.id, sim }) : await goLive({ projectId: project.id, sim });
+                  // A failed deploy shows as its own state on the page (what failed, what's still running), not here.
+                  if (!r.ok && !/ failed at the /.test(r.message)) setActionError(r.message);
                   router.refresh();
                 });
                 return;

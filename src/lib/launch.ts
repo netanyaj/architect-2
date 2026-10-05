@@ -2,13 +2,75 @@
  * Launch (screen 4, BL-12, BL-13): Test → Team → Live. What stands between the app and each version, in plain words,
  * with the fix for each. Pure, so the header's stage action and the Launch page always agree.
  */
+import { z } from "zod";
 import type { Role } from "./db";
 import { canBuild, canManageMembers } from "./permissions";
 import { providerName } from "./providers";
 
 export type LaunchPart = { id: string; key: string; title: string; status: string; provider: string | null; estimate: number | null };
 
-export type Deployment = { id: string; environment: "staging" | "production"; version: number; status: string; createdAt: string; by: string | null };
+export type Deployment = {
+  id: string;
+  environment: "staging" | "production";
+  version: number;
+  status: string;
+  createdAt: string;
+  by: string | null;
+  /** A failed deploy: the step that failed and why (the version before stays live). */
+  failure?: { step: string; reason: string } | null;
+};
+
+/* Launch settings (one object per project), all simulated: who can open it, analytics, the listing, domains. */
+export const ACCESS = {
+  link: { label: "Anyone with the link", detail: "No sign-in. Good for customer-facing apps." },
+  domain: { label: "Signed-in people at your domain", detail: "They sign in with Google or email at your company's domain." },
+  invited: { label: "Invited people only", detail: "Only people you add can open it." },
+} as const;
+export type Access = keyof typeof ACCESS;
+
+export const MARKETPLACE_CATEGORIES = ["Productivity", "Sales", "Support", "Operations", "Marketing", "HR", "Finance", "Engineering"] as const;
+
+export const Listing = z.object({
+  scope: z.enum(["off", "workspace", "public"]),
+  category: z.enum(MARKETPLACE_CATEGORIES),
+  description: z.string().trim().min(1, "Add a description.").max(2000),
+  summary: z.string().trim().min(1, "Add a short description.").max(160, "Keep the short description to 160 characters."),
+  tags: z.array(z.string().trim().min(1).max(30)).max(8, "Use up to 8 tags."),
+});
+export type Listing = z.infer<typeof Listing>;
+
+export type DomainState = { name: string; status: "dns" | "checking" | "secured"; since: string };
+
+export type LaunchSettings = {
+  access?: Access;
+  analytics?: boolean;
+  listing?: Listing;
+  domains?: Partial<Record<"staging" | "production", DomainState>>;
+};
+
+/** "meeting-prep.acme.com", "app.example.co.uk": a host name with at least one dot, no scheme or path. */
+export const DomainName = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/, "Use a web address like app.yourcompany.com, without https://.");
+
+/** The steps every deploy goes through (docs/SIMULATOR.md "Deploys"). `?sim=deployfail` fails the health check. */
+export const DEPLOY_STEPS = ["Build", "Database changes", "Web address", "Health check"] as const;
+
+/** The CNAME every custom domain points at (simulated). */
+export const CNAME_TARGET = "cname.architect.app";
+/** How long "Checking" takes in the simulation. */
+export const DOMAIN_CHECK_MS = 4000;
+
+/**
+ * About how many credits a month the live app costs at current use (shown before going live, review gap 5).
+ * A simple per-part rate: agents run on every trigger, integrations poll, screens and checks cost little.
+ */
+export function runningCredits(parts: { status: string; grp: string }[]): number {
+  const rate: Record<string, number> = { agents: 12, integrations: 4, data: 2, features: 1, quality: 1 };
+  return parts.filter((p) => p.status !== "deferred" && p.status !== "dropped").reduce((s, p) => s + (rate[p.grp] ?? 1), 0);
+}
 
 export type CheckRow =
   | { id: string; kind: "connect"; status: "attention"; title: string; detail: string; itemId: string; provider: string }
@@ -20,11 +82,15 @@ export type CheckRow =
 export type Action = { label: string; disabledReason?: string };
 
 export type LaunchState = {
+  /** No governance: Test → Go live, the team version optional (review gap 1). */
+  fast: boolean;
   rows: CheckRow[];
   /** Rows the person has to deal with before the team version. */
   toFix: number;
   team: { version: number | null; current: boolean };
-  live: { version: number | null; current: boolean; blocker: string | null; requested: boolean };
+  live: { version: number | null; current: boolean; blocker: string | null; requested: boolean; behind: number };
+  /** The newest deploy failed (the version before it is still serving). */
+  failure: { environment: "staging" | "production"; version: number; step: string; reason: string } | null;
   /** The stepper's progress words. */
   progress: string;
   share: Action;
@@ -47,6 +113,8 @@ export function launchState(input: {
   envLive: { staging: boolean; production: boolean };
   currentVersion: number;
   role: Role;
+  /** The workspace's governance setting (Settings). Off: no approvals, and the team version is optional. */
+  governance: boolean;
   /** A Live deploy request is waiting for an Owner or Admin. */
   liveRequested: boolean;
   /** Checks that passed (built parts' proofs). */
@@ -76,8 +144,9 @@ export function launchState(input: {
   const toFix = rows.filter((r) => r.kind !== "fine").length;
   const team = liveVersion(input.deployments, "staging", input.envLive.staging, currentVersion);
   const live = liveVersion(input.deployments, "production", input.envLive.production, currentVersion);
+  const fast = !input.governance;
   const approval = active.filter((p) => p.status === "needs_approval");
-  const blocker = approval.length ? `Needs IT approval for ${approval.map((p) => providerName(p.provider) ?? p.title).join(", ")}` : null;
+  const blocker = !fast && approval.length ? `Needs IT approval for ${approval.map((p) => providerName(p.provider) ?? p.title).join(", ")}` : null;
   const teamCurrent = team === currentVersion;
   const liveCurrent = live === currentVersion;
 
@@ -88,32 +157,55 @@ export function launchState(input: {
       viewer ??
       (toFix ? `Fix ${plural(toFix, "thing")} in the checklist first.` : teamCurrent ? `Your team already has v${currentVersion}.` : undefined),
   };
-  const admin = canManageMembers(role);
+  // Without governance there's nobody to approve: anyone who can build goes live (review gap 1).
+  const admin = fast || canManageMembers(role);
+  const behind = live !== null && !liveCurrent ? Math.max(1, currentVersion - live) : 0;
   const goLive = {
-    label: live !== null && !liveCurrent ? `Update Live to v${currentVersion}` : admin ? "Go live" : "Ask to go live",
+    label: behind ? "Update live" : admin ? "Go live" : "Ask to go live",
     request: !admin,
     disabledReason:
       viewer ??
-      (!teamCurrent
-        ? "Share this version with your team first. Live always follows the team version."
-        : blocker
-          ? `${blocker}. An Owner or Admin approves it in Approvals.`
-          : liveCurrent
-            ? `v${currentVersion} is already live.`
-            : input.liveRequested && !admin
-              ? "Your request is waiting for an Owner or Admin."
-              : undefined),
+      (fast && toFix
+        ? `Fix ${plural(toFix, "thing")} in the checklist first.`
+        : !fast && !teamCurrent
+          ? "Share this version with your team first. Live always follows the team version."
+          : blocker
+            ? `${blocker}. An Owner or Admin approves it in Approvals.`
+            : liveCurrent
+              ? `v${currentVersion} is already live.`
+              : input.liveRequested && !admin
+                ? "Your request is waiting for an Owner or Admin."
+                : undefined),
   };
+
+  const newest = [...input.deployments].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  const failure = newest?.status === "failed" ? { environment: newest.environment, version: newest.version, step: newest.failure?.step ?? "Deploy", reason: newest.failure?.reason ?? "It didn't finish." } : null;
 
   const progress = liveCurrent
     ? "Live"
-    : toFix
-      ? `${plural(toFix, "thing")} before ${teamCurrent ? "going live" : "sharing"}`
-      : teamCurrent
-        ? blocker
-          ? "waiting for IT"
-          : "ready to go live"
-        : "ready to share";
+    : failure
+      ? "deploy failed"
+      : toFix
+        ? `${plural(toFix, "thing")} before ${fast || teamCurrent ? "going live" : "sharing"}`
+        : !fast && !teamCurrent
+          ? "ready to share"
+          : behind
+            ? `live is ${plural(behind, "version")} behind`
+            : fast || teamCurrent
+            ? blocker
+              ? "waiting for IT"
+              : "ready to go live"
+            : "ready to share";
 
-  return { rows, toFix, team: { version: team, current: teamCurrent }, live: { version: live, current: liveCurrent, blocker, requested: input.liveRequested }, progress, share, goLive };
+  return {
+    fast,
+    rows,
+    toFix,
+    team: { version: team, current: teamCurrent },
+    live: { version: live, current: liveCurrent, blocker, requested: input.liveRequested, behind },
+    failure,
+    progress,
+    share,
+    goLive,
+  };
 }

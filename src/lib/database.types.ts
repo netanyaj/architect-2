@@ -886,6 +886,7 @@ export type Database = {
           current_version: number | null
           icon: string
           id: string
+          launch_settings: Json
           model: string
           name: string
           owner_display_name: string | null
@@ -894,6 +895,7 @@ export type Database = {
           repo_full_name: string | null
           stack: string
           status: string
+          test_share_token: string | null
           updated_at: string
           workspace_id: string
         }
@@ -903,6 +905,7 @@ export type Database = {
           current_version?: number | null
           icon?: string
           id?: string
+          launch_settings?: Json
           model?: string
           name: string
           owner_display_name?: string | null
@@ -911,6 +914,7 @@ export type Database = {
           repo_full_name?: string | null
           stack?: string
           status?: string
+          test_share_token?: string | null
           updated_at?: string
           workspace_id: string
         }
@@ -920,6 +924,7 @@ export type Database = {
           current_version?: number | null
           icon?: string
           id?: string
+          launch_settings?: Json
           model?: string
           name?: string
           owner_display_name?: string | null
@@ -928,6 +933,7 @@ export type Database = {
           repo_full_name?: string | null
           stack?: string
           status?: string
+          test_share_token?: string | null
           updated_at?: string
           workspace_id?: string
         }

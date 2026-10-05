@@ -11,6 +11,7 @@ import { getAppContext } from "@/server/workspace";
 import { AppearanceSection } from "./appearance-section";
 import { BudgetsSection } from "./budgets-section";
 import { DemoDataSection } from "./demo-data-section";
+import { GovernanceSection } from "./governance-section";
 import { MembersSection, type MemberRow } from "./members-section";
 
 export const metadata: Metadata = { title: "Settings · Architect" };
@@ -77,6 +78,8 @@ export default async function SettingsPage() {
         canEdit={manage}
         projects={projects.map((p) => ({ id: p.id, name: p.name, budget: p.budgetCredits, spent: p.creditsUsed }))}
       />
+
+      <GovernanceSection on={ctx.workspace.governanceEnabled} canEdit={manage} />
 
       <AppearanceSection theme={theme} />
 

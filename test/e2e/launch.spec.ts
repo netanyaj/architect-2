@@ -42,7 +42,7 @@ test.describe("M3: Launch", () => {
     await share.click();
     await expect(page.getByText("v1 shared", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Go live", exact: true }).click();
-    await expect(page.getByText("v1 is live", { exact: true })).toBeVisible();
+    await expect(page.getByRole("status", { name: "It's live" })).toContainText("v1 is live");
     await expect(stepper(page)).toContainText("Live");
     const db = adminDb();
     expect((await db.from("projects").select("status").eq("id", id).single()).data!.status).toBe("live");
@@ -75,13 +75,20 @@ test.describe("M3: Launch", () => {
     ]);
 
     await page.getByRole("link", { name: "Open Launch" }).click();
+    // Live is behind (review gap 8) until the change is shared and sent out.
+    await expect(page.getByText("1 change not live yet · Update live")).toBeVisible();
     await page.getByRole("button", { name: "Share v2 with your team" }).click();
-    await page.getByRole("button", { name: "Update Live to v2" }).click();
-    await expect(page.getByText("v2 is live", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Update live", exact: true }).click();
+    await expect(page.getByRole("status", { name: "It's live" })).toContainText("v2 is live");
 
     // Go back (BL-13): the live v1 returns in one click.
     const history = page.locator("#history");
     await history.getByRole("listitem").filter({ hasText: "Live · v1" }).getByRole("button", { name: "Go back to this" }).click();
+    // A confirmation first (review gap 11), saying what goes away.
+    const confirm = page.getByRole("dialog", { name: "Go back to v1 on the live?" });
+    await expect(confirm).toContainText("Data stays as it is; the code and settings go back to v1.");
+    await expect(confirm).toContainText("v2: added Friday recap of the week's meetings");
+    await confirm.getByRole("button", { name: "Go back to v1" }).click();
     await expect(history.getByRole("listitem").filter({ hasText: "Live · v1 · running now" })).toBeVisible();
   });
 });

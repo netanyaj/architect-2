@@ -398,3 +398,17 @@ describe("the simulator's runs (0007)", () => {
     expect(await one("select status from projects where id = $1", [project])).toEqual({ status: "paused" });
   });
 });
+
+describe("launch options (0010)", () => {
+  it("a deploy can fail, and a project has launch settings and an optional, unique test link", async () => {
+    const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
+    const { id: project, launch_settings } = await one<{ id: string; launch_settings: unknown }>("insert into projects (workspace_id, name) values ($1, 'Launchy') returning id, launch_settings", [ws]);
+    expect(launch_settings).toEqual({});
+    await db.query("insert into deployments (project_id, environment, blueprint_version, status) values ($1, 'production', 1, 'failed')", [project]);
+    await expect(db.query("insert into deployments (project_id, environment, blueprint_version, status) values ($1, 'production', 1, 'exploded')", [project])).rejects.toThrow(/check/);
+    const token = "11111111-2222-4333-8444-555555555555";
+    await db.query("update projects set test_share_token = $2 where id = $1", [project, token]);
+    const { id: other } = await one<{ id: string }>("insert into projects (workspace_id, name) values ($1, 'Other') returning id", [ws]);
+    await expect(db.query("update projects set test_share_token = $2 where id = $1", [other, token])).rejects.toThrow(/unique|duplicate/);
+  });
+});

@@ -50,5 +50,12 @@ Determinism: the timeline is seeded with `hash(runId)`, so durations and costs d
 - **Timing:** `base_ms` × an item-size factor, ±20% seeded jitter. The whole run takes about 90 s for the demo, with `speed` adjustable from `?sim=fast`.
 - **Costs:** the actual is the item's `estimate_likely` × a seeded factor between 0.85 and 1.15. Each fix costs 2–3 credits.
 
+## Deploys
+Sharing with the team (`staging`) and going live (`production`) are simulated deploys, one `deployments` row each. Every deploy runs four steps, recorded in `deployments.checks.steps`: **Build → Database changes → Web address → Health check**.
+- **Success:** the new row is `live`; the row it replaces becomes `rolled_back` (kept for Go back), and the environment's address is updated (a secured custom domain wins).
+- **Failure (`?sim=deployfail` on the Launch page):** the health check fails ("The new version didn't answer within 30 seconds"). The new row is `failed` with `checks.failure = {step, reason}`; the version before stays `live`, so nothing changes for people using it. Launch shows what failed, that the previous version is still running, and Try again · Ask a person. Nothing is charged.
+- **Custom domains:** enter the domain → add the CNAME (`cname.architect.app`) → Checking (about 4 s, simulated) → Secured (HTTPS). Per environment, stored in `projects.launch_settings.domains`.
+- **Governance off** (Settings): Test → Go live in one deploy, with the team version optional and no approval.
+
 ## Preview app
 `public/preview/meeting-prep/` is a small static app (Today, This week, All briefs, Attendees, Settings) served in the preview iframe at `/preview/meeting-prep/today`. Each `preview.updated` reveals more of it (sections fade in as their items are built). The selected item's section is outlined via `postMessage({type:'highlight', key})`. Select element sends `postMessage({type:'select', selector, text})` back to the workspace, which attaches it to the composer.

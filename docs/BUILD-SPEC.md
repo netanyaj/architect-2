@@ -82,6 +82,12 @@ Screen numbers refer to the final canvas. Interface words follow the design-syst
 - **Checkpoints:** every part that works is a restorable point; "History and go back" in the part drawer and on Launch (BL-7).
 - **Connections:** the Needs-you card's Connect button flips the part to Works after the simulated OAuth (BL-9).
 - **Launch (screen 4):** Test → Team → Live, the checklist with inline fixes, share with your team, go live, version history and go back (BL-12, BL-13). Building an applied change (F7).
+- **Launch options (added 5 Oct, `reviews/deploy-flow-review-2026-10-05.md`), all simulated:**
+  - the workspace's governance setting (Settings): on, Test → Team → Live with approval for Builders; off, Test → Go live with the team version optional;
+  - "Who can open it": anyone with the link · signed-in people at your domain · invited people only;
+  - Marketplace: your workspace or Public Agentlets, with today's listing form (category, description, a 160-character short description, up to 8 tags);
+  - "Live is behind · Update live" after a change; a deploy-failed state (see SIMULATOR "Deploys"); custom domain steps; a confirmation before going back;
+  - also: a view-only test link, running cost on the Live card, an analytics toggle and a success state.
 - **Acceptance:**
   - flow F2 runs from prompt to a live URL;
   - F7 (change after launch) works;
