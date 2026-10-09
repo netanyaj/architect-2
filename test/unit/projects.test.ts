@@ -80,7 +80,12 @@ vi.mock("next/headers", () => ({ cookies: async () => ({ set: (k: string, v: str
 
 let db: FakeDb;
 let role: Role;
-vi.mock("@/server/db", () => ({ createAdminDb: () => db }));
+// The person's own session: setTheme saves the theme on their account.
+const savedMetadata: Record<string, unknown>[] = [];
+vi.mock("@/server/db", () => ({
+  createAdminDb: () => db,
+  createServerDb: async () => ({ auth: { updateUser: async ({ data }: { data: Record<string, unknown> }) => (savedMetadata.push(data), { data: {}, error: null }) } }),
+}));
 vi.mock("@/server/workspace", () => ({
   getAppContext: async () => ({ user: { id: "me" }, name: "Morgan Lee", role, workspace: { id: "ws-1", name: "Acme Ops" } }),
 }));
@@ -186,8 +191,9 @@ describe("setProjectBudget", () => {
 });
 
 describe("setTheme", () => {
-  it("stores light or dark for this browser", async () => {
+  it("saves light or dark on the person's account, and in this browser so pages render in it at once", async () => {
     expect(await setTheme("dark")).toEqual({ ok: true });
+    expect(savedMetadata.at(-1)).toEqual({ theme: "dark" });
     expect(jar.get("ax_theme")).toBe("dark");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(await setTheme("purple" as any)).toMatchObject({ ok: false });

@@ -27,6 +27,8 @@ Everything simulated carries the `Simulated` tag in the interface. Full list: `d
 | **Lyzr Studio agent (Agents › Try it)**: each agent in a plan becomes its own Lyzr Studio agent, made on its first Try it or Save and reused after; Try it runs it on Studio and saves the run | **Real** (needs `LYZR_API_KEY`; without it, Gemini answers through the gateway and the run is tagged Simulated) |
 | **Import a repo**: GitHub App install and confirmation, repo, branch and folder lists, reading the files, static analysis (stack, start commands, keys, tests, agents), the plan from the repo with your tests as proof | **Real** (read-only; running the repo and its tests is Simulated) |
 | Run as it is, Configure, Port | Simulated |
+| Developer view: an imported project's file tree and contents | **Real** (read through the GitHub App) |
+| Developer view: Architect's code, Changes, terminal, activity, branch and PR, keys per version | Simulated |
 | Agents graph, sample runs, tools and knowledge, Compare; imported CrewAI and LangGraph runtimes | Simulated |
 | Build run, checks, fix loop, preview app, deploys, custom domains, test link | Simulated |
 | Usage, budgets and the budget pause (on simulated spend) | Real numbers from the database |

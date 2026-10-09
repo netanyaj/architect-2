@@ -1,0 +1,452 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { Icon } from "@/components/ax/icon";
+import { SimTag } from "@/components/ax/pill";
+import { Segmented } from "@/components/ax/segmented";
+import {
+  activityFeed,
+  branchInfo,
+  changesByPart,
+  envKeys,
+  generatedTree,
+  terminalSession,
+  type ChangedFile,
+  type DevPart,
+  type TerminalLine,
+} from "@/lib/dev-view";
+import type { LiveRun } from "@/lib/sim/replay";
+import { useUi } from "@/lib/ui-store";
+import { cn } from "@/lib/utils";
+import { loadRepoFile, loadRepoView, type RepoView } from "@/server/actions/dev";
+import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
+
+/* Developer view (screen 8). Simulated from the plan and its run, except an imported repo's files, which are real. */
+
+const ENV_PATH = "Environment/Keys and passwords";
+
+const toParts = (items: WorkspaceItem[]): DevPart[] =>
+  items.map((i) => ({
+    key: i.key,
+    title: i.title,
+    description: i.description,
+    provedWhen: i.provedWhen,
+    grp: i.grp,
+    status: i.status,
+    provider: i.provider,
+    position: i.position,
+    untouched: Boolean(i.statusDetail?.startsWith("Works today")),
+  }));
+
+/** Events the run has played so far: a running build replays on the clock; a finished one shows them all. */
+function playedEvents(project: ProjectWorkspace, live: LiveRun) {
+  const run = project.run;
+  if (!run) return [];
+  if (run.status !== "running") return run.events;
+  const ids = new Set(live.activity.map((a) => a.id));
+  const last = Math.max(-1, ...run.events.filter((e) => ids.has(e.id)).map((e) => e.atMs));
+  return run.events.filter((e) => e.atMs <= Math.max(last, 0));
+}
+
+function fixesOf(project: ProjectWorkspace): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const e of project.run?.events ?? []) if (e.type === "item.fixing" && e.itemKey) out[e.itemKey] = Math.max(out[e.itemKey] ?? 0, Number(e.payload.attempt ?? 1));
+  return out;
+}
+
+/** The branch and its pull request, in the stage header (Simulated). */
+export function PrStatus({ project, items }: { project: ProjectWorkspace; items: WorkspaceItem[] }) {
+  const info = branchInfo({ projectId: project.id, name: project.name, version: project.plan?.version ?? 1, repo: project.repo, runStatus: project.run?.status ?? null, parts: toParts(items) });
+  const words = info.pr === null ? "No pull request yet" : `PR #${info.pr} · ${info.status === "running" ? "checks running" : info.status === "failing" ? "checks failing" : "checks passing"}`;
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      <span
+        className="inline-flex min-h-[34px] items-center gap-2 rounded-full border border-line-ctl bg-surface px-3 text-small font-semibold"
+        title={`Architect works on ${info.branch} and opens a pull request into ${info.base}${project.repo ? ` on ${project.repo}` : ""}.`}
+      >
+        <Icon name="branch" size="sm" />
+        <code className="font-mono font-normal">{info.branch}</code>
+        <span className="text-ink-3">→ {info.base}</span>
+        <span aria-hidden="true">·</span>
+        <span className={cn(info.status === "failing" && "text-failed", info.status === "running" && "text-building")}>{words}</span>
+      </span>
+      <SimTag title="Branches and pull requests are simulated in this prototype." />
+    </span>
+  );
+}
+
+function CodeLines({ text }: { text: string }) {
+  const lines = text.replace(/\n$/, "").split("\n");
+  return (
+    <pre className="m-0 flex-1 overflow-auto py-3 font-mono text-[12.5px] leading-[1.75]" aria-label="File contents, read-only">
+      {lines.map((l, i) => (
+        <div key={i} className="flex whitespace-pre">
+          <b className="inline-block w-11 flex-none pr-3 text-right font-normal text-ink-3 select-none">{i + 1}</b>
+          <span>{l}</span>
+        </div>
+      ))}
+    </pre>
+  );
+}
+
+function Diff({ file }: { file: ChangedFile }) {
+  return (
+    <pre className="m-0 flex-1 overflow-auto py-3 font-mono text-[12.5px] leading-[1.75]" aria-label={`Changes to ${file.path}`}>
+      {file.lines.map((l, i) => (
+        <div key={i} className={cn("flex whitespace-pre", l.kind === "add" && "bg-works-bg", l.kind === "del" && "bg-failed-bg")}>
+          <b className="inline-block w-11 flex-none pr-3 text-right font-normal text-ink-3 select-none">{l.newNo ?? l.oldNo}</b>
+          <i className={cn("w-[18px] flex-none not-italic select-none", l.kind === "add" ? "text-works" : l.kind === "del" ? "text-failed" : "text-ink-3")}>{l.kind === "add" ? "+" : l.kind === "del" ? "−" : " "}</i>
+          <span>{l.text}</span>
+        </div>
+      ))}
+    </pre>
+  );
+}
+
+function FileRow({ path, on, onClick, meta, indent = 0, label }: { path: string; on: boolean; onClick: () => void; meta?: React.ReactNode; indent?: number; label?: string }) {
+  return (
+    <button
+      type="button"
+      aria-current={on ? "true" : undefined}
+      onClick={onClick}
+      className={cn("flex min-h-8 w-full items-center gap-2 rounded-[9px] px-2.5 text-left font-mono text-[12.5px] text-ink hover:bg-selected", on && "bg-selected")}
+      style={{ paddingLeft: 10 + indent * 14 }}
+    >
+      <span className="min-w-0 flex-1 truncate">{label ?? path}</span>
+      {meta}
+    </button>
+  );
+}
+
+function Counts({ added, removed }: { added: number; removed: number }) {
+  return (
+    <span className="flex-none tabular-nums">
+      {added > 0 && <span className="text-works">+{added}</span>} {removed > 0 && <span className="text-failed">−{removed}</span>}
+    </span>
+  );
+}
+
+function KeysTable({ keys }: { keys: ReturnType<typeof envKeys> }) {
+  const cell = (set: boolean) => (set ? <span className="text-works">Set</span> : <span className="text-ink-2">Not set</span>);
+  return (
+    <div className="flex flex-1 flex-col gap-3 overflow-auto p-4">
+      <p className="text-small text-ink-2">
+        Listed by name only. Values are never shown here, and each version has its own. <SimTag />
+      </p>
+      {keys.length ? (
+        <table className="w-full text-left text-small">
+          <thead className="text-ink-2">
+            <tr>
+              <th className="py-1.5 font-semibold">Name</th>
+              <th className="py-1.5 font-semibold">Test version</th>
+              <th className="py-1.5 font-semibold">Team version</th>
+              <th className="py-1.5 font-semibold">Live</th>
+            </tr>
+          </thead>
+          <tbody>
+            {keys.map((k) => (
+              <tr key={k.name} className="border-t border-line align-top">
+                <td className="py-2">
+                  <code className="font-mono">{k.name}</code>
+                  <span className="block text-ink-2">{k.why}</span>
+                </td>
+                <td className="py-2">{cell(k.test)}</td>
+                <td className="py-2">{cell(k.team)}</td>
+                <td className="py-2">{cell(k.live)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="text-ink-2">This app doesn&apos;t need any keys or passwords yet.</p>
+      )}
+    </div>
+  );
+}
+
+type TreeNode = { name: string; path: string; children: TreeNode[]; file: boolean };
+function buildTree(paths: string[]): TreeNode[] {
+  const root: TreeNode = { name: "", path: "", children: [], file: false };
+  for (const p of paths) {
+    let node = root;
+    p.split("/").forEach((part, i, all) => {
+      const path = all.slice(0, i + 1).join("/");
+      let next = node.children.find((c) => c.name === part);
+      if (!next) {
+        next = { name: part, path, children: [], file: i === all.length - 1 };
+        node.children.push(next);
+      }
+      node = next;
+    });
+  }
+  const sort = (n: TreeNode) => {
+    n.children.sort((a, b) => Number(a.file) - Number(b.file) || a.name.localeCompare(b.name));
+    n.children.forEach(sort);
+  };
+  sort(root);
+  return root.children;
+}
+
+function Tree({ nodes, selected, onSelect, depth = 0, marks }: { nodes: TreeNode[]; selected: string | null; onSelect: (p: string) => void; depth?: number; marks: Set<string> }) {
+  return (
+    <ul className="flex flex-col">
+      {nodes.map((n) =>
+        n.file ? (
+          <li key={n.path}>
+            <FileRow path={n.path} label={n.name} indent={depth} on={selected === n.path} onClick={() => onSelect(n.path)} meta={marks.has(n.path) ? <span className="text-small text-works">new</span> : undefined} />
+          </li>
+        ) : (
+          <li key={n.path}>
+            <details open={depth === 0 && nodes.length < 12}>
+              <summary className="flex min-h-8 cursor-pointer items-center gap-1.5 rounded-[9px] px-2.5 font-mono text-[12.5px] text-ink-2 hover:bg-selected" style={{ paddingLeft: 10 + depth * 14 }}>
+                {n.name}/
+              </summary>
+              <Tree nodes={n.children} selected={selected} onSelect={onSelect} depth={depth + 1} marks={marks} />
+            </details>
+          </li>
+        ),
+      )}
+    </ul>
+  );
+}
+
+/** Code (screen 8): Changes grouped by part, or All files, beside a read-only view of the file. */
+export function CodeView({ project, items, live }: { project: ProjectWorkspace; items: WorkspaceItem[]; live: LiveRun }) {
+  const parts = useMemo(() => toParts(items), [items]);
+  const version = project.plan?.version ?? 1;
+  const groups = useMemo(() => changesByPart({ name: project.name, parts, version, fixes: fixesOf(project), imported: Boolean(project.repo) }), [project, parts, version]);
+  const changeCount = groups.reduce((n, g) => n + g.files.length, 0);
+  const [mode, setMode] = useState<"changes" | "files">(changeCount || !project.repo ? "changes" : "files");
+  const [selected, setSelected] = useState<string | null>(null);
+  const [repo, setRepo] = useState<RepoView | null>(null);
+  const [repoError, setRepoError] = useState<string | null>(null);
+  const [file, setFile] = useState<{ path: string; text?: string; note?: string } | null>(null);
+  const [loadingFile, setLoadingFile] = useState(false);
+
+  useEffect(() => {
+    if (!project.repo) return;
+    let stale = false;
+    loadRepoView({ projectId: project.id })
+      .then((r) => {
+        if (stale) return;
+        if (r.ok) setRepo(r.view);
+        else setRepoError(r.message);
+      })
+      .catch(() => !stale && setRepoError("GitHub didn't answer. Try again in a minute."));
+    return () => {
+      stale = true;
+    };
+  }, [project.id, project.repo]);
+
+  // A new project's files are all Architect's; an imported repo's are real, plus what Architect changed.
+  const generated = useMemo(
+    () =>
+      project.repo
+        ? new Map(groups.flatMap((g) => g.files).map((f) => [f.path, f.lines.map((l) => l.text).join("\n")]))
+        : new Map(generatedTree(project.name, version, parts).map((f) => [f.path, f.content])),
+    [project.repo, project.name, parts, version, groups],
+  );
+  // Parts an imported repo already does weren't rewritten; what Architect added shows as new.
+  const changedPaths = new Set(groups.flatMap((g) => g.files.map((f) => f.path)));
+  const allPaths = [...new Set([...(repo?.entries.map((e) => e.path) ?? []), ...generated.keys(), ...(project.repo ? [...changedPaths] : [])])];
+  const keys = envKeys({ parts, repoKeys: repo?.keys ?? (project.repo ? [] : null), connected: project.connected, envLive: { staging: false, production: project.status === "live" } });
+
+  const changeFile = groups.flatMap((g) => g.files).find((f) => f.path === selected) ?? null;
+  const first = groups[0]?.files[0]?.path ?? null;
+  const current = mode === "changes" ? (selected && changedPaths.has(selected) ? selected : first) : selected;
+
+  const open = (path: string) => {
+    setSelected(path);
+    if (mode === "changes" || path === ENV_PATH) return;
+    const own = generated.get(path);
+    if (own !== undefined && !repo?.entries.some((e) => e.path === path)) return setFile({ path, text: own });
+    if (!repo) return setFile({ path, note: "Loading…" });
+    setLoadingFile(true);
+    setFile({ path });
+    void loadRepoFile({ projectId: project.id, path }).then((r) => {
+      setLoadingFile(false);
+      if (!r.ok) return setFile({ path, note: r.message });
+      if (r.file.kind === "text") setFile({ path, text: r.file.text });
+      else setFile({ path, note: r.file.kind === "binary" ? "A binary file. It isn't shown here." : `A large file (${Math.round(r.file.size / 1024)} KB). It isn't shown here.` });
+    });
+  };
+
+  const shownChange = mode === "changes" ? (changeFile && changeFile.path === current ? changeFile : groups.flatMap((g) => g.files).find((f) => f.path === current)) : null;
+
+  return (
+    <div className="flex min-h-0 flex-1 gap-0 px-3 pb-3 max-lg:flex-col">
+      <aside aria-label="Files" className="flex w-[270px] flex-none flex-col gap-2 overflow-auto rounded-l-card border border-line bg-surface p-2.5 max-lg:w-full max-lg:rounded-card">
+        <Segmented
+          label="Code"
+          value={mode}
+          onChange={(m) => {
+            setMode(m);
+            setSelected(null);
+            setFile(null);
+          }}
+          className="self-start"
+          options={[
+            { value: "changes", label: "Changes", count: changeCount },
+            { value: "files", label: "All files" },
+          ]}
+        />
+        {mode === "changes" ? (
+          groups.length ? (
+            groups.map((g) => (
+              <section key={g.key} aria-label={`${g.title} · ${g.label}`}>
+                <h3 className="px-2 pt-2 pb-1 text-small font-[650]">
+                  {g.title} · <span className="font-normal text-ink-2">{g.label}</span>
+                </h3>
+                {g.files.map((f) => (
+                  <FileRow key={f.path} path={f.path} on={current === f.path} onClick={() => open(f.path)} meta={<Counts added={f.added} removed={f.removed} />} />
+                ))}
+              </section>
+            ))
+          ) : (
+            <p className="p-2 text-small text-ink-2">
+              {project.repo ? "No changes yet. Your repo's files are under All files; Architect's work for each part shows here once you click Build." : "No changes yet. Click Build and every part's code shows here, grouped by part."}
+            </p>
+          )
+        ) : (
+          <>
+            <FileRow path={ENV_PATH} label="Environment · Keys and passwords" on={current === ENV_PATH} onClick={() => open(ENV_PATH)} meta={<span className="text-small text-ink-2">{keys.length}</span>} />
+            {project.repo && !repo && !repoError && (
+              <p role="status" className="p-2 text-small text-ink-2">
+                Reading {project.repo} from GitHub…
+              </p>
+            )}
+            {repoError && (
+              <p role="alert" className="p-2 text-small font-semibold text-failed">
+                {repoError}
+              </p>
+            )}
+            {repo && (
+              <p className="px-2 text-small text-ink-2">
+                {repo.repo} · {repo.branch} at <code className="font-mono">{repo.commit.slice(0, 7)}</code> · real files
+              </p>
+            )}
+            <Tree nodes={buildTree(allPaths)} selected={current} onSelect={open} marks={project.repo ? changedPaths : new Set()} />
+          </>
+        )}
+      </aside>
+      <section aria-label="Viewer" className="flex min-w-0 flex-1 flex-col rounded-r-card border border-l-0 border-line bg-surface max-lg:rounded-card max-lg:border-l">
+        <div className="flex min-h-11 items-center gap-2 border-b border-line px-4">
+          <code className="min-w-0 flex-1 truncate font-mono text-[12.5px]">{current === ENV_PATH ? "Keys and passwords" : (current ?? "Choose a file")}</code>
+          {shownChange && <Counts added={shownChange.added} removed={shownChange.removed} />}
+          {current && current !== ENV_PATH && (
+            <span className="text-small text-ink-2">
+              {mode === "files" && repo?.entries.some((e) => e.path === current) ? "From GitHub · read-only" : "Read-only"}
+            </span>
+          )}
+          {current && current !== ENV_PATH && !(mode === "files" && repo?.entries.some((e) => e.path === current)) && <SimTag title="Architect's code is simulated in this prototype." />}
+        </div>
+        {current === ENV_PATH ? (
+          <KeysTable keys={keys} />
+        ) : mode === "changes" ? (
+          shownChange ? <Diff file={shownChange} /> : <p className="p-4 text-ink-2">Choose a file to see what changed.</p>
+        ) : file?.text !== undefined ? (
+          <CodeLines text={file.text} />
+        ) : (
+          <p className="p-4 text-ink-2" role={loadingFile ? "status" : undefined}>
+            {loadingFile ? "Reading the file from GitHub…" : (file?.note ?? "Choose a file on the left.")}
+          </p>
+        )}
+        <TerminalStrip project={project} items={items} live={live} />
+      </section>
+    </div>
+  );
+}
+
+function TermLines({ lines }: { lines: TerminalLine[] }) {
+  return (
+    <>
+      {lines.map((l, i) => (
+        <div key={i} className={cn("whitespace-pre-wrap", l.kind === "ok" && "text-works", l.kind === "fail" && "text-failed", l.kind === "info" && "text-ink-2")}>
+          {l.kind === "cmd" ? `$ ${l.text}` : l.text}
+        </div>
+      ))}
+    </>
+  );
+}
+
+function useTerminal(project: ProjectWorkspace, items: WorkspaceItem[], live: LiveRun) {
+  const parts = toParts(items);
+  const info = branchInfo({ projectId: project.id, name: project.name, version: project.plan?.version ?? 1, repo: project.repo, runStatus: project.run?.status ?? null, parts });
+  const titles = Object.fromEntries(items.map((i) => [i.key, i.title]));
+  return terminalSession({ events: playedEvents(project, live), titles, branch: info.branch, testCommand: null });
+}
+
+/** The last few terminal lines under the code (screen 8). */
+function TerminalStrip({ project, items, live }: { project: ProjectWorkspace; items: WorkspaceItem[]; live: LiveRun }) {
+  const lines = useTerminal(project, items, live).slice(-4);
+  if (!lines.length) return null;
+  return (
+    <div aria-label="Terminal, latest" className="border-t border-line bg-tray px-4 py-2.5 font-mono text-[12.5px] leading-[1.7]">
+      <TermLines lines={lines} />
+    </div>
+  );
+}
+
+/** Terminal: a simulated session that replays the run's commands. */
+export function TerminalView({ project, items, live }: { project: ProjectWorkspace; items: WorkspaceItem[]; live: LiveRun }) {
+  const lines = useTerminal(project, items, live);
+  return (
+    <div className="flex min-h-0 flex-1 flex-col px-3 pb-3">
+      <div className="flex items-center gap-2 pb-2 text-small text-ink-2">
+        The build&apos;s commands, replayed as it runs. <SimTag />
+      </div>
+      <div role="log" aria-label="Terminal" className="min-h-0 flex-1 overflow-auto rounded-card border border-line bg-tray p-4 font-mono text-[12.5px] leading-[1.7]">
+        {lines.length ? <TermLines lines={lines} /> : <span className="text-ink-2">{project.run?.startedAt ? "No commands were recorded for this build." : "Nothing has run yet. The session starts when you click Build."}</span>}
+      </div>
+    </div>
+  );
+}
+
+/** Activity (screen 8): the checker, the Architect agent, coding agents via MCP and GitHub, for this part or all. */
+export function DevActivity({ project, items, live }: { project: ProjectWorkspace; items: WorkspaceItem[]; live: LiveRun }) {
+  const partKey = useUi((s) => s.partKey);
+  const [scope, setScope] = useState<"part" | "all">("all");
+  const parts = toParts(items);
+  const info = branchInfo({ projectId: project.id, name: project.name, version: project.plan?.version ?? 1, repo: project.repo, runStatus: project.run?.status ?? null, parts });
+  const titles = Object.fromEntries(items.map((i) => [i.key, i.title]));
+  const agent = `Claude Code (${project.ownerName === "you" ? "you" : project.ownerName})`;
+  const feed = activityFeed({ events: playedEvents(project, live), titles, codingAgent: agent, branch: info.branch });
+  const shown = scope === "part" && partKey ? feed.filter((f) => f.itemKey === partKey) : feed;
+  const start = project.run?.startedAt ? Date.parse(project.run.startedAt) : null;
+  const time = (atMs: number) => (start ? new Date(start + atMs).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "");
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <Segmented
+          label="Activity for"
+          mode="filter"
+          value={scope}
+          onChange={setScope}
+          options={[
+            { value: "part", label: "This part" },
+            { value: "all", label: "All" },
+          ]}
+        />
+        <SimTag />
+      </div>
+      {scope === "part" && !partKey && <p className="text-small text-ink-2">Open a part in the plan to see only its activity.</p>}
+      {shown.length === 0 ? (
+        <p className="text-ink-2">{project.run?.startedAt ? "No activity was recorded for this build." : "No activity yet. It starts when you click Build."}</p>
+      ) : (
+        <ol aria-label="Activity" className="flex flex-col gap-3">
+          {[...shown].reverse().map((a) => (
+            <li key={a.id} className="flex flex-col gap-0.5">
+              <span className="text-small font-semibold text-ink-2">
+                {a.who}
+                {a.itemKey ? ` · ${titles[a.itemKey] ?? a.itemKey}` : ""} · {time(a.atMs)}
+              </span>
+              <div className={cn("text-small", a.kind !== "checker" && "font-mono text-[12.5px]")}>
+                <TermLines lines={a.lines} />
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}

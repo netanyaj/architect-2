@@ -9,7 +9,7 @@ import { DEFAULT_MODEL, MODEL_CHOICES, MODEL_LABEL } from "@/lib/models";
 import { canBuild, canManageMembers } from "@/lib/permissions";
 import { allowedModels } from "../blueprint/write-plan";
 import { prepareUploads, removeProjectFiles, type UploadSlot } from "../uploads";
-import { createAdminDb } from "../db";
+import { createAdminDb, createServerDb } from "../db";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
 
@@ -177,9 +177,15 @@ export async function setProjectBudget(input: { projectId: string; credits: numb
   return { ok: true };
 }
 
-/** Light or dark, for this browser. (Developer view defaults to dark on its own.) */
+/**
+ * Light or dark: a user setting, saved on the account (so it follows the person to other browsers) and in a cookie
+ * (so pages render in it without a round trip). Developer view uses it too.
+ */
 export async function setTheme(theme: "light" | "dark"): Promise<ActionResult> {
   if (theme !== "light" && theme !== "dark") return { ok: false, message: "Pick Light or Dark." };
+  const db = await createServerDb();
+  const { error } = await db.auth.updateUser({ data: { theme } });
+  if (error) return { ok: false, message: "Your theme couldn't be saved. Try again." };
   (await cookies()).set("ax_theme", theme, { path: "/", sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
   revalidatePath("/", "layout");
   return { ok: true };

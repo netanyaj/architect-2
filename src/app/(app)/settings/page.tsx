@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { buttonClasses } from "@/components/ax/button";
 import type { Role } from "@/lib/db";
 import { assignableRolesFor, canChangeMember, canManageMembers, canResetDemo, ROLE_INFO } from "@/lib/permissions";
@@ -7,6 +6,7 @@ import { signOut } from "@/server/actions/auth";
 import { createAdminDb, createServerDb } from "@/server/db";
 import { origin } from "@/server/origin";
 import { listProjects } from "@/server/queries";
+import { userTheme } from "@/server/theme";
 import { getAppContext } from "@/server/workspace";
 import { AppearanceSection } from "./appearance-section";
 import { BudgetsSection } from "./budgets-section";
@@ -27,7 +27,7 @@ export default async function SettingsPage() {
 
   const manage = canManageMembers(ctx.role);
   const projects = await listProjects(ctx);
-  const theme = (await cookies()).get("ax_theme")?.value === "dark" ? "dark" : "light";
+  const theme = await userTheme();
   // Invite links are only for people who can manage members; read them with the service role.
   const links = new Map<string, string>();
   if (manage) {

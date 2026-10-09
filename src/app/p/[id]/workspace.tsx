@@ -26,6 +26,7 @@ import { buildPlan, setProjectModel } from "@/server/actions/plan";
 import { duplicateProject } from "@/server/actions/projects";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 import { AgentsPlanPanel, AgentsView } from "./agents-view";
+import { CodeView, DevActivity, PrStatus, TerminalView } from "./dev-view";
 import { AppPreview, BudgetBanner, BuildActivity, BuildPanel, TestTheApp } from "./build-stage";
 import { ChatPane } from "./chat-pane";
 import { PartDrawer } from "./part-drawer";
@@ -34,8 +35,10 @@ import { useRun } from "./use-run";
 import { fromStreamed, GROUP_LABEL, GROUP_ORDER, PlanDocument } from "./plan-document";
 import { usePlanWriter } from "./use-plan-writer";
 
-type View = "app" | "agents" | "data" | "files";
+type View = "app" | "agents" | "data" | "files" | "code" | "terminal";
 const VIEWS: View[] = ["app", "agents", "data", "files"];
+/** Developer view (?dev=1, screen 8) adds Code and Terminal, and opens on Code. */
+const DEV_VIEWS: View[] = [...VIEWS, "code", "terminal"];
 
 const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
@@ -104,6 +107,8 @@ function StageBody({
 }) {
   if (view === "files") return planDocument;
   if (view === "agents") return <AgentsView project={project} items={items} />;
+  if (view === "code") return <CodeView project={project} items={items} live={live} />;
+  if (view === "terminal") return <TerminalView project={project} items={items} live={live} />;
   if (view === "data") {
     return (
       <EmptyState icon="grid" title="No data yet">
@@ -134,7 +139,7 @@ function Rail({ label, icon, onOpen }: { label: string; icon: "panelLeft" | "pan
   );
 }
 
-function MoreMenu({ project, canAct }: { project: ProjectWorkspace; canAct: boolean }) {
+function MoreMenu({ project, canAct, dev, onToggleDev }: { project: ProjectWorkspace; canAct: boolean; dev: boolean; onToggleDev: () => void }) {
   const router = useRouter();
   const [, start] = useTransition();
   const item = "flex min-h-10 items-center gap-2.5 rounded-tile px-2.5";
@@ -150,7 +155,9 @@ function MoreMenu({ project, canAct }: { project: ProjectWorkspace; canAct: bool
         <Icon name="more" size="sm" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64 rounded-card border border-line bg-surface p-1.5 shadow-pop">
-        {later("Developer view", "M4")}
+        <DropdownMenuItem className={item} onSelect={onToggleDev}>
+          {dev ? "Leave Developer view" : "Developer view"}
+        </DropdownMenuItem>
         <DropdownMenuItem
           className={item}
           disabled={!canAct}
@@ -225,14 +232,16 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   const agentOpen = useUi((s) => s.agentKey !== null);
   const raw = params.get("view");
   const planStage = project.status === "draft";
-  const view: View = VIEWS.includes(raw as View) ? (raw as View) : "app";
+  const dev = params.get("dev") === "1";
+  const allowed: View[] = dev ? (planStage ? ["files", "code", "terminal"] : DEV_VIEWS) : VIEWS;
+  const view: View = allowed.includes(raw as View) ? (raw as View) : dev ? "code" : "app";
   const fullWidth = onLaunch || (!planStage && view !== "app");
   const [planOpen, setPlanOpen] = useState<boolean | null>(null);
   const [chatOpen, setChatOpen] = useState<boolean | null>(null);
   // Launch keeps the plan open and folds chat to a rail (screen 4).
   // Agents keeps the plan open too, listing the agents and the apps they connect to (screen 9).
-  const showPlan = planOpen ?? (onLaunch || !fullWidth || (!planStage && view === "agents"));
-  const showChat = chatOpen ?? !fullWidth;
+  const showPlan = planOpen ?? (onLaunch || !fullWidth || (!planStage && view === "agents") || dev);
+  const showChat = chatOpen ?? (!fullWidth || (dev && !onLaunch));
   const canAct = canBuild(project.role);
 
   const writingId = project.plan?.generation === "writing" ? project.plan.id : null;
@@ -308,9 +317,17 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   const agentsWaiting = !planStage && !onLaunch && view === "agents" && agentChanges > 0;
   const state = agentsWaiting ? { ...stageState, action: { ...stageState.action, disabledReason: "Save or discard your agent changes first." } } : stageState;
 
+  const toggleDev = () => {
+    const next = new URLSearchParams(params);
+    if (dev) {
+      next.delete("dev");
+      if (next.get("view") === "code" || next.get("view") === "terminal") next.delete("view");
+    } else next.set("dev", "1");
+    router.replace(`/p/${project.id}${next.size ? `?${next}` : ""}`, { scroll: false });
+  };
   const setView = (v: View) => {
     const next = new URLSearchParams(params);
-    if (v === "app") next.delete("view");
+    if (v === "app" && !dev) next.delete("view");
     else next.set("view", v);
     setPlanOpen(null);
     setChatOpen(null);
@@ -370,7 +387,10 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
         <div className="flex min-w-0 items-center gap-2.5">
           <IconTile icon={project.icon} dark />
           <div className="flex min-w-0 flex-col leading-tight">
-            <h1 className="truncate text-sub font-semibold">{project.name}</h1>
+            <h1 className="flex items-center gap-2 truncate text-sub font-semibold">
+              {project.name}
+              {dev && <span className="rounded-full bg-selected px-2 py-0.5 text-small font-semibold text-ink-2">Developer view</span>}
+            </h1>
             <span className="truncate text-small text-ink-2">
               Edited by {project.ownerName} · {relativeTime(project.updatedAt)}
             </span>
@@ -388,7 +408,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
         <div className="flex items-center gap-2">
           <IconButton icon="help" label="Help with this project" onClick={() => openHelp(project.id)} />
           <ShareMenu project={project} />
-          <MoreMenu project={project} canAct={canAct} />
+          <MoreMenu project={project} canAct={canAct} dev={dev} onToggleDev={toggleDev} />
           {state.action.beside && <span className="max-w-[190px] text-right text-small leading-tight text-ink-2 max-md:hidden">{state.action.beside}</span>}
           <Button
             // The stage action is the primary only when nothing on screen needs the person first (BUILD-SPEC §2).
@@ -447,19 +467,35 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
             </div>
           ) : (
             <>
-          {!planStage && (
+          {(!planStage || dev) && (
             <div className="flex flex-wrap items-center gap-2.5 px-3 py-2.5">
               <Segmented
                 label="Stage view"
                 value={view}
                 onChange={setView}
                 options={[
-                  { value: "app", label: "App" },
-                  { value: "agents", label: "Agents" },
-                  { value: "data", label: "Data" },
-                  { value: "files", label: "Files" },
+                  // Before Build, Developer view shows the plan beside the code (an imported repo's files are real already).
+                  ...(planStage
+                    ? [{ value: "files" as const, label: "Plan" }]
+                    : [
+                        { value: "app" as const, label: "App" },
+                        { value: "agents" as const, label: "Agents" },
+                        { value: "data" as const, label: "Data" },
+                        { value: "files" as const, label: "Files" },
+                      ]),
+                  ...(dev
+                    ? [
+                        { value: "code" as const, label: "Code" },
+                        { value: "terminal" as const, label: "Terminal" },
+                      ]
+                    : []),
                 ]}
               />
+              {dev && (
+                <span className="ml-auto">
+                  <PrStatus project={project} items={items} />
+                </span>
+              )}
               {view === "app" && (
                 <span className="ml-auto flex items-center gap-2">
                   <span className="inline-flex h-7 items-center gap-1.5 rounded-full border border-line px-2.5 text-small font-[650] text-building">
@@ -487,14 +523,22 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
               )}
             </div>
           )}
-          <div role={planStage ? undefined : "tabpanel"} aria-label={planStage ? "The plan" : view} className="flex min-h-0 flex-1 flex-col overflow-auto">
-            {planStage ? planDocument : <StageBody view={view} project={project} planDocument={planDocument} items={items} live={live} budgetPaused={budgetPaused} />}
+          <div role={planStage && !dev ? undefined : "tabpanel"} aria-label={planStage && !dev ? "The plan" : view} className="flex min-h-0 flex-1 flex-col overflow-auto">
+            {planStage && (!dev || view === "files") ? planDocument : <StageBody view={view} project={project} planDocument={planDocument} items={items} live={live} budgetPaused={budgetPaused} />}
           </div>
             </>
           )}
         </section>
         {showChat ? (
-          <ChatPane project={project} writing={writing} activity={planStage ? null : <BuildActivity project={project} items={items} live={live} />} onCollapse={() => setChatOpen(false)} onPickModel={(m) => (project.plan ? setModelAsk(m) : switchModel(m, false))} />
+          <ChatPane
+            project={project}
+            writing={writing}
+            activity={planStage ? null : <BuildActivity project={project} items={items} live={live} />}
+            title={dev && !planStage ? "Activity" : undefined}
+            body={dev && !planStage ? <DevActivity project={project} items={items} live={live} /> : undefined}
+            onCollapse={() => setChatOpen(false)}
+            onPickModel={(m) => (project.plan ? setModelAsk(m) : switchModel(m, false))}
+          />
         ) : (
           <Rail label="Chat" icon="panelRight" onOpen={() => setChatOpen(true)} />
         )}

@@ -192,3 +192,31 @@ export function authorizeUrl(state: string, redirectUri: string): string {
   u.searchParams.set("state", state);
   return u.toString();
 }
+
+/** The repo's files at one commit (Developer view › All files on an imported project). */
+export async function readTreeAt(installationId: number, fullName: string, sha: string): Promise<{ entries: RepoEntry[]; truncated: boolean }> {
+  const octo = installationClient(installationId);
+  try {
+    const { data: tree } = await octo.git.getTree({ ...split(fullName), tree_sha: sha, recursive: "true" });
+    const blobs = tree.tree.filter((t) => t.type === "blob" && t.path).map((t) => ({ path: t.path!, size: t.size ?? 0 }));
+    return { entries: blobs.slice(0, READ_CAPS.maxTreeEntries), truncated: Boolean(tree.truncated) || blobs.length > READ_CAPS.maxTreeEntries };
+  } catch (err) {
+    throw toProblem(err, fullName);
+  }
+}
+
+/** One file at one commit, as text. Large and binary files aren't shown. */
+export const VIEW_MAX_BYTES = 200 * 1024;
+export async function readFileAt(installationId: number, fullName: string, sha: string, path: string): Promise<{ kind: "text"; text: string } | { kind: "large" | "binary"; size: number }> {
+  const octo = installationClient(installationId);
+  try {
+    const { data } = await octo.repos.getContent({ ...split(fullName), path, ref: sha });
+    if (Array.isArray(data) || data.type !== "file") throw new GitHubProblem("access_lost", `${path} isn't a file in ${fullName}.`);
+    if (data.size > VIEW_MAX_BYTES || !("content" in data) || !data.content) return { kind: "large", size: data.size };
+    const buf = Buffer.from(data.content, "base64");
+    if (buf.subarray(0, 8000).includes(0)) return { kind: "binary", size: data.size };
+    return { kind: "text", text: buf.toString("utf8") };
+  } catch (err) {
+    throw toProblem(err, fullName);
+  }
+}

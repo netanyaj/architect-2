@@ -192,6 +192,8 @@ export function ChatPane({
   project,
   writing,
   activity,
+  title = "Chat",
+  body,
   onCollapse,
   onPickModel,
 }: {
@@ -199,6 +201,9 @@ export function ChatPane({
   writing: boolean;
   /** What the build is doing (after Build), at the end of the conversation. */
   activity?: React.ReactNode;
+  /** Developer view: Activity takes the conversation's place, above the same composer (screen 8). */
+  title?: string;
+  body?: React.ReactNode;
   onCollapse: () => void;
   onPickModel: (m: ModelChoice) => void;
 }) {
@@ -253,12 +258,14 @@ export function ChatPane({
   };
 
   return (
-    <aside aria-label="Chat" className="flex min-h-0 flex-col overflow-hidden rounded-pane border border-line bg-surface shadow-pane lg:w-[344px] lg:flex-none">
+    <aside aria-label={title} className="flex min-h-0 flex-col overflow-hidden rounded-pane border border-line bg-surface shadow-pane lg:w-[344px] lg:flex-none">
       <div className="flex items-center gap-2 px-4 pt-3.5 pb-2.5">
-        <h2 className="flex-1 text-sub font-semibold">Chat</h2>
-        <IconButton icon="panelRight" label="Collapse chat" quiet size={32} onClick={onCollapse} />
+        <h2 className="flex-1 text-sub font-semibold">{title}</h2>
+        <IconButton icon="panelRight" label={`Collapse ${title.toLowerCase()}`} quiet size={32} onClick={onCollapse} />
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-auto px-4 pt-1.5 pb-3" aria-live="polite">
+        {body ?? (
+          <>
         {/* A plan from a repo is asked for with the whole analysis; the plan shows it on demand. */}
         {project.repo ? <You>Plan from my repo {project.repo}, keeping its stack.</You> : project.prompt && <You>{project.prompt}</You>}
         <Architect>
@@ -283,14 +290,16 @@ export function ChatPane({
           );
         })}
         {activity}
-        {sending !== null && (
+          </>
+        )}
+        {sending !== null && (body ? <p className="text-small text-ink-2">Sent to chat: “{sending}”</p> : (
           <>
             <You>{sending}</You>
             <Architect>
               <p className="text-ink-2">Thinking…</p>
             </Architect>
           </>
-        )}
+        ))}
         {error && (
           <p role="alert" className="text-small font-semibold text-failed">
             {error}

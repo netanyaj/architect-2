@@ -5,7 +5,7 @@ import { useTransition } from "react";
 import { Segmented } from "@/components/ax/segmented";
 import { setTheme } from "@/server/actions/projects";
 
-/** Light or dark for this browser. Developer view is dark by default either way. */
+/** Light or dark: saved to the person's account, and used everywhere, Developer view included. */
 export function AppearanceSection({ theme }: { theme: "light" | "dark" }) {
   const router = useRouter();
   const [, start] = useTransition();
@@ -15,7 +15,7 @@ export function AppearanceSection({ theme }: { theme: "light" | "dark" }) {
         Appearance
       </h2>
       <div className="flex flex-wrap items-center gap-4 rounded-card border border-line p-4">
-        <p className="min-w-[220px] flex-1 text-ink-2">Theme for this browser. Developer view opens in dark either way.</p>
+        <p className="min-w-[220px] flex-1 text-ink-2">Your theme, saved to your account. Developer view uses it too.</p>
         <Segmented
           mode="filter"
           label="Theme"

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { Figtree, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { userTheme } from "@/server/theme";
 import "./globals.css";
 
 const figtree = Figtree({
@@ -22,8 +22,8 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  // The person's theme setting (Settings › Appearance). Light unless they chose dark.
-  const theme = (await cookies()).get("ax_theme")?.value === "dark" ? "dark" : "light";
+  // The person's theme setting (Settings › Appearance), everywhere including Developer view. Light unless they chose dark.
+  const theme = await userTheme();
   return (
     <html lang="en" data-theme={theme} className={`${figtree.variable} ${geistMono.variable} h-full`}>
       <body className="min-h-full">
