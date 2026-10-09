@@ -7,6 +7,7 @@ import { canBuild, canManageMembers } from "@/lib/permissions";
 import { suggestionFor, type Suggestion } from "@/lib/sim/suggestion";
 import { SCENARIO } from "@/lib/sim/timeline";
 import { createAdminDb, createServerDb, type AdminDb } from "../db";
+import { deniedForProject } from "../policy";
 import { amendRun, blockedInRun, settleRun, startFollowupRun } from "../sim/run";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
@@ -88,8 +89,7 @@ export async function connectPart(input: { itemId: string }): Promise<ActionResu
   // While the build plays, the part may be waiting for this connection before the run has settled.
   if (part.status !== "needs_connection" && !running?.length) return { ok: false, message: "That part is already connected." };
 
-  const { data: policy } = await admin.from("policies").select("config").eq("workspace_id", ctx.workspace.id).eq("kind", "connectors").maybeSingle();
-  if (((policy?.config as { deny?: string[] } | null)?.deny ?? []).includes(part.provider)) {
+  if ((await deniedForProject(admin, ctx.workspace.id, part.project_id)).includes(part.provider)) {
     return { ok: false, message: "Your organisation's policy doesn't allow this app. IT has to approve it first." };
   }
   const { data: existing } = await admin.from("connections").select("id").eq("workspace_id", ctx.workspace.id).eq("provider", part.provider).maybeSingle();

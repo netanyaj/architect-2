@@ -390,6 +390,20 @@ describe("the simulator's runs (0007)", () => {
     expect(await one("select status, status_detail from items where id = $1", [ids.mail])).toEqual({ status: "built", status_detail: null });
   });
 
+  it("a denied service files one request per project, naming the part and who asked (0016)", async () => {
+    const { ws, bp, project, ids } = await plan();
+    // Another project already waits for the same service: this one still files its own request.
+    const { id: other } = await one<{ id: string }>("insert into projects (workspace_id, name) values ($1, 'Other') returning id", [ws]);
+    await db.query("insert into approvals (workspace_id, project_id, kind, title, payload) values ($1, $2, 'connector', 'x', '{\"provider\": \"hubspot_crm\"}')", [ws, other]);
+    await db.query("update items set description = 'Look up each lead in the CRM' where id = $1", [ids.crm]);
+    const { run } = await one<{ run: string }>("select agree_and_build($1, $2) as run", [bp, MORGAN]);
+    await running(run, ids, OUTCOME);
+    await db.query("select settle_run($1)", [run]);
+    await db.query("select settle_run($1)", [run]);
+    const rows = await db.query("select payload->>'item_title' as part, payload->>'why' as why, payload->>'requested_by_name' as by from approvals where project_id = $1", [project]);
+    expect(rows.rows).toEqual([{ part: "HubSpot sync", why: "Look up each lead in the CRM", by: "Morgan Lee" }]);
+  });
+
   it("a paused run leaves the project paused", async () => {
     const { bp, project, ids } = await plan();
     const { run } = await one<{ run: string }>("select agree_and_build($1, $2) as run", [bp, MORGAN]);
@@ -410,5 +424,17 @@ describe("launch options (0010)", () => {
     await db.query("update projects set test_share_token = $2 where id = $1", [project, token]);
     const { id: other } = await one<{ id: string }>("insert into projects (workspace_id, name) values ($1, 'Other') returning id", [ws]);
     await expect(db.query("update projects set test_share_token = $2 where id = $1", [other, token])).rejects.toThrow(/unique|duplicate/);
+  });
+});
+
+describe("allow-rules (0016)", () => {
+  it("members read their workspace's rules, and Reset demo data clears them with the policies", async () => {
+    const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'reviewer@example.com', 'Rita') as ws", [REVIEWER]);
+    await db.query("insert into allow_rules (workspace_id, action, target, created_by_name) values ($1, 'connector', 'hubspot', 'Rita')", [ws]);
+    await expect(db.query("insert into allow_rules (workspace_id, action, created_by_name) values ($1, 'anything', 'Rita')", [ws])).rejects.toThrow(/check/);
+    expect(await count("select count(*) as n from allow_rules where workspace_id = $1", [ws])).toBe(1);
+    await db.query("select reset_demo_workspace($1, $2)", [ws, REVIEWER]);
+    expect(await count("select count(*) as n from allow_rules where workspace_id = $1", [ws])).toBe(0);
+    expect(await one("select relrowsecurity from pg_class where relname = 'allow_rules'")).toEqual({ relrowsecurity: true });
   });
 });

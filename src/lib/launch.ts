@@ -90,7 +90,7 @@ export type LaunchState = {
   /** Rows the person has to deal with before the team version. */
   toFix: number;
   team: { version: number | null; current: boolean };
-  live: { version: number | null; current: boolean; blocker: string | null; requested: boolean; behind: number };
+  live: { version: number | null; current: boolean; blocker: string | null; requested: boolean; behind: number; decision: LiveDecision | null };
   /** The newest deploy failed (the version before it is still serving). */
   failure: { environment: "staging" | "production"; version: number; step: string; reason: string } | null;
   /** The stepper's progress words. */
@@ -99,6 +99,14 @@ export type LaunchState = {
   goLive: Action & { request: boolean };
   repo: RepoRoute | null;
 };
+
+/** The newest decision on a Live deploy request for this version (C-5): who, and why when rejected. */
+export type LiveDecision = { status: "approved" | "rejected"; by: string; reason: string | null; version: number | null };
+
+/** The decision that counts for this version: the newest one for it (a request that named no version counts too). */
+export function decisionFor(decisions: LiveDecision[], version: number): LiveDecision | null {
+  return decisions.find((d) => d.version === null || d.version === version) ?? null;
+}
 
 /** The deploy route of a project from a repo (decided in M3, review gap 6). */
 export type RepoRoute = { prNumber: number | null; branch: string | null; merged: boolean };
@@ -123,6 +131,9 @@ export function launchState(input: {
   governance: boolean;
   /** A Live deploy request is waiting for an Owner or Admin. */
   liveRequested: boolean;
+  /** An admin decided this version's request, or an allow-rule lets this project go live without one (C-10). */
+  liveDecisions?: LiveDecision[];
+  liveRule?: boolean;
   /** Checks that passed (built parts' proofs). */
   testsPassed: number;
   /** A project from a repo ships through its PR: the team version builds from the PR branch, Live from main after merge. */
@@ -166,7 +177,9 @@ export function launchState(input: {
       (toFix ? `Fix ${plural(toFix, "thing")} in the checklist first.` : teamCurrent ? `Your team already has v${currentVersion}.` : undefined),
   };
   // Without governance there's nobody to approve: anyone who can build goes live (review gap 1).
-  const admin = fast || canManageMembers(role);
+  // An approval for this version, or an allow-rule for this project, lets a Builder go live without asking again.
+  const decision = input.liveRequested ? null : decisionFor(input.liveDecisions ?? [], currentVersion);
+  const admin = fast || canManageMembers(role) || decision?.status === "approved" || Boolean(input.liveRule);
   const behind = live !== null && !liveCurrent ? Math.max(1, currentVersion - live) : 0;
   const goLive = {
     label: behind ? "Update live" : admin ? "Go live" : "Ask to go live",
@@ -214,7 +227,7 @@ export function launchState(input: {
     rows,
     toFix,
     team: { version: team, current: teamCurrent },
-    live: { version: live, current: liveCurrent, blocker, requested: input.liveRequested, behind },
+    live: { version: live, current: liveCurrent, blocker, requested: input.liveRequested, behind, decision },
     failure,
     progress,
     share,

@@ -15,3 +15,6 @@ test-results/
 next-env.d.ts
 supabase/.temp/
 .pnpm-debug.log*
+
+# Claude Code personal settings
+.claude/settings.local.json

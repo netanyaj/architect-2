@@ -145,11 +145,76 @@ export type Database = {
           },
         ]
       }
+      allow_rules: {
+        Row: {
+          action: string
+          approval_id: string | null
+          created_at: string
+          created_by: string | null
+          created_by_name: string
+          id: string
+          project_id: string | null
+          reason: string | null
+          removed_at: string | null
+          target: string | null
+          workspace_id: string
+        }
+        Insert: {
+          action: string
+          approval_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name: string
+          id?: string
+          project_id?: string | null
+          reason?: string | null
+          removed_at?: string | null
+          target?: string | null
+          workspace_id: string
+        }
+        Update: {
+          action?: string
+          approval_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string
+          id?: string
+          project_id?: string | null
+          reason?: string | null
+          removed_at?: string | null
+          target?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "allow_rules_approval_id_fkey"
+            columns: ["approval_id"]
+            isOneToOne: false
+            referencedRelation: "approvals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allow_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allow_rules_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       approvals: {
         Row: {
           created_at: string
           decided_at: string | null
           decided_by: string | null
+          decided_by_name: string | null
           id: string
           kind: string
           payload: Json
@@ -164,6 +229,7 @@ export type Database = {
           created_at?: string
           decided_at?: string | null
           decided_by?: string | null
+          decided_by_name?: string | null
           id?: string
           kind: string
           payload?: Json
@@ -178,6 +244,7 @@ export type Database = {
           created_at?: string
           decided_at?: string | null
           decided_by?: string | null
+          decided_by_name?: string | null
           id?: string
           kind?: string
           payload?: Json

@@ -304,6 +304,8 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
         role: project.role,
         governance: project.launch!.governance,
         liveRequested: project.launch!.liveRequested,
+        liveDecisions: project.launch!.liveDecisions,
+        liveRule: project.launch!.liveRule,
         testsPassed: project.launch!.testsPassed,
         repo: project.repo
           ? { prNumber: project.pullRequests[0]?.number ?? null, branch: project.pullRequests[0]?.branch ?? null, merged: project.pullRequests[0]?.status === "merged" }

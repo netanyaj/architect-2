@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { TextLink } from "@/components/ax/button";
-import { EmptyState } from "@/components/ax/empty-state";
 import { SimTag } from "@/components/ax/pill";
 import { SettingRow } from "@/components/ax/toggle";
 import { canManageMembers } from "@/lib/permissions";
@@ -36,16 +36,11 @@ function describe(kind: string, config: Record<string, unknown>): string {
   }
 }
 
-/** The organisation's rules, read-only for now. Editing them, and the data-flow view, come in M5. */
+/** The organisation's rules, read-only for now. */
 export default async function GovernancePage() {
   const ctx = await getAppContext();
-  if (!canManageMembers(ctx.role)) {
-    return (
-      <EmptyState icon="governance" title="Governance is for admins">
-        Only Owners and Admins see the organisation&apos;s rules. Ask one if something is blocked by a policy.
-      </EmptyState>
-    );
-  }
+  // Owners and Admins only, and only while governance is on (Settings › Governance).
+  if (!canManageMembers(ctx.role) || !ctx.workspace.governanceEnabled) notFound();
   const db = await createServerDb();
   const { data: policies } = await db.from("policies").select("id, kind, config").eq("workspace_id", ctx.workspace.id);
   return (

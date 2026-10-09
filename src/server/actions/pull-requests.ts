@@ -22,7 +22,7 @@ export async function mergePullRequest(input: { prId: string }): Promise<ActionR
   if (!row || row.projects.workspace_id !== ctx.workspace.id) return { ok: false, message: "That pull request isn't here." };
   const pr = (await loadPullRequests(admin, row.project_id, new Map())).find((p) => p.id === row.id);
   if (!pr) return { ok: false, message: "That pull request isn't here." };
-  const owner = !ctx.workspace.governanceEnabled || canManageMembers(ctx.role);
+  const owner = !ctx.workspace.governanceEnabled || canManageMembers(ctx.role) || pr.pushAllowed;
   const blocked = mergeBlocker(pr, owner);
   if (blocked) return { ok: false, message: blocked };
 
@@ -32,9 +32,10 @@ export async function mergePullRequest(input: { prId: string }): Promise<ActionR
         workspace_id: ctx.workspace.id,
         project_id: row.project_id,
         kind: "push",
+        status: "waiting",
         title: `${row.projects.name}: push PR #${row.number} to main`,
         requested_by: ctx.user.id,
-        payload: { pr_id: row.id, branch: row.branch, requested_by_name: ctx.name.split(" ")[0] },
+        payload: { pr_id: row.id, pr_number: row.number, branch: row.branch, requested_by_name: ctx.name.split(" ")[0] },
       });
     }
     return { ok: true, requested: true };

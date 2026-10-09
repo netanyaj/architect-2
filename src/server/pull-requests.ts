@@ -43,12 +43,16 @@ export async function loadPullRequests(admin: AdminDb, projectId: string, names:
   if (!prs?.length) return [];
   const blueprintIds = [...new Set(prs.map((p) => p.blueprint_id).filter(Boolean))] as string[];
   const runIds = [...new Set(prs.map((p) => p.run_id).filter(Boolean))] as string[];
-  const [{ data: items }, { data: runs }, { data: approvals }] = await Promise.all([
+  const [{ data: items }, { data: runs }, { data: approvals }, { data: rules }] = await Promise.all([
     admin.from("items").select("id, key, blueprint_id, status, checks(description, written_at)").in("blueprint_id", blueprintIds),
     runIds.length ? admin.from("runs").select("id, status").in("id", runIds) : Promise.resolve({ data: [] as { id: string; status: string }[] }),
-    admin.from("approvals").select("payload").eq("project_id", projectId).eq("kind", "push").eq("status", "waiting"),
+    admin.from("approvals").select("payload, status, decided_by_name, decided_at, reason").eq("project_id", projectId).eq("kind", "push"),
+    admin.from("allow_rules").select("removed_at").eq("project_id", projectId).eq("action", "push_to_main"),
   ]);
-  const requested = new Set((approvals ?? []).map((a) => (a.payload as { pr_id?: string } | null)?.pr_id).filter(Boolean));
+  const prOf = (a: { payload: unknown }) => (a.payload as { pr_id?: string } | null)?.pr_id;
+  const requested = new Set((approvals ?? []).filter((a) => a.status === "waiting").map(prOf).filter(Boolean));
+  const decided = (approvals ?? []).filter((a) => a.status !== "waiting").sort((a, b) => String(b.decided_at ?? "").localeCompare(String(a.decided_at ?? "")));
+  const rule = (rules ?? []).some((r) => !r.removed_at);
   return prs.map((pr) => {
     const parts = ((pr.parts ?? []) as { key: string; title: string }[]).map((p) => {
       const item = (items ?? []).find((i) => i.blueprint_id === pr.blueprint_id && i.key === p.key);
@@ -69,6 +73,11 @@ export async function loadPullRequests(admin: AdminDb, projectId: string, names:
       mergedAt: pr.merged_at,
       mergedBy: pr.merged_by ? (names.get(pr.merged_by) ?? "someone") : null,
       pushRequested: requested.has(pr.id),
+      pushDecision: (() => {
+        const d = decided.find((a) => prOf(a) === pr.id);
+        return d ? { status: d.status as "approved" | "rejected", by: d.decided_by_name ?? "an admin", reason: d.reason } : null;
+      })(),
+      pushAllowed: rule || decided.some((a) => prOf(a) === pr.id && a.status === "approved"),
     };
   });
 }

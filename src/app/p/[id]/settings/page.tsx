@@ -21,7 +21,7 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[id]
   if (!project || project.workspace_id !== ctx.workspace.id) notFound();
   const { data: tokens } = await db
     .from("project_tokens")
-    .select("id, name, scopes, last4, status, created_at, revoked_at")
+    .select("id, name, scopes, last4, status, created_at, revoked_at, approvals(status, reason, decided_by_name)")
     .eq("project_id", project.id)
     .order("created_at", { ascending: false });
   // Ownership: the current owner, an open offer, and every hand-off accepted (F8).
@@ -31,7 +31,7 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[id]
   ]);
   const ownerName = project.owner_display_name ? `${project.owner_display_name} (set up for them; ${owner?.display_name ?? "you"} owns it until they join)` : project.owner_id === ctx.user.id ? `${owner?.display_name ?? ctx.name} (you)` : (owner?.display_name ?? owner?.email ?? "Someone");
   const when = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  const rows: TokenRow[] = (tokens ?? []).map((t) => ({ id: t.id, name: t.name, scopes: t.scopes, last4: t.last4, status: t.status as TokenRow["status"], createdAt: t.created_at }));
+  const rows: TokenRow[] = (tokens ?? []).map((t) => ({ id: t.id, name: t.name, scopes: t.scopes, last4: t.last4, status: t.status as TokenRow["status"], createdAt: t.created_at, rejected: t.approvals?.status === "rejected" && t.approvals.decided_by_name ? { by: t.approvals.decided_by_name, reason: t.approvals.reason } : null }));
   return (
     <div className="min-h-dvh bg-canvas p-2.5">
       <header className="flex min-h-[66px] items-center gap-3 px-1 py-2">

@@ -305,11 +305,20 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
               <StatusWord status="approval">Needs IT approval</StatusWord>
             ) : state.live.requested ? (
               <StatusWord status="approval">Waiting for approval</StatusWord>
+            ) : state.live.decision?.status === "rejected" ? (
+              <StatusWord status="blocked">Not approved</StatusWord>
             ) : (
               <StatusWord status="todo">{state.fast ? "Ready when the checklist is" : "After the team version"}</StatusWord>
             )
           }
         >
+          {!state.live.current && !state.live.requested && state.live.decision && (
+            <span className="text-small text-ink-2">
+              {state.live.decision.status === "approved"
+                ? `${state.live.decision.by} approved Live for this version.`
+                : `${state.live.decision.by} didn't approve Live: ${state.live.decision.reason ?? "no reason given"}. Fix that, then ask again.`}
+            </span>
+          )}
           {state.repo && (
             <span className="text-small text-ink-2">
               {state.repo.merged ? `Deploys from main · PR #${state.repo.prNumber} merged` : `Deploys from main after ${state.repo.prNumber ? `PR #${state.repo.prNumber}` : "the pull request"} merges`}

@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { Role } from "@/lib/db";
-import type { Deployment, LaunchSettings } from "@/lib/launch";
+import type { Deployment, LaunchSettings, LiveDecision } from "@/lib/launch";
 import type { PullRequestView } from "@/lib/pull-requests";
 import type { RunEvent, RunInfo } from "@/lib/sim/replay";
 import { modelAvailability } from "@/lib/gateway";
@@ -9,6 +9,7 @@ import { MODEL_LABEL, toModelChoice, type ModelChoice, type ModelOption } from "
 import { detectTools, projectIcon, summarizeProject, type ProjectInput } from "@/lib/project-status";
 import { allowedModels } from "./blueprint/write-plan";
 import { createAdminDb, createServerDb } from "./db";
+import { allowRuleFor, liveDecisions } from "./policy";
 import { loadPullRequests } from "./pull-requests";
 import { catchUpRuns, dbNow } from "./sim/run";
 import type { AppContext } from "./workspace";
@@ -166,6 +167,8 @@ export type LaunchData = {
   deployments: Deployment[];
   envLive: { staging: boolean; production: boolean };
   liveRequested: boolean;
+  liveDecisions: LiveDecision[];
+  liveRule: boolean;
   testsPassed: number;
 };
 
@@ -183,6 +186,9 @@ async function loadLaunch(
     db.from("proofs").select("assertions_passed, items!inner(project_id)").eq("items.project_id", projectId).eq("result", "pass"),
     db.from("change_proposals").select("version_created, diff").eq("project_id", projectId).eq("status", "applied"),
   ]);
+  // Decisions and allow-rules are read with the admin client; the project was read under RLS by the caller.
+  const admin = createAdminDb();
+  const [decisions, liveRule] = await Promise.all([liveDecisions(admin, projectId), allowRuleFor(admin, workspaceId, "production_deploy", projectId)]);
   const versionNotes: Record<number, string> = {};
   for (const c of changes ?? []) {
     if (!c.version_created) continue;
@@ -210,6 +216,8 @@ async function loadLaunch(
       })),
     envLive: { staging: env("staging"), production: env("production") },
     liveRequested: (approvals ?? []).length > 0,
+    liveDecisions: decisions,
+    liveRule,
     testsPassed: (proofs ?? []).reduce((s, p) => s + Number(p.assertions_passed ?? 0), 0),
   };
 }

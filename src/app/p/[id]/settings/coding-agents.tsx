@@ -9,7 +9,7 @@ import { StatusWord } from "@/components/ax/status-mark";
 import { DEFAULT_SCOPES, SCOPES, type Scope } from "@/lib/mcp";
 import { approveProjectToken, createProjectToken, revokeProjectToken } from "@/server/actions/tokens";
 
-export type TokenRow = { id: string; name: string; scopes: string[]; last4: string; status: "waiting" | "active" | "revoked"; createdAt: string };
+export type TokenRow = { id: string; name: string; scopes: string[]; last4: string; status: "waiting" | "active" | "revoked"; createdAt: string; rejected?: { by: string; reason: string | null } | null };
 
 /**
  * Project settings › Coding agents (F4): make a scoped, revocable project token for Claude Code, Cursor or another
@@ -126,7 +126,7 @@ export function CodingAgents({ projectId, tokens, governance, canCreate, canAppr
               ) : t.status === "waiting" ? (
                 <StatusWord status="approval">Waiting for approval</StatusWord>
               ) : (
-                <span className="text-small text-ink-2">Revoked</span>
+                <span className="text-small text-ink-2">{t.rejected ? `Not approved by ${t.rejected.by}: ${t.rejected.reason ?? "no reason given"}` : "Revoked"}</span>
               )}
               {t.status === "waiting" && canApprove && (
                 <Button size="sm" disabledReason={pending ? "Saving…" : undefined} onClick={() => act(() => approveProjectToken({ tokenId: t.id }))}>

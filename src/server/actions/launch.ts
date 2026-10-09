@@ -7,6 +7,7 @@ import type { Json } from "@/lib/database.types";
 import { DEPLOY_STEPS, DOMAIN_CHECK_MS, DomainName, launchState, Listing, type Access, type Deployment, type DomainState, type LaunchSettings } from "@/lib/launch";
 import { canBuild, canManageMembers } from "@/lib/permissions";
 import { createAdminDb, type AdminDb } from "../db";
+import { allowRuleFor, liveDecisions } from "../policy";
 import { getAppContext, type AppContext } from "../workspace";
 import type { ActionResult } from "./members";
 
@@ -40,6 +41,7 @@ async function loadState(admin: AdminDb, projectId: string, ctx: AppContext) {
   const { data: pr } = project.repo_full_name
     ? await admin.from("pull_requests").select("number, branch, status").eq("project_id", project.id).order("number", { ascending: false }).limit(1).maybeSingle()
     : { data: null };
+  const [decisions, liveRule] = await Promise.all([liveDecisions(admin, project.id), allowRuleFor(admin, project.workspace_id, "production_deploy", project.id)]);
   const deployments: Deployment[] = (deps ?? [])
     .filter((d) => d.environment === "staging" || d.environment === "production")
     .map((d) => ({ id: d.id, environment: d.environment as Env, version: d.blueprint_version, status: d.status, createdAt: d.created_at, by: null }));
@@ -51,6 +53,8 @@ async function loadState(admin: AdminDb, projectId: string, ctx: AppContext) {
     role: ctx.role,
     governance: ctx.workspace.governanceEnabled,
     liveRequested: (approvals ?? []).length > 0,
+    liveDecisions: decisions,
+    liveRule,
     testsPassed: 0,
     repo: project.repo_full_name ? { prNumber: pr?.number ?? null, branch: pr?.branch ?? null, merged: pr?.status === "merged" } : null,
   });
@@ -126,6 +130,7 @@ export async function goLive(input: { projectId: string; sim?: string }): Promis
       workspace_id: s.project.workspace_id,
       project_id: s.project.id,
       kind: "deploy",
+      status: "waiting",
       title: `${s.project.name}: Live deploy of v${s.version}`,
       requested_by: ctx.user.id,
       payload: { environment: "production", version: s.version, requested_by_name: ctx.name } as Json,

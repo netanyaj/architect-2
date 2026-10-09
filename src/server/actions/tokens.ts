@@ -6,6 +6,7 @@ import { z } from "zod";
 import { SCOPES, TOKEN_PREFIX, type Scope } from "@/lib/mcp";
 import { canBuild, canManageMembers } from "@/lib/permissions";
 import { createAdminDb } from "../db";
+import { decide } from "../approvals";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
 
@@ -45,7 +46,7 @@ export async function createProjectToken(raw: z.input<typeof input>): Promise<Ac
   if (status === "waiting") {
     const { data: approval } = await admin
       .from("approvals")
-      .insert({ workspace_id: ctx.workspace.id, project_id: project.id, kind: "token", title: `${project.name}: coding agent token “${parsed.data.name}”`, requested_by: ctx.user.id, payload: { token_id: row.id, scopes: parsed.data.scopes } })
+      .insert({ workspace_id: ctx.workspace.id, project_id: project.id, kind: "token", status: "waiting", title: `${project.name}: coding agent token “${parsed.data.name}”`, requested_by: ctx.user.id, payload: { token_id: row.id, token_name: parsed.data.name, scopes: parsed.data.scopes, requested_by_name: ctx.name } })
       .select("id")
       .single();
     if (approval) await admin.from("project_tokens").update({ approval_id: approval.id }).eq("id", row.id);
@@ -61,7 +62,7 @@ async function tokenInWorkspace(tokenId: string, workspaceId: string) {
   return data && data.projects.workspace_id === workspaceId ? data : null;
 }
 
-/** An Owner or Admin approves a waiting token (the Approvals page is M5; the token row offers it meanwhile). */
+/** An Owner or Admin approves a waiting token on its row: the same decision as on the Approvals page (C-5). */
 export async function approveProjectToken(raw: { tokenId: string }): Promise<ActionResult> {
   const ctx = await getAppContext();
   if (!canManageMembers(ctx.role)) return { ok: false, message: "Only Owners and Admins approve tokens." };
@@ -69,10 +70,13 @@ export async function approveProjectToken(raw: { tokenId: string }): Promise<Act
   if (!t) return { ok: false, message: "That token isn't in this workspace." };
   if (t.status !== "waiting") return { ok: false, message: t.status === "active" ? "That token is already active." : "That token was revoked." };
   const admin = createAdminDb();
-  const now = new Date().toISOString();
-  await admin.from("project_tokens").update({ status: "active" }).eq("id", t.id);
-  if (t.approval_id) await admin.from("approvals").update({ status: "approved", decided_by: ctx.user.id, decided_at: now }).eq("id", t.approval_id);
-  await admin.from("audit_log").insert({ workspace_id: ctx.workspace.id, actor: ctx.name, action: "token.approved", target: `${t.projects.name}: ${t.name}`, details: {} });
+  if (t.approval_id) {
+    const r = await decide(admin, ctx, { approvalId: t.approval_id, decision: "approve" });
+    if (!r.ok) return r;
+  } else {
+    await admin.from("project_tokens").update({ status: "active" }).eq("id", t.id);
+    await admin.from("audit_log").insert({ workspace_id: ctx.workspace.id, actor: ctx.name, action: "token.approved", target: `${t.projects.name}: ${t.name}`, details: {} });
+  }
   revalidatePath(`/p/${t.project_id}/settings`);
   return { ok: true };
 }
@@ -87,7 +91,7 @@ export async function revokeProjectToken(raw: { tokenId: string }): Promise<Acti
   const admin = createAdminDb();
   const now = new Date().toISOString();
   await admin.from("project_tokens").update({ status: "revoked", revoked_at: now }).eq("id", t.id);
-  if (t.approval_id && t.status === "waiting") await admin.from("approvals").update({ status: "rejected", decided_by: ctx.user.id, decided_at: now, reason: "Revoked before approval" }).eq("id", t.approval_id);
+  if (t.approval_id && t.status === "waiting") await admin.from("approvals").update({ status: "rejected", decided_by: ctx.user.id, decided_by_name: ctx.name, decided_at: now, reason: "Revoked before approval" }).eq("id", t.approval_id);
   await admin.from("audit_log").insert({ workspace_id: ctx.workspace.id, actor: ctx.name, action: "token.revoked", target: `${t.projects.name}: ${t.name}`, details: {} });
   revalidatePath(`/p/${t.project_id}/settings`);
   return { ok: true };

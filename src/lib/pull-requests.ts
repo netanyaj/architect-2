@@ -21,6 +21,10 @@ export type PullRequestView = {
   mergedBy: string | null;
   /** A Builder asked to merge under governance; an Owner or Admin approves the push. */
   pushRequested: boolean;
+  /** The newest decision on a push request for this PR (C-5): who, and why when rejected. */
+  pushDecision: { status: "approved" | "rejected"; by: string; reason: string | null } | null;
+  /** An approved request, or an allow-rule for this project, lets a Builder merge it without asking (C-10). */
+  pushAllowed: boolean;
 };
 
 /** The branch a version's work goes on (Developer view shows the same). */

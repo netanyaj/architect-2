@@ -26,7 +26,7 @@ export function PrCard({ pr, project, governance }: { pr: PullRequestView; proje
   const [pending, start] = useTransition();
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
-  const owner = !governance || canManageMembers(project.role);
+  const owner = !governance || canManageMembers(project.role) || pr.pushAllowed;
   const viewer = canBuild(project.role) ? null : "Viewers can't merge pull requests.";
   const blocked = viewer ?? mergeBlocker(pr, owner);
   const word = pr.status === "merged" ? "Merged" : pr.status === "closed" ? "Closed" : pr.pushRequested ? "Waiting for approval" : pr.checks === "passing" ? "Ready to merge" : STATE[pr.checks];
@@ -53,6 +53,13 @@ export function PrCard({ pr, project, governance }: { pr: PullRequestView; proje
         <span className={cn("font-semibold", pr.status === "merged" || pr.checks === "passing" ? "text-works" : pr.checks === "failing" && pr.status === "open" ? "text-failed" : pr.checks === "running" ? "text-building" : "text-ink-2")}>{word}</span>
         {pr.mergedAt && ` · merged by ${pr.mergedBy ?? "someone"}`}
       </p>
+      {pr.status === "open" && !pr.pushRequested && pr.pushDecision && (
+        <p className="text-small text-ink-2">
+          {pr.pushDecision.status === "approved"
+            ? `${pr.pushDecision.by} approved the push to main. You can merge it.`
+            : `${pr.pushDecision.by} didn't approve the push: ${pr.pushDecision.reason ?? "no reason given"}. Fix that, then ask again.`}
+        </p>
+      )}
       <div>
         <h4 className="text-small font-semibold text-ink-2">Implements</h4>
         <ul className="mt-1 flex flex-col gap-1.5">
