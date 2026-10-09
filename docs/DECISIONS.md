@@ -182,6 +182,31 @@ Where the prototype differs from the spec, or fills a gap the spec left open. On
 
 Browser acceptance on the same day: 15 of 15 (plans within 60 s, the Build gate, change cards and the conflict guard, the rate-limit banner, and M1's checks). Unit tests: 194.
 
+## M4 acceptance (10 Oct 2026, production)
+
+Run against https://ticket-triage-gamma.vercel.app with `E2E_BASE_URL` set.
+
+| Flow | Test | Result |
+|---|---|---|
+| F3: import → plan from repo → build → PR | `f3-import-to-pr.spec.ts`: imports netanyaj/ticket-triage through the GitHub App (real), writes the plan from the repo (Gemini, real), answers any blocking question, builds (simulated) and checks PR #12 lists the built parts with their tests, and not the parts the repo already did | Passed |
+| F4: bring your own coding agent | `coding-agent.spec.ts`: /docs/mcp signed out; make a token, approve it (governance on), play ?sim=byoagent, see "Coding agent: Claude Code (you) · via MCP · …", the refused "mark Works", and the part waiting for its check until the checker passes it | Passed |
+| F8: hand-off | `handoff.spec.ts`: Morgan offers Meeting Prep to an invited teammate with a note; the teammate accepts the invite link and sees "You now own Meeting Prep"; a member with an account accepts in the project; the history in Project settings | Passed |
+| Full suite | `pnpm e2e` (37 tests) | 35 passed, 0 failed at the first attempt; 2 skipped by design: the no-Lyzr fallback (needs a server without LYZR_API_KEY; passed locally on 9 Oct) and the rate-limit banner (its test hook is off in production) |
+
+Unit tests: 362. Lint and typecheck clean.
+
+### Flaky during M4, and why
+
+| Test | What happened | Cause | Done |
+|---|---|---|---|
+| `invites.spec.ts` (M1) | Failed once on production reading the role-change audit row | The test read `audit_log` as soon as the role changed; the action writes the row just after | Polls for the row (932a822). Not seen since |
+| `pull-requests.spec.ts` | Failed once on production: Apply showed no "Applied" message | The test applied the change while the build was still settling; the app allows one run at a time | Waits until the run has settled (99507a1) |
+| `build.spec.ts` ?sim=budget (M3) | Failed once in a full local run, passed twice alone | Load: 2 workers on the local dev server with long simulated builds; it took 1.8 min against 45 s alone and hit its timeouts. Never on production | None needed; local only |
+| `agents.spec.ts` Meeting Prep | Failed once locally on "Loading the agents…" | The local dev server compiling the Agents view on first visit; passed in every run since, and on production | None needed; local only |
+| Any test that creates a user | Once, locally: "createUser failed: fetch failed" | A dropped network call to Supabase from this laptop | None; transient |
+
+Model-dependent steps are tested on rules, not exact output: the import test checks that every part with tests gets them as proof (and that the known-failing test never makes a part Works) rather than which parts Gemini writes, because Gemini Flash Lite splits behaviour differently between runs.
+
 ## Known limits
 
 | Limit | Effect | Why it's acceptable for now |

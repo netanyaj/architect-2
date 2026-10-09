@@ -101,6 +101,7 @@ Screen numbers refer to the final canvas. Interface words follow the design-syst
 - **Agents (screen 9):** the graph by default; the node drawer with Settings (model + Compare + more settings, instructions, tools and MCP, knowledge, Save), Runs (expandable input, tool calls, output), Try it (real call through the gateway), Checks. Studio sync line (BL-8). CrewAI and LangGraph agents listed from import (B-6).
 - Coding-agent activity lines labelled "Coding agent: Claude Code (Sam) · via MCP"; `/docs/mcp` spec page (B-7). Default stack line (B-8). Data (screen 13) with tables per version and sign-in users; the sign-in setting on Launch (BL-10).
 - **Acceptance:** F3 (import), F4 (bring your own coding agent, shown via activity) and F8 (handoff Morgan → Sam) can be shown.
+- **Status (10 Oct 2026): done and accepted on production.** F3 (import → plan from repo → build → PR), F4 and F8 pass on production, and so does the full browser suite (35 passed, 2 skipped by design). One change from this list: PRs stay simulated with no real-PR option, Netanya's call on 9 Oct (a real PR would also need Contents: Read and write on the GitHub App). Details and deviations: DECISIONS.md "M4" and "M4 acceptance".
 
 ### M5 · Governance layer and remaining flows (Thu 8)
 - **Org setting:** governance on/off. The Governance nav appears for admins only.

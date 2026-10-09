@@ -28,7 +28,7 @@ Everything simulated carries the `Simulated` tag in the interface. Full list: `d
 | **Import a repo**: GitHub App install and confirmation, repo, branch and folder lists, reading the files, static analysis (stack, start commands, keys, tests, agents), the plan from the repo with your tests as proof | **Real** (read-only; running the repo and its tests is Simulated) |
 | Run as it is, Configure, Port | Simulated |
 | Settings › GitHub: installations, the repos they can read, connect, disconnect, Manage on GitHub | **Real** |
-| Changes as pull requests, merging into main, the sync banner (?sim=sync), the repo deploy route on Launch | Simulated |
+| Changes as pull requests, merging into main, the sync banner (?sim=sync), the repo deploy route on Launch | Simulated. The optional real PRs on test repos were not built (Netanya, 9 Oct): they need Contents: Read and write on the GitHub App, which only reads. Settings › GitHub shows the setting off, with that reason |
 | Hand-off: Transfer ownership with a note, accept in the project or with an invite link, "You now own …", ownership history | **Real** |
 | Sign-in for the app's users (Google, email; SSO with governance), on Launch and in Project settings | **Real** setting (SSO itself is Simulated) |
 | Data tab: tables per version, Rows/Columns, filter, Export CSV, the app's sign-ins | Simulated data, seeded from each project's parts |
