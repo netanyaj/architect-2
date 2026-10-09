@@ -56,8 +56,14 @@ function fixesOf(project: ProjectWorkspace): Record<string, number> {
 
 /** The branch and its pull request, in the stage header (Simulated). */
 export function PrStatus({ project, items }: { project: ProjectWorkspace; items: WorkspaceItem[] }) {
-  const info = branchInfo({ projectId: project.id, name: project.name, version: project.plan?.version ?? 1, repo: project.repo, runStatus: project.run?.status ?? null, parts: toParts(items) });
-  const words = info.pr === null ? "No pull request yet" : `PR #${info.pr} · ${info.status === "running" ? "checks running" : info.status === "failing" ? "checks failing" : "checks passing"}`;
+  const derived = branchInfo({ projectId: project.id, name: project.name, version: project.plan?.version ?? 1, repo: project.repo, runStatus: project.run?.status ?? null, parts: toParts(items) });
+  // A repo project's own pull request, when there is one (B-4).
+  const pr = project.pullRequests[0];
+  const info = pr ? { branch: pr.branch, base: pr.base, pr: pr.number, status: pr.status === "merged" ? ("merged" as const) : pr.checks } : derived;
+  const words =
+    info.pr === null
+      ? "No pull request yet"
+      : `PR #${info.pr} · ${info.status === "merged" ? "merged" : info.status === "running" ? "checks running" : info.status === "failing" ? "checks failing" : "checks passing"}`;
   return (
     <span className="flex flex-wrap items-center gap-2">
       <span

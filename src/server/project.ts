@@ -2,12 +2,14 @@ import "server-only";
 
 import type { Role } from "@/lib/db";
 import type { Deployment, LaunchSettings } from "@/lib/launch";
+import type { PullRequestView } from "@/lib/pull-requests";
 import type { RunEvent, RunInfo } from "@/lib/sim/replay";
 import { modelAvailability } from "@/lib/gateway";
 import { MODEL_LABEL, toModelChoice, type ModelChoice, type ModelOption } from "@/lib/models";
 import { detectTools, projectIcon, summarizeProject, type ProjectInput } from "@/lib/project-status";
 import { allowedModels } from "./blueprint/write-plan";
 import { createAdminDb, createServerDb } from "./db";
+import { loadPullRequests } from "./pull-requests";
 import { catchUpRuns, dbNow } from "./sim/run";
 import type { AppContext } from "./workspace";
 
@@ -95,6 +97,10 @@ export type ProjectWorkspace = {
   stack: string;
   /** The GitHub repo a project was imported from. */
   repo: string | null;
+  /** A repo project's pull requests, newest first (Simulated, B-4). Empty for other projects. */
+  pullRequests: PullRequestView[];
+  /** The workspace's governance setting: on, a Builder's push to main or Go live asks an Owner or Admin. */
+  governance: boolean;
   ownerName: string;
   updatedAt: string;
   budgetCredits: number | null;
@@ -319,9 +325,14 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
   }));
   const projectModel = toModelChoice(p.model);
   let launch: LaunchData | null = null;
-  if (opts.launch) {
+  const peopleNames = async () => {
     const { data: people } = await db.from("members").select("user_id, display_name").eq("workspace_id", p.workspace_id);
-    const names = new Map((people ?? []).filter((m) => m.user_id).map((m) => [m.user_id!, m.user_id === ctx.user.id ? "you" : (m.display_name?.split(" ")[0] ?? "someone")]));
+    return new Map((people ?? []).filter((m) => m.user_id).map((m) => [m.user_id!, m.user_id === ctx.user.id ? "you" : (m.display_name?.split(" ")[0] ?? "someone")]));
+  };
+  // The read above, under the person's own access, proved they can see this project.
+  const pullRequests = p.repo_full_name ? await loadPullRequests(createAdminDb(), p.id, await peopleNames()) : [];
+  if (opts.launch) {
+    const names = await peopleNames();
     launch = await loadLaunch(db, p.id, p.workspace_id, names, {
       governance: p.workspace_id === ctx.workspace.id ? ctx.workspace.governanceEnabled : true,
       settings: (p.launch_settings ?? {}) as LaunchSettings,
@@ -338,6 +349,8 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     prompt: p.prompt,
     stack: p.stack,
     repo: p.repo_full_name,
+    pullRequests,
+    governance: p.workspace_id === ctx.workspace.id ? ctx.workspace.governanceEnabled : true,
     ownerName,
     updatedAt: p.updated_at,
     budgetCredits: num(p.budget_credits),

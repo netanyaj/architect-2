@@ -191,3 +191,19 @@ export async function planFromImport(input: { importId: string; port?: boolean; 
   await admin.from("audit_log").insert({ workspace_id: ctx.workspace.id, actor: ctx.name, action: "repo.imported", target: imp.full_name, details: { branch: imp.branch, folder: imp.folder, port } });
   return { ok: true, projectId: project.id };
 }
+
+/**
+ * Settings › GitHub: disconnect an installation from this workspace (Owners and Admins). Architect stops reading
+ * its repos here; the App stays installed on GitHub until it's removed there (Manage on GitHub).
+ */
+export async function disconnectGitHub(input: { installationId: number }): Promise<ActionResult> {
+  const ctx = await getAppContext();
+  if (ctx.role !== "owner" && ctx.role !== "admin") return { ok: false, message: "Only Owners and Admins can disconnect GitHub." };
+  const id = await installationOf(ctx.workspace.id, input.installationId);
+  if (!id) return { ok: false, message: "That GitHub account isn't connected to this workspace." };
+  const admin = createAdminDb();
+  const { error } = await admin.from("github_installations").delete().eq("workspace_id", ctx.workspace.id).eq("installation_id", id);
+  if (error) return { ok: false, message: "GitHub couldn't be disconnected. Try again." };
+  await admin.from("audit_log").insert({ workspace_id: ctx.workspace.id, actor: ctx.name, action: "github.disconnected", target: String(id), details: {} });
+  return { ok: true };
+}

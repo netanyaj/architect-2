@@ -1075,6 +1075,76 @@ export type Database = {
           },
         ]
       }
+      pull_requests: {
+        Row: {
+          base: string
+          blueprint_id: string | null
+          branch: string
+          created_at: string
+          id: string
+          merged_at: string | null
+          merged_by: string | null
+          number: number
+          parts: Json
+          project_id: string
+          run_id: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          base?: string
+          blueprint_id?: string | null
+          branch: string
+          created_at?: string
+          id?: string
+          merged_at?: string | null
+          merged_by?: string | null
+          number: number
+          parts?: Json
+          project_id: string
+          run_id?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          base?: string
+          blueprint_id?: string | null
+          branch?: string
+          created_at?: string
+          id?: string
+          merged_at?: string | null
+          merged_by?: string | null
+          number?: number
+          parts?: Json
+          project_id?: string
+          run_id?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pull_requests_blueprint_id_fkey"
+            columns: ["blueprint_id"]
+            isOneToOne: false
+            referencedRelation: "blueprints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pull_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pull_requests_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       questions: {
         Row: {
           affects: string[]

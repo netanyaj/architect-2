@@ -11,6 +11,7 @@ import { canBuild } from "@/lib/permissions";
 import { useUi } from "@/lib/ui-store";
 import { applyChange, discardChange, sendMessage } from "@/server/actions/chat";
 import type { ChangeCardData, ProjectWorkspace } from "@/server/project";
+import { PrCard } from "./pr-card";
 
 function Architect({ children }: { children: React.ReactNode }) {
   return (
@@ -289,6 +290,15 @@ export function ChatPane({
             </Architect>
           );
         })}
+        {/* A repo project's sessions as pull requests, oldest first (B-4). */}
+        {[...project.pullRequests].reverse().map((pr) => (
+          <Architect key={pr.id}>
+            <p>
+              I opened a pull request for this {pr.title.startsWith("Change") ? "change" : "build"}. Nothing goes to main until you merge it.
+            </p>
+            <PrCard pr={pr} project={project} governance={project.governance} />
+          </Architect>
+        ))}
         {activity}
           </>
         )}

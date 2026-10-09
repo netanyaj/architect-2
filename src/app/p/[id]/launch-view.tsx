@@ -277,6 +277,12 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
             )
           }
         >
+          {state.repo && (
+            <span className="text-small text-ink-2">
+              Builds from the PR branch{state.repo.branch ? <> <code className="font-mono">{state.repo.branch}</code></> : ""}
+              {state.repo.prNumber ? ` (PR #${state.repo.prNumber})` : ""}
+            </span>
+          )}
           {state.fast && !state.team.current && (
             <Button size="sm" className="self-start" disabledReason={state.share.disabledReason ?? busy} onClick={() => act(() => shareWithTeam({ projectId: project.id }), `Your team has v${version}.`)}>
               Share with your team
@@ -304,6 +310,11 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
             )
           }
         >
+          {state.repo && (
+            <span className="text-small text-ink-2">
+              {state.repo.merged ? `Deploys from main · PR #${state.repo.prNumber} merged` : `Deploys from main after ${state.repo.prNumber ? `PR #${state.repo.prNumber}` : "the pull request"} merges`}
+            </span>
+          )}
           {/* Running cost before going live (review gap 5). */}
           <span className="text-small text-ink-2 tabular-nums">
             About {monthly} credits a month (estimate)

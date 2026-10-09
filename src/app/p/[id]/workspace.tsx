@@ -27,6 +27,7 @@ import { duplicateProject } from "@/server/actions/projects";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 import { AgentsPlanPanel, AgentsView } from "./agents-view";
 import { CodeView, DevActivity, PrStatus, TerminalView } from "./dev-view";
+import { SyncBanner } from "./pr-card";
 import { AppPreview, BudgetBanner, BuildActivity, BuildPanel, TestTheApp } from "./build-stage";
 import { ChatPane } from "./chat-pane";
 import { PartDrawer } from "./part-drawer";
@@ -292,6 +293,9 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
         governance: project.launch!.governance,
         liveRequested: project.launch!.liveRequested,
         testsPassed: project.launch!.testsPassed,
+        repo: project.repo
+          ? { prNumber: project.pullRequests[0]?.number ?? null, branch: project.pullRequests[0]?.branch ?? null, merged: project.pullRequests[0]?.status === "merged" }
+          : null,
       })
     : null;
 
@@ -523,6 +527,8 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
               )}
             </div>
           )}
+          {/* ?sim=sync: commits landed on main from outside Architect (B-5, Simulated). */}
+          {project.repo && params.get("sim") === "sync" && <SyncBanner project={project} items={items} />}
           <div role={planStage && !dev ? undefined : "tabpanel"} aria-label={planStage && !dev ? "The plan" : view} className="flex min-h-0 flex-1 flex-col overflow-auto">
             {planStage && (!dev || view === "files") ? planDocument : <StageBody view={view} project={project} planDocument={planDocument} items={items} live={live} budgetPaused={budgetPaused} />}
           </div>

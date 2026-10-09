@@ -6,11 +6,14 @@ import { signOut } from "@/server/actions/auth";
 import { createAdminDb, createServerDb } from "@/server/db";
 import { origin } from "@/server/origin";
 import { listProjects } from "@/server/queries";
+import { GitHubProblem, listRepos } from "@/server/github";
+import { importPageData } from "@/server/import";
 import { userTheme } from "@/server/theme";
 import { getAppContext } from "@/server/workspace";
 import { AppearanceSection } from "./appearance-section";
 import { BudgetsSection } from "./budgets-section";
 import { DemoDataSection } from "./demo-data-section";
+import { GitHubSection, type GitHubInstallRow } from "./github-section";
 import { GovernanceSection } from "./governance-section";
 import { MembersSection, type MemberRow } from "./members-section";
 
@@ -28,6 +31,18 @@ export default async function SettingsPage() {
   const manage = canManageMembers(ctx.role);
   const projects = await listProjects(ctx);
   const theme = await userTheme();
+  // GitHub (BL-11): each connected installation and the repos it can read, from GitHub itself.
+  const github = await importPageData(ctx);
+  const installs: GitHubInstallRow[] = await Promise.all(
+    github.installations.map(async (i) => {
+      try {
+        const repos = await listRepos(i.installationId);
+        return { ...i, repos: repos.map((r) => ({ fullName: r.fullName, private: r.private, project: github.imported[r.fullName] ?? null })), problem: null };
+      } catch (err) {
+        return { ...i, repos: null, problem: err instanceof GitHubProblem ? err.message : "GitHub didn't answer. Try again in a minute." };
+      }
+    }),
+  );
   // Invite links are only for people who can manage members; read them with the service role.
   const links = new Map<string, string>();
   if (manage) {
@@ -80,6 +95,8 @@ export default async function SettingsPage() {
       />
 
       <GovernanceSection on={ctx.workspace.governanceEnabled} canEdit={manage} />
+
+      <GitHubSection installs={installs} installUrl={github.installUrl} canConnect={github.canAct} canDisconnect={manage} />
 
       <AppearanceSection theme={theme} />
 

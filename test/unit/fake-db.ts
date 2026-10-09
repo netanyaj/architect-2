@@ -86,6 +86,11 @@ class Query implements PromiseLike<Result> {
     this.filters.push((r) => values.includes(r[col]));
     return this;
   }
+  /** jsonb @>: every key in `value` matches (shallow). */
+  contains(col: string, value: Record<string, unknown>) {
+    this.filters.push((r) => Object.entries(value).every(([k, v]) => (r[col] as Record<string, unknown> | null)?.[k] === v));
+    return this;
+  }
   /** Only `.not(col, "is", null)` (is not null) is needed so far. */
   not(col: string, op: string, value: unknown) {
     if (op === "is" && value === null) this.filters.push((r) => r[col] !== null && r[col] !== undefined);

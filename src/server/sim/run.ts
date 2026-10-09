@@ -3,6 +3,7 @@ import "server-only";
 import type { Json } from "@/lib/database.types";
 import { buildTimeline, SCENARIO, type SimItem, type Variant } from "@/lib/sim/timeline";
 import type { AdminDb } from "../db";
+import { openPullRequest } from "../pull-requests";
 
 /** `?sim=` on the workspace URL: a demo variant and/or a faster pace (docs/SIMULATOR.md). */
 export type SimOptions = { variant: Variant; speed: number };
@@ -90,6 +91,8 @@ export async function startRun(admin: AdminDb, runId: string, sim: SimOptions = 
       p_outcome: { status: t.runStatus, failure: failure.failure ?? null, outcomes: t.outcomes } as unknown as Json,
     });
     if (error || !endsAt) throw error ?? new Error("run not running");
+    // A project from a repo gets this session's branch and pull request (Simulated); nothing goes to main directly.
+    await openPullRequest(admin, run.id);
     return true;
   } catch {
     // Nothing is charged for a run that couldn't start; the person can click Build again.

@@ -25,7 +25,7 @@ type Project = { id: string; name: string; workspace_id: string; launch_settings
 
 async function loadState(admin: AdminDb, projectId: string, ctx: AppContext) {
   if (!uuid.safeParse(projectId).success) return null;
-  const { data: project } = await admin.from("projects").select("id, name, workspace_id, current_version, status, launch_settings").eq("id", projectId).maybeSingle();
+  const { data: project } = await admin.from("projects").select("id, name, workspace_id, current_version, status, launch_settings, repo_full_name").eq("id", projectId).maybeSingle();
   if (!project || project.workspace_id !== ctx.workspace.id) return null;
   const { data: bp } = await admin.from("blueprints").select("id, version").eq("project_id", project.id).not("agreed_at", "is", null).order("version", { ascending: false }).limit(1).maybeSingle();
   if (!bp) return null;
@@ -36,6 +36,10 @@ async function loadState(admin: AdminDb, projectId: string, ctx: AppContext) {
     admin.from("approvals").select("id").eq("project_id", project.id).eq("kind", "deploy").eq("status", "waiting"),
     admin.from("runs").select("id").eq("project_id", project.id).in("status", ["queued", "running"]).limit(1),
   ]);
+  // A project from a repo goes live from main, so its latest pull request has to be merged first.
+  const { data: pr } = project.repo_full_name
+    ? await admin.from("pull_requests").select("number, branch, status").eq("project_id", project.id).order("number", { ascending: false }).limit(1).maybeSingle()
+    : { data: null };
   const deployments: Deployment[] = (deps ?? [])
     .filter((d) => d.environment === "staging" || d.environment === "production")
     .map((d) => ({ id: d.id, environment: d.environment as Env, version: d.blueprint_version, status: d.status, createdAt: d.created_at, by: null }));
@@ -48,6 +52,7 @@ async function loadState(admin: AdminDb, projectId: string, ctx: AppContext) {
     governance: ctx.workspace.governanceEnabled,
     liveRequested: (approvals ?? []).length > 0,
     testsPassed: 0,
+    repo: project.repo_full_name ? { prNumber: pr?.number ?? null, branch: pr?.branch ?? null, merged: pr?.status === "merged" } : null,
   });
   return { project, version: bp.version, state, building: Boolean(running?.length) };
 }

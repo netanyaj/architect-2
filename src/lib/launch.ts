@@ -95,7 +95,11 @@ export type LaunchState = {
   progress: string;
   share: Action;
   goLive: Action & { request: boolean };
+  repo: RepoRoute | null;
 };
+
+/** The deploy route of a project from a repo (decided in M3, review gap 6). */
+export type RepoRoute = { prNumber: number | null; branch: string | null; merged: boolean };
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -119,6 +123,8 @@ export function launchState(input: {
   liveRequested: boolean;
   /** Checks that passed (built parts' proofs). */
   testsPassed: number;
+  /** A project from a repo ships through its PR: the team version builds from the PR branch, Live from main after merge. */
+  repo?: RepoRoute | null;
 }): LaunchState {
   const { parts, role, currentVersion } = input;
   const active = parts.filter((p) => p.status !== "deferred" && p.status !== "dropped");
@@ -175,7 +181,11 @@ export function launchState(input: {
               ? `v${currentVersion} is already live.`
               : input.liveRequested && !admin
                 ? "Your request is waiting for an Owner or Admin."
-                : undefined),
+                : input.repo && !input.repo.merged
+                  ? input.repo.prNumber
+                    ? `Merge PR #${input.repo.prNumber} into main first. Live deploys from main.`
+                    : "Build first. Live deploys from main after the build's pull request merges."
+                  : undefined),
   };
 
   const newest = [...input.deployments].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
@@ -207,5 +217,6 @@ export function launchState(input: {
     progress,
     share,
     goLive,
+    repo: input.repo ?? null,
   };
 }
