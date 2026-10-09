@@ -96,19 +96,24 @@ test.describe("M2: plans and chat", () => {
     // Conflict guard (A-3): removing a part needs Keep / Set aside / Drop before Apply.
     await chat.getByLabel("Message Architect").fill("Remove the Monday Slack message, I'll check renewals myself.");
     await chat.getByRole("button", { name: "Send" }).click();
-    await expect(chat.getByText(/This change (removes|weakens) it/)).toBeVisible({ timeout: 45_000 });
-    const guard = chat.getByRole("group", { name: /^What happens to / }).first();
+    await expect(chat.getByText(/This change (removes|weakens) it/).first()).toBeVisible({ timeout: 45_000 });
     const apply = chat.getByRole("button", { name: "Apply" }).last();
     await expect(apply).toHaveAttribute("aria-disabled", "true");
     await expect(apply).toHaveAttribute("title", /^Decide what happens to/);
-    await guard.getByRole("button", { name: "Drop" }).click();
-    await chat.getByLabel(/Why \(saved on the plan\)/).fill("I'll check renewals myself");
+    // The model may remove a part and also weaken another: every one needs its own decision.
+    const guards = chat.getByRole("group", { name: /^What happens to / });
+    const n = await guards.count();
+    for (let i = 0; i < n; i++) {
+      await guards.nth(i).getByRole("button", { name: "Drop" }).click();
+      await chat.getByLabel(/Why \(saved on the plan\)/).nth(i).fill("I'll check renewals myself");
+    }
     await apply.click();
     await expect(chat.getByText("Applied. This is now plan v3.")).toBeVisible();
     const { data: v3 } = await db.from("blueprints").select("id").eq("project_id", id).eq("version", 3).single();
-    const { data: dropped } = await db.from("items").select("status, drop_reason").eq("blueprint_id", v3!.id).eq("status", "dropped");
-    expect(dropped!.length).toBeGreaterThan(0);
-    expect(dropped![0].drop_reason).toBe("I'll check renewals myself");
+    // Dropped parts are struck through; dropped weakenings are applied with the reason saved on them.
+    const { data: decided } = await db.from("items").select("status, drop_reason").eq("blueprint_id", v3!.id).not("drop_reason", "is", null);
+    expect(decided!.length).toBeGreaterThan(0);
+    expect(decided!.every((d) => (d.status === "dropped" ? d.drop_reason === "I'll check renewals myself" : d.drop_reason === "Weakened: I'll check renewals myself"))).toBe(true);
     expect((await db.from("runs").select("id").eq("project_id", id)).data).toEqual([]);
   });
 
