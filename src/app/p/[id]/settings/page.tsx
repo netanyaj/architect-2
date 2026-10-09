@@ -5,6 +5,8 @@ import { Icon } from "@/components/ax/icon";
 import { canBuild, canManageMembers } from "@/lib/permissions";
 import { createServerDb } from "@/server/db";
 import { getAppContext } from "@/server/workspace";
+import type { LaunchSettings } from "@/lib/launch";
+import { SignInSetting } from "../launch-settings";
 import { CodingAgents, type TokenRow } from "./coding-agents";
 
 export const metadata: Metadata = { title: "Project settings · Architect" };
@@ -15,7 +17,7 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[id]
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const ctx = await getAppContext();
   const db = await createServerDb();
-  const { data: project } = await db.from("projects").select("id, name, workspace_id, owner_id, owner_display_name").eq("id", id).maybeSingle();
+  const { data: project } = await db.from("projects").select("id, name, workspace_id, owner_id, owner_display_name, launch_settings").eq("id", id).maybeSingle();
   if (!project || project.workspace_id !== ctx.workspace.id) notFound();
   const { data: tokens } = await db
     .from("project_tokens")
@@ -40,6 +42,21 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[id]
       </header>
       <main className="rounded-pane border border-line bg-surface shadow-pane">
         <div className="mx-auto flex w-full max-w-[880px] flex-col gap-8 px-8 pt-10 pb-12 max-sm:px-4">
+          <section aria-labelledby="sign-in" className="flex flex-col gap-3">
+            <h2 id="sign-in" className="text-heading font-[650]">
+              Sign-in
+            </h2>
+            <div className="rounded-card border border-line">
+              <SignInSetting
+                projectId={project.id}
+                value={((project.launch_settings ?? {}) as LaunchSettings).signIn ?? "google"}
+                access={((project.launch_settings ?? {}) as LaunchSettings).access}
+                governance={ctx.workspace.governanceEnabled}
+                readOnly={canBuild(ctx.role) ? undefined : "Viewers can't change how people sign in."}
+              />
+            </div>
+          </section>
+
           <section aria-labelledby="ownership" className="flex flex-col gap-3">
             <h2 id="ownership" className="text-heading font-[650]">
               Ownership

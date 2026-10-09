@@ -149,3 +149,16 @@ describe("launch settings", () => {
     expect(await setGovernance({ on: true })).toMatchObject({ ok: false });
   });
 });
+
+describe("setSignIn (BL-10)", () => {
+  it("Google, email, or single sign-on with governance on; saved in the launch settings", async () => {
+    const { setSignIn } = await import("@/server/actions/launch");
+    expect(await setSignIn({ projectId: P, method: "email" })).toEqual({ ok: true });
+    expect(db.tables.projects[0].launch_settings).toMatchObject({ signIn: "email" });
+    expect(await setSignIn({ projectId: P, method: "sso" })).toEqual({ ok: true });
+    governance = false;
+    expect(await setSignIn({ projectId: P, method: "sso" })).toEqual({ ok: false, message: "Single sign-on comes with governance. Turn it on in Settings first." });
+    role = "viewer";
+    expect(await setSignIn({ projectId: P, method: "google" })).toMatchObject({ ok: false });
+  });
+});

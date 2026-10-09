@@ -101,6 +101,8 @@ export type ProjectWorkspace = {
   pullRequests: PullRequestView[];
   /** The workspace's governance setting: on, a Builder's push to main or Go live asks an Owner or Admin. */
   governance: boolean;
+  /** The Data tab (screen 13): which versions exist, how the app's users sign in, and the domain they're at. */
+  data: { envs: { staging: boolean; production: boolean }; signIn: "google" | "email" | "sso"; domain: string };
   /** Hand-off (F8): who may hand the project over, to whom, and any offer or new ownership to show. */
   handoff: Handoff;
   /** Coding agent tokens (F4): active ones let ?sim=byoagent play. */
@@ -353,6 +355,8 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     db.from("ownership_transfers").select("id, from_user, from_name, to_member, to_user, to_name, note, status, seen_at, accepted_at, created_at").eq("project_id", p.id).in("status", ["pending", "accepted"]).order("created_at", { ascending: false }),
   ]);
   const myMember = (memberRows ?? []).find((m) => m.user_id === ctx.user.id);
+  const { data: envRows } = await db.from("environments").select("name, status").eq("project_id", p.id);
+  const envLive = (n: string) => (envRows ?? []).some((e) => e.name === n && e.status === "live");
   const pending = (transfers ?? []).find((t) => t.status === "pending");
   const received = (transfers ?? []).find((t) => t.status === "accepted" && t.to_user === ctx.user.id && !t.seen_at && p.owner_id === ctx.user.id);
   const pendingTo = pending ? (memberRows ?? []).find((m) => m.id === pending.to_member) : undefined;
@@ -384,6 +388,11 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     stack: p.stack,
     repo: p.repo_full_name,
     pullRequests,
+    data: {
+      envs: { staging: envLive("staging"), production: envLive("production") || p.status === "live" },
+      signIn: ((p.launch_settings ?? {}) as LaunchSettings).signIn ?? "google",
+      domain: ctx.user.email?.split("@")[1] ?? "acme.com",
+    },
     handoff,
     tokens: { active: (tokenRows ?? []).filter((t) => t.status === "active").length, waiting: (tokenRows ?? []).filter((t) => t.status === "waiting").length },
     governance: p.workspace_id === ctx.workspace.id ? ctx.workspace.governanceEnabled : true,

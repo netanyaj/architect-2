@@ -27,6 +27,7 @@ import { duplicateProject } from "@/server/actions/projects";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 import { AgentSessionLines, useAgentSession, withSession } from "./agent-session";
 import { AgentsPlanPanel, AgentsView } from "./agents-view";
+import { DataView } from "./data-view";
 import { CodeView, DevActivity, PrStatus, TerminalView } from "./dev-view";
 import { HandoffBanner, TransferDialog } from "./handoff";
 import { SyncBanner } from "./pr-card";
@@ -112,13 +113,7 @@ function StageBody({
   if (view === "agents") return <AgentsView project={project} items={items} />;
   if (view === "code") return <CodeView project={project} items={items} live={live} />;
   if (view === "terminal") return <TerminalView project={project} items={items} live={live} />;
-  if (view === "data") {
-    return (
-      <EmptyState icon="grid" title="No data yet">
-        Once the app is built, its tables and sign-in users show here, Test data first. The Data view arrives in M4.
-      </EmptyState>
-    );
-  }
+  if (view === "data") return <DataView project={project} items={items} />;
   if (project.runStatus === "queued") {
     return (
       <EmptyState icon="window" title="Starting your build">

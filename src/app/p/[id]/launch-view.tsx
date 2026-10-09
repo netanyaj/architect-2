@@ -17,7 +17,7 @@ import { goBack, shareTestLink, shareWithTeam } from "@/server/actions/launch";
 import { setPartAside, setWaitingAside } from "@/server/actions/run";
 import type { ProjectWorkspace } from "@/server/project";
 import { ConnectButton } from "./connect-button";
-import { AccessSetting, AnalyticsSetting, DomainSetting, LaterRow, MarketplaceSetting } from "./launch-settings";
+import { AccessSetting, AnalyticsSetting, DomainSetting, LaterRow, SignInSetting, MarketplaceSetting } from "./launch-settings";
 
 const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "app";
 const ENV_LABEL = { staging: "Team version", production: "Live" } as const;
@@ -389,7 +389,7 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
           {!state.fast && <DomainSetting projectId={project.id} env="staging" state={settings.domains?.staging} fallback={`${s}--team.architect.space`} readOnly={readOnly} />}
           <DomainSetting projectId={project.id} env="production" state={settings.domains?.production} fallback={`${s}.architect.app`} readOnly={readOnly} />
           <AnalyticsSetting projectId={project.id} on={Boolean(settings.analytics)} readOnly={readOnly} />
-          <LaterRow title="Sign-in for the people using it" detail="Google, email or your company's single sign-on" label="Change" reason="Not in this prototype yet: sign-in options are planned next." />
+          <SignInSetting projectId={project.id} value={settings.signIn ?? "google"} governance={launch.governance} access={access} readOnly={readOnly} />
           <LaterRow title="Keys and passwords" detail="Saved per version, never in the code" label="Manage" reason="Not in this prototype yet: keys per version are planned next." />
         </div>
       </section>

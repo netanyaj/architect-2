@@ -30,6 +30,8 @@ Everything simulated carries the `Simulated` tag in the interface. Full list: `d
 | Settings › GitHub: installations, the repos they can read, connect, disconnect, Manage on GitHub | **Real** |
 | Changes as pull requests, merging into main, the sync banner (?sim=sync), the repo deploy route on Launch | Simulated |
 | Hand-off: Transfer ownership with a note, accept in the project or with an invite link, "You now own …", ownership history | **Real** |
+| Sign-in for the app's users (Google, email; SSO with governance), on Launch and in Project settings | **Real** setting (SSO itself is Simulated) |
+| Data tab: tables per version, Rows/Columns, filter, Export CSV, the app's sign-ins | Simulated data, seeded from each project's parts |
 | Bring your own coding agent: project tokens (stored as hashes, approval under governance), the /docs/mcp spec, the ?sim=byoagent session | Simulated (tokens are real rows, but no MCP server accepts them) |
 | Developer view: an imported project's file tree and contents | **Real** (read through the GitHub App) |
 | Developer view: Architect's code, Changes, terminal, activity, branch and PR, keys per version | Simulated |

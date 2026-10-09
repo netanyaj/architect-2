@@ -189,6 +189,22 @@ export async function setAccess(input: { projectId: string; access: Access }): P
   return { ok: true };
 }
 
+/**
+ * Sign-in for the people using the app (BL-10): Google, email and password, or the company's single sign-on.
+ * SSO is Simulated and offered only with governance on.
+ */
+export async function setSignIn(input: { projectId: string; method: "google" | "email" | "sso" }): Promise<ActionResult> {
+  const ctx = await getAppContext();
+  const admin = createAdminDb();
+  const project = await editableProject(admin, input.projectId, ctx);
+  if (!project) return { ok: false, message: "Viewers can't change how people sign in." };
+  const method = z.enum(["google", "email", "sso"]).safeParse(input.method);
+  if (!method.success) return { ok: false, message: "Pick Google, email or single sign-on." };
+  if (method.data === "sso" && !ctx.workspace.governanceEnabled) return { ok: false, message: "Single sign-on comes with governance. Turn it on in Settings first." };
+  await saveSettings(admin, ctx, project, { signIn: method.data }, "launch.sign_in");
+  return { ok: true };
+}
+
 /** Built-in analytics (review gap 12), off by default where the workspace runs in a private cloud. */
 export async function setAnalytics(input: { projectId: string; on: boolean }): Promise<ActionResult> {
   const ctx = await getAppContext();

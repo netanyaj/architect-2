@@ -46,6 +46,8 @@ export type LaunchSettings = {
   analytics?: boolean;
   listing?: Listing;
   domains?: Partial<Record<"staging" | "production", DomainState>>;
+  /** How the app's own users sign in (BL-10): Google by default; SSO with governance on. */
+  signIn?: "google" | "email" | "sso";
 };
 
 /** "meeting-prep.acme.com", "app.example.co.uk": a host name with at least one dot, no scheme or path. */

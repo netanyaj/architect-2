@@ -9,7 +9,7 @@ import { StatusWord } from "@/components/ax/status-mark";
 import { Toggle } from "@/components/ax/toggle";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { ACCESS, CNAME_TARGET, MARKETPLACE_CATEGORIES, type Access, type DomainState, type Listing } from "@/lib/launch";
-import { saveListing, setAccess, setAnalytics, setDomain } from "@/server/actions/launch";
+import { saveListing, setAccess, setAnalytics, setDomain, setSignIn } from "@/server/actions/launch";
 
 type Env = "staging" | "production";
 const ENV = { staging: "Team version", production: "Live" } as const;
@@ -62,6 +62,49 @@ export function AccessSetting({ projectId, value, domain, readOnly }: { projectI
           </button>
         ))}
       </div>
+      <Err text={error} />
+    </div>
+  );
+}
+
+const SIGN_IN: { id: "google" | "email" | "sso"; label: string; detail: string }[] = [
+  { id: "google", label: "Google sign-in", detail: "People use their Google account. Good for most teams." },
+  { id: "email", label: "Email and password", detail: "People sign up with any email. Good for customers and partners." },
+  { id: "sso", label: "Your company's single sign-on", detail: "Okta, Entra ID or another SAML/OIDC provider your IT team runs." },
+];
+
+/**
+ * Sign-in for the people using the app (BL-10): Google, email, or single sign-on (Simulated, offered with governance
+ * on). Used whenever Who can open it needs people to sign in. On Launch and in Project settings.
+ */
+export function SignInSetting({ projectId, value, governance, access, readOnly }: { projectId: string; value: "google" | "email" | "sso"; governance: boolean; access?: Access; readOnly?: string }) {
+  const { pending, error, act } = useAct();
+  const options = SIGN_IN.filter((o) => o.id !== "sso" || governance || value === "sso");
+  return (
+    <div className="flex flex-col gap-2.5 px-4 py-3.5">
+      <div className="flex items-center gap-2">
+        <span className="flex-1 font-semibold">Sign-in for the people using it</span>
+        <SimTag title="Sign-in for the app's users is simulated in this prototype" />
+      </div>
+      {access === "link" && <p className="text-small text-ink-2">Anyone with the link opens it without signing in; this applies if you change who can open it.</p>}
+      <div role="radiogroup" aria-label="Sign-in for the people using it" className="flex flex-col gap-2">
+        {options.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            role="radio"
+            aria-checked={value === o.id}
+            aria-disabled={readOnly || pending ? true : undefined}
+            title={readOnly}
+            onClick={() => !readOnly && value !== o.id && act(() => setSignIn({ projectId, method: o.id }))}
+            className={`flex flex-col items-start rounded-card border px-3.5 py-2.5 text-left ${value === o.id ? "border-2 border-ink bg-selected" : "border-line-ctl"} ${readOnly ? "cursor-not-allowed" : ""}`}
+          >
+            <span className="font-semibold">{o.label}</span>
+            <span className="text-small text-ink-2">{o.detail}</span>
+          </button>
+        ))}
+      </div>
+      {!governance && <p className="text-small text-ink-2">Single sign-on comes with governance (Settings).</p>}
       <Err text={error} />
     </div>
   );
