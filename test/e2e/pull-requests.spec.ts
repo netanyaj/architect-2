@@ -33,7 +33,8 @@ test.describe("M4: Changes as pull requests", () => {
     await expect(first).toContainText("Talking points generator");
     await expect(first).toContainText("Test:");
 
-    // A change, applied: its own branch and PR, listing only the part it adds.
+    // The build has settled (only one run at a time), then a change, applied: its own branch and PR, listing only the part it adds.
+    await expect.poll(async () => (await db.from("runs").select("status").eq("project_id", id).single()).data!.status, { timeout: 60_000 }).not.toBe("running");
     const { data: msg } = await db.from("messages").insert({ project_id: id, role: "architect", mode: "build", content: "I'll add a Friday recap." }).select("id").single();
     await db.from("change_proposals").insert({
       project_id: id,
