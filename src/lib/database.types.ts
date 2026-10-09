@@ -950,6 +950,63 @@ export type Database = {
           },
         ]
       }
+      project_tokens: {
+        Row: {
+          approval_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          last4: string
+          name: string
+          project_id: string
+          revoked_at: string | null
+          scopes: string[]
+          status: string
+          token_hash: string
+        }
+        Insert: {
+          approval_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last4: string
+          name: string
+          project_id: string
+          revoked_at?: string | null
+          scopes: string[]
+          status?: string
+          token_hash: string
+        }
+        Update: {
+          approval_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last4?: string
+          name?: string
+          project_id?: string
+          revoked_at?: string | null
+          scopes?: string[]
+          status?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_tokens_approval_id_fkey"
+            columns: ["approval_id"]
+            isOneToOne: false
+            referencedRelation: "approvals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_tokens_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           budget_credits: number | null

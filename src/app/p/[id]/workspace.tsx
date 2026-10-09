@@ -25,6 +25,7 @@ import { goLive, shareWithTeam } from "@/server/actions/launch";
 import { buildPlan, setProjectModel } from "@/server/actions/plan";
 import { duplicateProject } from "@/server/actions/projects";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
+import { AgentSessionLines, useAgentSession, withSession } from "./agent-session";
 import { AgentsPlanPanel, AgentsView } from "./agents-view";
 import { CodeView, DevActivity, PrStatus, TerminalView } from "./dev-view";
 import { SyncBanner } from "./pr-card";
@@ -175,8 +176,11 @@ function MoreMenu({ project, canAct, dev, onToggleDev }: { project: ProjectWorks
         {later("Download code", "M4", true)}
         {later("GitHub", "M4")}
         <DropdownMenuSeparator />
+        <DropdownMenuItem className={item} onSelect={() => router.push(`/p/${project.id}/settings`)}>
+          Project settings
+        </DropdownMenuItem>
         <DropdownMenuItem className={item} onSelect={() => router.push("/settings")}>
-          Settings
+          Workspace settings
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -274,10 +278,13 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   // The build as it plays: the run's events replayed on the clock, laid over the saved parts.
   const live = useRun(project.id, project.run, project.serverNow);
   const running = project.run?.status === "running";
-  const items = withLive(project.items, live, running).map((i) =>
+  const builtItems = withLive(project.items, live, running).map((i) =>
     // Connected while the build plays: it works with real data (settling agrees).
     i.status === "needs_connection" && i.provider && project.connected.includes(i.provider) ? { ...i, status: "built", statusDetail: null } : i,
   );
+  // ?sim=byoagent (F4): a coding agent's scripted session; its changed part waits for its check.
+  const agentSession = useAgentSession(project, builtItems, params.get("sim") === "byoagent");
+  const items = withSession(builtItems, agentSession);
   const counted = items.filter((i) => i.status !== "deferred" && i.status !== "dropped");
   const worksNow = counted.filter((i) => i.status === "built" || i.status === "sample_data").length;
   const budgetPaused = Boolean(live.budgetPause) && (running || (project.status === "paused" && project.run?.status === "paused_budget" && items.some((i) => i.status === "agreed")));
@@ -539,9 +546,23 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
           <ChatPane
             project={project}
             writing={writing}
-            activity={planStage ? null : <BuildActivity project={project} items={items} live={live} />}
+            activity={
+              planStage ? null : (
+                <>
+                  <BuildActivity project={project} items={items} live={live} />
+                  <AgentSessionLines project={project} state={agentSession} />
+                </>
+              )
+            }
             title={dev && !planStage ? "Activity" : undefined}
-            body={dev && !planStage ? <DevActivity project={project} items={items} live={live} /> : undefined}
+            body={
+              dev && !planStage ? (
+                <>
+                  <AgentSessionLines project={project} state={agentSession} />
+                  <DevActivity project={project} items={items} live={live} />
+                </>
+              ) : undefined
+            }
             onCollapse={() => setChatOpen(false)}
             onPickModel={(m) => (project.plan ? setModelAsk(m) : switchModel(m, false))}
           />

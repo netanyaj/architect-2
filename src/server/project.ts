@@ -101,6 +101,8 @@ export type ProjectWorkspace = {
   pullRequests: PullRequestView[];
   /** The workspace's governance setting: on, a Builder's push to main or Go live asks an Owner or Admin. */
   governance: boolean;
+  /** Coding agent tokens (F4): active ones let ?sim=byoagent play. */
+  tokens: { active: number; waiting: number };
   ownerName: string;
   updatedAt: string;
   budgetCredits: number | null;
@@ -331,6 +333,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
   };
   // The read above, under the person's own access, proved they can see this project.
   const pullRequests = p.repo_full_name ? await loadPullRequests(createAdminDb(), p.id, await peopleNames()) : [];
+  const { data: tokenRows } = await db.from("project_tokens").select("status").eq("project_id", p.id).neq("status", "revoked");
   if (opts.launch) {
     const names = await peopleNames();
     launch = await loadLaunch(db, p.id, p.workspace_id, names, {
@@ -350,6 +353,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     stack: p.stack,
     repo: p.repo_full_name,
     pullRequests,
+    tokens: { active: (tokenRows ?? []).filter((t) => t.status === "active").length, waiting: (tokenRows ?? []).filter((t) => t.status === "waiting").length },
     governance: p.workspace_id === ctx.workspace.id ? ctx.workspace.governanceEnabled : true,
     ownerName,
     updatedAt: p.updated_at,

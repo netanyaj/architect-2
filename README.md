@@ -29,6 +29,7 @@ Everything simulated carries the `Simulated` tag in the interface. Full list: `d
 | Run as it is, Configure, Port | Simulated |
 | Settings › GitHub: installations, the repos they can read, connect, disconnect, Manage on GitHub | **Real** |
 | Changes as pull requests, merging into main, the sync banner (?sim=sync), the repo deploy route on Launch | Simulated |
+| Bring your own coding agent: project tokens (stored as hashes, approval under governance), the /docs/mcp spec, the ?sim=byoagent session | Simulated (tokens are real rows, but no MCP server accepts them) |
 | Developer view: an imported project's file tree and contents | **Real** (read through the GitHub App) |
 | Developer view: Architect's code, Changes, terminal, activity, branch and PR, keys per version | Simulated |
 | Agents graph, sample runs, tools and knowledge, Compare; imported CrewAI and LangGraph runtimes | Simulated |
