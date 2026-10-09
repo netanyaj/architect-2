@@ -89,7 +89,9 @@ test.describe("roles and invites", () => {
     await ownerPage.reload();
     await ownerPage.getByLabel(/^Role for Viewer Tester$/).selectOption("builder");
     await expect.poll(async () => (await db.from("members").select("role").eq("workspace_id", ownerWs!.workspace_id).eq("user_id", viewer.id).single()).data?.role).toBe("builder");
-    const { data: change } = await db.from("audit_log").select("details").eq("workspace_id", ownerWs!.workspace_id).eq("action", "member.role_changed").single();
-    expect(change!.details).toEqual({ from: "viewer", to: "builder" });
+    // The audit row is written just after the role; wait for it.
+    await expect
+      .poll(async () => (await db.from("audit_log").select("details").eq("workspace_id", ownerWs!.workspace_id).eq("action", "member.role_changed").maybeSingle()).data?.details)
+      .toEqual({ from: "viewer", to: "builder" });
   });
 });
