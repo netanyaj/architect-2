@@ -921,6 +921,66 @@ export type Database = {
           },
         ]
       }
+      ownership_transfers: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          from_name: string
+          from_user: string | null
+          id: string
+          note: string | null
+          project_id: string
+          seen_at: string | null
+          status: string
+          to_member: string | null
+          to_name: string
+          to_user: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          from_name: string
+          from_user?: string | null
+          id?: string
+          note?: string | null
+          project_id: string
+          seen_at?: string | null
+          status?: string
+          to_member?: string | null
+          to_name: string
+          to_user?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          from_name?: string
+          from_user?: string | null
+          id?: string
+          note?: string | null
+          project_id?: string
+          seen_at?: string | null
+          status?: string
+          to_member?: string | null
+          to_name?: string
+          to_user?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ownership_transfers_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ownership_transfers_to_member_fkey"
+            columns: ["to_member"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       policies: {
         Row: {
           config: Json

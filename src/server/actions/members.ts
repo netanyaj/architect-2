@@ -9,6 +9,7 @@ import type { Json } from "@/lib/database.types";
 import type { Role } from "@/lib/db";
 import { assignableRolesFor, canChangeMember, canManageMembers, canResetDemo, ROLE_INFO } from "@/lib/permissions";
 import { createAdminDb, createServerDb } from "../db";
+import { completeOnInvite } from "../handoff";
 import { origin } from "../origin";
 import { removeProjectFiles } from "../uploads";
 import { displayNameFor, getAppContext, WORKSPACE_COOKIE } from "../workspace";
@@ -136,7 +137,7 @@ export async function acceptInvite(token: string): Promise<ActionResult> {
   const admin = createAdminDb();
   const { data: invite } = await admin
     .from("members")
-    .select("id, workspace_id, role, invited_email, status")
+    .select("id, workspace_id, role, invited_email, status, display_name")
     .eq("invite_token", token)
     .maybeSingle();
   if (!invite || invite.status !== "invited") {
@@ -173,6 +174,8 @@ export async function acceptInvite(token: string): Promise<ActionResult> {
       .eq("status", "invited");
     if (error) return { ok: false, message: "The invite couldn't be accepted. Try again." };
     await audit(invite.workspace_id, displayNameFor(user), "member.joined", user.email ?? user.id, { role: invite.role });
+    // Hand-offs waiting for this invite complete now (F8), and projects seeded as theirs become theirs.
+    await completeOnInvite(admin, { memberId: invite.id, workspaceId: invite.workspace_id, displayName: invite.display_name, user: { id: user.id, name: displayNameFor(user) } });
   }
 
   (await cookies()).set(WORKSPACE_COOKIE, invite.workspace_id, { path: "/", sameSite: "lax", httpOnly: true, maxAge: 60 * 60 * 24 * 365 });

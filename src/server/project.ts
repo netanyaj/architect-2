@@ -101,6 +101,8 @@ export type ProjectWorkspace = {
   pullRequests: PullRequestView[];
   /** The workspace's governance setting: on, a Builder's push to main or Go live asks an Owner or Admin. */
   governance: boolean;
+  /** Hand-off (F8): who may hand the project over, to whom, and any offer or new ownership to show. */
+  handoff: Handoff;
   /** Coding agent tokens (F4): active ones let ?sim=byoagent play. */
   tokens: { active: number; waiting: number };
   ownerName: string;
@@ -135,6 +137,18 @@ export type ProjectWorkspace = {
   uploads: { id: string; name: string; mime: string | null; size: number | null; read: boolean }[];
   /** Launch (screen 4): loaded only on the Launch page. */
   launch: LaunchData | null;
+};
+
+export type Handoff = {
+  canTransfer: boolean;
+  /** Members it can go to (not Viewers, not its owner). Invited ones accept with their invite link. */
+  candidates: { id: string; name: string; role: Role; invited: boolean }[];
+  /** An open offer for this project. */
+  outgoing: { id: string; toName: string; invited: boolean; createdAt: string; fromMe: boolean } | null;
+  /** An open offer to the person looking. */
+  offer: { id: string; fromName: string; note: string | null } | null;
+  /** The person looking just became the owner and hasn't dismissed the banner. */
+  received: { id: string; fromName: string; note: string | null } | null;
 };
 
 export type LaunchData = {
@@ -334,6 +348,23 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
   // The read above, under the person's own access, proved they can see this project.
   const pullRequests = p.repo_full_name ? await loadPullRequests(createAdminDb(), p.id, await peopleNames()) : [];
   const { data: tokenRows } = await db.from("project_tokens").select("status").eq("project_id", p.id).neq("status", "revoked");
+  const [{ data: memberRows }, { data: transfers }] = await Promise.all([
+    db.from("members").select("id, user_id, role, status, display_name, email, invited_email").eq("workspace_id", p.workspace_id),
+    db.from("ownership_transfers").select("id, from_user, from_name, to_member, to_user, to_name, note, status, seen_at, accepted_at, created_at").eq("project_id", p.id).in("status", ["pending", "accepted"]).order("created_at", { ascending: false }),
+  ]);
+  const myMember = (memberRows ?? []).find((m) => m.user_id === ctx.user.id);
+  const pending = (transfers ?? []).find((t) => t.status === "pending");
+  const received = (transfers ?? []).find((t) => t.status === "accepted" && t.to_user === ctx.user.id && !t.seen_at && p.owner_id === ctx.user.id);
+  const pendingTo = pending ? (memberRows ?? []).find((m) => m.id === pending.to_member) : undefined;
+  const handoff: Handoff = {
+    canTransfer: (p.owner_id === ctx.user.id || membership?.role === "owner" || membership?.role === "admin") && (membership?.role ?? "viewer") !== "viewer",
+    candidates: (memberRows ?? [])
+      .filter((m) => m.role !== "viewer" && !(m.user_id && m.user_id === p.owner_id && !p.owner_display_name))
+      .map((m) => ({ id: m.id, name: m.display_name ?? m.email ?? m.invited_email ?? "Someone", role: m.role as Role, invited: m.status === "invited" })),
+    outgoing: pending ? { id: pending.id, toName: pending.to_name, invited: pendingTo?.status === "invited", createdAt: pending.created_at, fromMe: pending.from_user === ctx.user.id } : null,
+    offer: pending && myMember && pending.to_member === myMember.id ? { id: pending.id, fromName: pending.from_name, note: pending.note } : null,
+    received: received ? { id: received.id, fromName: received.from_name, note: received.note } : null,
+  };
   if (opts.launch) {
     const names = await peopleNames();
     launch = await loadLaunch(db, p.id, p.workspace_id, names, {
@@ -353,6 +384,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     stack: p.stack,
     repo: p.repo_full_name,
     pullRequests,
+    handoff,
     tokens: { active: (tokenRows ?? []).filter((t) => t.status === "active").length, waiting: (tokenRows ?? []).filter((t) => t.status === "waiting").length },
     governance: p.workspace_id === ctx.workspace.id ? ctx.workspace.governanceEnabled : true,
     ownerName,

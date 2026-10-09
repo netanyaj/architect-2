@@ -28,6 +28,7 @@ import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 import { AgentSessionLines, useAgentSession, withSession } from "./agent-session";
 import { AgentsPlanPanel, AgentsView } from "./agents-view";
 import { CodeView, DevActivity, PrStatus, TerminalView } from "./dev-view";
+import { HandoffBanner, TransferDialog } from "./handoff";
 import { SyncBanner } from "./pr-card";
 import { AppPreview, BudgetBanner, BuildActivity, BuildPanel, TestTheApp } from "./build-stage";
 import { ChatPane } from "./chat-pane";
@@ -141,7 +142,7 @@ function Rail({ label, icon, onOpen }: { label: string; icon: "panelLeft" | "pan
   );
 }
 
-function MoreMenu({ project, canAct, dev, onToggleDev }: { project: ProjectWorkspace; canAct: boolean; dev: boolean; onToggleDev: () => void }) {
+function MoreMenu({ project, canAct, dev, onToggleDev, onTransfer }: { project: ProjectWorkspace; canAct: boolean; dev: boolean; onToggleDev: () => void; onTransfer: () => void }) {
   const router = useRouter();
   const [, start] = useTransition();
   const item = "flex min-h-10 items-center gap-2.5 rounded-tile px-2.5";
@@ -176,6 +177,14 @@ function MoreMenu({ project, canAct, dev, onToggleDev }: { project: ProjectWorks
         {later("Download code", "M4", true)}
         {later("GitHub", "M4")}
         <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className={item}
+          disabled={!project.handoff.canTransfer}
+          title={project.handoff.canTransfer ? undefined : "Only the project's owner, or an Owner or Admin, can hand it over."}
+          onSelect={onTransfer}
+        >
+          Transfer ownership…
+        </DropdownMenuItem>
         <DropdownMenuItem className={item} onSelect={() => router.push(`/p/${project.id}/settings`)}>
           Project settings
         </DropdownMenuItem>
@@ -264,6 +273,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   }, [planStage, project.plan, project.prompt, canAct, writer.phase, write]);
 
   const [modelAsk, setModelAsk] = useState<ModelChoice | null>(null);
+  const [transferOpen, setTransferOpen] = useState(false);
   const [pending, start] = useTransition();
   const [actionError, setActionError] = useState<string>();
 
@@ -419,7 +429,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
         <div className="flex items-center gap-2">
           <IconButton icon="help" label="Help with this project" onClick={() => openHelp(project.id)} />
           <ShareMenu project={project} />
-          <MoreMenu project={project} canAct={canAct} dev={dev} onToggleDev={toggleDev} />
+          <MoreMenu project={project} canAct={canAct} dev={dev} onToggleDev={toggleDev} onTransfer={() => setTransferOpen(true)} />
           {state.action.beside && <span className="max-w-[190px] text-right text-small leading-tight text-ink-2 max-md:hidden">{state.action.beside}</span>}
           <Button
             // The stage action is the primary only when nothing on screen needs the person first (BUILD-SPEC §2).
@@ -534,6 +544,10 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
               )}
             </div>
           )}
+          {/* Hand-off (F8): an offer to you, your offer waiting, or what you now own. */}
+          <div className={planStage && !dev ? "pt-3" : undefined}>
+            <HandoffBanner project={project} items={items} onOpenPlan={() => (planStage ? scrollTo("plan-top") : setView("files"))} />
+          </div>
           {/* ?sim=sync: commits landed on main from outside Architect (B-5, Simulated). */}
           {project.repo && params.get("sim") === "sync" && <SyncBanner project={project} items={items} />}
           <div role={planStage && !dev ? undefined : "tabpanel"} aria-label={planStage && !dev ? "The plan" : view} className="flex min-h-0 flex-1 flex-col overflow-auto">
@@ -572,6 +586,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
       </div>
 
       {!planStage && <PartDrawer project={project} items={items} />}
+      {transferOpen && <TransferDialog project={project} open={transferOpen} onOpenChange={setTransferOpen} />}
 
       {/* Switching models mid-project asks first (BL-3). */}
       <Dialog open={modelAsk !== null} onOpenChange={(o) => !o && setModelAsk(null)}>
