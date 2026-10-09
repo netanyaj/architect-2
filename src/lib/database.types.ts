@@ -18,33 +18,42 @@ export type Database = {
         Row: {
           agent_id: string
           created_at: string
+          created_by: string | null
           credits: number | null
           duration_ms: number | null
           id: string
           input: Json | null
+          model_label: string | null
           output: string | null
+          runtime: string
           status: string
           tool_calls: Json | null
         }
         Insert: {
           agent_id: string
           created_at?: string
+          created_by?: string | null
           credits?: number | null
           duration_ms?: number | null
           id?: string
           input?: Json | null
+          model_label?: string | null
           output?: string | null
+          runtime?: string
           status: string
           tool_calls?: Json | null
         }
         Update: {
           agent_id?: string
           created_at?: string
+          created_by?: string | null
           credits?: number | null
           duration_ms?: number | null
           id?: string
           input?: Json | null
+          model_label?: string | null
           output?: string | null
+          runtime?: string
           status?: string
           tool_calls?: Json | null
         }
@@ -60,42 +69,63 @@ export type Database = {
       }
       agents: {
         Row: {
+          created_at: string
+          description: string | null
           framework: string
           id: string
           instructions: string | null
           item_key: string | null
+          knowledge: string[]
+          lyzr_agent_id: string | null
+          max_tokens: number
           model: string
           name: string
           project_id: string | null
           schedule: string | null
           studio_synced_at: string | null
+          temperature: number
           tools: string[]
+          updated_at: string
           workspace_id: string
         }
         Insert: {
+          created_at?: string
+          description?: string | null
           framework?: string
           id?: string
           instructions?: string | null
           item_key?: string | null
+          knowledge?: string[]
+          lyzr_agent_id?: string | null
+          max_tokens?: number
           model?: string
           name: string
           project_id?: string | null
           schedule?: string | null
           studio_synced_at?: string | null
+          temperature?: number
           tools?: string[]
+          updated_at?: string
           workspace_id: string
         }
         Update: {
+          created_at?: string
+          description?: string | null
           framework?: string
           id?: string
           instructions?: string | null
           item_key?: string | null
+          knowledge?: string[]
+          lyzr_agent_id?: string | null
+          max_tokens?: number
           model?: string
           name?: string
           project_id?: string | null
           schedule?: string | null
           studio_synced_at?: string | null
+          temperature?: number
           tools?: string[]
+          updated_at?: string
           workspace_id?: string
         }
         Relationships: [

@@ -16,6 +16,21 @@ This folder becomes the root of the new repo. Claude Code reads `CLAUDE.md` firs
 | `docs/product/` | PRD, architecture, flows, stack and milestones (for context) |
 | `.env.example` | The keys you add yourself |
 
+## Real vs Simulated
+Everything simulated carries the `Simulated` tag in the interface. Full list: `docs/BUILD-SPEC.md` section 1; deviations: `docs/DECISIONS.md`.
+
+| Part | Real or Simulated |
+|---|---|
+| Sign-in (Google, GitHub, email), workspaces, roles, copy-a-link invites | Real |
+| Plans (the Blueprint) from Gemini through the gateway, the Build gate, chat changes and the conflict guard | Real |
+| Model picker: Gemini and OpenRouter | Real; Claude and GPT are Simulated (answered by Gemini) unless their keys are set |
+| **Lyzr Studio agent (Agents › Try it)**: each agent in a plan becomes its own Lyzr Studio agent, made on its first Try it or Save and reused after; Try it runs it on Studio and saves the run | **Real** (needs `LYZR_API_KEY`; without it, Gemini answers through the gateway and the run is tagged Simulated) |
+| Agents graph, sample runs, tools and knowledge, Compare; imported CrewAI and LangGraph runtimes | Simulated |
+| Build run, checks, fix loop, preview app, deploys, custom domains, test link | Simulated |
+| Usage, budgets and the budget pause (on simulated spend) | Real numbers from the database |
+| Connect (OAuth) | Simulated consent step |
+| Governance layer (policies, approvals, audit) | Simulated (M5) |
+
 ## How to start (Sun 4, M1)
 1. Finish the setup checklist in `docs/product/11-stack-and-milestones.md` section 4 (Vercel, Supabase, model keys, GitHub App). You add every key yourself.
 2. Create an empty **private** repo and copy this folder in. Make it public only when you're ready to submit.

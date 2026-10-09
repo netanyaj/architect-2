@@ -25,6 +25,7 @@ import { goLive, shareWithTeam } from "@/server/actions/launch";
 import { buildPlan, setProjectModel } from "@/server/actions/plan";
 import { duplicateProject } from "@/server/actions/projects";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
+import { AgentsPlanPanel, AgentsView } from "./agents-view";
 import { AppPreview, BudgetBanner, BuildActivity, BuildPanel, TestTheApp } from "./build-stage";
 import { ChatPane } from "./chat-pane";
 import { PartDrawer } from "./part-drawer";
@@ -102,14 +103,7 @@ function StageBody({
   budgetPaused: boolean;
 }) {
   if (view === "files") return planDocument;
-  if (view === "agents") {
-    const agents = project.items.filter((i) => i.grp === "agents");
-    return (
-      <EmptyState icon="agent" title={agents.length ? `${agents.length} ${agents.length === 1 ? "agent" : "agents"} in this plan` : "No agents in this plan"}>
-        {agents.length ? `${agents.map((a) => a.title).join(", ")}. ` : ""}The agent graph, settings and test runs arrive in M4.
-      </EmptyState>
-    );
-  }
+  if (view === "agents") return <AgentsView project={project} items={items} />;
   if (view === "data") {
     return (
       <EmptyState icon="grid" title="No data yet">
@@ -226,6 +220,9 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   const pathname = usePathname();
   const params = useSearchParams();
   const openHelp = useUi((s) => s.openHelp);
+  const sendToChat = useUi((s) => s.sendToChat);
+  const agentChanges = useUi((s) => s.agentChanges);
+  const agentOpen = useUi((s) => s.agentKey !== null);
   const raw = params.get("view");
   const planStage = project.status === "draft";
   const view: View = VIEWS.includes(raw as View) ? (raw as View) : "app";
@@ -233,7 +230,8 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   const [planOpen, setPlanOpen] = useState<boolean | null>(null);
   const [chatOpen, setChatOpen] = useState<boolean | null>(null);
   // Launch keeps the plan open and folds chat to a rail (screen 4).
-  const showPlan = planOpen ?? (onLaunch || !fullWidth);
+  // Agents keeps the plan open too, listing the agents and the apps they connect to (screen 9).
+  const showPlan = planOpen ?? (onLaunch || !fullWidth || (!planStage && view === "agents"));
   const showChat = chatOpen ?? !fullWidth;
   const canAct = canBuild(project.role);
 
@@ -303,9 +301,12 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   // On Launch the stage action is Share with your team, disabled until the checklist is clear (BUILD-SPEC §2).
   // Without governance it's Go live (the team version is optional); with it, Share first, then Go live.
   const launchAction = launch ? (launch.fast || launch.team.current ? { ...launch.goLive, kind: "live" as const } : { ...launch.share, kind: "share" as const }) : null;
-  const state = launch
+  const stageState = launch
     ? { stage: "launch" as const, progress: launch.progress, paused: false, action: { label: launchAction!.label, disabledReason: launchAction!.disabledReason, beside: undefined } }
     : baseState;
+  // Unsaved agent settings come first: the stage action waits for Save or Discard (screen 9).
+  const agentsWaiting = !planStage && !onLaunch && view === "agents" && agentChanges > 0;
+  const state = agentsWaiting ? { ...stageState, action: { ...stageState.action, disabledReason: "Save or discard your agent changes first." } } : stageState;
 
   const setView = (v: View) => {
     const next = new URLSearchParams(params);
@@ -348,7 +349,13 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
       }
       onToggleCollapsed={() => setPlanOpen(false)}
     >
-      {planStage ? <PlanStagePanel project={project} items={streamedItems} writing={writing} failed={failed} /> : <BuildPanel project={project} items={items} budgetPaused={budgetPaused} />}
+      {planStage ? (
+        <PlanStagePanel project={project} items={streamedItems} writing={writing} failed={failed} />
+      ) : view === "agents" && !onLaunch ? (
+        <AgentsPlanPanel project={project} items={items} />
+      ) : (
+        <BuildPanel project={project} items={items} budgetPaused={budgetPaused} />
+      )}
     </PlanPanel>
   ) : (
     <Rail label="Plan" icon="panelLeft" onOpen={() => setPlanOpen(true)} />
@@ -386,7 +393,9 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
           <Button
             // The stage action is the primary only when nothing on screen needs the person first (BUILD-SPEC §2).
             variant={
-              launch
+              (view === "agents" && !onLaunch && (agentOpen || agentsWaiting))
+                ? "secondary"
+                : launch
                 ? launchAction!.disabledReason
                   ? "secondary"
                   : "primary"
@@ -439,7 +448,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
           ) : (
             <>
           {!planStage && (
-            <div className="flex items-center gap-2.5 px-3 py-2.5">
+            <div className="flex flex-wrap items-center gap-2.5 px-3 py-2.5">
               <Segmented
                 label="Stage view"
                 value={view}
@@ -458,6 +467,22 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
                     Test version
                   </span>
                   <TestTheApp items={items} />
+                </span>
+              )}
+              {view === "agents" && (
+                <span className="ml-auto">
+                  <Button
+                    size="sm"
+                    icon="plus"
+                    disabledReason={canAct ? undefined : "Viewers can't change the plan."}
+                    onClick={() => {
+                      // A new agent is a change to the plan: chat proposes it with its cost, and Apply builds it.
+                      setChatOpen(true);
+                      sendToChat("Add an agent that ");
+                    }}
+                  >
+                    Add an agent
+                  </Button>
                 </span>
               )}
             </div>

@@ -16,6 +16,12 @@ type UiState = {
   chatDraft: { text: string; n: number } | null;
   sendToChat: (text: string) => void;
   takeChatDraft: () => void;
+  /** Unsaved changes in the open agent's settings (Agents view): the stage action waits for Save or Discard. */
+  agentChanges: number;
+  /** The agent whose settings are open on the right (Agents view), by part key. */
+  agentKey: string | null;
+  openAgent: (key: string | null) => void;
+  setAgentChanges: (n: number) => void;
 };
 
 export const useUi = create<UiState>((set) => ({
@@ -28,4 +34,8 @@ export const useUi = create<UiState>((set) => ({
   chatDraft: null,
   sendToChat: (text) => set((s) => ({ chatDraft: { text, n: (s.chatDraft?.n ?? 0) + 1 } })),
   takeChatDraft: () => set({ chatDraft: null }),
+  agentChanges: 0,
+  agentKey: null,
+  openAgent: (key) => set({ agentKey: key }),
+  setAgentChanges: (n) => set({ agentChanges: n }),
 }));

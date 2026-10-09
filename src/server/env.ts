@@ -28,5 +28,10 @@ export const serverEnv = {
     const apiKey = optional("OPENAI_API_KEY");
     return apiKey ? { apiKey, model: optional("MODEL_GPT") } : undefined;
   },
+  /** Lyzr Studio: the key runs app agents for real (Try it). The shared agent is the fallback when one can't be made per node. */
+  lyzr: () => {
+    const apiKey = optional("LYZR_API_KEY");
+    return apiKey ? { apiKey, sharedAgentId: optional("LYZR_AGENT_ID"), baseUrl: optional("LYZR_BASE_URL") ?? "https://agent-prod.studio.lyzr.ai" } : undefined;
+  },
   siteUrl: () => process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
 };

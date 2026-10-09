@@ -6,6 +6,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { APICallError, generateText, Output, RetryError, type LanguageModel } from "ai";
 import { serverEnv } from "@/server/env";
+import * as lyzr from "@/server/lyzr";
 import { MODEL_CHOICES, MODEL_LABEL, type ModelChoice } from "./models";
 
 export type { ModelChoice };
@@ -190,4 +191,89 @@ export async function askObject<T>(input: {
   } finally {
     limit.clear();
   }
+}
+
+/** Where an app agent ran: its own Lyzr Studio agent, the shared Studio agent, or the gateway (Simulated). */
+export type AgentRuntime = "lyzr_agent" | "lyzr_shared" | "gateway";
+
+export type AgentRunInput = {
+  name: string;
+  description: string;
+  instructions: string;
+  /** What the agent hands over, in plain words. */
+  output: string;
+  temperature: number;
+  maxTokens: number;
+  /** The Studio agent already made for this node, if any. */
+  lyzrAgentId: string | null;
+  userId: string;
+  sessionId: string;
+  message: string;
+  /** Imported CrewAI and LangGraph agents don't run on Studio: Gemini answers for them (Simulated). */
+  simulate?: boolean;
+};
+
+export type AgentRunResult = {
+  text: string;
+  runtime: AgentRuntime;
+  /** Set when a Studio agent was made for this node during the call (save it on the node). */
+  createdAgentId: string | null;
+  /** The Studio agent that answered (its own or the shared one). */
+  lyzrAgentId: string | null;
+  modelLabel: string;
+  simulated: boolean;
+  /** Why the node's own Studio agent couldn't be made, when the shared agent answered instead. */
+  note: string | null;
+};
+
+/** The message for the shared Studio agent: it has no instructions of its own, so they lead every message. */
+export function sharedAgentMessage(input: Pick<AgentRunInput, "name" | "description" | "instructions" | "output" | "message">): string {
+  return [
+    `Your role: ${input.name}. ${input.description}`.trim(),
+    `Your task: ${input.instructions}`,
+    `Output format: ${input.output}`,
+    "",
+    `Message: ${input.message}`,
+  ].join("\n");
+}
+
+/**
+ * Runs an app agent (Agents › Try it). Lyzr Studio is the runtime:
+ * 1. With a Lyzr key, the node's own Studio agent answers; it's made on the first run and reused after.
+ * 2. If Studio won't make one, the shared Studio agent answers, with the node's role and instructions in the
+ *    message. The run says so ("Shared Studio agent").
+ * 3. Without a Lyzr key, Gemini answers through the gateway and the run is Simulated.
+ * A Studio failure while answering is thrown (LyzrError), never swapped for another runtime silently.
+ */
+export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
+  const configured = lyzr.lyzrConfigured();
+  if (!configured.perAgent || input.simulate) {
+    const r = await ask({
+      instructions: `You are ${input.name}, an agent in an app built with Architect. ${input.description}\n\n${input.instructions}\n\nOutput format: ${input.output}`,
+      prompt: input.message,
+      maxOutputTokens: input.maxTokens,
+      temperature: input.temperature,
+      fast: true,
+    });
+    return { text: r.text, runtime: "gateway", createdAgentId: null, lyzrAgentId: null, modelLabel: r.label, simulated: true, note: null };
+  }
+
+  // Same name Save gives it, so Architect's agents are easy to tell apart in Studio.
+  const spec = { name: `${input.name} · Architect`, description: input.description, role: input.name, instructions: input.instructions, output: input.output, temperature: input.temperature, maxTokens: input.maxTokens };
+  let agentId = input.lyzrAgentId;
+  let createdAgentId: string | null = null;
+  let note: string | null = null;
+  if (!agentId) {
+    try {
+      agentId = createdAgentId = await lyzr.createLyzrAgent(spec);
+    } catch (err) {
+      const shared = lyzr.sharedAgentId();
+      if (!shared) throw err;
+      note = err instanceof Error ? err.message : String(err);
+      const text = await lyzr.chatLyzr({ agentId: shared, userId: input.userId, sessionId: input.sessionId, message: sharedAgentMessage(input) });
+      return { text, runtime: "lyzr_shared", createdAgentId: null, lyzrAgentId: shared, modelLabel: lyzr.LYZR_MODEL.label, simulated: false, note };
+    }
+  }
+  const text = await lyzr.chatLyzr({ agentId, userId: input.userId, sessionId: input.sessionId, message: input.message });
+  return { text, runtime: "lyzr_agent", createdAgentId, lyzrAgentId: agentId, modelLabel: lyzr.LYZR_MODEL.label, simulated: false, note };
 }

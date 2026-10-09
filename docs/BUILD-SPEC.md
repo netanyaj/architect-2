@@ -9,7 +9,8 @@ The visual source of truth is the **"Architect 2.0 – Modern direction"** canva
 | Home composer, projects, settings, usage numbers from the DB | Preview app (a pre-built "Meeting Prep" app in an iframe) |
 | **Blueprint generation**: items, defaults, blocking questions, conflict guard, estimates, versions, the Build gate | Environments, pre-publish checks, deploy, rollback, custom domain |
 | Model picker through the gateway: Gemini and an OpenRouter free model are real; Claude and GPT are real when their key is set, otherwise tagged Simulated and answered by Gemini | PRs, two-way sync, developer view code/terminal content |
-| Chat: requests become proposed changes with estimates; Plan mode; message queue | Agents tab runs, playground, graph; CrewAI/LangGraph runtime |
+| Chat: requests become proposed changes with estimates; Plan mode; message queue | Agents tab sample runs, graph, tools and knowledge; CrewAI/LangGraph runtime |
+| Agents › Try it: each plan agent runs as its own Lyzr Studio agent (Real with `LYZR_API_KEY`; otherwise Gemini answers, tagged Simulated) | |
 | GitHub App connect, repo list, branch list, import analysis | Coding-agent (MCP) activity; MCP server (spec page only) |
 | Budgets stored and enforced on the simulated spend | The whole governance layer (policies, approvals, audit, data flow) |
 | Support bot answers from a short Architect FAQ via the gateway | "Talk to a person" ticket (creates a DB row, no email) |

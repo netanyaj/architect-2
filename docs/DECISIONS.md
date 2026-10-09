@@ -88,6 +88,25 @@ Where the prototype differs from the spec, or fills a gap the spec left open. On
 | Launch settings rows | Screen 4 rows | Web address works now (custom domain steps). Sign-in for the app's users (BL-10) is planned for M4 and keys and passwords for M4 or M5; until then their rows say "Not in this prototype yet". QA-CHECKLIST requires none disabled at submission | Honest about what's missing, with a gate so it isn't forgotten |
 | Fix attempts | "Up to 3 attempts"; `?sim=paused` "fails all 3 attempts" | The build's check fails, then up to 3 fixes run; each fix has its own result, note and Usage line. With `?sim=paused` all 3 fixes fail (236, 212, 204 words) and the part is Blocked | Screen 6 lists three fixes, each with a result and a cost; "Fixing 1/3" is the first fix |
 
+## M4 · Developers and agents
+
+| Area | The spec said | We did | Why |
+|---|---|---|---|
+| Agent runtime (Try it) | Agents tab runs simulated; "Try it (real call through the gateway)" | Try it runs each plan agent as its **own Lyzr Studio agent**: `POST /v3/agents/` makes it (name "<agent> · Architect", role, instructions, expected output, temperature, max tokens) on its first Try it or Save; its id is kept on the node (`agents.lyzr_agent_id`, migration 0011) and reused; `POST /v3/inference/chat/` runs it. Server-only (`src/server/lyzr.ts`), called through the gateway's `runAgent` | Reviewers should see app agents run on Lyzr's own runtime. Done inside the 1.5-hour limit (about 30 minutes), so the fallbacks below are safety nets, not the main path |
+| Fallbacks | Not specified | 1. Studio won't make an agent → the shared Studio agent (`LYZR_AGENT_ID`) answers, with the node's role, task and output format leading the message; the run says "shared Architect agent". 2. No `LYZR_API_KEY` → Gemini answers through the gateway and the run is tagged Simulated. A Studio failure while answering is shown and saved as a failed run, never swapped for Gemini | Never fail over silently (CLAUDE.md) |
+| Model on Studio | The node's model | Studio agents run on Gemini 3.1 Flash Lite through Lyzr's own Google credential, whichever model is picked. The picker is the app's model (Claude and GPT Simulated, as everywhere); Try it, Runs and Compare say which model actually ran | A small, cheap model for test runs, on Lyzr's credential, so no provider key of ours goes to Studio |
+| Tools and knowledge | Settings: tools and MCP, knowledge bases | Editable and saved, tagged Simulated. Studio agents are made without tools; a Try it run lists no tool calls and says why | Real tools need real connectors (Connect is simulated) |
+| Saving agent settings | Save or Discard | Save writes the settings straight away (no new plan version) and updates the Studio agent. If Studio fails, the save is kept and the person is told Studio wasn't updated. Unsaved changes hold the stage action ("Save or discard your agent changes first") | Agent settings tune a part that's already agreed; versions mark plan changes |
+| The graph for any plan | Screen 9 (Meeting Prep) | Built from the plan's parts: the first integration part that reads starts it, the last that sends is where it delivers, agent parts in plan order with "Hands over …" labels, other services as the next agent's tools, the project's uploads as the first agent's knowledge. Parts without a service (older and seeded plans) get one from their words ("tickets" → Zendesk). Try it starts from a sample message for the trigger's service | One graph per plan without a model call: instant, free and the same every time |
+| Meeting Prep sample | Screen 9 | The seeded Meeting Prep keeps the screen's two agents (Research agent, reused from Studio; Brief writer), their tools and scripted runs, all Simulated. Its "Agenda PDF summarised" and "Talking points" parts show as the Brief writer's PDF summariser tool and instructions; "Slack send" is the delivery node, not a tool | Matches screen 9; Try it on them is still real |
+| Runs | Expandable input, tool calls, output | Try it runs (real) plus each agent part's build check runs from its proofs (Simulated). Meeting Prep's are scripted | Every agent has something to inspect before anyone runs it |
+| Studio sync line (BL-8) | "Synced with Lyzr Studio · just now" | Real once the node has a Studio agent (time of the last Save or first run, Open in Studio links to it). Before that, the same words with the Simulated tag, and Open in Studio says it's made on the first Try it or Save | Honest about which agents exist on Studio |
+| Open in Studio | A link | `https://studio.lyzr.ai/agent-create/<id>`, in a new tab. It opens in the prototype owner's Lyzr account; other people see Studio's sign-in. **Open:** the URL format isn't in Lyzr's docs; confirm it opens the agent | The agents live in the account the key belongs to |
+| Try it cost and limits | Not specified | Free (no credits). Up to 20 runs per person per hour, messages up to 4,000 characters | Test runs use the prototype's Lyzr account; the cap stops a loop from draining it |
+| Add an agent | A button | Opens chat with "Add an agent that …": a new agent is a plan change with its cost, applied by the person | Rule 1: nothing builds without a click |
+| Plan panel on Agents | Screen 9 | AI agents (with unsaved changes) and the apps they connect to, instead of the build groups | Screen 9 |
+| Imported agents (B-6) | CrewAI and LangGraph listed from import | The runtime line says "CrewAI · runs natively behind the agent interface" (Simulated) and Try it is answered by Gemini, tagged Simulated. Import fills these in its own task | Only Lyzr agents run on Studio |
+
 ## Numbers we set, and how we picked them
 
 | Number | Value | How we picked it |
@@ -107,6 +126,9 @@ Where the prototype differs from the spec, or fills a gap the spec left open. On
 | Plan route time limit | 120 s (`maxDuration`) | Plans take 3–40 s; this leaves room for slower models and the one retry |
 | OpenRouter time limit | 45 s per model call | Under the 60 s plan target, with room for the page to show the pause; OpenRouter's normal plans took 19–41 s in the final run |
 | Budget limit | 1 to 100,000 credits per project | Guards against typos; well above any demo plan |
+| Agent settings | Creativity (temperature) 0–1, default 0.3; longest answer 100–4,000 tokens, default 800 | Studio's own default creativity for the shared agent is 0.3; 800 tokens fits a brief or a ticket reply with room |
+| Lyzr Studio time limits | 20 s to make or update an agent, 45 s per answer | Making an agent took under 1 s and an answer 2–3 s in tests; 45 s matches the gateway's slowest model |
+| Try it cap | 20 runs per person per hour, 4,000 characters per message | Plenty for a demo; stops a script from running the prototype's Lyzr account dry |
 | Browser tests | 15 s per check, 3 browsers at a time locally, 2 in CI | The dev server compiles pages on first visit; seven parallel browsers made it slow enough to flake |
 
 ## Live acceptance: 5 prompts × 4 models (5 Oct 2026)
@@ -128,6 +150,7 @@ Browser acceptance on the same day: 15 of 15 (plans within 60 s, the Build gate,
 |---|---|---|
 | A question that isn't about a service is decided by the model's label alone | OpenRouter labelled "How many minutes before the meeting should the SMS be sent?" as `none`, so the SMS plan asked one question more than it needed to | It errs safe: an extra question, never a missed one. Rules a and b cover the cases that matter (services and channels) |
 | The model can still miss a weakening that keeps every acceptance line | A change that narrows scope without touching the check ("only external meetings") counts as weaken only if the model labels it so | The server's test catches checks that lose a line or change a number; scope wording isn't measurable without another model call |
+| Studio agents outlive their projects | Agents made on Lyzr Studio stay in the prototype's Lyzr account when a project, workspace or demo data is deleted; the browser tests delete the ones they make | Deleting them needs a Studio call per agent; acceptable for a prototype account |
 | Plans vary between runs | Part titles, counts and defaults differ run to run and model to model | The rules that protect the person (what blocks, what's weakened, prices) are deterministic; the fixtures pin down the shape |
 | OpenRouter's free models are slow and variable | 19–148 s for the same plan across runs | The 45 s limit pauses cleanly with Switch model; Gemini is the default |
 | Apply after a build queues a `build` run | The simulator can't yet tell a change apart from a first build | Add `run_kind` (build, change) in M3 |
