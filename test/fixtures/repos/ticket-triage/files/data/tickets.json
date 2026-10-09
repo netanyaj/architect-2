@@ -1,0 +1,7 @@
+[
+  { "id": "T-1001", "customer": "Northwind Traders", "subject": "Checkout is down for all users", "body": "Since 9am nobody can complete checkout. Error 500.", "createdAt": "2026-09-28T09:12:00Z", "triage": null },
+  { "id": "T-1002", "customer": "Blue Harbor Co", "subject": "Refund not received", "body": "We were charged twice for invoice 4471, please refund one.", "createdAt": "2026-09-28T10:03:00Z", "triage": null },
+  { "id": "T-1003", "customer": "Kite & Key", "subject": "Cannot log in with SSO", "body": "Our team cannot log in since the SSO certificate update.", "createdAt": "2026-09-29T07:45:00Z", "triage": null },
+  { "id": "T-1004", "customer": "Maple Labs", "subject": "Dashboard feels slow", "body": "Reports take ~20s to load in the afternoon.", "createdAt": "2026-09-29T14:20:00Z", "triage": null },
+  { "id": "T-1005", "customer": "Orbit Foods", "subject": "Feature request: CSV export", "body": "Would love to export the ticket list to CSV.", "createdAt": "2026-09-30T11:00:00Z", "triage": null }
+]

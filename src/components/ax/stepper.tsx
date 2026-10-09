@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 export type Stage = "plan" | "build" | "launch";
 
-const stages: { id: Stage; label: string }[] = [
+const STAGES: { id: Stage; label: string }[] = [
   { id: "plan", label: "Plan" },
   { id: "build", label: "Build" },
   { id: "launch", label: "Launch" },
@@ -13,22 +13,28 @@ const stages: { id: Stage; label: string }[] = [
  * The project header's one answer to "where am I". The current stage carries the one progress figure.
  * On narrow screens only the current stage shows.
  */
-export function Stepper({
+export function Stepper<T extends string = Stage>({
   current,
   progress,
   paused = false,
   onSelect,
+  steps = STAGES as unknown as { id: T; label: string }[],
+  label = "Project stage",
 }: {
-  current: Stage;
+  current: T;
   /** e.g. "7 of 12 working · about 6 min", "1 question left", "paused at budget" */
   progress?: string;
   paused?: boolean;
-  onSelect?: (stage: Stage) => void;
+  onSelect?: (stage: T) => void;
+  /** Other step-by-step flows (Import a repo) use the same look with their own steps. */
+  steps?: { id: T; label: string }[];
+  label?: string;
 }) {
+  const stages = steps;
   const currentIndex = stages.findIndex((s) => s.id === current);
   return (
     <nav
-      aria-label="Project stage"
+      aria-label={label}
       className="mx-auto flex items-center gap-1 rounded-full border border-line bg-surface p-1"
     >
       {stages.map((s, i) => {

@@ -33,5 +33,14 @@ export const serverEnv = {
     const apiKey = optional("LYZR_API_KEY");
     return apiKey ? { apiKey, sharedAgentId: optional("LYZR_AGENT_ID"), baseUrl: optional("LYZR_BASE_URL") ?? "https://agent-prod.studio.lyzr.ai" } : undefined;
   },
+  /** The GitHub App (read-only contents and metadata). The private key is stored on one line with \\n escaped. */
+  githubApp: () => {
+    const appId = optional("GITHUB_APP_ID");
+    const privateKey = optional("GITHUB_APP_PRIVATE_KEY")?.replace(/\\n/g, "\n");
+    const slug = optional("GITHUB_APP_SLUG");
+    const clientId = optional("GITHUB_APP_CLIENT_ID");
+    const clientSecret = optional("GITHUB_APP_CLIENT_SECRET");
+    return appId && privateKey && slug && clientId && clientSecret ? { appId, privateKey, slug, clientId, clientSecret } : undefined;
+  },
   siteUrl: () => process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
 };

@@ -681,6 +681,47 @@ export type Database = {
           },
         ]
       }
+      github_installations: {
+        Row: {
+          account_login: string
+          account_type: string
+          added_by: string | null
+          created_at: string
+          id: string
+          installation_id: number
+          repository_selection: string | null
+          workspace_id: string
+        }
+        Insert: {
+          account_login: string
+          account_type: string
+          added_by?: string | null
+          created_at?: string
+          id?: string
+          installation_id: number
+          repository_selection?: string | null
+          workspace_id: string
+        }
+        Update: {
+          account_login?: string
+          account_type?: string
+          added_by?: string | null
+          created_at?: string
+          id?: string
+          installation_id?: number
+          repository_selection?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "github_installations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       items: {
         Row: {
           blueprint_id: string
@@ -1091,29 +1132,41 @@ export type Database = {
         Row: {
           analysis: Json | null
           branch: string
+          commit_sha: string | null
           created_at: string
+          created_by: string | null
           folder: string
           full_name: string
           id: string
+          installation_id: number | null
           project_id: string | null
+          workspace_id: string | null
         }
         Insert: {
           analysis?: Json | null
           branch?: string
+          commit_sha?: string | null
           created_at?: string
+          created_by?: string | null
           folder?: string
           full_name: string
           id?: string
+          installation_id?: number | null
           project_id?: string | null
+          workspace_id?: string | null
         }
         Update: {
           analysis?: Json | null
           branch?: string
+          commit_sha?: string | null
           created_at?: string
+          created_by?: string | null
           folder?: string
           full_name?: string
           id?: string
+          installation_id?: number | null
           project_id?: string | null
+          workspace_id?: string | null
         }
         Relationships: [
           {
@@ -1121,6 +1174,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repo_imports_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]

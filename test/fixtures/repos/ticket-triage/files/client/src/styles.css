@@ -1,0 +1,5 @@
+body { font-family: system-ui, sans-serif; margin: 2rem; color: #1b2430; }
+header { display: flex; justify-content: space-between; align-items: center; }
+table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #e3e7ec; }
+button { padding: .3rem .8rem; }

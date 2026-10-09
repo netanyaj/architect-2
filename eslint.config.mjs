@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Copies of other people's repos, used as import fixtures; not our code.
+    "test/fixtures/repos/**",
   ]),
 ]);
 

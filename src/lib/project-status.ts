@@ -129,7 +129,7 @@ export function summarizeProject(p: ProjectInput): ProjectSummary {
 
 /** Tile icons a project may use (stored in projects.icon). */
 export function projectIcon(icon: string | null | undefined): IconName {
-  const allowed: IconName[] = ["calendar", "lines", "usage", "doc", "window", "chat", "search", "person", "projects"];
+  const allowed: IconName[] = ["calendar", "lines", "usage", "doc", "window", "chat", "search", "person", "projects", "repo"];
   return allowed.includes(icon as IconName) ? (icon as IconName) : "projects";
 }
 

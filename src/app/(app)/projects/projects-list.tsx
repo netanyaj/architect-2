@@ -116,7 +116,11 @@ export function ProjectsList({ projects, creditsUsed, canStart }: { projects: Ro
               Write your first plan
             </Button>
           }
-          alternative={<Button disabledReason="Importing a repo comes in M4.">Import a repo</Button>}
+          alternative={
+            <Button href="/import" disabledReason={canStart ? undefined : "Viewers can't import repos."}>
+              Import a repo
+            </Button>
+          }
           help={<TextLink href="/home">Not sure? Start from a template</TextLink>}
         >
           Describe something you do every week. Architect writes a plan with its cost, and nothing is built until you say so.

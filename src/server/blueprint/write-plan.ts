@@ -6,6 +6,7 @@ import { canBuild } from "@/lib/permissions";
 import { MODEL_LABEL, toModelChoice, type ModelChoice } from "@/lib/models";
 import type { AdminDb } from "../db";
 import { draftingCredits, estimate, totals as planTotals } from "../estimate";
+import { applyRepoProofs } from "../import";
 import type { AppContext } from "../workspace";
 import { BlueprintInvalid, generateBlueprint, type Attachment } from "./generate";
 
@@ -70,7 +71,7 @@ export async function writePlan(
 
   const { data: project } = await admin
     .from("projects")
-    .select("id, workspace_id, name, prompt, model")
+    .select("id, workspace_id, name, prompt, model, repo_full_name")
     .eq("id", input.projectId)
     .eq("workspace_id", ctx.workspace.id)
     .maybeSingle();
@@ -180,7 +181,9 @@ export async function writePlan(
     if (plan.defaults.length) {
       await admin.from("defaults").insert(plan.defaults.map((d, position) => ({ blueprint_id: bp.id, label: d.label, value: d.value, alternatives: d.alternatives, position })));
     }
-    const t = planTotals(plan.items.map((i) => estimate(i, model)));
+    // A plan from a repo: parts that work today, proved by the repo's own tests, aren't built or charged again (B-2).
+    const works = project.repo_full_name ? await applyRepoProofs(admin, { projectId: project.id, blueprintId: bp.id }) : new Set<string>();
+    const t = planTotals(plan.items.filter((i) => !works.has(i.key)).map((i) => estimate(i, model)));
     const credits = draftingCredits(result.tokens);
     await admin
       .from("blueprints")

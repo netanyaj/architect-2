@@ -91,6 +91,10 @@ export type ProjectWorkspace = {
   icon: ReturnType<typeof projectIcon>;
   status: ProjectInput["status"];
   prompt: string | null;
+  /** "default" (Next.js + Python with the Lyzr SDK) or the stack kept from an imported repo (B-8). */
+  stack: string;
+  /** The GitHub repo a project was imported from. */
+  repo: string | null;
   ownerName: string;
   updatedAt: string;
   budgetCredits: number | null;
@@ -199,7 +203,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
   const { data: p } = await db
     .from("projects")
     .select(
-      "id, workspace_id, name, icon, status, prompt, model, owner_id, owner_display_name, updated_at, budget_credits, launch_settings, test_share_token, blueprints(id, version, status, generation, created_at, total_likely), runs(id, kind, status, variant, started_at, ends_at)",
+      "id, workspace_id, name, icon, status, prompt, model, stack, repo_full_name, owner_id, owner_display_name, updated_at, budget_credits, launch_settings, test_share_token, blueprints(id, version, status, generation, created_at, total_likely), runs(id, kind, status, variant, started_at, ends_at)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -332,6 +336,8 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     icon: projectIcon(p.icon),
     status: p.status as ProjectInput["status"],
     prompt: p.prompt,
+    stack: p.stack,
+    repo: p.repo_full_name,
     ownerName,
     updatedAt: p.updated_at,
     budgetCredits: num(p.budget_credits),

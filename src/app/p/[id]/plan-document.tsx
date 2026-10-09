@@ -23,6 +23,10 @@ export const GROUP_LABEL: Record<string, string> = {
   data: "Data, sign-in and look",
   quality: "Checks and safety",
 };
+/** B-8: the stack new projects get; imported projects keep their own. */
+export const DEFAULT_STACK = "Next.js + Python (Lyzr SDK)";
+export const STACK_NOTE = "New projects use Next.js + Python (Lyzr SDK). Imported projects keep their stack.";
+
 export const GROUP_ORDER = ["features", "integrations", "agents", "data", "quality"];
 
 /** A streamed part, shaped like a saved one, so writing and written plans render the same. */
@@ -94,7 +98,7 @@ function QuestionCard({ q, editReason }: { q: PlanQuestion; editReason?: string 
   );
 }
 
-function ItemRow({ item, editReason }: { item: WorkspaceItem; editReason?: string }) {
+function ItemRow({ item, editReason, fromRepo = false }: { item: WorkspaceItem; editReason?: string; fromRepo?: boolean }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [pending, start] = useTransition();
@@ -130,7 +134,8 @@ function ItemRow({ item, editReason }: { item: WorkspaceItem; editReason?: strin
   const field = "w-full rounded-tile border border-line-ctl bg-surface px-3 py-2 text-body";
   return (
     <li id={`part-${item.key}`} className="flex gap-3 border-t border-line px-3.5 py-3 first:border-t-0">
-      <StatusMark status="todo" icon={item.status === "dropped" ? "minus" : item.status === "deferred" ? "pause" : "dot"} />
+      {/* A part a repo already does, proved by its own tests, is a quiet check (B-2). */}
+      {item.status === "built" ? <StatusMark status="works" label="Works" /> : <StatusMark status="todo" icon={item.status === "dropped" ? "minus" : item.status === "deferred" ? "pause" : "dot"} />}
       {editing ? (
         <form onSubmit={save} className="flex min-w-0 flex-1 flex-col gap-2">
           <label htmlFor={ids.title} className="text-small font-semibold">
@@ -208,13 +213,20 @@ function ItemRow({ item, editReason }: { item: WorkspaceItem; editReason?: strin
           <span className={item.status === "dropped" ? "font-semibold text-ink-3 line-through" : "font-semibold"}>{item.title}</span>
           {item.description && <span className="text-small text-ink-2">{item.description}</span>}
           <span className="text-small text-ink-2">Done when {item.provedWhen.charAt(0).toLowerCase() + item.provedWhen.slice(1)}</span>
-          {item.sourceQuote && <span className="text-small text-ink-3">From your words: “{item.sourceQuote}”</span>}
+          {item.statusDetail && <span className="text-small font-semibold text-ink-2">{item.statusDetail}</span>}
+          {item.sourceQuote && (
+            <span className="text-small text-ink-3">
+              {fromRepo ? "From the repo" : "From your words"}: “{item.sourceQuote}”
+            </span>
+          )}
           {item.dropReason && <span className="text-small text-ink-2">Left out: {item.dropReason}</span>}
         </div>
       )}
       {!editing && (
         <div className="flex flex-none flex-col items-end gap-1">
-          {item.estimate !== null && (
+          {item.status === "built" ? (
+            <span className="text-small text-ink-2">Works today</span>
+          ) : item.estimate !== null && (
             <span className="text-small text-ink-2 tabular-nums" title={item.range ? `${item.range.low}–${item.range.high} credits · mostly ${item.driver}` : undefined}>
               ~{Math.round(item.estimate)} cr
             </span>
@@ -313,7 +325,21 @@ export function PlanDocument({
           // A short phrase reads as a title (screen 2); a full sentence would wrap across the page, so it's smaller.
           return <h2 className={heading.length > 60 ? "text-heading font-[650]" : "text-title font-[650]"}>{heading}</h2>;
         })()}
-        {project.prompt && <p className="text-sub text-ink-2">{project.prompt}</p>}
+        {project.repo ? (
+          // A plan from a repo is asked for with the analysis itself; show where it came from, and the request on demand.
+          <details className="text-ink-2">
+            <summary className="cursor-pointer text-sub">From {project.repo} on GitHub. What Architect read</summary>
+            <p className="mt-2 text-small whitespace-pre-wrap">{project.prompt}</p>
+          </details>
+        ) : (
+          project.prompt && <p className="text-sub text-ink-2">{project.prompt}</p>
+        )}
+        <p className="flex flex-wrap items-center gap-2 text-small text-ink-2" title={STACK_NOTE}>
+          <span>
+            <b className="font-semibold text-ink">Stack:</b> {project.stack === "default" ? `${DEFAULT_STACK}, the default for new projects` : `${project.stack}, kept from your repo`}
+          </span>
+          <SimTag title="The app's code isn't generated in this prototype; the stack says what it would be built with." />
+        </p>
       </div>
 
       {writing && (
@@ -409,7 +435,7 @@ export function PlanDocument({
             {items
               .filter((i) => i.grp === g)
               .map((i) => (
-                <ItemRow key={i.key} item={i} editReason={writing ? "Wait for the plan to finish writing." : editReason} />
+                <ItemRow key={i.key} item={i} fromRepo={Boolean(project.repo)} editReason={writing ? "Wait for the plan to finish writing." : editReason} />
               ))}
           </ul>
         </section>

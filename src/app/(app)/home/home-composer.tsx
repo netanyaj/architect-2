@@ -159,7 +159,7 @@ export function HomeComposer({
               <Pill icon="plus" onClick={() => fileInput.current?.click()}>
                 Add files, agents or tools
               </Pill>
-              <Pill icon="repo" disabledReason="Importing a repo comes in M4.">
+              <Pill icon="repo" onClick={() => router.push("/import")} disabledReason={signedIn ? undefined : "Sign in to import a repo."}>
                 Import a repo
               </Pill>
               <Pill icon="grid" onClick={() => setTemplatesOpen(true)}>

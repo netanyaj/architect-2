@@ -181,8 +181,10 @@ export async function loadAgents(input: { projectId: string }): Promise<ActionRe
   const latest = [...(p.blueprints ?? [])].sort((a, b) => b.version - a.version)[0];
   const [{ data: items }, { data: files }] = await Promise.all([
     latest
-      ? db.from("items").select("id, key, title, description, proved_when, grp, status, provider, position").eq("blueprint_id", latest.id)
-      : Promise.resolve({ data: [] as { id: string; key: string; title: string; description: string | null; proved_when: string; grp: string; status: string; provider: string | null; position: number }[] }),
+      ? db.from("items").select("id, key, title, description, proved_when, grp, status, provider, position, framework").eq("blueprint_id", latest.id)
+      : Promise.resolve({
+          data: [] as { id: string; key: string; title: string; description: string | null; proved_when: string; grp: string; status: string; provider: string | null; position: number; framework: string | null }[],
+        }),
     db.from("files").select("name, path").eq("project_id", p.id).eq("kind", "upload"),
   ]);
   const parts = (items ?? []).map((i) => ({ key: i.key, title: i.title, description: i.description, provedWhen: i.proved_when, grp: i.grp, status: i.status, provider: i.provider, position: i.position }));
@@ -194,6 +196,11 @@ export async function loadAgents(input: { projectId: string }): Promise<ActionRe
   const rows = (existing ?? []) as AgentRow[];
   const projectModel = toModelChoice(p.model);
   const missing = spec.agents.filter((a) => !rows.some((r) => r.item_key === a.key));
+  // Agents found in an imported repo keep their framework (B-6); every other agent runs on Lyzr Studio.
+  const frameworkOf = (key: string) => {
+    const f = (items ?? []).find((i) => i.key === key)?.framework;
+    return f === "crewai" || f === "langgraph" ? f : "lyzr";
+  };
   if (missing.length) {
     const { data: added } = await admin
       .from("agents")
@@ -207,7 +214,7 @@ export async function loadAgents(input: { projectId: string }): Promise<ActionRe
           instructions: a.instructions,
           tools: a.tools,
           knowledge: a.knowledge,
-          framework: "lyzr",
+          framework: frameworkOf(a.key),
           model: spec.sample ? "claude" : projectModel,
         })),
       )

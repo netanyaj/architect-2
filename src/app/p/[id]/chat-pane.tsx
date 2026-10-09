@@ -259,7 +259,8 @@ export function ChatPane({
         <IconButton icon="panelRight" label="Collapse chat" quiet size={32} onClick={onCollapse} />
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-auto px-4 pt-1.5 pb-3" aria-live="polite">
-        {project.prompt && <You>{project.prompt}</You>}
+        {/* A plan from a repo is asked for with the whole analysis; the plan shows it on demand. */}
+        {project.repo ? <You>Plan from my repo {project.repo}, keeping its stack.</You> : project.prompt && <You>{project.prompt}</You>}
         <Architect>
           <p>{planIntro(project, writing)}</p>
         </Architect>
