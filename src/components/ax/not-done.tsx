@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import type { NotDone } from "@/lib/readiness";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { StatusMark, type StatusIcon } from "./status-mark";
@@ -8,15 +9,21 @@ const ICON: Record<NotDone["status"], StatusIcon | undefined> = { blocked: "paus
 
 /** What isn't done yet (A-10): each part with its reason. A row opens the part. */
 export function NotDoneList({ rows, onOpen }: { rows: NotDone[]; onOpen?: (key: string) => void }) {
+  const id = useId();
   return (
     <ul aria-label="What's not done" className="flex flex-col divide-y divide-line">
       {rows.map((r) => (
         <li key={r.key}>
-          <button type="button" onClick={() => onOpen?.(r.key)} className="flex w-full items-start gap-2.5 rounded-tile px-2.5 py-2 text-left hover:bg-selected">
+          {/* Named by the part; the reason is its description, so the row doesn't read as the fix itself. */}
+          <button type="button" aria-labelledby={`${id}-${r.key}`} aria-describedby={`${id}-${r.key}-why`} onClick={() => onOpen?.(r.key)} className="flex w-full items-start gap-2.5 rounded-tile px-2.5 py-2 text-left hover:bg-selected">
             <StatusMark status={r.status} icon={ICON[r.status]} className="mt-0.5" />
             <span className="min-w-0 flex-1">
-              <span className="block font-semibold">{r.title}</span>
-              <span className="block text-small text-ink-2">{r.reason}</span>
+              <span id={`${id}-${r.key}`} className="block font-semibold">
+                {r.title}
+              </span>
+              <span id={`${id}-${r.key}-why`} className="block text-small text-ink-2">
+                {r.reason}
+              </span>
             </span>
           </button>
         </li>
