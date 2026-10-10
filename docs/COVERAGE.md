@@ -53,7 +53,7 @@ Where the prototype differs from the spec, `docs/DECISIONS.md` says what and why
 | B-4 | Changes as PRs | Simulated | PR card in chat; Developer view header | Each build, change or code edit goes on a branch and a PR listing its parts. A push to main needs a click, and an approval under the rule |
 | B-6 | Agents in other frameworks run natively | Simulated | Agents › Settings › Runs on (Lyzr Studio, CrewAI, LangGraph) | Imported CrewAI and LangGraph agents keep their framework, and any agent can be set to run on one. Try it is answered by Gemini for them (tagged) |
 | B-7 | Bring your own coding agent | Simulated (+ Doc: `/docs/mcp`) | Project settings › Coding agents; `?sim=byoagent` (`coding-agent.spec`) | Lines read "Coding agent: Claude Code (Sam) · via MCP". Marking Works and deploying without approval are both refused, as they would be for Architect's own agent |
-| B-8 | Default stack for new projects | Simulated | "Stack: Next.js + Python (Lyzr SDK), the default for new projects" on the plan | |
+| B-8 | Default stack for new projects | Simulated | "Stack: Next.js + Python (Lyzr SDK) + Postgres + sign-in, the default for new projects" on the plan | |
 | B-9 | Developer view | Simulated (code) · Done (an imported repo's real files) | `?dev=1` (screen 8) (`dev.spec`, `code-edits.spec`) | Changes by part, file tree, editor (edits re-run the part's check), terminal, Activity. Download code is in ⋯ |
 
 ## Governance (C)

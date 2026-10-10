@@ -33,7 +33,7 @@ test.describe("M4: Import a repo", () => {
     await expect(page.getByRole("heading", { name: "Connect GitHub first" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Install the GitHub App" })).toHaveAttribute("href", /^https:\/\/github\.com\/apps\/[\w-]+\/installations\/new$/);
     await expect(page.getByRole("link", { name: "Already installed? Connect it" })).toHaveAttribute("href", "/api/github/connect");
-    await expect(page.getByText("New projects use Next.js + Python (Lyzr SDK). Imported projects keep their stack.")).toBeVisible();
+    await expect(page.getByText("New projects use Next.js + Python (Lyzr SDK) + Postgres + sign-in. Imported projects keep their stack.")).toBeVisible();
     // An installation id in a link is never trusted: it goes through GitHub's own sign-in for the App.
     const res = await page.request.get("/import?installation_id=1&setup_action=install", { maxRedirects: 0 });
     expect(res.status()).toBe(307);

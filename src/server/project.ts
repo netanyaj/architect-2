@@ -102,7 +102,7 @@ export type ProjectWorkspace = {
   icon: ReturnType<typeof projectIcon>;
   status: ProjectInput["status"];
   prompt: string | null;
-  /** "default" (Next.js + Python with the Lyzr SDK) or the stack kept from an imported repo (B-8). */
+  /** "default" (Next.js + Python with the Lyzr SDK, Postgres and sign-in) or the stack kept from an imported repo (B-8). */
   stack: string;
   /** The GitHub repo a project was imported from. */
   repo: string | null;

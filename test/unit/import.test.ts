@@ -143,7 +143,7 @@ describe("planFromImport", () => {
     expect(db.tables.projects).toEqual([]);
     expect(await planFromImport({ importId: "11111111-1111-4111-8111-111111111111", port: true })).toMatchObject({ ok: true });
     expect(db.tables.projects[0]).toMatchObject({ stack: "default" });
-    expect(String(db.tables.projects[0].prompt)).toContain("Port it to the default stack (Next.js + Python with the Lyzr SDK)");
+    expect(String(db.tables.projects[0].prompt)).toContain("Port it to the default stack (Next.js + Python with the Lyzr SDK, Postgres and sign-in)");
     expect(db.tables.repo_imports[0].analysis).toMatchObject({ port: true });
   });
 });

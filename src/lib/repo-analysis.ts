@@ -378,7 +378,7 @@ export function repoPlanRequest(input: { repo: string; branch: string; folder: s
   const a = input.analysis;
   const where = `${input.repo} (branch ${input.branch}${input.folder !== "/" ? `, folder ${input.folder}` : ""})`;
   const lines = [
-    `Plan from repo ${where}. Keep its stack: ${a.stack}.${input.port ? " Port it to the default stack (Next.js + Python with the Lyzr SDK), keeping what it does today." : ""}`,
+    `Plan from repo ${where}. Keep its stack: ${a.stack}.${input.port ? " Port it to the default stack (Next.js + Python with the Lyzr SDK, Postgres and sign-in), keeping what it does today." : ""}`,
     a.readme ? `What it does today: ${a.readme}` : "",
     "Today's behaviour, each kept as a part with this exact title:",
     ...input.behaviour.map((b) => {

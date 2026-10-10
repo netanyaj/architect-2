@@ -24,7 +24,7 @@ const STEPS: { id: Step; label: string }[] = [
   { id: "plan", label: "Plan from repo" },
 ];
 const FRAMEWORK: Record<string, string> = { crewai: "CrewAI", langgraph: "LangGraph", lyzr: "Lyzr" };
-const STACK_NOTE = "New projects use Next.js + Python (Lyzr SDK). Imported projects keep their stack.";
+const STACK_NOTE = "New projects use Next.js + Python (Lyzr SDK) + Postgres + sign-in. Imported projects keep their stack.";
 
 function Card({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
   return (
@@ -87,7 +87,7 @@ function Understanding({ view, runChoice, setRunChoice }: { view: ImportView; ru
           <label className="flex items-start gap-2.5">
             <input type="radio" name="run" className="mt-1" checked={runChoice.kind === "port"} onChange={() => setRunChoice({ kind: "port" })} />
             <span className="flex flex-col">
-              <span className="font-[550]">Port it to Next.js + Python (Lyzr SDK)</span>
+              <span className="font-[550]">Port it to Next.js + Python (Lyzr SDK) + Postgres + sign-in</span>
               <span className="text-small text-ink-2">The plan describes the move part by part, with its cost. Nothing is ported until you click Build.</span>
             </span>
           </label>

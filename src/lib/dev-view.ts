@@ -146,7 +146,7 @@ export function partFiles(part: DevPart): DevFile[] {
 /** A new project's starting files on main (the default stack, B-8). */
 export function scaffold(name: string): DevFile[] {
   return [
-    { path: "README.md", content: `# ${name}\n\nBuilt with Architect. Stack: Next.js + Python (Lyzr SDK).\n` },
+    { path: "README.md", content: `# ${name}\n\nBuilt with Architect. Stack: Next.js + Python (Lyzr SDK) + Postgres + sign-in.\n` },
     { path: "package.json", content: JSON.stringify({ name: slugOf(name), private: true, scripts: { dev: "next dev", build: "next build", test: "architect check" }, dependencies: { next: "16", react: "19" } }, null, 2) + "\n" },
     { path: "requirements.txt", content: "lyzr>=1.0\n" },
     { path: "app/layout.tsx", content: 'export default function Layout({ children }: { children: React.ReactNode }) {\n  return <html lang="en"><body>{children}</body></html>;\n}\n' },

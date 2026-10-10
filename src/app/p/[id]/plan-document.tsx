@@ -25,8 +25,8 @@ export const GROUP_LABEL: Record<string, string> = {
   quality: "Checks and safety",
 };
 /** B-8: the stack new projects get; imported projects keep their own. */
-export const DEFAULT_STACK = "Next.js + Python (Lyzr SDK)";
-export const STACK_NOTE = "New projects use Next.js + Python (Lyzr SDK). Imported projects keep their stack.";
+export const DEFAULT_STACK = "Next.js + Python (Lyzr SDK) + Postgres + sign-in";
+export const STACK_NOTE = "New projects use Next.js + Python (Lyzr SDK) + Postgres + sign-in. Imported projects keep their stack.";
 
 export const GROUP_ORDER = ["features", "integrations", "agents", "data", "quality"];
 
