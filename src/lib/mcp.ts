@@ -97,6 +97,9 @@ export function codingAgentUpdate(change: AgentChange): { ok: true; status: "wai
 }
 
 export type SessionStep = { atMs: number; who: "agent" | "checker"; text: string; kind: "info" | "ok" | "fail" };
+/** A coding agent can't deploy on its own: the same rule as Architect's agent (B-7, C-10). */
+export const DEPLOY_REFUSAL = "a Live deploy needs an Owner or Admin's approval; use request_approval";
+
 export type AgentSession = { partKey: string; partTitle: string; agent: string; steps: SessionStep[]; waitFromMs: number; worksAtMs: number; endMs: number };
 
 /** The part a session works on: Brief writer if the plan has it, else an agent part that works, else any part that works. */
@@ -107,7 +110,8 @@ export function sessionPart<T extends { key: string; title: string; grp: string;
 
 /**
  * ?sim=byoagent: a short scripted session by a coding agent over MCP. It reads the plan, updates a part, tries to
- * mark it Works (refused by codingAgentUpdate), runs the tests, and the part waits until the checker passes it.
+ * mark it Works (refused by codingAgentUpdate), runs the tests, tries to deploy to Live without approval (refused, as
+ * it would be for Architect's own agent: B-7, C-10), and the part waits until the checker passes it.
  */
 export function agentSession(input: { part: { key: string; title: string }; partCount: number; version: number; owner: string; repo: boolean }): AgentSession {
   const agent = `Claude Code (${input.owner})`;
@@ -120,6 +124,7 @@ export function agentSession(input: { part: { key: string; title: string }; part
     { atMs: 1600, who: "checker", kind: "info", text: update.ok ? `‘${t}’ changed, so it waits for its check` : "" },
     { atMs: 3000, who: "agent", kind: "fail", text: `tried to mark ‘${t}’ Works · refused: ${mark.ok ? "" : mark.reason}` },
     { atMs: 4500, who: "agent", kind: "info", text: `ran the tests for ‘${t}’ in the sandbox · 3 of 3 passed (not proof)` },
+    { atMs: 5200, who: "agent", kind: "fail", text: `tried to deploy to Live · refused: ${DEPLOY_REFUSAL}` },
     { atMs: 6000, who: "checker", kind: "info", text: `re-running the locked check for ‘${t}’` },
     { atMs: 9000, who: "checker", kind: "ok", text: `Passed 3 of 3 · ‘${t}’ works` },
   ];

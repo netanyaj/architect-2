@@ -9,6 +9,8 @@ export type ProjectInput = {
   /** Latest run, if any. */
   runStatus?: string | null;
   prompt?: string | null;
+  /** An Architect 1.0 app (F9): it keeps running as it is until someone moves it to 2.0. */
+  legacy?: { movedTo: string | null } | null;
 };
 
 export type ProjectSummary = {
@@ -51,6 +53,16 @@ function plural(n: number, one: string, many = `${one}s`) {
 }
 
 export function summarizeProject(p: ProjectInput): ProjectSummary {
+  if (p.legacy) {
+    return {
+      total: 0,
+      works: 0,
+      meta: "Architect 1.0 · keeps running as it is",
+      next: p.legacy.movedTo ? { status: "works", text: `Moved to 2.0 as ${p.legacy.movedTo}` } : { status: "todo", text: "Move to 2.0" },
+      needsYou: false,
+      filter: "live",
+    };
+  }
   const counted = p.items.filter((i) => i.status !== "deferred" && i.status !== "dropped");
   const total = counted.length;
   const works = counted.filter((i) => i.status === "built").length;

@@ -142,7 +142,7 @@ describe("reset_demo_workspace", () => {
     await db.query("select reset_demo_workspace($1, $2)", [ws, MORGAN]);
 
     const names = (await db.query<{ name: string }>("select name from projects where workspace_id = $1 order by name", [ws])).rows.map((r) => r.name);
-    expect(names).toEqual(["Lead scorer", "Meeting Prep", "Vendor tracker", "ticket-triage"]);
+    expect(names).toEqual(["Lead scorer", "Meeting Prep", "Ticket triage (Architect 1.0)", "Vendor tracker", "ticket-triage"]);
     expect(await count("select count(*) as n from connections where workspace_id = $1 and status = 'missing'", [ws])).toBe(2);
     expect(await count("select sum(credits) as n from usage_ledger where workspace_id = $1", [ws])).toBe(372);
     expect(await count("select count(*) as n from members where workspace_id = $1 and status = 'invited'", [ws])).toBe(3); // Sam, Jordan, friend
@@ -451,5 +451,24 @@ describe("keys, offline and secret requests (0017)", () => {
     expect(await one("select relrowsecurity from pg_class where relname = 'project_keys'")).toEqual({ relrowsecurity: true });
     await db.query("insert into deployments (project_id, environment, blueprint_version, status) values ($1, 'production', 1, 'offline')", [project]);
     await db.query("insert into approvals (workspace_id, project_id, kind, title) values ($1, $2, 'secret', 'Live key')", [ws, project]);
+  });
+});
+
+describe("the Architect 1.0 app and part comments (0018)", () => {
+  it("every new or reset workspace has one legacy app; anyone can read comments; a comment has a length", async () => {
+    const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'reviewer@example.com', 'Rita') as ws", [REVIEWER]);
+    const legacy = await db.query<{ name: string; status: string; legacy_repo: string; owner_id: string }>("select name, status, legacy_repo, owner_id from projects where workspace_id = $1 and legacy_repo is not null", [ws]);
+    expect(legacy.rows).toEqual([{ name: "Ticket triage (Architect 1.0)", status: "live", legacy_repo: "netanyaj/ticket-triage", owner_id: REVIEWER }]);
+    await db.query("select reset_demo_workspace($1, $2)", [ws, REVIEWER]);
+    expect(await count("select count(*) as n from projects where workspace_id = $1 and legacy_repo is not null", [ws])).toBe(1);
+    const { id: project } = await one<{ id: string }>("select id from projects where workspace_id = $1 and name = 'Meeting Prep'", [ws]);
+    await db.query("insert into part_comments (project_id, item_key, body, author_name) values ($1, 'brief-writer', 'Shorter please', 'Vic')", [project]);
+    await expect(db.query("insert into part_comments (project_id, item_key, body, author_name) values ($1, 'brief-writer', '', 'Vic')", [project])).rejects.toThrow(/check/);
+    expect(await one("select relrowsecurity from pg_class where relname = 'part_comments'")).toEqual({ relrowsecurity: true });
+  });
+
+  it("workspaces from before 0018 got the app too", async () => {
+    const n = await count("select count(*) as n from workspaces w where not exists (select 1 from projects p where p.workspace_id = w.id and p.legacy_repo is not null) and exists (select 1 from members m where m.workspace_id = w.id and m.role = 'owner' and m.user_id is not null)");
+    expect(n).toBe(0);
   });
 });

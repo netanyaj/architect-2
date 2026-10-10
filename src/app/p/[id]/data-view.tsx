@@ -172,6 +172,8 @@ export function DataView({ project, items }: { project: ProjectWorkspace; items:
                 Add a row
               </Button>
             )}
+            {/* Rows added or removed here last until the page reloads: say so where the edit happens. */}
+            {!isUsers && !readOnly && <SimTag title="Rows you add or remove here last until the page reloads.">Simulated · changes aren&apos;t saved</SimTag>}
           </div>
           {readOnly && <p className="px-4 pb-2 text-small text-ink-2">{readOnly}</p>}
           {mode === "columns" ? (

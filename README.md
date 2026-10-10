@@ -13,11 +13,12 @@ This folder becomes the root of the new repo. Claude Code reads `CLAUDE.md` firs
 | `docs/DESIGN.md`, `src/app/tokens.css`, `design-system/` | Design tokens (Tailwind v4), the component list, the design-system copy |
 | `docs/QA-CHECKLIST.md` | What M6 checks |
 | `docs/DECISIONS.md` | Where the prototype differs from the spec, and why; the numbers we set |
+| [`docs/COVERAGE.md`](docs/COVERAGE.md) | Every Must in the PRD: Done, Simulated or Doc only, and where to see it |
 | `docs/product/` | PRD, architecture, flows, stack and milestones (for context) |
 | `.env.example` | The keys you add yourself |
 
 ## Real vs Simulated
-Everything simulated carries the `Simulated` tag in the interface. Full list: `docs/BUILD-SPEC.md` section 1; deviations: `docs/DECISIONS.md`.
+Everything simulated carries the `Simulated` tag in the interface. Full list: `docs/BUILD-SPEC.md` section 1; deviations: `docs/DECISIONS.md`; every PRD Must, row by row: [`docs/COVERAGE.md`](docs/COVERAGE.md).
 
 | Part | Real or Simulated |
 |---|---|

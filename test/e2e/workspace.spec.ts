@@ -59,8 +59,9 @@ test.describe("pages and the project workspace", () => {
     await signIn(page, owner, "/projects");
     const filters = page.getByRole("group", { name: "Show" });
     await expect(filters.getByRole("button", { name: "Needs you 2" })).toBeVisible();
-    await filters.getByRole("button", { name: "Live 1" }).click();
-    await expect(page.getByRole("list", { name: "Projects" }).getByRole("listitem")).toHaveCount(1);
+    // Meeting Prep and the Architect 1.0 app (F9), which keeps running.
+    await filters.getByRole("button", { name: "Live 2" }).click();
+    await expect(page.getByRole("list", { name: "Projects" }).getByRole("listitem")).toHaveCount(2);
     await filters.getByRole("button", { name: /^All/ }).click();
 
     await page.getByRole("button", { name: "Actions for Vendor tracker" }).click();

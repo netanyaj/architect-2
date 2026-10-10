@@ -45,7 +45,7 @@ test.describe("sign-in", () => {
 
     // The side nav reads the seeded workspace from the database.
     const nav = page.getByRole("navigation", { name: "Workspace" });
-    await expect(nav.getByRole("link", { name: /Projects\s*4/ })).toBeVisible();
+    await expect(nav.getByRole("link", { name: /Projects\s*5/ })).toBeVisible();
     await expect(nav.getByRole("link", { name: /Approvals\s*3/ })).toBeVisible();
 
     const db = adminDb();
@@ -62,7 +62,8 @@ test.describe("sign-in", () => {
     const left = Number(w!.credits_total) - (usage ?? []).reduce((s, r) => s + Number(r.credits), 0);
     await expect(nav.getByText(`${left.toLocaleString("en-US")} / 2,000`)).toBeVisible();
     const { count } = await db.from("projects").select("id", { count: "exact", head: true }).eq("workspace_id", members![0].workspace_id);
-    expect(count).toBe(4);
+    // The four seeded projects and the Architect 1.0 app (F9, migration 0018).
+    expect(count).toBe(5);
   });
 
   test("signing in again reuses the same workspace, and sign out ends the session", async ({ page }) => {

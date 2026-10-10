@@ -1,22 +1,38 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { HelpHost } from "@/components/ax/help-host";
+import { canBuild } from "@/lib/permissions";
+import { createServerDb } from "@/server/db";
 import { getHelpContext, getNavData } from "@/server/queries";
 import { getProjectWorkspace } from "@/server/project";
 import { getAppContext } from "@/server/workspace";
+import { LegacyProject } from "./legacy-project";
 import { SwitchWorkspaceCard } from "./switch-workspace-card";
 import { Workspace } from "./workspace";
 
+const UUID = /^[0-9a-f-]{36}$/i;
+
+/** Only the name: the page loads the project itself (loading it twice made every project page slower). */
 export async function generateMetadata({ params }: PageProps<"/p/[id]">): Promise<Metadata> {
   const { id } = await params;
-  const ctx = await getAppContext();
-  const project = await getProjectWorkspace(id, ctx, 0);
-  return { title: project ? `${project.name} · Architect` : "Project · Architect" };
+  if (!UUID.test(id)) return { title: "Project · Architect" };
+  const db = await createServerDb();
+  const { data } = await db.from("projects").select("name").eq("id", id).maybeSingle();
+  return { title: data ? `${data.name} · Architect` : "Project · Architect" };
 }
 
 export default async function ProjectPage({ params }: PageProps<"/p/[id]">) {
   const { id } = await params;
   const ctx = await getAppContext();
+  // An Architect 1.0 app (F9) has no plan: it keeps running as it is until someone moves it to 2.0.
+  if (UUID.test(id)) {
+    const db = await createServerDb();
+    const { data: legacy } = await db.from("projects").select("id, name, workspace_id, legacy_repo, moved_to, updated_at").eq("id", id).not("legacy_repo", "is", null).maybeSingle();
+    if (legacy) {
+      const { data: moved } = legacy.moved_to ? await db.from("projects").select("id, name").eq("id", legacy.moved_to).maybeSingle() : { data: null };
+      return <LegacyProject name={legacy.name} id={legacy.id} repo={legacy.legacy_repo!} movedTo={moved} canMove={canBuild(ctx.role) && legacy.workspace_id === ctx.workspace.id} />;
+    }
+  }
   const [nav, help] = await Promise.all([getNavData(ctx), getHelpContext(ctx)]);
   const project = await getProjectWorkspace(id, ctx, nav.credits.left, { catchUp: true });
   if (!project) notFound();

@@ -313,6 +313,7 @@ const settings = z.object({
   instructions: z.string().trim().min(1, "Write the agent's instructions first.").max(6000, "Instructions can be up to 6,000 characters."),
   tools: z.array(z.string().trim().min(1).max(80)).max(12),
   knowledge: z.array(z.string().trim().min(1).max(80)).max(12),
+  framework: z.enum(["lyzr", "crewai", "langgraph"]).optional(),
 });
 
 /**
@@ -340,15 +341,16 @@ export async function saveAgent(input: z.input<typeof settings>): Promise<Action
     return { ok: false, message: "That MCP server isn't on your organisation's list. An Owner or Admin adds servers in Governance › Apps and MCP servers." };
   }
   const now = new Date().toISOString();
-  const next: AgentRow = { ...row, model: s.model, temperature: s.temperature, max_tokens: s.maxTokens, instructions: s.instructions, tools: s.tools, knowledge: s.knowledge };
+  const framework = s.framework ?? (row.framework as "lyzr" | "crewai" | "langgraph");
+  const next: AgentRow = { ...row, model: s.model, temperature: s.temperature, max_tokens: s.maxTokens, instructions: s.instructions, tools: s.tools, knowledge: s.knowledge, framework };
   const { error } = await admin
     .from("agents")
-    .update({ model: s.model, temperature: s.temperature, max_tokens: s.maxTokens, instructions: s.instructions, tools: s.tools, knowledge: s.knowledge, updated_at: now })
+    .update({ model: s.model, temperature: s.temperature, max_tokens: s.maxTokens, instructions: s.instructions, tools: s.tools, knowledge: s.knowledge, framework, updated_at: now })
     .eq("id", row.id);
   if (error) return { ok: false, message: "The settings couldn't be saved. Try again." };
   await admin.from("audit_log").insert({ workspace_id: ctx.workspace.id, actor: ctx.name, action: "agent.saved", target: row.name, details: { agent_id: row.id } });
 
-  if (row.framework !== "lyzr" || !lyzrConfigured().perAgent) return { ok: true, syncedAt: row.studio_synced_at, lyzrAgentId: row.lyzr_agent_id };
+  if (framework !== "lyzr" || !lyzrConfigured().perAgent) return { ok: true, syncedAt: row.studio_synced_at, lyzrAgentId: row.lyzr_agent_id };
   try {
     let lyzrAgentId = row.lyzr_agent_id;
     if (lyzrAgentId) await updateLyzrAgent(lyzrAgentId, lyzrSpec(next));

@@ -280,7 +280,9 @@ export function layoutGraph(spec: { trigger: GraphEnd; delivery: GraphEnd; agent
 }
 
 /** The settings a person can change on an agent (Settings tab). */
-export type AgentDraft = { model: ModelChoice; temperature: number; maxTokens: number; instructions: string; tools: string[]; knowledge: string[] };
+/** Where an agent runs (B-6): Lyzr Studio, or natively in CrewAI or LangGraph behind the same agent interface. */
+export type AgentFramework = "lyzr" | "crewai" | "langgraph";
+export type AgentDraft = { model: ModelChoice; temperature: number; maxTokens: number; instructions: string; tools: string[]; knowledge: string[]; framework?: AgentFramework };
 
 /** How many settings differ from what's saved ("2 unsaved changes"). */
 export function changesBetween(saved: AgentDraft, draft: AgentDraft): number {
@@ -290,7 +292,8 @@ export function changesBetween(saved: AgentDraft, draft: AgentDraft): number {
     Number(saved.maxTokens !== draft.maxTokens) +
     Number(saved.instructions.trim() !== draft.instructions.trim()) +
     Number(saved.tools.join("\n") !== draft.tools.join("\n")) +
-    Number(saved.knowledge.join("\n") !== draft.knowledge.join("\n"))
+    Number(saved.knowledge.join("\n") !== draft.knowledge.join("\n")) +
+    Number((saved.framework ?? "lyzr") !== (draft.framework ?? "lyzr"))
   );
 }
 

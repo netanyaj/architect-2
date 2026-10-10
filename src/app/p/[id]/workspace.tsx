@@ -33,7 +33,7 @@ import { AgentsPlanPanel, AgentsView } from "./agents-view";
 import { CodeEditCard } from "./code-edit-card";
 import { DataView } from "./data-view";
 import { OrgBudgetBanner } from "@/components/ax/org-budget-banner";
-import { CodeView, DevActivity, PrStatus, TerminalView } from "./dev-view";
+import { CodeView, DevActivity, downloadCode, PrStatus, TerminalView } from "./dev-view";
 import { HandoffBanner, TransferDialog } from "./handoff";
 import { SyncBanner } from "./pr-card";
 import { AppPreview, BudgetBanner, BuildActivity, BuildPanel, TestTheApp } from "./build-stage";
@@ -142,16 +142,10 @@ function Rail({ label, icon, onOpen }: { label: string; icon: "panelLeft" | "pan
   );
 }
 
-function MoreMenu({ project, canAct, dev, onToggleDev, onTransfer }: { project: ProjectWorkspace; canAct: boolean; dev: boolean; onToggleDev: () => void; onTransfer: () => void }) {
+function MoreMenu({ project, items, canAct, dev, onToggleDev, onTransfer }: { project: ProjectWorkspace; items: WorkspaceItem[]; canAct: boolean; dev: boolean; onToggleDev: () => void; onTransfer: () => void }) {
   const router = useRouter();
   const [, start] = useTransition();
   const item = "flex min-h-10 items-center gap-2.5 rounded-tile px-2.5";
-  const later = (label: string, when: string, sim = false) => (
-    <DropdownMenuItem className={item} disabled title={`${label} comes in ${when}.`}>
-      <span className="flex-1">{label}</span>
-      {sim ? <SimTag /> : <span className="text-small text-ink-3">{when}</span>}
-    </DropdownMenuItem>
-  );
   return (
     <DropdownMenu>
       <DropdownMenuTrigger aria-label="More for this project" className="grid size-[38px] place-items-center rounded-full border border-line-ctl bg-surface hover:bg-selected">
@@ -174,8 +168,13 @@ function MoreMenu({ project, canAct, dev, onToggleDev, onTransfer }: { project: 
         >
           Duplicate
         </DropdownMenuItem>
-        {later("Download code", "M4", true)}
-        {later("GitHub", "M4")}
+        <DropdownMenuItem className={item} onSelect={() => downloadCode(project, items)}>
+          <span className="flex-1">{project.repo ? "Download code from GitHub" : "Download code"}</span>
+          {!project.repo && <SimTag title="Architect's code is simulated in this prototype; the .zip says so." />}
+        </DropdownMenuItem>
+        <DropdownMenuItem className={item} onSelect={() => (project.repo ? window.open(`https://github.com/${project.repo}`, "_blank", "noopener") : router.push("/settings#github"))}>
+          {project.repo ? `GitHub · ${project.repo}` : "GitHub settings"}
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className={item}
@@ -306,6 +305,16 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   // ?sim=byoagent (F4): a coding agent's scripted session; its changed part waits for its check.
   const agentSession = useAgentSession(project, builtItems, params.get("sim") === "byoagent");
   const items = withSession(builtItems, agentSession);
+
+  // Projects › ⋯ › Download code opens the project with ?download=1: download once, then drop the parameter.
+  const wantsDownload = params.get("download") === "1";
+  useEffect(() => {
+    if (!wantsDownload) return;
+    downloadCode(project, items);
+    router.replace(pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per visit
+  }, [wantsDownload]);
+
   const counted = items.filter((i) => i.status !== "deferred" && i.status !== "dropped");
   const worksNow = counted.filter((i) => i.status === "built" || i.status === "sample_data").length;
   const budgetPaused = Boolean(live.budgetPause) && (running || (project.status === "paused" && project.run?.status === "paused_budget" && items.some((i) => i.status === "agreed")));
@@ -448,7 +457,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
         <div className="flex items-center gap-2">
           <IconButton icon="help" label="Help with this project" onClick={() => openHelp(project.id)} />
           <ShareMenu project={project} />
-          <MoreMenu project={project} canAct={canAct} dev={dev} onToggleDev={toggleDev} onTransfer={() => setTransferOpen(true)} />
+          <MoreMenu project={project} items={items} canAct={canAct} dev={dev} onToggleDev={toggleDev} onTransfer={() => setTransferOpen(true)} />
           {state.action.beside && <span className="max-w-[190px] text-right text-small leading-tight text-ink-2 max-md:hidden">{state.action.beside}</span>}
           <Button
             // The stage action is the primary only when nothing on screen needs the person first (BUILD-SPEC §2).

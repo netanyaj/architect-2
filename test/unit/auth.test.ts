@@ -75,7 +75,7 @@ describe("safeNext", () => {
 describe("isPublicPath / loginUrl", () => {
   it("lets signed-out visitors open login, auth, Home and invites only", () => {
     for (const p of ["/login", "/auth/callback", "/home", "/invite/abc", "/"]) expect(isPublicPath(p)).toBe(true);
-    for (const p of ["/projects", "/settings", "/p/123", "/usage", "/connections"]) expect(isPublicPath(p)).toBe(false);
+    for (const p of ["/projects", "/settings", "/p/123", "/usage", "/connections", "/home/decide"]) expect(isPublicPath(p)).toBe(false);
   });
   it("carries the page they wanted", () => {
     expect(loginUrl("/p/123?view=files")).toBe("/login?next=%2Fp%2F123%3Fview%3Dfiles");

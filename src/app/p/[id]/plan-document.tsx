@@ -14,6 +14,7 @@ import { answerQuestion, changeDefault, editItem } from "@/server/actions/plan";
 import type { PlanItem } from "@/server/blueprint/write-plan";
 import type { PlanQuestion, ProjectWorkspace, WorkspaceItem } from "@/server/project";
 import { CompareVersions } from "./compare-versions";
+import { PartComments, type PartComment } from "./part-comments";
 import type { WriterState } from "./use-plan-writer";
 
 export const GROUP_LABEL: Record<string, string> = {
@@ -28,6 +29,24 @@ export const DEFAULT_STACK = "Next.js + Python (Lyzr SDK)";
 export const STACK_NOTE = "New projects use Next.js + Python (Lyzr SDK). Imported projects keep their stack.";
 
 export const GROUP_ORDER = ["features", "integrations", "agents", "data", "quality"];
+
+/**
+ * A part's estimate in words (A-4): its credit range, a time range, how sure the estimate is and what drives it.
+ * Time scales with credits (BG: 45 s per typical 12-credit unit), so the range follows the credit range.
+ */
+export function estimateLine(item: Pick<WorkspaceItem, "range" | "estimate" | "seconds" | "confidence" | "driver">): string {
+  const parts: string[] = [];
+  if (item.range) parts.push(`${item.range.low}–${item.range.high} cr`);
+  if (item.seconds && item.estimate && item.range) {
+    const min = (credits: number) => Math.max(1, Math.round(((item.seconds as number) * credits) / (item.estimate as number) / 60));
+    const lo = min(item.range.low);
+    const hi = min(item.range.high);
+    parts.push(lo === hi ? `about ${lo} min` : `${lo}–${hi} min`);
+  }
+  if (item.confidence) parts.push(`${item.confidence} confidence`);
+  if (item.driver) parts.push(`mostly ${item.driver}`);
+  return parts.join(" · ");
+}
 
 /** A streamed part, shaped like a saved one, so writing and written plans render the same. */
 export function fromStreamed(i: PlanItem): WorkspaceItem {
@@ -45,6 +64,8 @@ export function fromStreamed(i: PlanItem): WorkspaceItem {
     estimate: i.estimate.likely,
     range: { low: i.estimate.low, high: i.estimate.high },
     driver: i.estimate.driver,
+    confidence: i.estimate.confidence,
+    seconds: i.estimate.seconds,
     provider: i.provider ?? null,
     position: i.position,
     edited: false,
@@ -98,7 +119,7 @@ function QuestionCard({ q, editReason }: { q: PlanQuestion; editReason?: string 
   );
 }
 
-function ItemRow({ item, editReason, fromRepo = false }: { item: WorkspaceItem; editReason?: string; fromRepo?: boolean }) {
+function ItemRow({ item, editReason, fromRepo = false, projectId, comments }: { item: WorkspaceItem; editReason?: string; fromRepo?: boolean; projectId: string; comments: PartComment[] }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [pending, start] = useTransition();
@@ -220,6 +241,8 @@ function ItemRow({ item, editReason, fromRepo = false }: { item: WorkspaceItem; 
             </span>
           )}
           {item.dropReason && <span className="text-small text-ink-2">Left out: {item.dropReason}</span>}
+          {item.status !== "built" && item.range && <span className="text-small text-ink-2 tabular-nums">{estimateLine(item)}</span>}
+          <PartComments projectId={projectId} itemKey={item.key} title={item.title} comments={comments} />
         </div>
       )}
       {!editing && (
@@ -435,7 +458,7 @@ export function PlanDocument({
             {items
               .filter((i) => i.grp === g)
               .map((i) => (
-                <ItemRow key={i.key} item={i} fromRepo={Boolean(project.repo)} editReason={writing ? "Wait for the plan to finish writing." : editReason} />
+                <ItemRow key={i.key} item={i} fromRepo={Boolean(project.repo)} editReason={writing ? "Wait for the plan to finish writing." : editReason} projectId={project.id} comments={project.comments[i.key] ?? []} />
               ))}
           </ul>
         </section>

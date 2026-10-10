@@ -33,6 +33,10 @@ export type WorkspaceItem = {
   estimate: number | null;
   range: { low: number; high: number } | null;
   driver: string | null;
+  /** How sure the estimate is, from how many similar parts have been built (A-4). */
+  confidence: "low" | "medium" | "high" | null;
+  /** Likely build time for the part, in seconds (A-4). */
+  seconds: number | null;
   provider: string | null;
   position: number;
   edited: boolean;
@@ -151,6 +155,8 @@ export type ProjectWorkspace = {
   messages: ChatMessage[];
   changes: ChangeCardData[];
   uploads: { id: string; name: string; mime: string | null; size: number | null; read: boolean }[];
+  /** Comments on plan parts, by part key (BL-15): anyone in the workspace can add one. */
+  comments: Record<string, { id: string; body: string; author: string; at: string }[]>;
   /** Edits made in Developer view (simulated): the chat cards, and each edited file for Changes and the viewer. */
   codeEdits: Awaited<ReturnType<typeof loadCodeEdits>>;
   /** Launch (screen 4): loaded only on the Launch page. */
@@ -301,7 +307,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
           .single(),
         db
           .from("items")
-          .select("id, key, title, description, proved_when, source_quote, grp, status, status_detail, drop_reason, estimate_low, estimate_likely, estimate_high, cost_driver, provider, position, edited_at")
+          .select("id, key, title, description, proved_when, source_quote, grp, status, status_detail, drop_reason, estimate_low, estimate_likely, estimate_high, cost_driver, confidence, est_seconds, provider, position, edited_at")
           .eq("blueprint_id", latestId)
           .order("position"),
         db.from("questions").select("id, text, affects, options, recommended, answer, blocking, default_effect, position").eq("blueprint_id", latestId).order("position"),
@@ -386,6 +392,8 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     estimate: num(i.estimate_likely),
     range: i.estimate_low === null || i.estimate_high === null ? null : { low: Number(i.estimate_low), high: Number(i.estimate_high) },
     driver: i.cost_driver,
+    confidence: (i.confidence as WorkspaceItem["confidence"]) ?? null,
+    seconds: i.est_seconds === null ? null : Number(i.est_seconds),
     provider: i.provider,
     position: i.position,
     edited: Boolean(i.edited_at),
@@ -432,7 +440,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
   }
 
   // Read together: the database's clock, the apps held back here, and the organisation's cap (C-3, C-7).
-  const [serverNow, denied, budget, codeEdits] = await Promise.all([
+  const [serverNow, denied, budget, codeEdits, { data: commentRows }] = await Promise.all([
     dbNow(createAdminDb()),
     blockedServices(createAdminDb(), p.workspace_id, p.id, knownApps(list.map((i) => i.provider ?? "")), policies),
     (async () => {
@@ -441,7 +449,11 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
       return { cap: b.cap, spent: Math.round(b.spent), level: b.level, percent: b.percent, raiseWaiting: Boolean(raise?.length) };
     })(),
     loadCodeEdits(createAdminDb(), p.id),
+    db.from("part_comments").select("id, item_key, body, author_name, created_at").eq("project_id", p.id).order("created_at"),
   ]);
+  // Comments on plan parts (BL-15), by part.
+  const comments: Record<string, { id: string; body: string; author: string; at: string }[]> = {};
+  for (const c of commentRows ?? []) (comments[c.item_key] ??= []).push({ id: c.id, body: c.body, author: c.author_name, at: c.created_at });
 
   return {
     id: p.id,
@@ -502,6 +514,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     spent: { total: credits(["build", "fix", "change", "blueprint", "running"]), build: credits(["build", "change"]), fix: credits(["fix"]) },
     serverNow,
     codeEdits,
+    comments,
     connected: (conns ?? []).filter((c) => c.status === "connected").map((c) => c.provider),
     // Apps held back here: the plan's own and any an agent uses as a tool (the Agents graph shows both).
     denied,

@@ -43,8 +43,8 @@ function RowMenu({ p, canStart, onDelete, onError }: { p: Row; canStart: boolean
         </DropdownMenuItem>
         <DropdownMenuItem
           className={item}
-          disabled={!canStart}
-          title={canStart ? undefined : "Viewers can't duplicate projects."}
+          disabled={!canStart || Boolean(p.legacy)}
+          title={p.legacy ? "Architect 1.0 apps can't be duplicated. Move it to 2.0 first." : canStart ? undefined : "Viewers can't duplicate projects."}
           onSelect={() =>
             start(async () => {
               const r = await duplicateProject({ projectId: p.id });
@@ -54,9 +54,9 @@ function RowMenu({ p, canStart, onDelete, onError }: { p: Row; canStart: boolean
         >
           Duplicate
         </DropdownMenuItem>
-        <DropdownMenuItem className={item} disabled title="Downloading the code comes with Developer view (M4).">
+        <DropdownMenuItem className={item} disabled={Boolean(p.legacy)} title={p.legacy ? "Its code is in its repo on GitHub." : undefined} onSelect={() => router.push(`/p/${p.id}?download=1`)}>
           <span className="flex-1">Download code</span>
-          <SimTag />
+          <SimTag title="Architect's code is simulated in this prototype; a repo project downloads from GitHub." />
         </DropdownMenuItem>
         <DropdownMenuItem
           className={item}
@@ -194,7 +194,17 @@ export function ProjectsList({ projects, creditsUsed, canStart }: { projects: Ro
                   </StatusWord>
                 </span>
               }
-              trailing={<RowMenu p={p} canStart={canStart} onDelete={() => setDeleting(p)} onError={setError} />}
+              trailing={
+                <span className="flex items-center gap-2">
+                  {/* F9: an Architect 1.0 app moves to 2.0 through Import, with its repo chosen. */}
+                  {p.legacy && !p.legacy.movedTo && (
+                    <Button size="sm" href={`/import?repo=${encodeURIComponent(p.legacy.repo)}&from=${p.id}`} disabledReason={canStart ? undefined : "Viewers can't move apps."}>
+                      Move to 2.0
+                    </Button>
+                  )}
+                  <RowMenu p={p} canStart={canStart} onDelete={() => setDeleting(p)} onError={setError} />
+                </span>
+              }
             />
           ))}
         </Tray>

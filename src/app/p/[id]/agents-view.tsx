@@ -5,6 +5,7 @@ import { Button, buttonClasses, IconButton, TextLink } from "@/components/ax/but
 import { EmptyState } from "@/components/ax/empty-state";
 import { Icon } from "@/components/ax/icon";
 import { ModelNotAllowed, ModelPicker } from "@/components/ax/model-picker";
+import { Select } from "@/components/ax/select";
 import { Pill, SimTag } from "@/components/ax/pill";
 import { PlanGroup, PlanRow } from "@/components/ax/plan-panel";
 import { Segmented } from "@/components/ax/segmented";
@@ -26,7 +27,7 @@ import { rowFor } from "./build-stage";
 type Draft = AgentDraft;
 type Tab = "settings" | "runs" | "try" | "checks";
 
-const draftOf = (a: AgentView): Draft => ({ model: a.model, temperature: a.temperature, maxTokens: a.maxTokens, instructions: a.instructions, tools: a.tools, knowledge: a.knowledge });
+const draftOf = (a: AgentView): Draft => ({ model: a.model, temperature: a.temperature, maxTokens: a.maxTokens, instructions: a.instructions, tools: a.tools, knowledge: a.knowledge, framework: a.framework });
 
 const shortModel = (m: ModelChoice) => MODEL_LABEL[m].replace(" (free)", "").replace("Claude ", "");
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -339,6 +340,16 @@ function SettingsTab({ agent, draft, setDraft, project, readOnly, lyzrModel, mcp
           {agent.framework === "lyzr" && <span className="text-small text-ink-2">Model used on Studio: {lyzrModel}</span>}
         </div>
         {!modelAllowed && !readOnly && <ModelNotAllowed onSwitch={() => setPickerOpen(true)} />}
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor={`fw-${agent.id}`} className="flex items-center gap-2 text-small font-semibold text-ink-2">
+          Runs on {draft.framework !== "lyzr" && <SimTag title="CrewAI and LangGraph agents run natively behind the same agent interface; in this prototype Gemini answers Try it for them." />}
+        </label>
+        <Select id={`fw-${agent.id}`} value={draft.framework ?? "lyzr"} aria-disabled={reason ? true : undefined} title={reason} onChange={(e) => !reason && setDraft({ ...draft, framework: e.target.value as Draft["framework"] })} wrapperClassName="self-start">
+          <option value="lyzr">Lyzr Studio</option>
+          <option value="crewai">CrewAI</option>
+          <option value="langgraph">LangGraph</option>
+        </Select>
         <TextLink onClick={() => setMore((v) => !v)} aria-expanded={more}>
           More model settings · creativity {draft.temperature.toFixed(1)}
         </TextLink>

@@ -13,6 +13,7 @@ import { acceptSuggestion, loadPart, retryPart, setPartAside, type PartDetail } 
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 import { rowFor } from "./build-stage";
 import { ConnectButton } from "./connect-button";
+import { PartComments } from "./part-comments";
 
 const CHECK_KIND: Record<string, string> = { ui_test: "UI test", api_test: "API test", type_check: "Type check", http: "HTTP check", eval: "Eval", rubric: "Rubric" };
 const time = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
@@ -153,6 +154,7 @@ export function PartDrawer({ project, items }: { project: ProjectWorkspace; item
           </p>
         )}
       </section>
+      <PartComments projectId={project.id} itemKey={part.key} title={part.title} comments={project.comments[part.key] ?? []} />
 
       {blocked && fixes.length > 0 && (
         <section className="flex flex-col gap-2">

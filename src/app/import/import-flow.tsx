@@ -216,7 +216,10 @@ function Understanding({ view, runChoice, setRunChoice }: { view: ImportView; ru
 
 type RunChoice = { kind: "none" } | { kind: "configure"; command: string } | { kind: "port" };
 
-export function ImportFlow({ data, notice }: { data: ImportPageData; notice: { kind: "error" | "done"; text: string } | null }) {
+/** Moving an Architect 1.0 app to 2.0 (F9): its repo is chosen for you, and the new plan records the move. */
+export type MoveFrom = { projectId: string; name: string; repo: string };
+
+export function ImportFlow({ data, notice, move }: { data: ImportPageData; notice: { kind: "error" | "done"; text: string } | null; move?: MoveFrom | null }) {
   const router = useRouter();
   const [installationId, setInstallationId] = useState<number | null>(data.installations[0]?.installationId ?? null);
   const install = data.installations.find((i) => i.installationId === installationId) ?? null;
@@ -235,16 +238,6 @@ export function ImportFlow({ data, notice }: { data: ImportPageData; notice: { k
   const [analyzing, startAnalyze] = useTransition();
   const [planning, startPlan] = useTransition();
 
-  useEffect(() => {
-    if (!installationId) return;
-    startRepos(async () => {
-      setError(null);
-      setRepos(null);
-      const r = await importRepos({ installationId });
-      if (r.ok) setRepos(r.repos);
-      else setError(r.message);
-    });
-  }, [installationId]);
 
   const chooseRepo = (name: string, nextBranch?: string) => {
     if (!installationId) return;
@@ -267,6 +260,23 @@ export function ImportFlow({ data, notice }: { data: ImportPageData; notice: { k
     });
   };
 
+  useEffect(() => {
+    if (!installationId) return;
+    startRepos(async () => {
+      setError(null);
+      setRepos(null);
+      const r = await importRepos({ installationId });
+      if (r.ok) {
+        setRepos(r.repos);
+        if (move && r.repos.some((x) => x.fullName === move.repo)) chooseRepo(move.repo);
+      } else setError(r.message);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when the installation changes
+  }, [installationId]);
+
+  // F9: the 1.0 app's repo is chosen as the repos arrive (above); if the App can't read it, say so.
+  const moveNote = move && repos && !repos.some((r) => r.fullName === move.repo) ? `Architect can't read ${move.repo} yet. Install the GitHub App on it, then come back with Move to 2.0.` : null;
+
   const understand = () =>
     startAnalyze(async () => {
       if (!installationId || !repo) return;
@@ -282,7 +292,7 @@ export function ImportFlow({ data, notice }: { data: ImportPageData; notice: { k
       if (!view) return;
       setError(null);
       setStep("plan");
-      const r = await planFromImport({ importId: view.importId, port: runChoice.kind === "port", runCommand: runChoice.kind === "configure" ? runChoice.command : undefined });
+      const r = await planFromImport({ importId: view.importId, port: runChoice.kind === "port", runCommand: runChoice.kind === "configure" ? runChoice.command : undefined, fromProjectId: move?.projectId });
       if (!r.ok) {
         setStep("understand");
         return setError(r.message);
@@ -423,6 +433,14 @@ export function ImportFlow({ data, notice }: { data: ImportPageData; notice: { k
         </aside>
 
         <main className="flex min-h-[480px] min-w-0 flex-1 flex-col overflow-auto rounded-pane border border-line bg-surface shadow-pane">
+          {move && (
+            <div className="px-8 pt-6 max-sm:px-4">
+              <p role="status" className="rounded-card border border-line px-4 py-3">
+                <b className="font-semibold">Moving {move.name} to 2.0.</b> Its repo, <code className="font-mono text-small">{move.repo}</code>, is chosen. The 1.0 app keeps running while you do this.
+                {moveNote ? ` ${moveNote}` : ""}
+              </p>
+            </div>
+          )}
           {(notice || error) && (
             <div className="px-8 pt-6 max-sm:px-4">
               {error ? (

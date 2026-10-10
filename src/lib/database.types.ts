@@ -1048,6 +1048,44 @@ export type Database = {
           },
         ]
       }
+      part_comments: {
+        Row: {
+          author_id: string | null
+          author_name: string
+          body: string
+          created_at: string
+          id: string
+          item_key: string
+          project_id: string
+        }
+        Insert: {
+          author_id?: string | null
+          author_name: string
+          body: string
+          created_at?: string
+          id?: string
+          item_key: string
+          project_id: string
+        }
+        Update: {
+          author_id?: string | null
+          author_name?: string
+          body?: string
+          created_at?: string
+          id?: string
+          item_key?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "part_comments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       policies: {
         Row: {
           config: Json
@@ -1193,7 +1231,9 @@ export type Database = {
           icon: string
           id: string
           launch_settings: Json
+          legacy_repo: string | null
           model: string
+          moved_to: string | null
           name: string
           owner_display_name: string | null
           owner_id: string | null
@@ -1212,7 +1252,9 @@ export type Database = {
           icon?: string
           id?: string
           launch_settings?: Json
+          legacy_repo?: string | null
           model?: string
+          moved_to?: string | null
           name: string
           owner_display_name?: string | null
           owner_id?: string | null
@@ -1231,7 +1273,9 @@ export type Database = {
           icon?: string
           id?: string
           launch_settings?: Json
+          legacy_repo?: string | null
           model?: string
+          moved_to?: string | null
           name?: string
           owner_display_name?: string | null
           owner_id?: string | null
@@ -1244,6 +1288,13 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_moved_to_fkey"
+            columns: ["moved_to"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_workspace_id_fkey"
             columns: ["workspace_id"]

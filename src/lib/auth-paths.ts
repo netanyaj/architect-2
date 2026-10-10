@@ -3,10 +3,11 @@
 export const HOME = "/home";
 
 /** Signed-out visitors may open these. Home works signed out so a typed prompt survives sign-in; /share/ is a test version's view-only link; /docs/ is the MCP spec. */
-const PUBLIC_PREFIXES = ["/login", "/auth/", "/home", "/invite/", "/kit", "/share/", "/docs/"];
+const PUBLIC_PREFIXES = ["/login", "/auth/", "/invite/", "/kit", "/share/", "/docs/"];
 
+/** Home itself only: its sub-pages (Help me decide) need a signed-in person. */
 export function isPublicPath(pathname: string): boolean {
-  return pathname === "/" || PUBLIC_PREFIXES.some((p) => pathname === p.replace(/\/$/, "") || pathname.startsWith(p));
+  return pathname === "/" || pathname === HOME || PUBLIC_PREFIXES.some((p) => pathname === p.replace(/\/$/, "") || pathname.startsWith(p));
 }
 
 /**

@@ -153,7 +153,7 @@ export async function analyzeImport(input: { installationId: number; repo: strin
  * analysis, and opens it, where the plan is written as any other (M2). Nothing is built: Build still waits for a
  * click. A repo Architect can't run as it is needs Configure (a start command) or Port (consent) first (B-3).
  */
-export async function planFromImport(input: { importId: string; port?: boolean; runCommand?: string }): Promise<ActionResult<{ projectId: string }>> {
+export async function planFromImport(input: { importId: string; port?: boolean; runCommand?: string; fromProjectId?: string }): Promise<ActionResult<{ projectId: string }>> {
   const ctx = await getAppContext();
   if (!canBuild(ctx.role)) return { ok: false, message: BUILDERS_ONLY };
   if (!z.string().uuid().safeParse(input.importId).success) return { ok: false, message: "That import isn't here. Start again." };
@@ -167,12 +167,17 @@ export async function planFromImport(input: { importId: string; port?: boolean; 
     return { ok: false, message: `Choose Configure or Port first: ${saved.analysis.runnable.reason}` };
   }
   const port = Boolean(input.port);
+  // F9: moving an Architect 1.0 app. It has to be this workspace's, from this repo, and not moved already.
+  const { data: legacy } = input.fromProjectId && z.string().uuid().safeParse(input.fromProjectId).success
+    ? await admin.from("projects").select("id, name, legacy_repo, moved_to").eq("id", input.fromProjectId).eq("workspace_id", ctx.workspace.id).maybeSingle()
+    : { data: null };
+  const moving = legacy?.legacy_repo === imp.full_name && !legacy.moved_to ? legacy : null;
   const prompt = repoPlanRequest({ repo: imp.full_name, branch: imp.branch, folder: imp.folder, analysis: saved.analysis, behaviour: saved.behaviour, port });
   const { data: project, error } = await admin
     .from("projects")
     .insert({
       workspace_id: ctx.workspace.id,
-      name: imp.full_name.split("/")[1],
+      name: moving ? moving.name.replace(/\s*\(Architect 1\.0\)$/, "") : imp.full_name.split("/")[1],
       owner_id: ctx.user.id,
       prompt,
       status: "draft",
@@ -189,6 +194,11 @@ export async function planFromImport(input: { importId: string; port?: boolean; 
     .update({ project_id: project.id, analysis: { ...saved, port, runCommand } as unknown as import("@/lib/database.types").Json })
     .eq("id", imp.id);
   await admin.from("audit_log").insert({ workspace_id: ctx.workspace.id, actor: ctx.name, action: "repo.imported", target: imp.full_name, details: { branch: imp.branch, folder: imp.folder, port } });
+  if (moving) {
+    // The 1.0 app keeps running; it now points at its 2.0 project.
+    await admin.from("projects").update({ moved_to: project.id }).eq("id", moving.id);
+    await admin.from("audit_log").insert({ workspace_id: ctx.workspace.id, actor: ctx.name, action: "project.moved_to_2", target: moving.name, details: { repo: imp.full_name, to: project.id } });
+  }
   return { ok: true, projectId: project.id };
 }
 

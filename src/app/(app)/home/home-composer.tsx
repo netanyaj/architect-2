@@ -168,7 +168,7 @@ export function HomeComposer({
               <Pill icon="grid" onClick={() => setTemplatesOpen(true)}>
                 Templates and prompts
               </Pill>
-              <Pill icon="sparkle" disabledReason="Help me decide comes with plan writing (M2).">
+              <Pill icon="sparkle" onClick={() => router.push("/home/decide")} disabledReason={signedIn ? undefined : "Sign in to get ideas."}>
                 Help me decide
               </Pill>
             </>

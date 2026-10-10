@@ -61,7 +61,7 @@ export function Tag({ children, className }: { children: ReactNode; className?: 
  * Every simulated surface wears this: a dashed outline pill saying "Simulated".
  * Never hide that something is simulated.
  */
-export function SimTag({ title, className }: { title?: string; className?: string }) {
+export function SimTag({ title, className, children = "Simulated" }: { title?: string; className?: string; children?: ReactNode }) {
   return (
     <span
       title={title ?? "Simulated in this prototype"}
@@ -70,7 +70,7 @@ export function SimTag({ title, className }: { title?: string; className?: strin
         className,
       )}
     >
-      Simulated
+      {children}
     </span>
   );
 }

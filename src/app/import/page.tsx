@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { createServerDb } from "@/server/db";
 import { importPageData } from "@/server/import";
 import { getAppContext } from "@/server/workspace";
-import { ImportFlow } from "./import-flow";
+import { ImportFlow, type MoveFrom } from "./import-flow";
 
 export const metadata: Metadata = { title: "Import a repo · Architect" };
 
@@ -23,5 +24,13 @@ export default async function ImportPage({ searchParams }: PageProps<"/import">)
       : one(sp.github_connected)
         ? { kind: "done" as const, text: "GitHub is connected. Choose a repo." }
         : null;
-  return <ImportFlow data={data} notice={notice} />;
+  // F9: "Move to 2.0" from an Architect 1.0 app in this workspace that hasn't moved yet.
+  const from = one(sp.from);
+  let move: MoveFrom | null = null;
+  if (from && /^[0-9a-f-]{36}$/i.test(from)) {
+    const db = await createServerDb();
+    const { data: legacy } = await db.from("projects").select("id, name, legacy_repo, moved_to, workspace_id").eq("id", from).maybeSingle();
+    if (legacy?.legacy_repo && !legacy.moved_to && legacy.workspace_id === ctx.workspace.id) move = { projectId: legacy.id, name: legacy.name, repo: legacy.legacy_repo };
+  }
+  return <ImportFlow data={data} notice={notice} move={move} />;
 }

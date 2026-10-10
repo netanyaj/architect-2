@@ -35,7 +35,7 @@ test.describe("reset demo data", () => {
     await expect(page.getByText("Demo data is back to how it started.")).toBeVisible();
 
     const { data: projects } = await db.from("projects").select("name").eq("workspace_id", ws);
-    expect(projects!.map((p) => p.name).sort()).toEqual(["Lead scorer", "Meeting Prep", "Vendor tracker", "ticket-triage"].sort());
+    expect(projects!.map((p) => p.name).sort()).toEqual(["Lead scorer", "Meeting Prep", "Ticket triage (Architect 1.0)", "Vendor tracker", "ticket-triage"].sort());
     const { count } = await db.from("audit_log").select("id", { count: "exact", head: true }).eq("workspace_id", ws).eq("action", "workspace.reset");
     expect(count).toBe(1);
   });

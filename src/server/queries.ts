@@ -53,6 +53,8 @@ export type ProjectRow = {
   budgetCredits: number | null;
   /** Built or live: Launch (Share) is open. */
   launchable: boolean;
+  /** An Architect 1.0 app (F9): its repo, and the 2.0 project it moved to. */
+  legacy: { repo: string; movedTo: { id: string; name: string } | null } | null;
 };
 
 /** Every project in the current workspace with its summary, newest first. */
@@ -62,7 +64,7 @@ export async function listProjects(ctx: AppContext): Promise<ProjectRow[]> {
   const [{ data: projects, error }, { data: owners }, { data: usage }] = await Promise.all([
     db
       .from("projects")
-      .select("id, name, icon, status, owner_id, owner_display_name, updated_at, budget_credits, prompt, items(status, title, grp, blueprint_id), blueprints(id, version), runs(status, started_at)")
+      .select("id, name, icon, status, owner_id, owner_display_name, updated_at, budget_credits, prompt, legacy_repo, moved_to, items(status, title, grp, blueprint_id), blueprints(id, version), runs(status, started_at)")
       .eq("workspace_id", ws)
       .order("updated_at", { ascending: false }),
     db.from("members").select("user_id, display_name").eq("workspace_id", ws).eq("status", "active"),
@@ -97,10 +99,12 @@ export async function listProjects(ctx: AppContext): Promise<ProjectRow[]> {
         items,
         runStatus: run?.status,
         prompt: p.prompt,
+        legacy: p.legacy_repo ? { movedTo: (projects ?? []).find((x) => x.id === p.moved_to)?.name ?? null } : null,
       }),
       prompt: p.prompt,
       budgetCredits: p.budget_credits === null ? null : Number(p.budget_credits),
-      launchable: p.status === "built" || p.status === "live",
+      launchable: !p.legacy_repo && (p.status === "built" || p.status === "live"),
+      legacy: p.legacy_repo ? { repo: p.legacy_repo, movedTo: (() => { const m = (projects ?? []).find((x) => x.id === p.moved_to); return m ? { id: m.id, name: m.name } : null; })() } : null,
     };
   });
 }

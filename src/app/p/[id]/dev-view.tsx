@@ -14,12 +14,14 @@ import {
   changesByPart,
   envKeys,
   generatedTree,
+  slugOf,
   terminalSession,
   type ChangedFile,
   type DevPart,
   type TerminalLine,
 } from "@/lib/dev-view";
 import { canBuild } from "@/lib/permissions";
+import { zipFiles } from "@/lib/zip";
 import type { LiveRun } from "@/lib/sim/replay";
 import { useUi } from "@/lib/ui-store";
 import { cn } from "@/lib/utils";
@@ -606,4 +608,26 @@ export function DevActivity({ project, items, live }: { project: ProjectWorkspac
       )}
     </div>
   );
+}
+
+/**
+ * Download code: a project from a repo downloads its repo from GitHub (real); any other project gets a .zip of
+ * Architect's code for its plan, with the edits saved in Developer view (simulated, and the README says so).
+ */
+export function downloadCode(project: ProjectWorkspace, items: WorkspaceItem[]) {
+  if (project.repo) {
+    window.open(`https://github.com/${project.repo}/archive/HEAD.zip`, "_blank", "noopener");
+    return;
+  }
+  const edited = new Map(project.codeEdits.files.map((f) => [f.path, f.content]));
+  const tree = generatedTree(project.name, project.plan?.version ?? 1, toParts(items)).map((f) => ({ path: f.path, content: edited.get(f.path) ?? f.content }));
+  for (const [path, content] of edited) if (!tree.some((f) => f.path === path)) tree.push({ path, content });
+  const note = `# ${project.name}\n\nDownloaded from Architect. In this prototype the code is simulated: it shows the shape of what Architect writes for each part of the plan, and it doesn't run.\n`;
+  const bytes = zipFiles([{ path: "ARCHITECT.md", content: note }, ...tree]);
+  const url = URL.createObjectURL(new Blob([bytes.slice().buffer], { type: "application/zip" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${slugOf(project.name)}.zip`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
