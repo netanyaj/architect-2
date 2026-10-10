@@ -13,6 +13,7 @@ import { formatBytes, UPLOAD_LIMITS } from "@/lib/uploads";
 import { DEFAULT_MODEL, type ModelChoice, type ModelOption } from "@/lib/models";
 import { startProject } from "@/server/actions/projects";
 import { finishUploads } from "@/server/actions/uploads";
+import { AddMenu, type AttachedAgent } from "./attach-agent";
 
 function greeting(now: Date) {
   const h = now.getHours();
@@ -50,6 +51,7 @@ export function HomeComposer({
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();
   const [files, setFiles] = useState<File[]>([]);
+  const [agents, setAgents] = useState<AttachedAgent[]>([]);
   const [progress, setProgress] = useState<string>();
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -106,7 +108,7 @@ export function HomeComposer({
     }
     start(async () => {
       // Without files the action opens the new project itself; it only returns when something's wrong.
-      const r = await startProject({ prompt: text, talkFirst, model, files: files.map((f) => ({ name: f.name, type: f.type, size: f.size })) });
+      const r = await startProject({ prompt: text, talkFirst, model, agents, files: files.map((f) => ({ name: f.name, type: f.type, size: f.size })) });
       if (!r) return;
       if (!r.ok) return setError(r.message);
       if (!r.projectId || !r.uploads) return;
@@ -145,8 +147,13 @@ export function HomeComposer({
           placeholder="Describe the app you want. For example: before each meeting, send me a Slack brief with each attendee’s last email."
           label="Describe your app"
           attachments={
-            files.length ? (
+            files.length || agents.length ? (
               <>
+                {agents.map((a) => (
+                  <AttachmentChip key={a.id} icon="agent" onRemove={() => setAgents(agents.filter((x) => x.id !== a.id))}>
+                    {a.name} <span className="text-small text-ink-3">Lyzr Studio agent</span>
+                  </AttachmentChip>
+                ))}
                 {files.map((f) => (
                   <AttachmentChip key={`${f.name}-${f.size}`} icon="file" onRemove={() => setFiles(files.filter((x) => x !== f))}>
                     {f.name} <span className="text-small text-ink-3">{formatBytes(f.size)}</span>
@@ -159,9 +166,12 @@ export function HomeComposer({
           modelPicker={<ModelPicker value={model} options={models} onChange={setModel} />}
           contextPills={
             <>
-              <Pill icon="plus" onClick={() => fileInput.current?.click()}>
-                Add files, agents or tools
-              </Pill>
+              <AddMenu
+                onAddFiles={() => fileInput.current?.click()}
+                attached={agents}
+                onAttach={(a) => setAgents([...agents, a])}
+                disabledReason={signedIn ? undefined : "Sign in to attach your agents."}
+              />
               <Pill icon="repo" onClick={() => router.push("/import")} disabledReason={signedIn ? undefined : "Sign in to import a repo."}>
                 Import a repo
               </Pill>

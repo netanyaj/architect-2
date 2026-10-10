@@ -16,6 +16,8 @@ vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 vi.mock("@/server/db", () => ({ createAdminDb: () => db, createServerDb: async () => db }));
 vi.mock("@/server/actions/launch", () => ({ goLive: async () => ({ ok: true }) }));
 vi.mock("@/server/actions/pull-requests", () => ({ mergePullRequest: async () => ({ ok: true }) }));
+const lyzr = { configured: true, list: vi.fn() };
+vi.mock("@/server/lyzr", () => ({ lyzrConfigured: () => ({ perAgent: lyzr.configured, shared: false }), listLyzrAgents: () => lyzr.list() }));
 vi.mock("@/server/workspace", () => ({
   getAppContext: async () => ({ user: { id: "me" }, name: "Rita", role, workspace: { id: "ws-1", name: "Acme", governanceEnabled: governance }, memberships: [] }),
 }));
@@ -259,5 +261,21 @@ describe("the external-calls rule (C-10)", () => {
     expect(db.tables.allow_rules[0]).toMatchObject({ action: "external_call", project_id: null, target: "clearbit" });
     const { externalCallHolds, loadPolicies } = await import("@/server/policy");
     expect(await externalCallHolds(db as never, "ws-1", P, db.tables.items as never, await loadPolicies(db as never, "ws-1"))).toEqual([]);
+  });
+});
+
+describe("Attach agent: Lyzr Studio's agent list (BL-2)", () => {
+  it("real when a Lyzr key is set; sample agents, marked simulated, without one or when Studio doesn't answer", async () => {
+    role = "builder";
+    const { studioAgents } = await import("@/server/actions/studio-agents");
+    lyzr.configured = true;
+    lyzr.list.mockResolvedValue([{ id: "68ab", name: "Research agent · Architect", description: "" }]);
+    expect(await studioAgents()).toEqual({ ok: true, agents: [{ id: "68ab", name: "Research agent · Architect", description: "" }], simulated: false });
+    lyzr.list.mockRejectedValue(new Error("down"));
+    expect(await studioAgents()).toMatchObject({ ok: true, simulated: true, note: "Lyzr Studio didn't answer, so these are sample agents. Try again later for yours." });
+    lyzr.configured = false;
+    expect(await studioAgents()).toMatchObject({ ok: true, simulated: true });
+    role = "viewer";
+    expect((await studioAgents()).ok).toBe(false);
   });
 });

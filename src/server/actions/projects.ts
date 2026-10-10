@@ -46,6 +46,8 @@ export async function startProject(input: {
   model?: string;
   /** Files to attach: the project is created and upload slots come back instead of a redirect. */
   files?: { name: string; type: string; size: number }[];
+  /** Lyzr Studio agents to use as parts instead of building new ones (Attach agent). */
+  agents?: { id: string; name: string }[];
 }): Promise<ActionResult<{ projectId?: string; uploads?: UploadSlot[] }>> {
   const ctx = await getAppContext();
   if (!canBuild(ctx.role)) return { ok: false, message: "Viewers can't start projects. Ask an Owner, Admin or Builder." };
@@ -57,9 +59,13 @@ export async function startProject(input: {
     return { ok: false, message: `${MODEL_LABEL[model]} isn't allowed in this workspace. Pick another model.` };
   }
 
+  // Attached Studio agents travel with the prompt, so the plan writer uses them as parts (and the plan quotes them).
+  const agents = z.array(z.object({ id: z.string().trim().min(1).max(64), name: z.string().trim().min(1).max(120) })).max(3).catch([]).parse(input.agents ?? []);
+  const text = agents.length ? `${prompt.data}\n\n${attachedAgentsLine(agents)}` : prompt.data;
+
   const { data, error } = await admin
     .from("projects")
-    .insert({ workspace_id: ctx.workspace.id, name: "Untitled app", owner_id: ctx.user.id, prompt: prompt.data, status: "draft", model })
+    .insert({ workspace_id: ctx.workspace.id, name: "Untitled app", owner_id: ctx.user.id, prompt: text, status: "draft", model })
     .select("id")
     .single();
   if (error || !data) return { ok: false, message: "The project couldn't be created. Nothing was charged. Try again." };
@@ -72,6 +78,12 @@ export async function startProject(input: {
     return { ok: true, projectId: data.id, uploads: prepared.slots };
   }
   redirect(`/p/${data.id}`);
+}
+
+/** "Use my Lyzr Studio agent “Research agent” (ID 68…) as a part, instead of building a new one for that job." */
+function attachedAgentsLine(agents: { id: string; name: string }[]): string {
+  const list = agents.map((a) => `“${a.name.replace(/[“”"]/g, "")}” (ID ${a.id.replace(/[^\w-]/g, "")})`);
+  return `Use my existing Lyzr Studio ${agents.length === 1 ? "agent" : "agents"} ${list.join(" and ")} as ${agents.length === 1 ? "a part" : "parts"}, instead of building new ones for ${agents.length === 1 ? "that job" : "those jobs"}.`;
 }
 
 /** Copies the project and its latest plan as a new draft. Nothing built is copied, and nothing is charged. */

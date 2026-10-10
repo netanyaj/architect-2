@@ -7,6 +7,7 @@ import { serverEnv } from "./env";
  * - POST /v3/agents/            makes a Studio agent and returns its id
  * - PUT  /v3/agents/{id}        updates it (Save in the node drawer)
  * - POST /v3/inference/chat/    runs it on one message
+ * - GET  /v3/agents/            lists the account's agents (Attach agent in the composer)
  * Callers go through the gateway's `runAgent`, which decides between these and the Simulated fallback.
  */
 
@@ -104,6 +105,19 @@ export async function createLyzrAgent(spec: LyzrAgentSpec): Promise<string> {
 
 export async function updateLyzrAgent(id: string, spec: LyzrAgentSpec): Promise<void> {
   await call(`/v3/agents/${encodeURIComponent(id)}`, { method: "PUT", body: body(spec), timeoutMs: CREATE_MS });
+}
+
+export type StudioAgent = { id: string; name: string; description: string };
+
+/** The Studio account's agents, newest first as Studio returns them, up to 50. */
+export async function listLyzrAgents(): Promise<StudioAgent[]> {
+  const r = await call<unknown>("/v3/agents/", { method: "GET", timeoutMs: 15_000 });
+  const list = Array.isArray(r) ? r : Array.isArray((r as { agents?: unknown })?.agents) ? (r as { agents: unknown[] }).agents : [];
+  return list
+    .map((a) => a as { _id?: unknown; id?: unknown; name?: unknown; description?: unknown })
+    .filter((a) => typeof (a._id ?? a.id) === "string" && typeof a.name === "string")
+    .slice(0, 50)
+    .map((a) => ({ id: String(a._id ?? a.id), name: String(a.name).slice(0, 120), description: typeof a.description === "string" ? a.description.slice(0, 200) : "" }));
 }
 
 export async function chatLyzr(input: { agentId: string; userId: string; sessionId: string; message: string }): Promise<string> {

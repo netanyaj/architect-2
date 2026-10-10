@@ -130,6 +130,13 @@ describe("startProject (Write the plan)", () => {
     expect(created).toMatchObject({ name: "Untitled app", prompt: "Every Friday, send me a recap.", status: "draft", owner_id: "me", workspace_id: "ws-1" });
     expect(db.tables.usage_ledger ?? []).toEqual([]);
   });
+  it("attached Lyzr Studio agents travel with the prompt, at most 3, so the plan uses them as parts", async () => {
+    await expect(startProject({ prompt: "Score my leads every morning.", agents: [{ id: "68ab-12", name: "Research agent · Architect" }] })).rejects.toMatchObject({ url: expect.stringMatching(/^\/p\//) });
+    expect(db.tables.projects.at(-1)!.prompt).toBe("Score my leads every morning.\n\nUse my existing Lyzr Studio agent “Research agent · Architect” (ID 68ab-12) as a part, instead of building new ones for that job.");
+    const four = Array.from({ length: 4 }, (_, i) => ({ id: `a${i}`, name: `A${i}` }));
+    await expect(startProject({ prompt: "x y", agents: four })).rejects.toBeTruthy();
+    expect(db.tables.projects.at(-1)!.prompt).toBe("x y");
+  });
   it("Viewers can't start, and say why", async () => {
     role = "viewer";
     expect(await startProject({ prompt: "x" })).toEqual({ ok: false, message: "Viewers can't start projects. Ask an Owner, Admin or Builder." });

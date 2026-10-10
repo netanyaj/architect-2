@@ -142,4 +142,23 @@ test.describe("M5 follow-up", () => {
     await page.goto("/docs/mcp");
     await expect(page.getByText(/External calls with a key: calls with a key on Live need an Owner or Admin's OK/)).toBeVisible();
   });
+
+  test("BL-2: attach a Lyzr Studio agent in the composer; the plan is asked to use it as a part", async ({ page }) => {
+    await start(page);
+    await page.goto("/home");
+    await page.getByRole("button", { name: "Add files, agents or tools" }).click();
+    await page.getByRole("menuitem", { name: /Attach a Lyzr Studio agent/ }).click();
+    const dialog = page.getByRole("dialog", { name: "Attach a Lyzr Studio agent" });
+    const first = dialog.getByRole("list", { name: "Studio agents" }).getByRole("listitem").first();
+    await expect(first).toBeVisible({ timeout: 30_000 });
+    const name = (await first.locator("span.font-semibold").first().textContent())!.trim();
+    await first.getByRole("button", { name: "Attach" }).click();
+    await expect(page.getByText(`${name} Lyzr Studio agent`)).toBeVisible();
+    await page.getByLabel("Describe your app").fill("Every morning, research each new lead's company and post a short summary to #sales.");
+    await page.getByRole("button", { name: /^Write the plan/ }).click();
+    await page.waitForURL(/\/p\/[0-9a-f-]{36}/, { timeout: 60_000 });
+    const id = page.url().split("/p/")[1].split("?")[0];
+    const { data: p } = await adminDb().from("projects").select("prompt").eq("id", id).single();
+    expect(p!.prompt).toContain(`Use my existing Lyzr Studio agent “${name}”`);
+  });
 });
