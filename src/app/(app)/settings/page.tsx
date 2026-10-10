@@ -16,6 +16,7 @@ import { DemoDataSection } from "./demo-data-section";
 import { GitHubSection, type GitHubInstallRow } from "./github-section";
 import { GovernanceSection } from "./governance-section";
 import { MembersSection, type MemberRow } from "./members-section";
+import { PlanSection } from "./plan-section";
 
 export const metadata: Metadata = { title: "Settings · Architect" };
 
@@ -93,6 +94,8 @@ export default async function SettingsPage() {
         canEdit={manage}
         projects={projects.map((p) => ({ id: p.id, name: p.name, budget: p.budgetCredits, spent: p.creditsUsed }))}
       />
+
+      <PlanSection plan={ctx.workspace.plan} canEdit={manage} />
 
       <GovernanceSection on={ctx.workspace.governanceEnabled} canEdit={manage} />
 

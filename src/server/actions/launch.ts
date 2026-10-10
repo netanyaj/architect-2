@@ -3,6 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { BADGE_FREE, canHideBadge, PLANS } from "@/lib/plans";
 import type { Json } from "@/lib/database.types";
 import { missingForLive } from "@/lib/keys";
 import { DEPLOY_STEPS, DOMAIN_CHECK_MS, DomainName, launchState, Listing, type Access, type Deployment, type DomainState, type LaunchSettings } from "@/lib/launch";
@@ -229,6 +230,39 @@ export async function setAnalytics(input: { projectId: string; on: boolean }): P
   const project = await editableProject(admin, input.projectId, ctx);
   if (!project) return { ok: false, message: "Viewers can't change analytics." };
   await saveSettings(admin, ctx, project, { analytics: Boolean(input.on) }, "launch.analytics");
+  return { ok: true };
+}
+
+/** The "Built with Architect" badge: paid plans can hide it (Simulated billing). */
+export async function setBadge(input: { projectId: string; on: boolean }): Promise<ActionResult> {
+  const ctx = await getAppContext();
+  const admin = createAdminDb();
+  const project = await editableProject(admin, input.projectId, ctx);
+  if (!project) return { ok: false, message: "Viewers can't change the badge." };
+  if (!input.on && !canHideBadge(ctx.workspace.plan)) return { ok: false, message: BADGE_FREE };
+  await saveSettings(admin, ctx, project, { badge: Boolean(input.on) }, "launch.badge");
+  return { ok: true };
+}
+
+/** Settings › Plan, simulated: no payment is taken. Owners and Admins change it. */
+export async function setWorkspacePlan(input: { plan: string }): Promise<ActionResult> {
+  const ctx = await getAppContext();
+  if (!canManageMembers(ctx.role)) return { ok: false, message: "Only Owners and Admins can change the plan." };
+  const plan = PLANS.find((p) => p.id === input.plan);
+  if (!plan) return { ok: false, message: "Pick one of the plans shown." };
+  if (plan.id === ctx.workspace.plan) return { ok: true };
+  const admin = createAdminDb();
+  await admin.from("workspaces").update({ plan: plan.id }).eq("id", ctx.workspace.id);
+  // Back on Free, live apps show the badge again.
+  if (!canHideBadge(plan.id)) {
+    const { data: projects } = await admin.from("projects").select("id, launch_settings").eq("workspace_id", ctx.workspace.id);
+    for (const p of projects ?? []) {
+      const settings = (p.launch_settings ?? {}) as Record<string, unknown>;
+      if (settings.badge === false) await admin.from("projects").update({ launch_settings: { ...settings, badge: true } as Json }).eq("id", p.id);
+    }
+  }
+  await admin.from("audit_log").insert({ workspace_id: ctx.workspace.id, actor: ctx.name, action: "plan.changed", target: ctx.workspace.name, details: { from: ctx.workspace.plan, to: plan.id, simulated: true } as Json });
+  revalidatePath("/", "layout");
   return { ok: true };
 }
 

@@ -9,7 +9,8 @@ import { StatusWord } from "@/components/ax/status-mark";
 import { Toggle } from "@/components/ax/toggle";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { ACCESS, CNAME_TARGET, MARKETPLACE_CATEGORIES, type Access, type DomainState, type Listing } from "@/lib/launch";
-import { saveListing, setAccess, setAnalytics, setDomain, setSignIn } from "@/server/actions/launch";
+import { BADGE_FREE } from "@/lib/plans";
+import { saveListing, setAccess, setAnalytics, setBadge, setDomain, setSignIn } from "@/server/actions/launch";
 
 type Env = "staging" | "production";
 const ENV = { staging: "Team version", production: "Live" } as const;
@@ -274,6 +275,28 @@ export function AnalyticsSetting({ projectId, on, readOnly }: { projectId: strin
         consequence="Visits and the pages people use, without personal data. Off by default, and stays off in private-cloud workspaces unless you turn it on."
         disabledReason={readOnly ?? (pending ? "Saving…" : undefined)}
       />
+      <Err text={error} />
+    </div>
+  );
+}
+
+/** "Built with Architect" on the live app (Simulated billing): paid plans can hide it; Free always shows it. */
+export function BadgeSetting({ projectId, on, canHide, readOnly }: { projectId: string; on: boolean; canHide: boolean; readOnly?: string }) {
+  const { pending, error, act } = useAct();
+  return (
+    <div className="flex flex-col gap-1 px-4 py-3.5">
+      <Toggle
+        checked={canHide ? on : true}
+        onCheckedChange={(next) => act(() => setBadge({ projectId, on: next }))}
+        label="Show “Built with Architect”"
+        consequence={canHide ? "A small badge in the corner of the live app. Your plan lets you hide it." : BADGE_FREE}
+        disabledReason={readOnly ?? (!canHide ? BADGE_FREE : pending ? "Saving…" : undefined)}
+      />
+      {!canHide && (
+        <a href="/settings#plan" className="self-start text-small font-semibold text-ink underline decoration-line-ctl underline-offset-[3px]">
+          See plans
+        </a>
+      )}
       <Err text={error} />
     </div>
   );

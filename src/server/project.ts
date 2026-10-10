@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { WorkspacePlan } from "@/lib/plans";
 import type { Role } from "@/lib/db";
 import type { FlowPath } from "@/lib/egress";
 import type { KeyRow } from "@/lib/keys";
@@ -176,6 +177,8 @@ export type Handoff = {
 };
 
 export type LaunchData = {
+  /** The workspace's plan (Simulated billing): paid plans can hide the "Built with Architect" badge. */
+  plan: WorkspacePlan;
   /** The workspace's governance setting: off is the fast path (Test → Go live). */
   governance: boolean;
   settings: LaunchSettings;
@@ -204,7 +207,7 @@ async function loadLaunch(
   projectId: string,
   workspaceId: string,
   names: Map<string, string>,
-  extra: { governance: boolean; settings: LaunchSettings; testShareToken: string | null; domain: string; policies: Policies; parts: { key: string; title: string; status: string; grp: string; provider: string | null }[]; connected: string[] },
+  extra: { governance: boolean; plan: WorkspacePlan; settings: LaunchSettings; testShareToken: string | null; domain: string; policies: Policies; parts: { key: string; title: string; status: string; grp: string; provider: string | null }[]; connected: string[] },
 ): Promise<LaunchData> {
   const [{ data: deps }, { data: envs }, { data: approvals }, { data: proofs }, { data: changes }] = await Promise.all([
     db.from("deployments").select("id, environment, blueprint_version, status, created_at, created_by, checks").eq("project_id", projectId).order("created_at", { ascending: false }),
@@ -235,6 +238,7 @@ async function loadLaunch(
   const keys = await projectKeyRows(admin, { projectId, parts: extra.parts, connected: extra.connected, envLive: { staging: env("staging"), production: env("production") } });
   return {
     governance: extra.governance,
+    plan: extra.plan,
     settings: extra.settings,
     testShareToken: extra.testShareToken,
     domain: extra.domain,
@@ -434,6 +438,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     const names = await peopleNames();
     launch = await loadLaunch(db, p.id, p.workspace_id, names, {
       governance: p.workspace_id === ctx.workspace.id ? ctx.workspace.governanceEnabled : true,
+      plan: ctx.workspace.plan,
       settings: (p.launch_settings ?? {}) as LaunchSettings,
       testShareToken: p.test_share_token,
       domain: ctx.user.email?.split("@")[1] ?? "your company",

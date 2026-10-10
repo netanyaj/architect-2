@@ -14,6 +14,7 @@ import { runningCredits, type Deployment, type LaunchState } from "@/lib/launch"
 import { canBuild, canManageMembers } from "@/lib/permissions";
 import { relativeTime } from "@/lib/project-status";
 import { providerName } from "@/lib/providers";
+import { canHideBadge } from "@/lib/plans";
 import { whatsNotDone } from "@/lib/readiness";
 import { useUi } from "@/lib/ui-store";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,7 @@ import { setPartAside, setWaitingAside } from "@/server/actions/run";
 import type { ProjectWorkspace } from "@/server/project";
 import { ConnectButton } from "./connect-button";
 import { KeysDialog } from "./launch-keys";
-import { AccessSetting, AnalyticsSetting, DomainSetting, SignInSetting, MarketplaceSetting } from "./launch-settings";
+import { AccessSetting, AnalyticsSetting, BadgeSetting, DomainSetting, SignInSetting, MarketplaceSetting } from "./launch-settings";
 
 const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "app";
 const ENV_LABEL = { staging: "Team version", production: "Live" } as const;
@@ -537,6 +538,7 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
           {!state.fast && <DomainSetting projectId={project.id} env="staging" state={settings.domains?.staging} fallback={`${s}--team.architect.space`} readOnly={readOnly} />}
           <DomainSetting projectId={project.id} env="production" state={settings.domains?.production} fallback={`${s}.architect.app`} readOnly={readOnly} />
           <AnalyticsSetting projectId={project.id} on={Boolean(settings.analytics)} readOnly={readOnly} />
+          <BadgeSetting projectId={project.id} on={settings.badge !== false} canHide={canHideBadge(launch.plan)} readOnly={readOnly} />
           <SignInSetting projectId={project.id} value={settings.signIn ?? "google"} governance={launch.governance} access={access} readOnly={readOnly} />
           <div className="flex flex-wrap items-center gap-3 px-4 py-3">
             <span className="min-w-0 flex-1">

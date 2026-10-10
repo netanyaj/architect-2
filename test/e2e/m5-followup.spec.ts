@@ -161,4 +161,30 @@ test.describe("M5 follow-up", () => {
     const { data: p } = await adminDb().from("projects").select("prompt").eq("id", id).single();
     expect(p!.prompt).toContain(`Use my existing Lyzr Studio agent “${name}”`);
   });
+
+  test("Plans: the seeded workspace is on Enterprise; on Free the badge stays, on a paid plan it can be hidden", async ({ page }) => {
+    await start(page);
+    const db = adminDb();
+    const { data: mp } = await db.from("projects").select("id").eq("workspace_id", workspace).eq("name", "Meeting Prep").single();
+    await page.goto("/settings#plan");
+    const plans = page.getByRole("list", { name: "Plans" });
+    await expect(plans.getByRole("listitem").filter({ hasText: "Enterprise" })).toContainText("Your plan");
+    await plans.getByRole("button", { name: "Switch to Free" }).click();
+    await expect(plans.getByRole("listitem").filter({ hasText: "Free" })).toContainText("Your plan");
+
+    await page.goto(`/p/${mp!.id}/launch`);
+    const badge = page.getByRole("switch", { name: "Show “Built with Architect”" });
+    await expect(badge).toHaveAttribute("aria-checked", "true");
+    await expect(badge).toHaveAttribute("aria-disabled", "true");
+    await expect(page.getByText("The Free plan always shows it. Starter and up can hide it, in Settings › Plan.").first()).toBeVisible();
+
+    await page.goto("/settings#plan");
+    await plans.getByRole("button", { name: "Switch to Pro" }).click();
+    await expect(plans.getByRole("listitem").filter({ hasText: "Pro" })).toContainText("Your plan");
+    await page.goto(`/p/${mp!.id}/launch`);
+    await badge.click();
+    await expect(badge).toHaveAttribute("aria-checked", "false");
+    const { data: after } = await db.from("projects").select("launch_settings").eq("id", mp!.id).single();
+    expect((after!.launch_settings as { badge?: boolean }).badge).toBe(false);
+  });
 });

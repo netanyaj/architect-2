@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { loginUrl } from "@/lib/auth-paths";
 import type { Role } from "@/lib/db";
+import { planOf, type WorkspacePlan } from "@/lib/plans";
 import { createAdminDb, createServerDb, type AdminDb } from "./db";
 
 /** Cookie holding the workspace the person last chose (they can belong to several after accepting invites). */
@@ -44,7 +45,7 @@ export type Membership = {
 export type AppContext = {
   user: User;
   name: string;
-  workspace: { id: string; name: string; governanceEnabled: boolean; creditsTotal: number; creditsResetOn: string };
+  workspace: { id: string; name: string; governanceEnabled: boolean; creditsTotal: number; creditsResetOn: string; plan: WorkspacePlan };
   role: Role;
   memberships: Membership[];
 };
@@ -72,7 +73,7 @@ export const getAppContext = cache(async (): Promise<AppContext> => {
   const load = () =>
     db
       .from("members")
-      .select("role, workspace_id, workspaces!inner(id, name, governance_enabled, credits_total, credits_reset_on)")
+      .select("role, workspace_id, workspaces!inner(id, name, governance_enabled, credits_total, credits_reset_on, plan)")
       .eq("user_id", user.id)
       .eq("status", "active");
 
@@ -105,6 +106,7 @@ export const getAppContext = cache(async (): Promise<AppContext> => {
       governanceEnabled: ws.governance_enabled,
       creditsTotal: Number(ws.credits_total),
       creditsResetOn: ws.credits_reset_on,
+      plan: planOf(ws.plan),
     },
     role: current.role,
     memberships,

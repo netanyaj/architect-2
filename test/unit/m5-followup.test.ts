@@ -12,14 +12,15 @@ import { FakeDb } from "./fake-db";
 let db: FakeDb;
 let role: Role;
 let governance = true;
+let plan: "free" | "starter" | "pro" | "enterprise" = "enterprise";
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 vi.mock("@/server/db", () => ({ createAdminDb: () => db, createServerDb: async () => db }));
-vi.mock("@/server/actions/launch", () => ({ goLive: async () => ({ ok: true }) }));
+vi.mock("@/server/actions/launch", async (orig) => ({ ...(await orig<typeof import("@/server/actions/launch")>()), goLive: async () => ({ ok: true }) }));
 vi.mock("@/server/actions/pull-requests", () => ({ mergePullRequest: async () => ({ ok: true }) }));
 const lyzr = { configured: true, list: vi.fn() };
 vi.mock("@/server/lyzr", () => ({ lyzrConfigured: () => ({ perAgent: lyzr.configured, shared: false }), listLyzrAgents: () => lyzr.list() }));
 vi.mock("@/server/workspace", () => ({
-  getAppContext: async () => ({ user: { id: "me" }, name: "Rita", role, workspace: { id: "ws-1", name: "Acme", governanceEnabled: governance }, memberships: [] }),
+  getAppContext: async () => ({ user: { id: "me" }, name: "Rita", role, workspace: { id: "ws-1", name: "Acme", governanceEnabled: governance, plan }, memberships: [] }),
 }));
 
 describe("API key connections (BL-9)", () => {
@@ -277,5 +278,40 @@ describe("Attach agent: Lyzr Studio's agent list (BL-2)", () => {
     expect(await studioAgents()).toMatchObject({ ok: true, simulated: true });
     role = "viewer";
     expect((await studioAgents()).ok).toBe(false);
+  });
+});
+
+describe("plans and the Built with Architect badge (simulated billing)", () => {
+  const P = "77777777-7777-4777-8777-777777777777";
+  beforeEach(() => {
+    db = new FakeDb({
+      workspaces: [{ id: "ws-1", plan: "free" }],
+      projects: [{ id: P, name: "Meeting Prep", workspace_id: "ws-1", launch_settings: { analytics: true } }],
+      audit_log: [],
+    });
+  });
+
+  it("Free always shows the badge; a paid plan can hide it", async () => {
+    const { setBadge } = await import("@/server/actions/launch");
+    role = "builder";
+    plan = "free";
+    expect(await setBadge({ projectId: P, on: false })).toEqual({ ok: false, message: "The Free plan always shows it. Starter and up can hide it, in Settings › Plan." });
+    plan = "starter";
+    expect(await setBadge({ projectId: P, on: false })).toEqual({ ok: true });
+    expect(db.tables.projects[0].launch_settings).toEqual({ analytics: true, badge: false });
+  });
+
+  it("Owners and Admins switch plans (no payment); back on Free, live apps show the badge again", async () => {
+    const { setWorkspacePlan } = await import("@/server/actions/launch");
+    role = "builder";
+    expect((await setWorkspacePlan({ plan: "pro" })).ok).toBe(false);
+    role = "owner";
+    plan = "pro";
+    db.tables.projects[0].launch_settings = { badge: false };
+    expect(await setWorkspacePlan({ plan: "gold" })).toEqual({ ok: false, message: "Pick one of the plans shown." });
+    expect(await setWorkspacePlan({ plan: "free" })).toEqual({ ok: true });
+    expect(db.tables.workspaces[0].plan).toBe("free");
+    expect(db.tables.projects[0].launch_settings).toEqual({ badge: true });
+    expect(db.tables.audit_log.at(-1)).toMatchObject({ action: "plan.changed", details: { from: "pro", to: "free", simulated: true } });
   });
 });
