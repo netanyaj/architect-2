@@ -35,6 +35,7 @@ export default function MarketplacePage() {
               <ToolInitials tools={s.tools} />
               {s.credits && <span className="tabular-nums">~{s.credits} credits</span>}
             </span>
+            <span className="text-small font-semibold underline decoration-line-ctl underline-offset-[3px]">Use as a starting point</span>
           </Link>
         ))}
       </div>

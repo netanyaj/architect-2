@@ -110,7 +110,9 @@ export function Composer({
           <button
             type="button"
             aria-label="Speak instead of typing"
-            className="grid size-[38px] place-items-center rounded-full hover:bg-selected"
+            aria-disabled
+            title="Voice input isn't in this prototype yet. Type your request instead."
+            className="grid size-[38px] cursor-not-allowed place-items-center rounded-full text-ink-3"
           >
             <Icon name="mic" size="sm" />
           </button>
