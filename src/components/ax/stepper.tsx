@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export type Stage = "plan" | "build" | "launch";
@@ -20,6 +20,7 @@ export function Stepper<T extends string = Stage>({
   onSelect,
   steps = STAGES as unknown as { id: T; label: string }[],
   label = "Project stage",
+  after,
 }: {
   current: T;
   /** e.g. "7 of 12 working · about 6 min", "1 question left", "paused at budget" */
@@ -29,6 +30,8 @@ export function Stepper<T extends string = Stage>({
   /** Other step-by-step flows (Import a repo) use the same look with their own steps. */
   steps?: { id: T; label: string }[];
   label?: string;
+  /** Shown at the end of the stepper: the project's "What's not done" (A-10). */
+  after?: ReactNode;
 }) {
   const stages = steps;
   const currentIndex = stages.findIndex((s) => s.id === current);
@@ -79,6 +82,7 @@ export function Stepper<T extends string = Stage>({
           </Fragment>
         );
       })}
+      {after}
     </nav>
   );
 }

@@ -11,7 +11,9 @@ describe("launchState", () => {
     expect(s.rows.map((r) => [r.kind, r.title])).toEqual([
       ["connect", "Connect Gmail for your team"],
       ["sample", "Notes archive still uses sample data"],
-      ["fine", "Tests, security and privacy checks passed"],
+      ["fine", "Tests passed"],
+      ["fine", "Security scan passed"],
+      ["fine", "Personal data is hidden in logs"],
     ]);
     expect(s.progress).toBe("2 things before sharing");
     expect(s.share).toEqual({ label: "Share with your team", disabledReason: "Fix 2 things in the checklist first." });

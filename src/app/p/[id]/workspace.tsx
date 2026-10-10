@@ -11,6 +11,7 @@ import { NeedsYouCard } from "@/components/ax/needs-you-card";
 import { SimTag } from "@/components/ax/pill";
 import { PlanGroup, PlanPanel, PlanRow } from "@/components/ax/plan-panel";
 import { Segmented } from "@/components/ax/segmented";
+import { NotDoneButton } from "@/components/ax/not-done";
 import { Stepper } from "@/components/ax/stepper";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -20,6 +21,7 @@ import { MODEL_LABEL, type ModelChoice } from "@/lib/models";
 import { canBuild, canManageMembers } from "@/lib/permissions";
 import { relativeTime } from "@/lib/project-status";
 import { etaWords, withLive, type LiveRun } from "@/lib/sim/replay";
+import { whatsNotDone } from "@/lib/readiness";
 import { useUi } from "@/lib/ui-store";
 import { workspaceState } from "@/lib/workspace-state";
 import { launchState } from "@/lib/launch";
@@ -241,6 +243,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   const params = useSearchParams();
   const openHelp = useUi((s) => s.openHelp);
   const sendToChat = useUi((s) => s.sendToChat);
+  const openPart = useUi((s) => s.openPart);
   const agentChanges = useUi((s) => s.agentChanges);
   const agentOpen = useUi((s) => s.agentKey !== null);
   const raw = params.get("view");
@@ -447,6 +450,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
           </div>
         </div>
         <Stepper
+          after={planStage ? undefined : <NotDoneButton rows={whatsNotDone(items, { budgetPaused: budgetPaused || project.run?.status === "paused_budget" })} onOpen={openPart} />}
           current={state.stage}
           progress={state.progress}
           paused={state.paused}

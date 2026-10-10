@@ -85,4 +85,25 @@ test.describe("M5 follow-up", () => {
     await expect(page.getByRole("dialog", { name: "Brief writer" })).toContainText("Edited by Followup Tester", { timeout: 15_000 });
     await expect(page.getByRole("dialog", { name: "Brief writer" })).toContainText("Passed the edited check against the code already built");
   });
+
+  test("A-10: the stepper lists what's not done with a reason, and Launch shows it before any deploy; BL-13's checks are named", async ({ page }) => {
+    await start(page);
+    const db = adminDb();
+    const { data: lead } = await db.from("projects").select("id").eq("workspace_id", workspace).eq("name", "Lead scorer").single();
+    await page.goto(`/p/${lead!.id}`);
+    await page.getByRole("navigation", { name: "Project stage" }).getByRole("button", { name: "Not done · 3" }).click();
+    const list = page.getByRole("list", { name: "What's not done" });
+    await expect(list.getByRole("listitem")).toHaveCount(3);
+    await expect(list.getByRole("listitem").first()).toContainText("Not built yet: the build paused at the budget");
+    await list.getByRole("button", { name: /^Reason for each score/ }).click();
+    await expect(page.getByRole("dialog", { name: "Reason for each score" })).toBeVisible();
+
+    const { data: triage } = await db.from("projects").select("id").eq("workspace_id", workspace).eq("name", "ticket-triage").single();
+    await page.goto(`/p/${triage!.id}/launch`);
+    const notDone = page.getByRole("region", { name: "What's not done" });
+    await expect(notDone).toContainText("1 part of this version doesn't work yet. A deploy ships what works.");
+    await expect(notDone).toContainText("Production deploy");
+    await expect(notDone).toContainText("Waiting for an Owner or Admin's approval");
+    for (const check of ["Tests passed", "Security scan passed", "Personal data is hidden in logs"]) await expect(page.getByText(check, { exact: true })).toBeVisible();
+  });
 });

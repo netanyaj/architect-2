@@ -3,6 +3,8 @@ import { apiKeyEnvName, apiKeyProblem, apiKeyServiceId } from "@/lib/api-keys";
 import type { Role } from "@/lib/db";
 import { envKeys } from "@/lib/dev-view";
 import { analyzeRepo } from "@/lib/repo-analysis";
+import { whatsNotDone } from "@/lib/readiness";
+import { launchState } from "@/lib/launch";
 import { FakeDb } from "./fake-db";
 
 /* M5 follow-up (gap analysis, 11 Oct): API key connections, and the rest of the build list below. */
@@ -155,5 +157,40 @@ describe("editing a built part's check (A-7)", () => {
     expect(await editCheck({ itemId: I, provedWhen: next })).toEqual({ ok: false, message: "A build is running. Edit the check when it finishes." });
     role = "viewer";
     expect(await editCheck({ itemId: I, provedWhen: next })).toEqual({ ok: false, message: "Viewers can read checks but can't change them." });
+  });
+});
+
+describe("readiness: what's not done (A-10) and the named pre-publish checks (BL-13)", () => {
+  it("every part that doesn't work, with its reason, blocked first; working and dropped parts aren't listed", () => {
+    const p = (key: string, status: string, extra: Record<string, unknown> = {}) => ({ key, title: key, status, ...extra });
+    expect(
+      whatsNotDone([
+        p("a", "built"),
+        p("b", "agreed"),
+        p("c", "needs_connection", { provider: "gmail" }),
+        p("d", "paused"),
+        p("e", "needs_approval", { provider: "hubspot" }),
+        p("f", "building", { statusDetail: "Re-running its check · check edited by Rita" }),
+        p("g", "deferred"),
+        p("h", "dropped"),
+        p("i", "sample_data"),
+        p("j", "needs_approval", { statusDetail: "IT admin reviews" }),
+      ]),
+    ).toEqual([
+      { key: "d", title: "d", status: "blocked", reason: "Blocked: its check failed 3 times. Open it to decide" },
+      { key: "c", title: "c", status: "attention", reason: "Works with sample data until you connect Gmail" },
+      { key: "i", title: "i", status: "attention", reason: "Uses sample data: add your real data, or leave it out" },
+      { key: "e", title: "e", status: "approval", reason: "Waiting for an Owner or Admin to approve HubSpot" },
+      { key: "j", title: "j", status: "approval", reason: "Waiting for an Owner or Admin's approval" },
+      { key: "f", title: "f", status: "building", reason: "Re-running its check · check edited by Rita" },
+      { key: "b", title: "b", status: "todo", reason: "Not built yet" },
+      { key: "g", title: "g", status: "todo", reason: "Set aside: not in this version" },
+    ]);
+  });
+
+  it("the checklist names tests, the security scan and personal data as separate checks", () => {
+    const s = launchState({ deployments: [], envLive: { staging: false, production: false }, currentVersion: 1, role: "owner", governance: true, liveRequested: false, testsPassed: 4, parts: [{ id: "1", key: "a", title: "A", status: "built", provider: null, estimate: 1 }] });
+    expect(s.rows.filter((r) => r.kind === "fine").map((r) => r.title)).toEqual(["Tests passed", "Security scan passed", "Personal data is hidden in logs"]);
+    expect(s.toFix).toBe(0);
   });
 });

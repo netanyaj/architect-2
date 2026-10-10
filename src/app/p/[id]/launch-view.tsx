@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button, TextLink } from "@/components/ax/button";
 import { DataFlow } from "@/components/ax/data-flow";
+import { NotDoneList } from "@/components/ax/not-done";
 import { Icon } from "@/components/ax/icon";
 import { SimTag } from "@/components/ax/pill";
 import { StageBanner } from "@/components/ax/stage-banner";
@@ -12,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } f
 import { runningCredits, type Deployment, type LaunchState } from "@/lib/launch";
 import { canBuild, canManageMembers } from "@/lib/permissions";
 import { relativeTime } from "@/lib/project-status";
+import { whatsNotDone } from "@/lib/readiness";
 import { useUi } from "@/lib/ui-store";
 import { cn } from "@/lib/utils";
 import { bringBackLive, goBack, shareTestLink, shareWithTeam, takeOffline } from "@/server/actions/launch";
@@ -198,7 +200,9 @@ function GoBackDialog({ target, notes, current, onClose }: { target: Deployment;
  */
 export function LaunchView({ project, state }: { project: ProjectWorkspace; state: LaunchState }) {
   const { pending, error, note, act } = useAct();
-  const { openHelp } = useUi();
+  const { openHelp, openPart } = useUi();
+  // A-10: before every deploy, what isn't done yet and why.
+  const notDone = whatsNotDone(project.items, { budgetPaused: project.run?.status === "paused_budget" });
   const launch = project.launch!;
   const settings = launch.settings;
   const s = slug(project.name);
@@ -410,6 +414,22 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
         </p>
       )}
 
+      {notDone.length > 0 && (
+        <section aria-labelledby="not-done" className="flex flex-col gap-2.5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="not-done" className="text-sub font-semibold">
+              What&apos;s not done
+            </h2>
+            <span className="text-small text-ink-2">
+              {plural(notDone.length, "part")} of this version {notDone.length === 1 ? "doesn't" : "don't"} work yet. A deploy ships what works.
+            </span>
+          </div>
+          <div className="rounded-card border border-line bg-surface p-1.5">
+            <NotDoneList rows={notDone} onOpen={openPart} />
+          </div>
+        </section>
+      )}
+
       <section aria-labelledby="checklist" className="flex flex-col gap-2.5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 id="checklist" className="text-sub font-semibold">
@@ -476,7 +496,7 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
                     Set keys
                   </Button>
                 )}
-                {r.kind === "fine" && <SimTag title="Checks run in the simulated build" />}
+                {r.id === "tests" && <SimTag title="Checks run in the simulated build: tests, the security scan and the personal-data check" />}
               </li>
             );
           })}

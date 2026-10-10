@@ -174,7 +174,10 @@ export function launchState(input: {
   if (unbuilt.length) {
     rows.push({ id: "unbuilt", kind: "unbuilt", status: "blocked", title: `${plural(unbuilt.length, "part")} ${unbuilt.length === 1 ? "isn't" : "aren't"} built`, detail: `${unbuilt.map((p) => p.title).join(", ")}. Build ${unbuilt.length === 1 ? "it" : "them"}, or leave ${unbuilt.length === 1 ? "it" : "them"} out for now.`, count: unbuilt.length });
   }
-  rows.push({ id: "tests", kind: "fine", status: "works", title: "Tests, security and privacy checks passed", detail: `${plural(input.testsPassed, "test")} · no secrets in the code · personal data hidden in logs` });
+  // The pre-publish checks that passed (BL-13), each named: tests, the security scan, and personal data.
+  rows.push({ id: "tests", kind: "fine", status: "works", title: "Tests passed", detail: `${plural(input.testsPassed, "test")}, each part's check included` });
+  rows.push({ id: "security", kind: "fine", status: "works", title: "Security scan passed", detail: "No keys or passwords in the code; they live in Keys and passwords" });
+  rows.push({ id: "privacy", kind: "fine", status: "works", title: "Personal data is hidden in logs", detail: "Email addresses, phone numbers and card numbers are taken out before anything is logged" });
 
   const toFix = rows.filter((r) => r.kind !== "fine").length;
   // A key missing for Live doesn't hold the team version.
