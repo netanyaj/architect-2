@@ -1,5 +1,6 @@
 /** The models the picker offers. Shared by client and server; availability (real vs simulated) comes from the gateway. */
-export const MODEL_CHOICES = ["gemini", "openrouter", "claude", "gpt"] as const;
+/** "private" is the organisation's own or self-hosted model, registered in Governance › Models (C-2). */
+export const MODEL_CHOICES = ["gemini", "openrouter", "claude", "gpt", "private"] as const;
 export type ModelChoice = (typeof MODEL_CHOICES)[number];
 
 export const MODEL_LABEL: Record<ModelChoice, string> = {
@@ -7,10 +8,11 @@ export const MODEL_LABEL: Record<ModelChoice, string> = {
   openrouter: "OpenRouter (free)",
   claude: "Claude Sonnet",
   gpt: "GPT",
+  private: "Your private model",
 };
 
 /** A short note under a model in the picker. */
-export const MODEL_NOTE: Partial<Record<ModelChoice, string>> = { openrouter: "Free · can be slow" };
+export const MODEL_NOTE: Partial<Record<ModelChoice, string>> = { openrouter: "Free · can be slow", private: "Registered by your admin" };
 
 /** Gemini is the default everywhere a model isn't chosen yet. */
 export const DEFAULT_MODEL: ModelChoice = "gemini";

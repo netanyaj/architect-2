@@ -89,6 +89,9 @@ export function resolveModel(choice: ModelChoice = "gemini"): ResolvedModel {
       if (!cfg?.model) return { choice, label: MODEL_LABEL.claude, simulated: true, model: gemini() };
       return { choice, label: MODEL_LABEL.claude, simulated: false, model: createAnthropic({ apiKey: cfg.apiKey })(cfg.model) };
     }
+    case "private":
+      // A private endpoint can't be reached from the prototype: Gemini answers, and the UI says it's simulated.
+      return { choice, label: MODEL_LABEL.private, simulated: true, model: gemini() };
     case "gpt": {
       const cfg = serverEnv.openai();
       if (!cfg?.model) return { choice, label: MODEL_LABEL.gpt, simulated: true, model: gemini() };

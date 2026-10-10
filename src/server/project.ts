@@ -2,14 +2,14 @@ import "server-only";
 
 import type { Role } from "@/lib/db";
 import type { Deployment, LaunchSettings, LiveDecision } from "@/lib/launch";
+import { connectRefusal, knownApps, locationLabel, scopeOf, type Scope } from "@/lib/policies";
 import type { PullRequestView } from "@/lib/pull-requests";
 import type { RunEvent, RunInfo } from "@/lib/sim/replay";
 import { modelAvailability } from "@/lib/gateway";
 import { MODEL_LABEL, toModelChoice, type ModelChoice, type ModelOption } from "@/lib/models";
 import { detectTools, projectIcon, summarizeProject, type ProjectInput } from "@/lib/project-status";
-import { allowedModels } from "./blueprint/write-plan";
 import { createAdminDb, createServerDb } from "./db";
-import { allowRuleFor, liveDecisions } from "./policy";
+import { allowRuleFor, blockedServices, liveDecisions, loadPolicies } from "./policy";
 import { loadPullRequests } from "./pull-requests";
 import { catchUpRuns, dbNow } from "./sim/run";
 import type { AppContext } from "./workspace";
@@ -122,9 +122,11 @@ export type ProjectWorkspace = {
   spent: { total: number; build: number; fix: number };
   /** The database's time when the page was read: the clock runs replay against. */
   serverNow: string;
-  /** Services this workspace has connected, and those its policy denies. */
+  /** Services this workspace has connected, and those of this project's that its policy holds back (C-3). */
   connected: string[];
   denied: string[];
+  /** What the organisation's policies mean here (C-1, C-3): shown where builders work. Empty with governance off. */
+  policy: { governance: boolean; location: string | null; connectRefusal: string | null; scopes: Record<string, Scope> };
   tools: string[];
   summary: ReturnType<typeof summarizeProject>;
   /** The person's role in the project's workspace. */
@@ -222,10 +224,20 @@ async function loadLaunch(
   };
 }
 
-/** The models a person may pick in this workspace: allowed by policy, marked simulated when there's no key. */
+/**
+ * The models a person may pick in this workspace (C-2): allowed by policy, marked simulated when there's no key, the
+ * private model under its registered name. `architect` is the policy's model for new projects.
+ */
+export async function modelSetupFor(workspaceId: string): Promise<{ options: ModelOption[]; architect: ModelChoice }> {
+  const { models } = await loadPolicies(createAdminDb(), workspaceId);
+  const options = modelAvailability()
+    .filter((m) => models.allowed.includes(m.choice))
+    .map((m) => (m.choice === "private" && models.private ? { ...m, label: models.private.name } : m));
+  return { options, architect: models.architect };
+}
+
 export async function modelOptionsFor(workspaceId: string): Promise<ModelOption[]> {
-  const allowed = await allowedModels(createAdminDb(), workspaceId);
-  return modelAvailability().filter((m) => allowed.includes(m.choice));
+  return (await modelSetupFor(workspaceId)).options;
 }
 
 /** One project for its workspace screen, read under RLS (so only members see it). Null when it doesn't exist. */
@@ -269,13 +281,13 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     : [{ data: null }, { data: [] }, { data: [] }, { data: [] }];
 
   const latestRun = [...(p.runs ?? [])].filter((r) => r.started_at).sort((a, b) => (b.started_at ?? "").localeCompare(a.started_at ?? ""))[0];
-  const [{ data: events }, { data: usage }, { data: conns }, { data: connectorPolicy }] = await Promise.all([
+  const [{ data: events }, { data: usage }, { data: conns }, policies] = await Promise.all([
     latestRun
       ? db.from("events").select("id, type, payload, actor_label").eq("run_id", latestRun.id).order("id").limit(2000)
       : Promise.resolve({ data: [] as { id: number; type: string; payload: unknown; actor_label: string | null }[] }),
     db.from("usage_ledger").select("kind, credits").eq("project_id", p.id),
     db.from("connections").select("provider, status").eq("workspace_id", p.workspace_id),
-    db.from("policies").select("config").eq("workspace_id", p.workspace_id).eq("kind", "connectors").maybeSingle(),
+    loadPolicies(createAdminDb(), p.workspace_id),
   ]);
   const runEvents: RunEvent[] = (events ?? []).map((e) => {
     const payload = (e.payload ?? {}) as Record<string, unknown>;
@@ -446,7 +458,14 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     spent: { total: credits(["build", "fix", "change", "blueprint", "running"]), build: credits(["build", "change"]), fix: credits(["fix"]) },
     serverNow: await dbNow(createAdminDb()),
     connected: (conns ?? []).filter((c) => c.status === "connected").map((c) => c.provider),
-    denied: ((connectorPolicy?.config as { deny?: string[] } | null)?.deny ?? []).map(String),
+    // Apps held back here: the plan's own and any an agent uses as a tool (the Agents graph shows both).
+    denied: await blockedServices(createAdminDb(), p.workspace_id, p.id, knownApps(list.map((i) => i.provider ?? ""))),
+    policy: {
+      governance: policies.governance,
+      location: policies.governance ? locationLabel(policies.location) : null,
+      connectRefusal: connectRefusal(policies.apps, policies.governance, membership?.role === "owner" || membership?.role === "admin") ?? null,
+      scopes: policies.governance ? Object.fromEntries(list.filter((i) => i.provider).map((i) => [i.provider!, scopeOf(policies.apps, i.provider!)])) : {},
+    },
     tools: detectTools([p.prompt, ...list.map((i) => i.title)]),
     summary: summarizeProject({
       status: p.status as ProjectInput["status"],

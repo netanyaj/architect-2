@@ -114,7 +114,7 @@ export function PartDrawer({ project, items }: { project: ProjectWorkspace; item
       </div>
     </>
   ) : part.status === "needs_connection" ? (
-    <ConnectButton itemId={part.id} provider={part.provider} variant="primary" size="md" disabledReason={viewerReason} onDone={close} />
+    <ConnectButton itemId={part.id} provider={part.provider} variant="primary" size="md" disabledReason={viewerReason} onDone={close} policy={project.policy} />
   ) : part.status === "built" || part.status === "sample_data" ? (
     <TextLink href={`/p/${project.id}/launch#history`}>History and go back</TextLink>
   ) : undefined;

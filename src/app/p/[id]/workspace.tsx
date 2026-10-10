@@ -280,6 +280,9 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
       if (thenWrite) void write({ model: m });
     });
 
+  // The picker's label (a registered private model goes by its own name).
+  const modelName = (m: ModelChoice) => project.models.find((o) => o.choice === m)?.label ?? MODEL_LABEL[m];
+
   // The build as it plays: the run's events replayed on the clock, laid over the saved parts.
   const live = useRun(project.id, project.run, project.serverNow);
   const running = project.run?.status === "running";
@@ -588,15 +591,15 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
       {/* Switching models mid-project asks first (BL-3). */}
       <Dialog open={modelAsk !== null} onOpenChange={(o) => !o && setModelAsk(null)}>
         <DialogContent className="rounded-pane border border-line bg-surface p-6 shadow-pop sm:max-w-[460px]" showCloseButton={false}>
-          <DialogTitle className="text-sub font-semibold">Switch this project to {modelAsk ? MODEL_LABEL[modelAsk] : ""}?</DialogTitle>
+          <DialogTitle className="text-sub font-semibold">Switch this project to {modelAsk ? modelName(modelAsk) : ""}?</DialogTitle>
           <DialogDescription className="text-ink-2">
-            Chat answers and new plan versions use {modelAsk ? MODEL_LABEL[modelAsk] : ""} from now on. The plan you have stays as it is, and its prices
+            Chat answers and new plan versions use {modelAsk ? modelName(modelAsk) : ""} from now on. The plan you have stays as it is, and its prices
             change only when a new version is written.
             {modelAsk && project.models.find((m) => m.choice === modelAsk)?.simulated && " In this prototype it's answered by Gemini."}
           </DialogDescription>
           <DialogFooter className="mt-2 gap-2">
             <Button variant="quiet" onClick={() => setModelAsk(null)}>
-              Keep {MODEL_LABEL[project.model]}
+              Keep {modelName(project.model)}
             </Button>
             <Button
               variant="primary"
@@ -606,7 +609,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
                 switchModel(m, false);
               }}
             >
-              Switch to {modelAsk ? MODEL_LABEL[modelAsk] : ""}
+              Switch to {modelAsk ? modelName(modelAsk) : ""}
             </Button>
           </DialogFooter>
         </DialogContent>

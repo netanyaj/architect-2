@@ -7,7 +7,8 @@ import { EmptyState } from "@/components/ax/empty-state";
 import { Icon } from "@/components/ax/icon";
 import { SimTag, Tag } from "@/components/ax/pill";
 import { Segmented } from "@/components/ax/segmented";
-import { StatusMark, type StatusIcon } from "@/components/ax/status-mark";
+import { MasterDetail, MasterRow } from "@/components/ax/master-detail";
+import { StatusMark } from "@/components/ax/status-mark";
 import { formatDay, type ApprovalView, type DecisionScope } from "@/lib/approvals";
 import { relativeTime } from "@/lib/project-status";
 import { cn } from "@/lib/utils";
@@ -60,35 +61,37 @@ export function ApprovalsView({ approvals, rules, initialTab, initialId }: { app
   };
 
   return (
-    <div className="flex min-h-0 flex-1 max-md:flex-col">
-      <section aria-label="Requests" className="flex flex-none flex-col border-r border-line bg-tray md:w-[380px] max-md:border-r-0 max-md:border-b md:rounded-l-pane">
-        <div className="flex flex-col gap-2.5 px-5 pt-[22px] pb-3">
-          <h1 className="text-title font-[650]">Approvals</h1>
-          <p className="text-small text-ink-2">Requests that your rules send to an admin. Everything else in a project keeps working while it waits.</p>
-          <Segmented
-            mode="filter"
-            label="Show"
-            className="self-start"
-            value={tab}
-            onChange={choose}
-            options={[
-              { value: "waiting", label: "Waiting", count: waiting.length },
-              { value: "decided", label: "Decided" },
-              { value: "rules", label: "Rules" },
-            ]}
-          />
-        </div>
-        <ul aria-label={tab === "rules" ? "Rules" : tab === "waiting" ? "Waiting requests" : "Decided requests"} className="flex flex-col gap-1.5 px-2.5 pb-4">
+    <MasterDetail
+      title="Approvals"
+      intro="Requests that your rules send to an admin. Everything else in a project keeps working while it waits."
+      filters={
+        <Segmented
+          mode="filter"
+          label="Show"
+          className="self-start"
+          value={tab}
+          onChange={choose}
+          options={[
+            { value: "waiting", label: "Waiting", count: waiting.length },
+            { value: "decided", label: "Decided" },
+            { value: "rules", label: "Rules" },
+          ]}
+        />
+      }
+      listLabel="Requests"
+      detailLabel="Request"
+      rows={
+        <>
           {tab === "rules"
             ? rules.map((r) => (
-                <RowButton key={r.id} on={r.id === rule?.id} onClick={() => pick(r.id)} icon={r.kind === "allow" ? "check" : "lines"} status={r.kind === "allow" ? "works" : "todo"} title={r.title} meta={r.kind === "allow" ? `${r.createdByName} · ${formatDay(r.createdAt)}` : "Sends requests here"} />
+                <MasterRow key={r.id} on={r.id === rule?.id} onClick={() => pick(r.id)} icon={r.kind === "allow" ? "check" : "lines"} status={r.kind === "allow" ? "works" : "todo"} title={r.title} meta={r.kind === "allow" ? `${r.createdByName} · ${formatDay(r.createdAt)}` : "Sends requests here"} />
               ))
             : list.map((a) => (
-                <RowButton
+                <MasterRow
                   key={a.id}
                   on={a.id === current?.id}
                   onClick={() => pick(a.id)}
-                  icon={a.icon}
+                  icon={a.status === "waiting" ? a.icon : a.status === "approved" ? "check" : "minus"}
                   status={a.status === "waiting" ? "approval" : a.status === "approved" ? "works" : "blocked"}
                   title={a.title}
                   meta={a.status === "waiting" ? a.meta : `${a.status === "approved" ? "Approved" : "Rejected"} · ${a.meta}`}
@@ -96,62 +99,40 @@ export function ApprovalsView({ approvals, rules, initialTab, initialId }: { app
                 />
               ))}
           {tab === "decided" && !decided.length && <li className="px-2.5 py-3 text-small text-ink-2">Nothing decided yet. Decisions stay here with who, when and why.</li>}
-        </ul>
-      </section>
-
-      <section aria-label="Request" className="flex min-w-0 flex-1 flex-col">
-        {notice && (
-          <p role="status" className="mx-6 mt-5 rounded-card border-[1.5px] border-line px-4 py-2.5 font-semibold max-sm:mx-4">
-            {notice}
-          </p>
-        )}
-        {tab === "rules" && rule ? (
-          <RuleDetail key={rule.id} rule={rule} />
-        ) : current ? (
-          <Detail
-            key={current.id}
-            request={current}
-            onDecided={(note) => {
-              setSelected(undefined);
-              setNotice(note);
-            }}
-          />
-        ) : (
-          <EmptyState
-            icon="approvals"
-            title="Nothing waiting"
-            className="my-auto"
-            primary={
-              <Button variant="primary" onClick={() => choose("rules")}>
-                See the rules
-              </Button>
-            }
-          >
-            When a project asks for something your rules hold back, like a new app or a Live deploy, it shows up here.
-          </EmptyState>
-        )}
-      </section>
-    </div>
-  );
-}
-
-function RowButton({ on, onClick, icon, status, title, meta, aside }: { on: boolean; onClick: () => void; icon: StatusIcon; status: "approval" | "works" | "blocked" | "todo"; title: string; meta: string; aside?: string }) {
-  return (
-    <li>
-      <button
-        type="button"
-        aria-current={on || undefined}
-        onClick={onClick}
-        className={cn("flex w-full items-center gap-3 rounded-card border border-line bg-surface px-3.5 py-3 text-left hover:border-line-ctl", on && "border-2 border-ink px-[13px] py-[11px]")}
-      >
-        <StatusMark status={status} icon={status === "approval" ? icon : status === "works" ? "check" : status === "blocked" ? "minus" : icon} />
-        <span className="flex min-w-0 flex-1 flex-col">
-          <strong className="truncate font-[650]">{title}</strong>
-          <span className="truncate text-small text-ink-2">{meta}</span>
-        </span>
-        {aside && <span className="flex-none text-small text-ink-2 tabular-nums">{aside}</span>}
-      </button>
-    </li>
+        </>
+      }
+    >
+      {notice && (
+        <p role="status" className="mx-6 mt-5 rounded-card border-[1.5px] border-line px-4 py-2.5 font-semibold max-sm:mx-4">
+          {notice}
+        </p>
+      )}
+      {tab === "rules" && rule ? (
+        <RuleDetail key={rule.id} rule={rule} />
+      ) : current ? (
+        <Detail
+          key={current.id}
+          request={current}
+          onDecided={(note) => {
+            setSelected(undefined);
+            setNotice(note);
+          }}
+        />
+      ) : (
+        <EmptyState
+          icon="approvals"
+          title="Nothing waiting"
+          className="my-auto"
+          primary={
+            <Button variant="primary" onClick={() => choose("rules")}>
+              See the rules
+            </Button>
+          }
+        >
+          When a project asks for something your rules hold back, like a new app or a Live deploy, it shows up here.
+        </EmptyState>
+      )}
+    </MasterDetail>
   );
 }
 

@@ -5,10 +5,13 @@ import { z } from "zod";
 import { agentGraph, type AgentOrigin, type GraphEnd } from "@/lib/agents";
 import type { Json } from "@/lib/database.types";
 import { GatewayRateLimited, GatewaySlow, GatewayUnavailable, runAgent, type AgentRuntime } from "@/lib/gateway";
-import { MODEL_CHOICES, toModelChoice, type ModelChoice } from "@/lib/models";
+import { MODEL_CHOICES, MODEL_LABEL, toModelChoice, type ModelChoice } from "@/lib/models";
+import { MODEL_NOT_ALLOWED } from "@/lib/policies";
 import { canBuild } from "@/lib/permissions";
+import { allowedModels } from "../blueprint/write-plan";
 import { createAdminDb, createServerDb, type AdminDb } from "../db";
 import { createLyzrAgent, LYZR_MODEL, lyzrConfigured, LyzrError, updateLyzrAgent } from "../lyzr";
+import { loadPolicies } from "../policy";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
 
@@ -65,6 +68,8 @@ export type AgentsData = {
   runs: Record<string, AgentRunView[]>;
   /** Whether Try it runs on Lyzr Studio here (a key is set), and on which model. */
   lyzr: { configured: boolean; model: string };
+  /** MCP servers the policy allows agents to use (C-3); null with governance off (any MCP server). */
+  mcpServers: string[] | null;
   /** Meeting Prep's sample agents (screen 9) rather than agents derived from the plan. */
   sampleProject: boolean;
 };
@@ -195,6 +200,9 @@ export async function loadAgents(input: { projectId: string }): Promise<ActionRe
   const { data: existing } = await admin.from("agents").select(AGENT_COLUMNS).eq("project_id", p.id);
   const rows = (existing ?? []) as AgentRow[];
   const projectModel = toModelChoice(p.model);
+  // New agents start on the policy's default for app agents (C-2); with governance off, on the project's model.
+  const policies = await loadPolicies(admin, p.workspace_id);
+  const agentDefault = policies.governance ? policies.models.agentDefault : projectModel;
   const missing = spec.agents.filter((a) => !rows.some((r) => r.item_key === a.key));
   // Agents found in an imported repo keep their framework (B-6); every other agent runs on Lyzr Studio.
   const frameworkOf = (key: string) => {
@@ -215,7 +223,7 @@ export async function loadAgents(input: { projectId: string }): Promise<ActionRe
           tools: a.tools,
           knowledge: a.knowledge,
           framework: frameworkOf(a.key),
-          model: spec.sample ? "claude" : projectModel,
+          model: spec.sample ? "claude" : agentDefault,
         })),
       )
       .select(AGENT_COLUMNS);
@@ -291,6 +299,7 @@ export async function loadAgents(input: { projectId: string }): Promise<ActionRe
       agents,
       runs: runsByAgent,
       lyzr: { configured: lyzrConfigured().perAgent, model: LYZR_MODEL.label },
+      mcpServers: policies.governance ? policies.apps.mcp.map((m) => m.name) : null,
       sampleProject: spec.sample,
     },
   };
@@ -320,6 +329,16 @@ export async function saveAgent(input: z.input<typeof settings>): Promise<Action
   if (!row) return { ok: false, message: "That agent isn't in this workspace." };
 
   const s = parsed.data;
+  // Only models the policy allows (C-2). An agent on a model that was disallowed later has to switch first.
+  if (!(await allowedModels(admin, ctx.workspace.id)).includes(s.model)) {
+    return { ok: false, message: s.model === toModelChoice(row.model) ? `${MODEL_NOT_ALLOWED}. Switch it to an allowed model, then save.` : `${MODEL_LABEL[s.model]} isn't allowed in this workspace. Pick another model.` };
+  }
+  // A new MCP tool has to be a server the policy allows (C-3).
+  const policies = await loadPolicies(admin, ctx.workspace.id);
+  const newMcp = s.tools.filter((t) => !row.tools.includes(t) && /^MCP\b/.test(t));
+  if (policies.governance && newMcp.some((t) => !policies.apps.mcp.some((m) => `MCP: ${m.name}` === t))) {
+    return { ok: false, message: "That MCP server isn't on your organisation's list. An Owner or Admin adds servers in Governance › Apps and MCP servers." };
+  }
   const now = new Date().toISOString();
   const next: AgentRow = { ...row, model: s.model, temperature: s.temperature, max_tokens: s.maxTokens, instructions: s.instructions, tools: s.tools, knowledge: s.knowledge };
   const { error } = await admin
@@ -357,6 +376,9 @@ export async function tryAgent(input: { agentId: string; message: string }): Pro
   const row = await agentInWorkspace(admin, input.agentId, ctx.workspace.id);
   if (!row) return { ok: false, message: "That agent isn't in this workspace." };
 
+  if (!(await allowedModels(admin, ctx.workspace.id)).includes(toModelChoice(row.model))) {
+    return { ok: false, message: `${MODEL_NOT_ALLOWED} for this agent. Switch it in Settings and save, then try it.` };
+  }
   const { data: recent } = await admin.from("agent_runs").select("created_at").eq("created_by", ctx.user.id).order("created_at", { ascending: false }).limit(TRY_IT_PER_HOUR);
   const hourAgo = Date.now() - 3600_000;
   if ((recent ?? []).filter((r) => new Date(r.created_at).getTime() > hourAgo).length >= TRY_IT_PER_HOUR) {

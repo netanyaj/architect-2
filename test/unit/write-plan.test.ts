@@ -53,6 +53,7 @@ beforeEach(() => {
   db = new FakeDb({
     projects: [{ id: PROJECT, workspace_id: "ws-1", name: "Untitled app", prompt: "Before each meeting on my calendar, send me a Slack brief with each attendee's last email thread, a summary of any attached agenda PDF, and three talking points.", model: "gemini" }],
     policies: [{ workspace_id: "ws-1", kind: "models", config: { allowed: ["gemini", "openrouter", "claude"] } }],
+    workspaces: [{ id: "ws-1", governance_enabled: true }],
     blueprints: [],
     items: [],
     questions: [],

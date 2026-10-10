@@ -12,9 +12,13 @@ export type ConnectionRow = {
   what: string;
   usedBy: string[];
   state: "connected" | "missing" | "expired" | "blocked" | "waiting";
+  /** What the organisation lets it do (C-3), with governance on. */
+  scope?: string;
 };
 
-function Row({ c, canConnect }: { c: ConnectionRow; canConnect: boolean }) {
+type Access = { canConnect: boolean; refusal?: string; isAdmin: boolean };
+
+function Row({ c, access }: { c: ConnectionRow; access: Access }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string>();
   const used = c.usedBy.length ? `Used by ${c.usedBy.join(", ")}` : "Not used by a project yet";
@@ -40,7 +44,7 @@ function Row({ c, canConnect }: { c: ConnectionRow; canConnect: boolean }) {
     c.state === "missing" || c.state === "expired" ? (
       <Button
         size="sm"
-        disabledReason={pending ? "Connecting…" : canConnect ? undefined : "Viewers can't connect apps."}
+        disabledReason={pending ? "Connecting…" : !access.canConnect ? "Viewers can't connect apps." : access.refusal}
         onClick={() =>
           start(async () => {
             setError(undefined);
@@ -51,7 +55,7 @@ function Row({ c, canConnect }: { c: ConnectionRow; canConnect: boolean }) {
       >
         {pending ? "Connecting…" : `Connect ${c.name}`}
       </Button>
-    ) : c.state === "waiting" ? (
+    ) : c.state === "waiting" && access.isAdmin ? (
       <TextLink href="/governance/approvals">See request</TextLink>
     ) : null;
 
@@ -61,29 +65,31 @@ function Row({ c, canConnect }: { c: ConnectionRow; canConnect: boolean }) {
       name={c.name}
       meta={
         <>
-          {c.what} {used}.
+          {c.what} {used}.{c.scope ? ` Allowed: ${c.scope.toLowerCase()}.` : ""}
         </>
       }
       status={status}
       trailing={action}
       footer={
-        error && (
+        error ? (
           <p role="alert" className="text-small font-semibold text-failed">
             {error}
           </p>
-        )
+        ) : (c.state === "missing" || c.state === "expired") && access.canConnect && access.refusal ? (
+          <p className="text-small text-ink-2">{access.refusal}</p>
+        ) : undefined
       }
     />
   );
 }
 
-export function ConnectionsList({ rows, canConnect }: { rows: ConnectionRow[]; canConnect: boolean }) {
+export function ConnectionsList({ rows, access }: { rows: ConnectionRow[]; access: Access }) {
   // Needs attention first, then the rest.
   const order = { missing: 0, expired: 0, waiting: 1, blocked: 2, connected: 3 };
   return (
     <Tray label="Connections">
       {[...rows].sort((a, b) => order[a.state] - order[b.state]).map((c) => (
-        <Row key={c.id} c={c} canConnect={canConnect} />
+        <Row key={c.id} c={c} access={access} />
       ))}
     </Tray>
   );

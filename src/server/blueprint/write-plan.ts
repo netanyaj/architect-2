@@ -5,6 +5,7 @@ import { GatewayRateLimited, GatewaySlow, GatewayUnavailable, resolveModel } fro
 import { canBuild } from "@/lib/permissions";
 import { MODEL_LABEL, toModelChoice, type ModelChoice } from "@/lib/models";
 import type { AdminDb } from "../db";
+import { loadPolicies } from "../policy";
 import { draftingCredits, estimate, totals as planTotals } from "../estimate";
 import { applyRepoProofs } from "../import";
 import type { AppContext } from "../workspace";
@@ -34,12 +35,9 @@ export class PlanRefused extends Error {
   }
 }
 
-/** Models the workspace's policy allows (BL-3). */
+/** Models the workspace's policy allows (BL-3, C-2); every model with governance off. */
 export async function allowedModels(admin: AdminDb, workspaceId: string): Promise<ModelChoice[]> {
-  const { data } = await admin.from("policies").select("config").eq("workspace_id", workspaceId).eq("kind", "models").maybeSingle();
-  const allowed = (data?.config as { allowed?: string[] } | null)?.allowed;
-  if (!allowed?.length) return ["gemini", "openrouter", "claude", "gpt"];
-  return allowed.map(toModelChoice).filter((m, i, a) => a.indexOf(m) === i);
+  return (await loadPolicies(admin, workspaceId)).models.allowed;
 }
 
 /** The project's uploads for the planner: PDF text, and images passed to the model as images. */

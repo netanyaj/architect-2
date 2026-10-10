@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ax/button";
 import { SimTag } from "@/components/ax/pill";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
+import { SCOPE_LABEL, type Scope } from "@/lib/policies";
 import { PROVIDERS, providerAccount, providerName } from "@/lib/providers";
 import { connectPart } from "@/server/actions/run";
 
@@ -20,6 +21,7 @@ export function ConnectButton({
   size = "sm",
   disabledReason,
   onDone,
+  policy,
 }: {
   itemId: string;
   provider: string | null;
@@ -28,6 +30,8 @@ export function ConnectButton({
   size?: "sm" | "md";
   disabledReason?: string;
   onDone?: () => void;
+  /** The organisation's app policy here (C-3): who may connect, and what the app may do. */
+  policy?: { governance: boolean; connectRefusal: string | null; scopes: Record<string, Scope> };
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -35,11 +39,13 @@ export function ConnectButton({
   const [error, setError] = useState<string>();
   const name = providerName(provider);
   const what = (provider && PROVIDERS[provider]?.what) ?? `Reads and writes what this part needs in ${name}.`;
+  const scope = provider && policy?.governance ? policy.scopes[provider] : undefined;
   return (
     <>
-      <Button variant={variant} size={size} disabledReason={disabledReason} onClick={() => setOpen(true)}>
+      <Button variant={variant} size={size} disabledReason={disabledReason ?? policy?.connectRefusal ?? undefined} onClick={() => setOpen(true)}>
         {label ?? `Connect ${providerAccount(provider)}`}
       </Button>
+      {!disabledReason && policy?.connectRefusal && <span className="text-small text-ink-2">{policy.connectRefusal}</span>}
       <Dialog open={open} onOpenChange={(o) => !pending && setOpen(o)}>
         <DialogContent className="rounded-pane border border-line bg-surface p-6 shadow-pop sm:max-w-[440px]" showCloseButton={false}>
           <div className="flex items-center gap-2">
@@ -49,6 +55,7 @@ export function ConnectButton({
           <DialogDescription className="text-ink-2">Architect is asking your {providerAccount(provider)} for permission to:</DialogDescription>
           <ul className="list-disc pl-5 text-body">
             <li>{what}</li>
+            {scope && <li>Your organisation allows {SCOPE_LABEL[scope].toLowerCase()} access, so that&apos;s all Architect asks for.</li>}
             <li>Keep this access until you disconnect it in Connections.</li>
           </ul>
           <p className="text-small text-ink-2">In the real product this opens {name}&apos;s own sign-in. Here, Allow connects it straight away.</p>

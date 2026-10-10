@@ -324,6 +324,12 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
               {state.repo.merged ? `Deploys from main · PR #${state.repo.prNumber} merged` : `Deploys from main after ${state.repo.prNumber ? `PR #${state.repo.prNumber}` : "the pull request"} merges`}
             </span>
           )}
+          {/* Where it runs (C-1): the organisation's choice, shown where the app goes live. */}
+          {project.policy.location && (
+            <span className="flex flex-wrap items-center gap-1.5 text-small text-ink-2">
+              Runs in {project.policy.location} · your organisation&apos;s choice <SimTag title="Where an app runs is simulated in this prototype." />
+            </span>
+          )}
           {/* Running cost before going live (review gap 5). */}
           <span className="text-small text-ink-2 tabular-nums">
             About {monthly} credits a month (estimate)
@@ -364,6 +370,7 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
                     label={`Connect ${r.title.replace(/^Connect (.+) for your team$/, "$1")}`}
                     variant={primary ? "primary" : "secondary"}
                     disabledReason={!canAct ? "Viewers can't connect accounts." : busy}
+                    policy={project.policy}
                   />
                 )}
                 {r.kind === "sample" && (

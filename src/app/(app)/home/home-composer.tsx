@@ -29,6 +29,7 @@ export function HomeComposer({
   startBlockedReason,
   initialPrompt,
   models,
+  defaultModel = DEFAULT_MODEL,
 }: {
   signedIn: boolean;
   firstName?: string;
@@ -38,11 +39,13 @@ export function HomeComposer({
   initialPrompt?: string;
   /** The models this workspace allows (all of them when signed out). */
   models: ModelOption[];
+  /** The model new projects start on: the policy's Architect model (C-2), else Gemini. */
+  defaultModel?: ModelChoice;
 }) {
   const router = useRouter();
   const { prompt, setPrompt, templatesOpen, setTemplatesOpen } = useHomePrompt();
   const [talkFirst, setTalkFirst] = useState(false);
-  const [model, setModel] = useState<ModelChoice>(models.find((m) => m.choice === DEFAULT_MODEL)?.choice ?? models[0]?.choice ?? DEFAULT_MODEL);
+  const [model, setModel] = useState<ModelChoice>(models.find((m) => m.choice === defaultModel)?.choice ?? models[0]?.choice ?? DEFAULT_MODEL);
   const [hello, setHello] = useState<string | null>(null);
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();

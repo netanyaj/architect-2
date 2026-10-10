@@ -21,6 +21,7 @@ describe("resolveModel", () => {
       ["openrouter", true],
       ["claude", true],
       ["gpt", true],
+      ["private", true],
     ]);
   });
 

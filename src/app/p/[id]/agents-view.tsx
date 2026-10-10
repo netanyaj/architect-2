@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Button, buttonClasses, IconButton, TextLink } from "@/components/ax/button";
 import { EmptyState } from "@/components/ax/empty-state";
 import { Icon } from "@/components/ax/icon";
-import { ModelPicker } from "@/components/ax/model-picker";
+import { ModelNotAllowed, ModelPicker } from "@/components/ax/model-picker";
 import { Pill, SimTag } from "@/components/ax/pill";
 import { PlanGroup, PlanRow } from "@/components/ax/plan-panel";
 import { Segmented } from "@/components/ax/segmented";
@@ -33,7 +33,9 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 const seconds = (ms: number | null) => (ms === null ? null : `${(ms / 1000).toFixed(1)} s`);
 
 /** Tools the "Tool or MCP server" menu offers. Tools are simulated: Try it runs the agent's instructions only. */
-const TOOL_CATALOG = ["Web search", "PDF summariser", "Calculator", ...Object.values(PROVIDERS).map((p) => p.name), "MCP server"];
+const BASE_TOOLS = ["Web search", "PDF summariser", "Calculator", ...Object.values(PROVIDERS).map((p) => p.name)];
+/** With governance on, only the MCP servers the policy allows (C-3); otherwise any MCP server. */
+const toolCatalog = (mcp: string[] | null) => [...BASE_TOOLS, ...(mcp === null ? ["MCP server"] : mcp.map((n) => `MCP: ${n}`))];
 
 const RUNTIME_WORDS: Record<AgentRunView["runtime"], string> = {
   lyzr_agent: "Runs on Lyzr Studio",
@@ -245,8 +247,8 @@ function ToolState({ provider, connected, denied }: { provider: string; connecte
 
 function CompareDialog({ open, onOpenChange, models, lyzrModel }: { open: boolean; onOpenChange: (o: boolean) => void; models: ProjectWorkspace["models"]; lyzrModel: string }) {
   // The estimator's price factors (DECISIONS: "Numbers we set").
-  const factor: Record<ModelChoice, number> = { openrouter: 0.6, gemini: 0.8, claude: 1, gpt: 1 };
-  const speed: Record<ModelChoice, string> = { openrouter: "Slow, varies", gemini: "Fastest", claude: "Fast", gpt: "Fast" };
+  const factor: Record<ModelChoice, number> = { openrouter: 0.6, gemini: 0.8, claude: 1, gpt: 1, private: 0.8 };
+  const speed: Record<ModelChoice, string> = { openrouter: "Slow, varies", gemini: "Fastest", claude: "Fast", gpt: "Fast", private: "Depends on your endpoint" };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-pane border border-line bg-surface p-6 shadow-pop sm:max-w-[520px]">
@@ -318,20 +320,25 @@ function Chips({ values, onRemove, readOnly }: { values: string[]; onRemove: (v:
   );
 }
 
-function SettingsTab({ agent, draft, setDraft, project, readOnly, lyzrModel }: { agent: AgentView; draft: Draft; setDraft: (d: Draft) => void; project: ProjectWorkspace; readOnly: boolean; lyzrModel: string }) {
+function SettingsTab({ agent, draft, setDraft, project, readOnly, lyzrModel, mcpServers }: { agent: AgentView; draft: Draft; setDraft: (d: Draft) => void; project: ProjectWorkspace; readOnly: boolean; lyzrModel: string; mcpServers: string[] | null }) {
   const [more, setMore] = useState(false);
   const [compare, setCompare] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const reason = readOnly ? "Viewers can't change agents." : undefined;
+  const modelAllowed = project.models.some((m) => m.choice === draft.model);
   return (
     <div className="flex flex-col gap-3.5">
       <div className="flex flex-col gap-1.5">
         <span className="text-small font-semibold text-ink-2">Model</span>
         <div className="flex items-center gap-2">
-          <ModelPicker value={draft.model} options={project.models} onChange={(m) => setDraft({ ...draft, model: m })} disabledReason={reason} />
+          <ModelPicker value={draft.model} options={project.models} onChange={(m) => setDraft({ ...draft, model: m })} disabledReason={reason} open={pickerOpen} onOpenChange={setPickerOpen} />
           <Button size="sm" onClick={() => setCompare(true)}>
             Compare
           </Button>
+          {/* Studio agents run on Lyzr's own model whatever is picked here (M4 decision): say which, next to the picker. */}
+          {agent.framework === "lyzr" && <span className="text-small text-ink-2">Model used on Studio: {lyzrModel}</span>}
         </div>
+        {!modelAllowed && !readOnly && <ModelNotAllowed onSwitch={() => setPickerOpen(true)} />}
         <TextLink onClick={() => setMore((v) => !v)} aria-expanded={more}>
           More model settings · creativity {draft.temperature.toFixed(1)}
         </TextLink>
@@ -391,11 +398,16 @@ function SettingsTab({ agent, draft, setDraft, project, readOnly, lyzrModel }: {
           <AddMenu
             label="Tool or MCP server"
             disabledReason={reason ?? (draft.tools.length >= 12 ? "Up to 12 tools per agent." : undefined)}
-            options={TOOL_CATALOG.filter((t) => !draft.tools.includes(t))}
+            options={toolCatalog(mcpServers).filter((t) => !draft.tools.includes(t))}
             emptyNote="Every tool is added."
             onPick={(t) => setDraft({ ...draft, tools: [...draft.tools, t] })}
           />
         </div>
+        {mcpServers !== null && (
+          <p className="text-small text-ink-2">
+            {mcpServers.length ? `MCP servers your organisation allows: ${mcpServers.join(", ")}.` : "Your organisation hasn't allowed any MCP servers yet. An Owner or Admin adds them in Governance."}
+          </p>
+        )}
       </div>
       <div className="flex flex-col gap-1.5">
         <span className="flex items-center gap-2 text-small font-semibold text-ink-2">
@@ -700,7 +712,7 @@ function AgentPanel({
         ]}
       />
       <div role="tabpanel" aria-label={tab === "try" ? "Try it" : tab.charAt(0).toUpperCase() + tab.slice(1)} className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-auto px-4 py-2.5">
-        {tab === "settings" && <SettingsTab agent={agent} draft={draft} setDraft={setDraft} project={project} readOnly={readOnly} lyzrModel={data.lyzr.model} />}
+        {tab === "settings" && <SettingsTab agent={agent} draft={draft} setDraft={setDraft} project={project} readOnly={readOnly} lyzrModel={data.lyzr.model} mcpServers={data.mcpServers} />}
         {tab === "runs" &&
           (runs.length ? (
             <ul className="flex flex-col gap-2" aria-label="Runs">

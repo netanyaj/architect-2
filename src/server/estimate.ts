@@ -33,7 +33,7 @@ export const CLASS_TABLE: Record<ItemClass, ClassStats> = {
 const SIZE: Record<Item["size"], number> = { s: 0.7, m: 1.0, l: 1.5 };
 
 /** Model price factors: cheaper models are below 1.0 (the free OpenRouter model is cheapest). */
-export const MODEL_PRICE_FACTOR: Record<ModelChoice, number> = { openrouter: 0.6, gemini: 0.8, claude: 1.0, gpt: 1.0 };
+export const MODEL_PRICE_FACTOR: Record<ModelChoice, number> = { openrouter: 0.6, gemini: 0.8, claude: 1.0, gpt: 1.0, private: 0.8 };
 
 /** One credit-weighted unit is a typical 12-credit part; each takes about 45 s to build. */
 const CREDITS_PER_UNIT = 12;

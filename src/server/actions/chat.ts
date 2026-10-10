@@ -5,8 +5,10 @@ import { z } from "zod";
 import type { Json } from "@/lib/database.types";
 import { askObject, GatewayRateLimited, GatewaySlow, ask } from "@/lib/gateway";
 import { toModelChoice } from "@/lib/models";
+import { MODEL_NOT_ALLOWED } from "@/lib/policies";
 import { canBuild } from "@/lib/permissions";
 import { applyDiff, ChangeDraft, conflictsOf, isEmpty, normalizeChange, type Decision, type Diff, type VersionItem } from "@/lib/plan-diff";
+import { allowedModels } from "../blueprint/write-plan";
 import { createAdminDb, type AdminDb } from "../db";
 import { estimate, totals as planTotals } from "../estimate";
 import { startRun } from "../sim/run";
@@ -76,6 +78,10 @@ export async function sendMessage(input: { projectId: string; content: string; t
   const project = await projectInWorkspace(admin, input.projectId, ctx.workspace.id);
   if (!project) return { ok: false, message: "That project isn't in this workspace." };
   const model = toModelChoice(project.model);
+  // Never answer on a model the policy no longer allows, and never switch it silently (C-2).
+  if (!(await allowedModels(admin, ctx.workspace.id)).includes(model)) {
+    return { ok: false, message: `${MODEL_NOT_ALLOWED} in this workspace. Switch model to carry on. Your message wasn't sent.` };
+  }
   const plan = await latestPlan(admin, project.id);
 
   await admin.from("messages").insert({ project_id: project.id, role: "user", mode: input.talkFirst ? "plan" : "build", content, model });

@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { EmptyState } from "@/components/ax/empty-state";
 import { SimTag } from "@/components/ax/pill";
-import { canBuild } from "@/lib/permissions";
+import { canBuild, canManageMembers } from "@/lib/permissions";
+import { connectRefusal, SCOPE_LABEL, scopeOf } from "@/lib/policies";
 import { PROVIDERS } from "@/lib/providers";
-import { createServerDb } from "@/server/db";
+import { createAdminDb, createServerDb } from "@/server/db";
+import { loadPolicies } from "@/server/policy";
 import { listProjects } from "@/server/queries";
 import { getAppContext } from "@/server/workspace";
 import { ConnectionsList, type ConnectionRow } from "./connections-list";
@@ -13,13 +15,15 @@ export const metadata: Metadata = { title: "Connections · Architect" };
 export default async function ConnectionsPage() {
   const ctx = await getAppContext();
   const db = await createServerDb();
-  const [{ data: connections }, { data: policy }, { data: approvals }, projects] = await Promise.all([
+  const [{ data: connections }, policies, { data: approvals }, projects] = await Promise.all([
     db.from("connections").select("id, provider, status, scopes").eq("workspace_id", ctx.workspace.id).order("created_at"),
-    db.from("policies").select("config").eq("workspace_id", ctx.workspace.id).eq("kind", "connectors").maybeSingle(),
+    loadPolicies(createAdminDb(), ctx.workspace.id),
     db.from("approvals").select("payload, status").eq("workspace_id", ctx.workspace.id).eq("kind", "connector").eq("status", "waiting"),
     listProjects(ctx),
   ]);
-  const deny = (policy?.config as { deny?: string[] } | null)?.deny ?? [];
+  // With governance on, apps not on the allowed list need an admin (C-3); off, nothing is held back.
+  const blocked = (provider: string) => policies.governance && !policies.apps.allow.includes(provider);
+  const isAdmin = canManageMembers(ctx.role);
   const waiting = new Set((approvals ?? []).map((a) => (a.payload as { provider?: string } | null)?.provider));
 
   const rows: ConnectionRow[] = (connections ?? []).map((c) => {
@@ -29,7 +33,8 @@ export default async function ConnectionsPage() {
       name: info.name,
       what: info.what,
       usedBy: projects.filter((p) => p.tools.includes(info.tool)).map((p) => p.name),
-      state: c.status === "connected" ? "connected" : deny.includes(c.provider) ? (waiting.has(c.provider) ? "waiting" : "blocked") : c.status === "expired" ? "expired" : "missing",
+      scope: policies.governance && !blocked(c.provider) ? SCOPE_LABEL[scopeOf(policies.apps, c.provider)] : undefined,
+      state: c.status === "connected" ? "connected" : blocked(c.provider) ? (waiting.has(c.provider) ? "waiting" : "blocked") : c.status === "expired" ? "expired" : "missing",
     };
   });
 
@@ -43,7 +48,7 @@ export default async function ConnectionsPage() {
         </p>
       </div>
       {rows.length ? (
-        <ConnectionsList rows={rows} canConnect={canBuild(ctx.role)} />
+        <ConnectionsList rows={rows} access={{ canConnect: canBuild(ctx.role), refusal: connectRefusal(policies.apps, policies.governance, isAdmin), isAdmin }} />
       ) : (
         <EmptyState icon="connections" title="No apps connected yet">
           When a plan needs an app, it shows up here with what it&apos;s used for. Nothing connects without your click.

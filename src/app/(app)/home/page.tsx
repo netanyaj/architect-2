@@ -7,7 +7,7 @@ import { StatusLine } from "@/components/ax/status-mark";
 import { buildBlockedReason } from "@/lib/permissions";
 import { STARTERS } from "@/lib/templates";
 import { modelAvailability } from "@/lib/gateway";
-import { modelOptionsFor } from "@/server/project";
+import { modelSetupFor } from "@/server/project";
 import { createServerDb } from "@/server/db";
 import { listProjects } from "@/server/queries";
 import { displayNameFor, getAppContext } from "@/server/workspace";
@@ -48,7 +48,7 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
   }
 
   const ctx = await getAppContext();
-  const [projects, models] = await Promise.all([listProjects(ctx), modelOptionsFor(ctx.workspace.id)]);
+  const [projects, { options: models, architect }] = await Promise.all([listProjects(ctx), modelSetupFor(ctx.workspace.id)]);
   // Things that need the person first, then the most recently changed.
   const recent = [...projects].sort((a, b) => Number(b.summary.needsYou) - Number(a.summary.needsYou)).slice(0, 3);
 
@@ -60,6 +60,7 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
         startBlockedReason={buildBlockedReason(ctx.role)}
         initialPrompt={starterPrompt}
         models={models}
+        defaultModel={architect}
       />
 
       {recent.length > 0 && (

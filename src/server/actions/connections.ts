@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { canBuild } from "@/lib/permissions";
+import { canBuild, canManageMembers } from "@/lib/permissions";
+import { connectRefusal, scopeOf } from "@/lib/policies";
 import { createAdminDb } from "../db";
+import { blockedServices, loadPolicies } from "../policy";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
 
@@ -26,11 +28,15 @@ export async function connectProvider(input: { connectionId: string }): Promise<
   if (!conn) return { ok: false, message: "That app isn't in this workspace." };
   if (conn.status === "connected") return { ok: true };
 
-  const { data: policy } = await admin.from("policies").select("config").eq("workspace_id", ctx.workspace.id).eq("kind", "connectors").maybeSingle();
-  const deny = ((policy?.config as { deny?: string[] } | null)?.deny ?? []).includes(conn.provider);
-  if (deny) return { ok: false, message: "Your organisation's policy doesn't allow this app. IT has to approve it first." };
+  if ((await blockedServices(admin, ctx.workspace.id, null, [conn.provider])).length) {
+    return { ok: false, message: "Your organisation's policy doesn't allow this app. IT has to approve it first." };
+  }
+  const policies = await loadPolicies(admin, ctx.workspace.id);
+  const refusal = connectRefusal(policies.apps, policies.governance, canManageMembers(ctx.role));
+  if (refusal) return { ok: false, message: refusal };
 
-  const { error } = await admin.from("connections").update({ status: "connected" }).eq("id", conn.id);
+  const scopes = policies.governance ? [scopeOf(policies.apps, conn.provider)] : ["read_write"];
+  const { error } = await admin.from("connections").update({ status: "connected", scopes }).eq("id", conn.id);
   if (error) return { ok: false, message: "The app couldn't be connected. Try again." };
   await admin.from("audit_log").insert({
     workspace_id: ctx.workspace.id,

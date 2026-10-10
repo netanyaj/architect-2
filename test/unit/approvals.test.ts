@@ -125,6 +125,7 @@ describe("deciding a request", () => {
       ],
       policies: [{ id: "pol", workspace_id: "ws-1", kind: "connectors", config: { allow: ["slack"], deny: ["hubspot"] } }],
       runs: [],
+      workspaces: [{ id: "ws-1", governance_enabled: true }],
       allow_rules: [],
       audit_log: [],
     });
@@ -159,9 +160,11 @@ describe("deciding a request", () => {
     expect(await decide({ approvalId: A, decision: "reject", reason: "x" })).toEqual({ ok: false, message: "Jordan Lee already approved this request. It's in Decided." });
 
     // The build and Connect now treat HubSpot as allowed for this project only.
-    const { deniedForProject } = await import("@/server/policy");
-    expect(await deniedForProject(db as never, "ws-1", P)).toEqual([]);
-    expect(await deniedForProject(db as never, "ws-1", Q)).toEqual(["hubspot"]);
+    const { blockedServices } = await import("@/server/policy");
+    expect(await blockedServices(db as never, "ws-1", P, ["hubspot", "slack"])).toEqual([]);
+    expect(await blockedServices(db as never, "ws-1", Q, ["hubspot", "slack", "notion"])).toEqual(["hubspot", "notion"]);
+    db.tables.workspaces[0].governance_enabled = false;
+    expect(await blockedServices(db as never, "ws-1", Q, ["hubspot"])).toEqual([]);
   });
 
   it("approve and allow everywhere: a rule, the policy, every waiting part and request of that app", async () => {

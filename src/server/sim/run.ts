@@ -3,7 +3,7 @@ import "server-only";
 import type { Json } from "@/lib/database.types";
 import { buildTimeline, SCENARIO, type SimItem, type Variant } from "@/lib/sim/timeline";
 import type { AdminDb } from "../db";
-import { deniedForProject } from "../policy";
+import { blockedServices } from "../policy";
 import { openPullRequest } from "../pull-requests";
 
 /** `?sim=` on the workspace URL: a demo variant and/or a faster pace (docs/SIMULATOR.md). */
@@ -35,16 +35,17 @@ export async function startRun(admin: AdminDb, runId: string, sim: SimOptions = 
   try {
     const { data: project } = await admin.from("projects").select("workspace_id, budget_credits").eq("id", run.project_id).single();
     if (!project) throw new Error("project missing");
-    const [{ data: items }, { data: connections }, denied, { data: usage }] = await Promise.all([
+    const [{ data: items }, { data: connections }, { data: usage }] = await Promise.all([
       admin
         .from("items")
         .select("id, key, grp, title, description, proved_when, item_class, size, provider, estimate_likely, position, status, fix_attempts")
         .eq("blueprint_id", run.blueprint_id),
       admin.from("connections").select("provider").eq("workspace_id", project.workspace_id).eq("status", "connected"),
-      deniedForProject(admin, project.workspace_id, run.project_id),
       admin.from("usage_ledger").select("credits").eq("project_id", run.project_id),
     ]);
     const ids = new Map((items ?? []).map((i) => [i.key, i.id]));
+    // Apps the policy doesn't allow for this project go to an admin (C-3); none with governance off.
+    const denied = await blockedServices(admin, project.workspace_id, run.project_id, (items ?? []).map((i) => i.provider));
 
     // A follow-up run (Raise budget and continue, Try once more) says which parts it's for.
     const focusKeys = ((run.outcome as { focus?: string[] | null } | null)?.focus ?? null) as string[] | null;

@@ -116,6 +116,7 @@ beforeEach(() => {
       { id: C2, workspace_id: "ws-1", provider: "hubspot", status: "missing" },
     ],
     policies: [{ workspace_id: "ws-1", kind: "connectors", config: { allow: ["gmail"], deny: ["hubspot"] } }],
+    workspaces: [{ id: "ws-1", governance_enabled: true }],
     support_tickets: [{ id: 1, project_id: P1, question: "Why?" }],
     audit_log: [],
   });

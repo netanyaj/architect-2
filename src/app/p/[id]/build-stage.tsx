@@ -100,6 +100,7 @@ export function BuildPanel({ project, items, budgetPaused }: { project: ProjectW
                     variant={n === 0 && blocked.length === 0 && !budgetPaused ? "primary" : "secondary"}
                     disabledReason={!canAct ? "Viewers can't connect accounts." : pending ? "Connecting…" : undefined}
                     onDone={() => setConnectedHere((prev) => new Set(prev).add(i.id))}
+                    policy={project.policy}
                   />
                   <SimTag title="Connecting is simulated in this prototype: no real sign-in happens" />
                   </span>

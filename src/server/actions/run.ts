@@ -4,10 +4,11 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { Json } from "@/lib/database.types";
 import { canBuild, canManageMembers } from "@/lib/permissions";
+import { connectRefusal, scopeOf } from "@/lib/policies";
 import { suggestionFor, type Suggestion } from "@/lib/sim/suggestion";
 import { SCENARIO } from "@/lib/sim/timeline";
 import { createAdminDb, createServerDb, type AdminDb } from "../db";
-import { deniedForProject } from "../policy";
+import { blockedServices, loadPolicies } from "../policy";
 import { amendRun, blockedInRun, settleRun, startFollowupRun } from "../sim/run";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
@@ -89,12 +90,17 @@ export async function connectPart(input: { itemId: string }): Promise<ActionResu
   // While the build plays, the part may be waiting for this connection before the run has settled.
   if (part.status !== "needs_connection" && !running?.length) return { ok: false, message: "That part is already connected." };
 
-  if ((await deniedForProject(admin, ctx.workspace.id, part.project_id)).includes(part.provider)) {
+  if ((await blockedServices(admin, ctx.workspace.id, part.project_id, [part.provider])).length) {
     return { ok: false, message: "Your organisation's policy doesn't allow this app. IT has to approve it first." };
   }
+  const policies = await loadPolicies(admin, ctx.workspace.id);
+  const refusal = connectRefusal(policies.apps, policies.governance, canManageMembers(ctx.role));
+  if (refusal) return { ok: false, message: refusal };
+  // The access the policy allows for this app (C-3): read only, or read and write.
+  const scopes = policies.governance ? [scopeOf(policies.apps, part.provider)] : ["read_write"];
   const { data: existing } = await admin.from("connections").select("id").eq("workspace_id", ctx.workspace.id).eq("provider", part.provider).maybeSingle();
-  if (existing) await admin.from("connections").update({ status: "connected" }).eq("id", existing.id);
-  else await admin.from("connections").insert({ workspace_id: ctx.workspace.id, provider: part.provider, status: "connected", scopes: ["read"] });
+  if (existing) await admin.from("connections").update({ status: "connected", scopes }).eq("id", existing.id);
+  else await admin.from("connections").insert({ workspace_id: ctx.workspace.id, provider: part.provider, status: "connected", scopes });
 
   const { data: waiting } = await admin.from("items").select("id, key").eq("blueprint_id", part.blueprint_id).eq("status", "needs_connection").eq("provider", part.provider);
   for (const w of waiting ?? []) {

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { Button, IconButton } from "@/components/ax/button";
 import { Composer, QueueLine } from "@/components/ax/composer";
-import { ModelPicker } from "@/components/ax/model-picker";
+import { ModelNotAllowed, ModelPicker } from "@/components/ax/model-picker";
 import { Option } from "@/components/ax/stage-banner";
 import type { ModelChoice } from "@/lib/models";
 import { canBuild } from "@/lib/permissions";
@@ -215,6 +215,9 @@ export function ChatPane({
   const [queue, setQueue] = useState<{ id: number; text: string; talkFirst: boolean }[]>([]);
   const [sending, setSending] = useState<string | null>(null);
   const [error, setError] = useState<string>();
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // The project's model was disallowed after it was picked (C-2): say so here, never switch it silently.
+  const modelAllowed = project.models.some((m) => m.choice === project.model);
   const endRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
 
@@ -329,6 +332,12 @@ export function ChatPane({
         </QueueLine>
       ))}
       <div className="px-3 pb-3">
+        {!modelAllowed &&
+          (canChange ? (
+            <ModelNotAllowed className="mb-1.5 px-1" onSwitch={() => setPickerOpen(true)} />
+          ) : (
+            <p className="mb-1.5 px-1 text-small font-semibold text-attention">This model is no longer allowed. A Builder can switch it.</p>
+          ))}
         <Composer
           variant="chat"
           value={draft}
@@ -343,6 +352,8 @@ export function ChatPane({
               value={project.model}
               options={project.models}
               onChange={onPickModel}
+              open={pickerOpen}
+              onOpenChange={setPickerOpen}
               compact
               disabledReason={canChange ? undefined : "Viewers can't change the model."}
             />
