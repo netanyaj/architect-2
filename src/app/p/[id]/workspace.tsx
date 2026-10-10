@@ -250,7 +250,8 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   const planStage = project.status === "draft";
   const dev = params.get("dev") === "1";
   const allowed: View[] = dev ? (planStage ? ["files", "code", "terminal"] : DEV_VIEWS) : VIEWS;
-  const view: View = allowed.includes(raw as View) ? (raw as View) : dev ? "code" : "app";
+  // Before Build the plan is the default; Mockup (the preview shell) and Workflow (the agents graph) are a click away.
+  const view: View = allowed.includes(raw as View) ? (raw as View) : dev ? "code" : planStage ? "files" : "app";
   const fullWidth = onLaunch || (!planStage && view !== "app");
   const [planOpen, setPlanOpen] = useState<boolean | null>(null);
   const [chatOpen, setChatOpen] = useState<boolean | null>(null);
@@ -381,7 +382,8 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   };
   const setView = (v: View) => {
     const next = new URLSearchParams(params);
-    if (v === "app" && !dev) next.delete("view");
+    // The default view needs no parameter: the app after Build, the plan before it.
+    if (!dev && v === (planStage ? "files" : "app")) next.delete("view");
     else next.set("view", v);
     setPlanOpen(null);
     setChatOpen(null);
@@ -524,7 +526,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
             </div>
           ) : (
             <>
-          {(!planStage || dev) && (
+          {(!planStage || dev || (project.plan && !writing && !failed)) && (
             <div className="flex flex-wrap items-center gap-2.5 px-3 py-2.5">
               <Segmented
                 label="Stage view"
@@ -532,8 +534,14 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
                 onChange={setView}
                 options={[
                   // Before Build, Developer view shows the plan beside the code (an imported repo's files are real already).
-                  ...(planStage
+                  ...(planStage && dev
                     ? [{ value: "files" as const, label: "Plan" }]
+                    : planStage
+                    ? [
+                        { value: "files" as const, label: "Plan" },
+                        { value: "app" as const, label: "Mockup" },
+                        { value: "agents" as const, label: "Workflow" },
+                      ]
                     : [
                         { value: "app" as const, label: "App" },
                         { value: "agents" as const, label: "Agents" },
@@ -553,7 +561,13 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
                   <PrStatus project={project} items={items} />
                 </span>
               )}
-              {view === "app" && (
+              {planStage && !dev && view !== "files" && (
+                <span className="ml-auto flex items-center gap-2 text-small text-ink-2">
+                  {view === "app" ? "A mockup from the plan: nothing is built yet." : "The plan's agents and how they connect: nothing is built yet."}
+                  <SimTag title="Before Build, the mockup and the workflow are drawn from the plan." />
+                </span>
+              )}
+              {view === "app" && !planStage && (
                 <span className="ml-auto flex items-center gap-2">
                   <span className="inline-flex h-7 items-center gap-1.5 rounded-full border border-line px-2.5 text-small font-[650] text-building">
                     <i className="size-1.5 rounded-full bg-building" aria-hidden="true" />
@@ -562,7 +576,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
                   <TestTheApp items={items} />
                 </span>
               )}
-              {view === "agents" && (
+              {view === "agents" && !planStage && (
                 <span className="ml-auto">
                   <Button
                     size="sm"
@@ -586,8 +600,8 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
           </div>
           {/* ?sim=sync: commits landed on main from outside Architect (B-5, Simulated). */}
           {project.repo && params.get("sim") === "sync" && <SyncBanner project={project} items={items} />}
-          <div role={planStage && !dev ? undefined : "tabpanel"} aria-label={planStage && !dev ? "The plan" : view} className="flex min-h-0 flex-1 flex-col overflow-auto">
-            {planStage && (!dev || view === "files") ? planDocument : <StageBody view={view} project={project} planDocument={planDocument} items={items} live={live} budgetPaused={budgetPaused} />}
+          <div role={planStage && view === "files" && !dev ? undefined : "tabpanel"} aria-label={planStage && view === "files" && !dev ? "The plan" : view} className="flex min-h-0 flex-1 flex-col overflow-auto">
+            {planStage && view === "files" ? planDocument : <StageBody view={view} project={project} planDocument={planDocument} items={items} live={live} budgetPaused={budgetPaused} />}
           </div>
             </>
           )}

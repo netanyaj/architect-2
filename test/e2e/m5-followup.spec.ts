@@ -226,4 +226,29 @@ test.describe("M5 follow-up", () => {
     await expect(list).toContainText("A coding agent was refused");
     await expect(list).toContainText("Coding agent: Claude Code (you)");
   });
+
+  test("Plan-stage mockup: before Build, Mockup shows the preview shell and Workflow the agents graph; nothing is built", async ({ page }) => {
+    await start(page);
+    const db = adminDb();
+    const { data: vt } = await db.from("projects").select("id").eq("workspace_id", workspace).eq("name", "Meeting Prep").single();
+    // A draft copy of a plan with agents: Duplicate makes one without building anything.
+    await page.goto(`/p/${vt!.id}`);
+    await page.getByRole("button", { name: "More for this project" }).click();
+    await page.getByRole("menuitem", { name: "Duplicate" }).click();
+    await page.waitForURL((u) => /\/p\/[0-9a-f-]{36}/.test(u.pathname) && !u.pathname.includes(vt!.id), { timeout: 30_000 });
+    const views = page.getByRole("tablist", { name: "Stage view" });
+    await expect(views.getByRole("tab", { name: "Plan" })).toHaveAttribute("aria-selected", "true");
+    await views.getByRole("tab", { name: "Mockup" }).click();
+    await expect(page.getByText("A mockup from the plan: nothing is built yet.")).toBeVisible();
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: "/private/tmp/claude-501/-Users-netanyajaison-Desktop-Lock-innn-projects-Lyzr-handoff/b1b50ffc-1030-4cbe-b3d4-3878084915ad/scratchpad/mockup.png" });
+    await views.getByRole("tab", { name: "Workflow" }).click();
+    await expect(page.getByText("The plan's agents and how they connect: nothing is built yet.")).toBeVisible();
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: "/private/tmp/claude-501/-Users-netanyajaison-Desktop-Lock-innn-projects-Lyzr-handoff/b1b50ffc-1030-4cbe-b3d4-3878084915ad/scratchpad/workflow.png" });
+    await expect(page.getByRole("button", { name: /^Build · ~\d+ credits$/ })).toBeVisible();
+    const id = page.url().split("/p/")[1].split("?")[0];
+    const { data: runs } = await db.from("runs").select("id").eq("project_id", id);
+    expect(runs).toEqual([]);
+  });
 });
