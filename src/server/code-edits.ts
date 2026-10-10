@@ -96,9 +96,12 @@ export async function recordCodeEdit(
   return { prNumber, rechecks };
 }
 
-/** Finishes the re-run checks whose time is up: the part works again, with a passing proof (simulated). */
+/**
+ * Finishes the re-run checks whose time is up, after a code edit or an edited check (A-7): the part works again, with
+ * a passing proof against its latest check (simulated).
+ */
 export async function settleCodeEdits(admin: AdminDb, projectId: string): Promise<void> {
-  const { data } = await admin.from("events").select("id, item_id, payload").eq("project_id", projectId).eq("type", "code.edited");
+  const { data } = await admin.from("events").select("id, item_id, type, payload").eq("project_id", projectId).in("type", ["code.edited", "check.edited"]);
   const due = (data ?? []).filter((e) => {
     const p = e.payload as unknown as EditPayload;
     return !p.settled && new Date(p.settle_at).getTime() <= Date.now();
@@ -111,7 +114,8 @@ export async function settleCodeEdits(admin: AdminDb, projectId: string): Promis
       if (item?.status === "building" && item.status_detail?.startsWith("Re-running its check")) {
         await admin.from("items").update({ status: p.prior_status, status_detail: null }).eq("id", e.item_id);
         const { data: check } = await admin.from("checks").select("id").eq("item_id", e.item_id).order("written_at", { ascending: false }).limit(1).maybeSingle();
-        if (check) await admin.from("proofs").insert({ item_id: e.item_id, check_id: check.id, attempt: 0, result: "pass", assertions_passed: 3, assertions_total: 3, summary: `Passed again after a code edit to ${p.path}` });
+        const summary = e.type === "check.edited" ? "Passed the edited check against the code already built" : `Passed again after a code edit to ${p.path}`;
+        if (check) await admin.from("proofs").insert({ item_id: e.item_id, check_id: check.id, attempt: 0, result: "pass", assertions_passed: 3, assertions_total: 3, summary, log: e.type === "check.edited" ? "Edited check" : "After a code edit" });
       }
     }
     await admin.from("events").update({ payload: { ...p, settled: true } as unknown as Json }).eq("id", e.id);

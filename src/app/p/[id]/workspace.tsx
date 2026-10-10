@@ -288,7 +288,8 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   const modelName = (m: ModelChoice) => project.models.find((o) => o.choice === m)?.label ?? MODEL_LABEL[m];
 
   // A code edit's re-run check (simulated) finishes after a few seconds: settle it then, without a reload.
-  const recheckRunning = project.codeEdits.edits.some((e) => e.check === "running");
+  // An edited check (A-7) re-runs the same way.
+  const recheckRunning = project.codeEdits.edits.some((e) => e.check === "running") || project.items.some((i) => i.status === "building" && Boolean(i.statusDetail?.startsWith("Re-running its check")));
   useEffect(() => {
     if (!recheckRunning) return;
     const t = setTimeout(() => void settleEdits({ projectId: project.id }).then(() => router.refresh()), 6500);

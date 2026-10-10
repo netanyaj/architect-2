@@ -86,3 +86,74 @@ describe("API key connections (BL-9)", () => {
     ]);
   });
 });
+
+describe("editing a built part's check (A-7)", () => {
+  const I = "44444444-4444-4444-8444-444444444444";
+  const P = "55555555-5555-4555-8555-555555555555";
+  const seed = (over: Record<string, unknown> = {}, budget: number | null = null) =>
+    new FakeDb({
+      workspaces: [{ id: "ws-1", governance_enabled: false }],
+      policies: [],
+      items: [{ id: I, key: "brief-writer", title: "Brief writer", status: "built", proved_when: "Done when the brief is under 200 words and names every attendee", estimate_likely: 16, project_id: P, blueprint_id: "bp", projects: { id: P, name: "Meeting Prep", workspace_id: "ws-1", budget_credits: budget }, ...over }],
+      checks: [{ id: "c-1", item_id: I, kind: "eval", description: "old", written_by: "verifier", written_at: "2026-10-01T09:00:00Z" }],
+      runs: [],
+      usage_ledger: [{ project_id: P, credits: 100 }],
+      events: [],
+      proofs: [],
+      audit_log: [],
+    });
+  beforeEach(() => {
+    role = "builder";
+    db = seed();
+  });
+
+  it("the estimate comes first and spends nothing", async () => {
+    const { previewCheckEdit } = await import("@/server/actions/checks");
+    const r = await previewCheckEdit({ itemId: I, provedWhen: "Done when the brief is under 200 words, names every attendee and lists open deals" });
+    expect(r).toEqual({ ok: true, estimate: { low: 2, likely: 3, high: 5, seconds: 10 }, weakens: false });
+    expect(db.tables.usage_ledger).toHaveLength(1);
+    expect(db.tables.checks).toHaveLength(1);
+  });
+
+  it("Re-run records a new check by the person, charges the estimate, and the checker runs it again", async () => {
+    const { editCheck } = await import("@/server/actions/checks");
+    const after = "Done when the brief is under 200 words, names every attendee and lists open deals";
+    expect(await editCheck({ itemId: I, provedWhen: after })).toEqual({ ok: true, credits: 3 });
+    expect(db.tables.checks.at(-1)).toMatchObject({ item_id: I, description: after, written_by: "Rita", locked: true });
+    expect(db.tables.items[0]).toMatchObject({ proved_when: after, status: "building", status_detail: "Re-running its check · check edited by Rita" });
+    expect(db.tables.usage_ledger.at(-1)).toMatchObject({ kind: "change", credits: 3, note: "Check re-run · Brief writer" });
+    expect(db.tables.events[0]).toMatchObject({ type: "check.edited", actor: "user" });
+    expect(db.tables.audit_log[0]).toMatchObject({ action: "check.edited", details: { weakened: false, credits: 3 } });
+
+    // Settled when its time is up: the part works again, with a proof against the new check.
+    const { settleCodeEdits } = await import("@/server/code-edits");
+    (db.tables.events[0].payload as { settle_at: string }).settle_at = new Date(Date.now() - 1000).toISOString();
+    await settleCodeEdits(db as never, P);
+    expect(db.tables.items[0]).toMatchObject({ status: "built", status_detail: null });
+    expect(db.tables.proofs[0]).toMatchObject({ result: "pass", log: "Edited check", summary: "Passed the edited check against the code already built" });
+  });
+
+  it("a weaker check needs a reason, saved on the part", async () => {
+    const { editCheck, previewCheckEdit } = await import("@/server/actions/checks");
+    const weaker = "Done when the brief is under 300 words";
+    expect(await previewCheckEdit({ itemId: I, provedWhen: weaker })).toMatchObject({ ok: true, weakens: true });
+    expect(await editCheck({ itemId: I, provedWhen: weaker })).toEqual({ ok: false, message: "This check asks for less than before. Say why; it's saved on the part." });
+    expect((await editCheck({ itemId: I, provedWhen: weaker, reason: "Briefs read on phones" })).ok).toBe(true);
+    expect(db.tables.items[0].drop_reason).toBe("Weakened: Briefs read on phones");
+  });
+
+  it("refuses Viewers, parts not built, a build running, no change, and going past the budget", async () => {
+    const { editCheck, previewCheckEdit } = await import("@/server/actions/checks");
+    const next = "Done when the brief is under 150 words and names every attendee";
+    expect((await previewCheckEdit({ itemId: I, provedWhen: "Done when the brief is under 200 words and names every attendee" })).ok).toBe(false);
+    db = seed({}, 101);
+    expect(await previewCheckEdit({ itemId: I, provedWhen: next })).toEqual({ ok: false, message: "That would go past the project's budget. Raise the budget first." });
+    db = seed({ status: "agreed" });
+    expect(await previewCheckEdit({ itemId: I, provedWhen: next })).toEqual({ ok: false, message: "Only a part that's built has a check to run again. Change it in the plan instead." });
+    db = seed();
+    db.tables.runs.push({ id: "r", project_id: P, status: "running" });
+    expect(await editCheck({ itemId: I, provedWhen: next })).toEqual({ ok: false, message: "A build is running. Edit the check when it finishes." });
+    role = "viewer";
+    expect(await editCheck({ itemId: I, provedWhen: next })).toEqual({ ok: false, message: "Viewers can read checks but can't change them." });
+  });
+});

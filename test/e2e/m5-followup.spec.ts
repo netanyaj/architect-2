@@ -53,4 +53,36 @@ test.describe("M5 follow-up", () => {
     expect(audit!.map((a) => a.action).sort()).toEqual(["connection.api_key_removed", "connection.api_key_replaced"]);
     expect(JSON.stringify(audit)).not.toContain("cb-test-value-123");
   });
+
+  test("A-7: edit a built part's check; the cost shows first, then the checker runs the new check", async ({ page }) => {
+    await start(page);
+    const db = adminDb();
+    const { data: p } = await db.from("projects").select("id").eq("workspace_id", workspace).eq("name", "Meeting Prep").single();
+    await page.goto(`/p/${p!.id}`);
+    const openBriefWriter = async () => {
+      const more = page.getByRole("button", { name: /^Show \d+ more$/ });
+      if (await more.isVisible()) await more.click();
+      await page.getByRole("button", { name: /^Brief writer/ }).first().click();
+    };
+    await openBriefWriter();
+    const drawer = page.getByRole("dialog", { name: "Brief writer" });
+    await expect(drawer).toContainText("Written by the verifier");
+    await drawer.getByRole("button", { name: "Edit the check" }).click();
+    const box = drawer.getByLabel("Done when");
+    await box.fill(`${await box.inputValue()} Each brief lists the attendee's open deals.`);
+    await drawer.getByRole("button", { name: "See the cost" }).click();
+    await expect(drawer).toContainText(/Running the new check costs ~\d+ credits/);
+    const { data: before } = await db.from("usage_ledger").select("id").eq("project_id", p!.id);
+    await drawer.getByRole("button", { name: /^Re-run the check · ~\d+ credits$/ }).click();
+
+    // Charged once, on the click; the part re-runs its check (simulated, a few seconds), then works again.
+    await expect.poll(async () => (await db.from("usage_ledger").select("note").eq("project_id", p!.id)).data?.map((u) => u.note), { timeout: 30_000 }).toContain("Check re-run · Brief writer");
+    const { data: after } = await db.from("usage_ledger").select("id").eq("project_id", p!.id);
+    expect(after!.length).toBe(before!.length + 1);
+    await expect.poll(async () => (await db.from("items").select("status, status_detail").eq("project_id", p!.id).eq("key", "brief-writer").single()).data, { timeout: 30_000 }).toEqual({ status: "built", status_detail: null });
+    await page.reload();
+    await openBriefWriter();
+    await expect(page.getByRole("dialog", { name: "Brief writer" })).toContainText("Edited by Followup Tester", { timeout: 15_000 });
+    await expect(page.getByRole("dialog", { name: "Brief writer" })).toContainText("Passed the edited check against the code already built");
+  });
 });
