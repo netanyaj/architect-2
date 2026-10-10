@@ -4,6 +4,7 @@
  */
 import { z } from "zod";
 import type { Role } from "./db";
+import { blockedLine, type FlowPath } from "./egress";
 import { canBuild, canManageMembers } from "./permissions";
 import { providerName } from "./providers";
 
@@ -79,6 +80,7 @@ export type CheckRow =
   | { id: string; kind: "sample"; status: "attention"; title: string; detail: string; itemId: string }
   | { id: string; kind: "blocked"; status: "blocked"; title: string; detail: string; itemKey: string }
   | { id: string; kind: "unbuilt"; status: "blocked"; title: string; detail: string; count: number }
+  | { id: string; kind: "egress"; status: "blocked"; title: string; detail: string; path: FlowPath }
   | { id: string; kind: "fine"; status: "works"; title: string; detail: string };
 
 export type Action = { label: string; disabledReason?: string };
@@ -136,6 +138,8 @@ export function launchState(input: {
   liveRule?: boolean;
   /** Checks that passed (built parts' proofs). */
   testsPassed: number;
+  /** Where the app's data would go (C-4), with governance on. A path the policy doesn't allow blocks every deploy. */
+  flows?: FlowPath[];
   /** A project from a repo ships through its PR: the team version builds from the PR branch, Live from main after merge. */
   repo?: RepoRoute | null;
 }): LaunchState {
@@ -154,6 +158,9 @@ export function launchState(input: {
   for (const p of active.filter((p) => p.status === "paused" || p.status === "failed")) {
     rows.push({ id: `blocked-${p.key}`, kind: "blocked", status: "blocked", title: `${p.title} is blocked`, detail: "Decide what happens to it in the workspace.", itemKey: p.key });
   }
+  // Data that would go somewhere the organisation doesn't allow (C-4): fixed before any deploy.
+  const egress = (input.flows ?? []).filter((f) => !f.allowed);
+  for (const f of egress) rows.push({ id: `egress-${f.id}`, kind: "egress", status: "blocked", ...blockedLine(f), path: f });
   const unbuilt = active.filter((p) => ["agreed", "proposed", "building"].includes(p.status));
   if (unbuilt.length) {
     rows.push({ id: "unbuilt", kind: "unbuilt", status: "blocked", title: `${plural(unbuilt.length, "part")} ${unbuilt.length === 1 ? "isn't" : "aren't"} built`, detail: `${unbuilt.map((p) => p.title).join(", ")}. Build ${unbuilt.length === 1 ? "it" : "them"}, or leave ${unbuilt.length === 1 ? "it" : "them"} out for now.`, count: unbuilt.length });
@@ -186,7 +193,9 @@ export function launchState(input: {
     request: !admin,
     disabledReason:
       viewer ??
-      (fast && toFix
+      (egress.length
+        ? "Data would go somewhere your organisation doesn't allow. Fix it in the checklist first."
+        : fast && toFix
         ? `Fix ${plural(toFix, "thing")} in the checklist first.`
         : !fast && !teamCurrent
           ? "Share this version with your team first. Live always follows the team version."

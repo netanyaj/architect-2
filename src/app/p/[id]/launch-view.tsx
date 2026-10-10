@@ -3,17 +3,19 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button, TextLink } from "@/components/ax/button";
+import { DataFlow } from "@/components/ax/data-flow";
 import { Icon } from "@/components/ax/icon";
 import { SimTag } from "@/components/ax/pill";
 import { StageBanner } from "@/components/ax/stage-banner";
 import { StatusMark, StatusWord } from "@/components/ax/status-mark";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { runningCredits, type Deployment, type LaunchState } from "@/lib/launch";
-import { canBuild } from "@/lib/permissions";
+import { canBuild, canManageMembers } from "@/lib/permissions";
 import { relativeTime } from "@/lib/project-status";
 import { useUi } from "@/lib/ui-store";
 import { cn } from "@/lib/utils";
 import { goBack, shareTestLink, shareWithTeam } from "@/server/actions/launch";
+import { allowHost } from "@/server/actions/policies";
 import { setPartAside, setWaitingAside } from "@/server/actions/run";
 import type { ProjectWorkspace } from "@/server/project";
 import { ConnectButton } from "./connect-button";
@@ -159,6 +161,7 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
   const settings = launch.settings;
   const s = slug(project.name);
   const canAct = canBuild(project.role);
+  const isAdmin = canManageMembers(project.role);
   const readOnly = canAct ? undefined : "Viewers can't change launch settings.";
   const version = project.plan?.version ?? 1;
   const busy = pending ? "Working…" : undefined;
@@ -388,6 +391,23 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
                     Leave {r.count === 1 ? "it" : "them"} out for now
                   </Button>
                 )}
+                {r.kind === "egress" &&
+                  (r.path.kind === "app" ? (
+                    isAdmin ? (
+                      <Button variant={primary ? "primary" : "secondary"} size="sm" disabledReason={busy} onClick={() => act(() => allowHost({ host: r.path.host, projectId: project.id }), `${r.path.host} is allowed. Its data can go there now.`)}>
+                        Allow {r.path.host}
+                      </Button>
+                    ) : (
+                      <span className="flex flex-col items-end gap-0.5 text-right text-small text-ink-2">
+                        An Owner or Admin can allow it.
+                        <TextLink href="#data-flow">See where data goes</TextLink>
+                      </span>
+                    )
+                  ) : (
+                    <Button variant={primary ? "primary" : "secondary"} size="sm" href={`/p/${project.id}?view=agents`}>
+                      Switch the agents&apos; model
+                    </Button>
+                  ))}
                 {r.kind === "fine" && <SimTag title="Checks run in the simulated build" />}
               </li>
             );
@@ -395,6 +415,16 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
         </ul>
         {state.goLive.disabledReason && (state.fast || state.team.current) && !state.live.current && !firstFix && <p className="text-small text-ink-2">{state.goLive.disabledReason}</p>}
       </section>
+
+      {project.launch!.flows.length > 0 && (
+        <section id="data-flow" aria-labelledby="data-flow-title" className="flex scroll-mt-6 flex-col gap-2.5">
+          <h2 id="data-flow-title" className="flex items-center gap-2 text-sub font-semibold">
+            Where data goes <SimTag title="Where data goes is worked out from the plan's apps and agents; nothing is sent in this prototype." />
+          </h2>
+          <p className="text-small text-ink-2">Your organisation decides which hosts and models data may go to. A path it doesn&apos;t allow holds every deploy until it&apos;s fixed.</p>
+          <DataFlow project={project.name} paths={project.launch!.flows} />
+        </section>
+      )}
 
       <section aria-labelledby="settings" className="flex flex-col gap-2.5">
         <h2 id="settings" className="text-sub font-semibold">

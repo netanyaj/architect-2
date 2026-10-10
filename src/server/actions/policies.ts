@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { Json } from "@/lib/database.types";
+import { egressConfig, hostProblem, REDACTIONS, type Redaction } from "@/lib/egress";
 import { MODEL_CHOICES } from "@/lib/models";
 import { canManageMembers } from "@/lib/permissions";
 import {
@@ -28,7 +29,7 @@ import type { ActionResult } from "./members";
 /* Governance › Where it runs, Models, Apps and MCP servers (C-1 to C-3). Owners and Admins change them while
    governance is on; every change is audited with what it was and what it became. Enforcement is simulated. */
 
-type Kind = "location" | "models" | "connectors";
+type Kind = "location" | "models" | "connectors" | "egress";
 
 async function guard(): Promise<{ ctx: AppContext; refused?: string }> {
   const ctx = await getAppContext();
@@ -167,5 +168,48 @@ export async function removeMcpServer(input: { name: string }): Promise<ActionRe
   if (!before.mcp.some((m) => m.name === input.name)) return { ok: true };
   const known = knownApps(await usedApps(admin, ctx.workspace.id));
   await save(admin, ctx, "connectors", appConfig({ ...before, mcp: before.mcp.filter((m) => m.name !== input.name) }, known), `MCP server removed: ${input.name}`, {});
+  return { ok: true };
+}
+
+const egressInput = z.object({
+  hosts: z.array(z.string().max(253)).max(50),
+  redact: z.array(z.enum(REDACTIONS.map((r) => r.id) as [Redaction, ...Redaction[]])).max(REDACTIONS.length),
+});
+
+/** C-4: the hosts data may go to, and the personal data taken out before anything goes to a model. */
+export async function saveEgress(raw: z.input<typeof egressInput>): Promise<ActionResult> {
+  const { ctx, refused } = await guard();
+  if (refused) return { ok: false, message: refused };
+  const parsed = egressInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, message: "Those settings aren't valid." };
+  const hosts: string[] = [];
+  for (const h of parsed.data.hosts) {
+    const problem = hostProblem(h, hosts);
+    if (problem) return { ok: false, message: problem };
+    hosts.push(h.trim().toLowerCase());
+  }
+  const admin = createAdminDb();
+  const before = (await loadPolicies(admin, ctx.workspace.id)).stored.egress;
+  const next = { hosts, redact: [...new Set(parsed.data.redact)] };
+  await save(admin, ctx, "egress", egressConfig(next), "Data and egress", { before, after: next });
+  revalidatePath("/p", "layout");
+  return { ok: true };
+}
+
+/** Launch's inline fix for an admin: add the one host a project's data would go to. */
+export async function allowHost(input: { host: string; projectId?: string }): Promise<ActionResult> {
+  const { ctx, refused } = await guard();
+  if (refused) return { ok: false, message: refused };
+  const admin = createAdminDb();
+  const before = (await loadPolicies(admin, ctx.workspace.id)).stored.egress;
+  const host = input.host.trim().toLowerCase();
+  if (before.hosts.includes(host)) return { ok: true };
+  const problem = hostProblem(host, before.hosts);
+  if (problem) return { ok: false, message: problem };
+  await save(admin, ctx, "egress", egressConfig({ ...before, hosts: [...before.hosts, host] }), `Host allowed: ${host}`, { from_project: input.projectId ?? null });
+  if (input.projectId && z.string().uuid().safeParse(input.projectId).success) {
+    revalidatePath(`/p/${input.projectId}/launch`);
+    revalidatePath(`/p/${input.projectId}`);
+  }
   return { ok: true };
 }

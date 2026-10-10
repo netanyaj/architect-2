@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Role } from "@/lib/db";
+import type { FlowPath } from "@/lib/egress";
 import type { Deployment, LaunchSettings, LiveDecision } from "@/lib/launch";
 import { connectRefusal, knownApps, locationLabel, scopeOf, type Scope } from "@/lib/policies";
 import type { PullRequestView } from "@/lib/pull-requests";
@@ -9,7 +10,7 @@ import { modelAvailability } from "@/lib/gateway";
 import { MODEL_LABEL, toModelChoice, type ModelChoice, type ModelOption } from "@/lib/models";
 import { detectTools, projectIcon, summarizeProject, type ProjectInput } from "@/lib/project-status";
 import { createAdminDb, createServerDb } from "./db";
-import { allowRuleFor, blockedServices, liveDecisions, loadPolicies } from "./policy";
+import { allowRuleFor, blockedServices, liveDecisions, loadPolicies, projectFlows, type Policies } from "./policy";
 import { loadPullRequests } from "./pull-requests";
 import { catchUpRuns, dbNow } from "./sim/run";
 import type { AppContext } from "./workspace";
@@ -171,6 +172,8 @@ export type LaunchData = {
   liveRequested: boolean;
   liveDecisions: LiveDecision[];
   liveRule: boolean;
+  /** Where the app's data would go (C-4), with governance on. */
+  flows: FlowPath[];
   testsPassed: number;
 };
 
@@ -179,7 +182,7 @@ async function loadLaunch(
   projectId: string,
   workspaceId: string,
   names: Map<string, string>,
-  extra: { governance: boolean; settings: LaunchSettings; testShareToken: string | null; domain: string },
+  extra: { governance: boolean; settings: LaunchSettings; testShareToken: string | null; domain: string; policies: Policies; parts: { key: string; title: string; status: string; grp: string; provider: string | null }[] },
 ): Promise<LaunchData> {
   const [{ data: deps }, { data: envs }, { data: approvals }, { data: proofs }, { data: changes }] = await Promise.all([
     db.from("deployments").select("id, environment, blueprint_version, status, created_at, created_by, checks").eq("project_id", projectId).order("created_at", { ascending: false }),
@@ -190,7 +193,11 @@ async function loadLaunch(
   ]);
   // Decisions and allow-rules are read with the admin client; the project was read under RLS by the caller.
   const admin = createAdminDb();
-  const [decisions, liveRule] = await Promise.all([liveDecisions(admin, projectId), allowRuleFor(admin, workspaceId, "production_deploy", projectId)]);
+  const [decisions, liveRule, flows] = await Promise.all([
+    liveDecisions(admin, projectId),
+    allowRuleFor(admin, workspaceId, "production_deploy", projectId),
+    projectFlows(admin, projectId, extra.policies, extra.parts),
+  ]);
   const versionNotes: Record<number, string> = {};
   for (const c of changes ?? []) {
     if (!c.version_created) continue;
@@ -203,7 +210,10 @@ async function loadLaunch(
   }
   const env = (n: string) => (envs ?? []).some((e) => e.name === n && e.status === "live");
   return {
-    ...extra,
+    governance: extra.governance,
+    settings: extra.settings,
+    testShareToken: extra.testShareToken,
+    domain: extra.domain,
     versionNotes,
     deployments: (deps ?? [])
       .filter((d) => d.environment === "staging" || d.environment === "production")
@@ -220,6 +230,7 @@ async function loadLaunch(
     liveRequested: (approvals ?? []).length > 0,
     liveDecisions: decisions,
     liveRule,
+    flows,
     testsPassed: (proofs ?? []).reduce((s, p) => s + Number(p.assertions_passed ?? 0), 0),
   };
 }
@@ -228,16 +239,16 @@ async function loadLaunch(
  * The models a person may pick in this workspace (C-2): allowed by policy, marked simulated when there's no key, the
  * private model under its registered name. `architect` is the policy's model for new projects.
  */
-export async function modelSetupFor(workspaceId: string): Promise<{ options: ModelOption[]; architect: ModelChoice }> {
-  const { models } = await loadPolicies(createAdminDb(), workspaceId);
+export async function modelSetupFor(workspaceId: string, loaded?: Policies): Promise<{ options: ModelOption[]; architect: ModelChoice }> {
+  const { models } = loaded ?? (await loadPolicies(createAdminDb(), workspaceId));
   const options = modelAvailability()
     .filter((m) => models.allowed.includes(m.choice))
     .map((m) => (m.choice === "private" && models.private ? { ...m, label: models.private.name } : m));
   return { options, architect: models.architect };
 }
 
-export async function modelOptionsFor(workspaceId: string): Promise<ModelOption[]> {
-  return (await modelSetupFor(workspaceId)).options;
+export async function modelOptionsFor(workspaceId: string, loaded?: Policies): Promise<ModelOption[]> {
+  return (await modelSetupFor(workspaceId, loaded)).options;
 }
 
 /** One project for its workspace screen, read under RLS (so only members see it). Null when it doesn't exist. */
@@ -396,6 +407,8 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
       settings: (p.launch_settings ?? {}) as LaunchSettings,
       testShareToken: p.test_share_token,
       domain: ctx.user.email?.split("@")[1] ?? "your company",
+      policies,
+      parts: list,
     });
   }
 
@@ -459,7 +472,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     serverNow: await dbNow(createAdminDb()),
     connected: (conns ?? []).filter((c) => c.status === "connected").map((c) => c.provider),
     // Apps held back here: the plan's own and any an agent uses as a tool (the Agents graph shows both).
-    denied: await blockedServices(createAdminDb(), p.workspace_id, p.id, knownApps(list.map((i) => i.provider ?? ""))),
+    denied: await blockedServices(createAdminDb(), p.workspace_id, p.id, knownApps(list.map((i) => i.provider ?? "")), policies),
     policy: {
       governance: policies.governance,
       location: policies.governance ? locationLabel(policies.location) : null,
@@ -477,7 +490,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     otherWorkspace: p.workspace_id === ctx.workspace.id || !membership ? null : { id: membership.workspaceId, label: membership.label },
     creditsLeft,
     model: projectModel,
-    models: await modelOptionsFor(p.workspace_id),
+    models: await modelOptionsFor(p.workspace_id, policies),
     messages: (msgs ?? []).map((m) => ({ id: m.id, role: m.role as ChatMessage["role"], mode: m.mode as ChatMessage["mode"], content: m.content, createdAt: m.created_at })),
     changes,
     launch,

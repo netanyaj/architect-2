@@ -3,9 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { Button, TextLink } from "@/components/ax/button";
+import { DataFlow } from "@/components/ax/data-flow";
 import { DetailBody, DetailHead, MasterDetail, MasterRow } from "@/components/ax/master-detail";
 import { SimTag, Tag } from "@/components/ax/pill";
 import { Select } from "@/components/ax/select";
+import { egressOfDraft, hostProblem, REDACTIONS, type EgressPolicy, type FlowPath, type Redaction } from "@/lib/egress";
 import { MODEL_LABEL, type ModelChoice, type ModelOption } from "@/lib/models";
 import {
   AWS_REGIONS,
@@ -23,11 +25,13 @@ import {
 } from "@/lib/policies";
 import { PROVIDERS } from "@/lib/providers";
 import { cn } from "@/lib/utils";
-import { addMcpServer, registerPrivateModel, removeMcpServer, removePrivateModel, saveAppPolicy, saveLocation, saveModelPolicy } from "@/server/actions/policies";
+import { addMcpServer, registerPrivateModel, removeMcpServer, removePrivateModel, saveAppPolicy, saveEgress, saveLocation, saveModelPolicy } from "@/server/actions/policies";
 
-export type Section = "location" | "models" | "apps";
+export type Section = "location" | "models" | "apps" | "egress";
 
-const TITLES: Record<Section, string> = { location: "Where it runs", models: "Models", apps: "Apps and MCP servers" };
+const TITLES: Record<Section, string> = { location: "Where it runs", models: "Models", apps: "Apps and MCP servers", egress: "Data and egress" };
+
+export type ProjectFlows = { id: string; name: string; paths: FlowPath[] };
 const SIM_NOTE = "The policy is a real setting; enforcing it on infrastructure is simulated in this prototype.";
 
 /** Governance (C-1 to C-3): the sections on the left, the selected one on the right with its effect and Save. */
@@ -39,12 +43,15 @@ export function GovernanceView(props: {
   apps: AppPolicy;
   availability: ModelOption[];
   known: string[];
+  egress: EgressPolicy;
+  flows: ProjectFlows[];
 }) {
   const [section, setSection] = useState<Section>(props.initialSection);
   const [notice, setNotice] = useState<string>();
   // Kept here: saving the apps reloads that form, and what's being typed for a new MCP server must survive it.
   const mcpForm = useState({ name: "", url: "" });
   const lines = summaries(props);
+  const blockedProjects = props.flows.filter((f) => f.paths.some((p) => !p.allowed)).length;
   const pick = (s: Section) => {
     setSection(s);
     setNotice(undefined);
@@ -67,6 +74,7 @@ export function GovernanceView(props: {
           <MasterRow on={section === "location"} onClick={() => pick("location")} status="todo" icon="lines" title={TITLES.location} meta={lines.location} />
           <MasterRow on={section === "models"} onClick={() => pick("models")} status="todo" icon="lines" title={TITLES.models} meta={lines.models} />
           <MasterRow on={section === "apps"} onClick={() => pick("apps")} status="todo" icon="lines" title={TITLES.apps} meta={lines.apps} />
+          <MasterRow on={section === "egress"} onClick={() => pick("egress")} status={blockedProjects ? "attention" : "todo"} icon={blockedProjects ? "alert" : "lines"} title={TITLES.egress} meta={`${props.egress.hosts.length} host${props.egress.hosts.length === 1 ? "" : "s"} allowed${blockedProjects ? ` · ${blockedProjects} project${blockedProjects === 1 ? "" : "s"} held` : ""}`} />
           <li className="px-2.5 pt-2 text-small text-ink-2">
             Requests your rules hold back are in <TextLink href="/governance/approvals">Approvals</TextLink>.
           </li>
@@ -81,6 +89,7 @@ export function GovernanceView(props: {
       {/* Keyed on what's stored, so a saved change (or a registered model) starts the form again from it. */}
       {section === "location" && <LocationEditor key={JSON.stringify(props.location)} location={props.location} models={props.models} onSaved={setNotice} />}
       {section === "models" && <ModelsEditor key={JSON.stringify(props.models)} models={props.models} availability={props.availability} onSaved={setNotice} />}
+      {section === "egress" && <EgressEditor key={JSON.stringify(props.egress)} egress={props.egress} flows={props.flows} onSaved={setNotice} />}
       {section === "apps" && <AppsEditor key={JSON.stringify([props.apps, props.known])} apps={props.apps} known={props.known} onSaved={setNotice} mcpForm={mcpForm} />}
     </MasterDetail>
   );
@@ -460,5 +469,118 @@ function McpCard({ apps, onSaved, formState }: { apps: AppPolicy; onSaved: (n: s
       </div>
       <ErrorLine error={error} />
     </section>
+  );
+}
+
+/* ------------------------------------------------------------------ C-4 */
+
+function EgressEditor({ egress, flows, onSaved }: { egress: EgressPolicy; flows: ProjectFlows[]; onSaved: (n: string) => void }) {
+  const [hosts, setHosts] = useState<string[]>(egress.hosts);
+  const [redact, setRedact] = useState<Redaction[]>(egress.redact);
+  const [host, setHost] = useState("");
+  const [hostError, setHostError] = useState<string>();
+  const held = flows.filter((f) => f.paths.some((p) => !p.allowed));
+  const [projectId, setProjectId] = useState(held[0]?.id ?? flows[0]?.id ?? "");
+  const { pending, error, run } = useSave(onSaved);
+  const ids = { host: useId(), project: useId() };
+  // What the flows would look like with the unsaved hosts, so an admin sees the effect before saving.
+  const draft = egressOfDraft(hosts);
+  const shown = flows.find((f) => f.id === projectId);
+  const changed = hosts.join() !== egress.hosts.join() || redact.slice().sort().join() !== egress.redact.slice().sort().join();
+  const add = () => {
+    const problem = hostProblem(host, hosts);
+    if (problem) return setHostError(problem);
+    setHostError(undefined);
+    setHosts([...hosts, host.trim().toLowerCase()]);
+    setHost("");
+  };
+  return (
+    <DetailBody
+      footer={
+        <Button variant="primary" disabledReason={pending ? "Saving…" : changed ? undefined : "Nothing changed yet."} onClick={() => run(() => saveEgress({ hosts, redact }), "Saved. Deploys check where data goes against the new list.")}>
+          Save data rules
+        </Button>
+      }
+    >
+      <DetailHead kicker={<>Organisation policy <SimTag title={SIM_NOTE} /></>} title="Where data may go">
+        Data may only go to the hosts below and to the models your organisation allows. A project that would send data anywhere else can&apos;t deploy, and its Launch page shows the path and the rule.
+      </DetailHead>
+      <section aria-labelledby="hosts" className="flex flex-col gap-2.5">
+        <h3 id="hosts" className="font-[650]">
+          Allowed hosts
+        </h3>
+        {hosts.length ? (
+          <ul aria-label="Allowed hosts" className="flex flex-wrap gap-1.5">
+            {hosts.map((h) => (
+              <li key={h} className="inline-flex items-center gap-1 rounded-full bg-selected py-0.5 pr-1 pl-3 text-small font-semibold">
+                <code className="font-mono">{h}</code>
+                <button type="button" aria-label={`Remove ${h}`} onClick={() => setHosts(hosts.filter((x) => x !== h))} className="grid size-6 place-items-center rounded-full hover:bg-surface">
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-small text-ink-2">None: no app can send data anywhere.</p>
+        )}
+        <p className="text-small text-ink-2">A domain covers the hosts under it: googleapis.com covers gmail.googleapis.com.</p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <label htmlFor={ids.host} className="flex min-w-0 flex-1 flex-col gap-1 text-small font-semibold text-ink-2">
+            Add a host
+            <input
+              id={ids.host}
+              value={host}
+              onChange={(e) => setHost(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
+              placeholder="api.hubapi.com"
+              className="min-h-[38px] rounded-[12px] border border-line-ctl bg-surface px-3 font-mono text-small font-normal text-ink"
+            />
+          </label>
+          <Button className="self-start sm:self-auto" disabledReason={host.trim() ? undefined : "Type a host first."} onClick={add}>
+            Add host
+          </Button>
+        </div>
+        <ErrorLine error={hostError} />
+      </section>
+      <fieldset className="flex flex-col gap-1.5">
+        <legend className="mb-1 font-[650]">Take out before anything goes to a model</legend>
+        {REDACTIONS.map((r) => (
+          <label key={r.id} className="flex min-h-6 items-center gap-2.5">
+            <input type="checkbox" className="size-4 accent-[var(--ink)]" checked={redact.includes(r.id)} onChange={() => setRedact(redact.includes(r.id) ? redact.filter((x) => x !== r.id) : [...redact, r.id])} />
+            {r.label}
+          </label>
+        ))}
+        <p className="text-small text-ink-2">Apps get the data they need to work (a CRM lookup needs the email address); models get prompts with these taken out.</p>
+      </fieldset>
+      <section aria-labelledby="flows" className="flex flex-col gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 id="flows" className="flex-1 font-[650]">
+            Where each project&apos;s data goes
+          </h3>
+          {flows.length > 0 && (
+            <>
+              <label htmlFor={ids.project} className="text-small font-semibold text-ink-2">
+                Project
+              </label>
+              <Select id={ids.project} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+                {flows.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                    {f.paths.some((p) => !p.allowed) ? " · held" : ""}
+                  </option>
+                ))}
+              </Select>
+            </>
+          )}
+        </div>
+        {shown ? (
+          <DataFlow project={shown.name} paths={shown.paths.map((p) => draft(p))} label={`Where ${shown.name}'s data goes`} />
+        ) : (
+          <p className="text-small text-ink-2">No projects yet.</p>
+        )}
+        {changed && <p className="text-small text-ink-2">Shown with your unsaved hosts. Save to apply them.</p>}
+      </section>
+      <ErrorLine error={error} />
+    </DetailBody>
   );
 }

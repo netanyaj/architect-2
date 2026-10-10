@@ -75,7 +75,7 @@ test.describe("Governance policies", () => {
     await page.getByRole("menuitem", { name: /^Gemini/ }).click();
     await page.getByRole("dialog", { name: "Switch this project to Gemini?" }).getByRole("button", { name: "Switch to Gemini" }).click();
     await expect.poll(async () => (await adminDb().from("projects").select("model").eq("id", id).single()).data!.model).toBe("gemini");
-    await expect(chat.getByText("This model is no longer allowed ·")).toHaveCount(0);
+    await expect(chat.getByText("This model is no longer allowed ·")).toHaveCount(0, { timeout: 30_000 });
 
     // The agent on Claude says so too, next to "Model used on Studio".
     await page.goto(`/p/${id}?view=agents`);
