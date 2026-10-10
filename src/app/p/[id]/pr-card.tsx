@@ -60,6 +60,20 @@ export function PrCard({ pr, project, governance }: { pr: PullRequestView; proje
             : `${pr.pushDecision.by} didn't approve the push: ${pr.pushDecision.reason ?? "no reason given"}. Fix that, then ask again.`}
         </p>
       )}
+      {project.codeEdits.edits.some((e) => e.prNumber === pr.number) && (
+        <div>
+          <h4 className="text-small font-semibold text-ink-2">Code edits</h4>
+          <ul className="mt-1 flex flex-col gap-1 text-small">
+            {project.codeEdits.edits
+              .filter((e) => e.prNumber === pr.number)
+              .map((e) => (
+                <li key={e.id}>
+                  <code className="font-mono">{e.path}</code> · {e.partTitle} · by {e.by}
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
       <div>
         <h4 className="text-small font-semibold text-ink-2">Implements</h4>
         <ul className="mt-1 flex flex-col gap-1.5">

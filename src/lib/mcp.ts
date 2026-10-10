@@ -33,7 +33,7 @@ export const MCP_TOOLS: McpTool[] = [
     does: "Changes a part's code or instructions on the agent's branch.",
     input: "{ key: string, change: { instructions?: string, files?: [{ path, patch }] } }",
     output: "{ key, status: \"waiting_for_check\" }",
-    policy: "Can't set a part's status. A changed part waits for the checker; only the checker can mark it Works. A change that weakens a check is refused (A-3).",
+    policy: "Can't set a part's status. A file change names the part it belongs to (the key) and runs that part's check again, the same as an edit a person saves in Developer view; only the checker can mark it Works. On a project from a repo it goes on the pull request. A change that weakens a check is refused (A-3).",
   },
   {
     name: "run_in_sandbox",

@@ -11,6 +11,7 @@ import { canBuild } from "@/lib/permissions";
 import { useUi } from "@/lib/ui-store";
 import { applyChange, discardChange, sendMessage } from "@/server/actions/chat";
 import type { ChangeCardData, ProjectWorkspace } from "@/server/project";
+import { CodeEditCard } from "./code-edit-card";
 import { PrCard } from "./pr-card";
 
 function Architect({ children }: { children: React.ReactNode }) {
@@ -293,6 +294,12 @@ export function ChatPane({
             </Architect>
           );
         })}
+        {/* Edits made in Developer view, oldest first: each re-runs its part's check. */}
+        {project.codeEdits.edits.map((e) => (
+          <Architect key={`edit-${e.id}`}>
+            <CodeEditCard edit={e} />
+          </Architect>
+        ))}
         {/* A repo project's sessions as pull requests, oldest first (B-4). */}
         {[...project.pullRequests].reverse().map((pr) => (
           <Architect key={pr.id}>

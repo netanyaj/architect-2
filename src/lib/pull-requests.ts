@@ -34,7 +34,8 @@ export function prBranch(projectName: string, version: number): string {
 
 /** The PR's checks: running while its build plays, then passing only if every part it implements works. */
 export function prChecks(runStatus: string | null, parts: { status: string }[]): PrChecks {
-  if (runStatus === "running" || runStatus === "queued") return "running";
+  // A part whose check is running again (after a code edit) keeps the PR's checks running too.
+  if (runStatus === "running" || runStatus === "queued" || parts.some((p) => p.status === "building")) return "running";
   return parts.every((p) => p.status === "built" || p.status === "sample_data") ? "passing" : "failing";
 }
 

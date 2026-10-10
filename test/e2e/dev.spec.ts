@@ -64,7 +64,7 @@ test.describe("M4: Developer view", () => {
     await expect(files(page).getByRole("tab", { name: "All files" })).toHaveAttribute("aria-selected", "true");
     await expect(files(page)).toContainText(`${REPO} · main at ${head.sha.slice(0, 7)} · real files`, { timeout: 30_000 });
     await files(page).getByRole("button", { name: "triage.js" }).click();
-    await expect(viewer(page)).toContainText("From GitHub · read-only");
+    await expect(viewer(page)).toContainText("From GitHub");
     await expect(viewer(page)).toContainText("export function ruleTriage(ticket)", { timeout: 30_000 });
 
     // Changes: nothing yet, until Build.

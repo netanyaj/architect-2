@@ -25,10 +25,12 @@ import { workspaceState } from "@/lib/workspace-state";
 import { launchState } from "@/lib/launch";
 import { goLive, shareWithTeam } from "@/server/actions/launch";
 import { buildPlan, setProjectModel } from "@/server/actions/plan";
+import { settleEdits } from "@/server/actions/dev";
 import { duplicateProject } from "@/server/actions/projects";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 import { AgentSessionLines, useAgentSession, withSession } from "./agent-session";
 import { AgentsPlanPanel, AgentsView } from "./agents-view";
+import { CodeEditCard } from "./code-edit-card";
 import { DataView } from "./data-view";
 import { OrgBudgetBanner } from "@/components/ax/org-budget-banner";
 import { CodeView, DevActivity, PrStatus, TerminalView } from "./dev-view";
@@ -285,6 +287,14 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
 
   // The picker's label (a registered private model goes by its own name).
   const modelName = (m: ModelChoice) => project.models.find((o) => o.choice === m)?.label ?? MODEL_LABEL[m];
+
+  // A code edit's re-run check (simulated) finishes after a few seconds: settle it then, without a reload.
+  const recheckRunning = project.codeEdits.edits.some((e) => e.check === "running");
+  useEffect(() => {
+    if (!recheckRunning) return;
+    const t = setTimeout(() => void settleEdits({ projectId: project.id }).then(() => router.refresh()), 6500);
+    return () => clearTimeout(t);
+  }, [recheckRunning, project.id, router]);
 
   // The build as it plays: the run's events replayed on the clock, laid over the saved parts.
   const live = useRun(project.id, project.run, project.serverNow);
@@ -583,6 +593,10 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
             body={
               dev && !planStage ? (
                 <>
+                  {/* Edits saved in Developer view, newest first: each re-runs its part's check. */}
+                  {[...project.codeEdits.edits].reverse().map((e) => (
+                    <CodeEditCard key={`edit-${e.id}`} edit={e} />
+                  ))}
                   <AgentSessionLines project={project} state={agentSession} />
                   <DevActivity project={project} items={items} live={live} />
                 </>

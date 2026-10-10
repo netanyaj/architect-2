@@ -17,6 +17,8 @@ export type DevPart = {
   position: number;
   /** A part an imported repo already does (proved by its tests): Architect didn't write code for it. */
   untouched?: boolean;
+  /** Its check is running again after a code edit (not a build). */
+  rechecking?: boolean;
 };
 export type DevFile = { path: string; content: string };
 export type DiffLine = { kind: "add" | "del" | "same"; oldNo: number | null; newNo: number | null; text: string };
@@ -169,7 +171,7 @@ export function changesByPart(input: { name: string; parts: DevPart[]; version: 
   const written = [...input.parts].filter((p) => WRITTEN.has(p.status) && !p.untouched).sort((a, b) => a.position - b.position);
   for (const p of written) {
     const fixes = input.fixes[p.key] ?? 0;
-    const label = p.status === "building" ? (fixes ? `fixing ${fixes} of 3` : "being built") : fixes ? `new · fixed ${fixes} of 3` : "new";
+    const label = p.rechecking ? "check running again" : p.status === "building" ? (fixes ? `fixing ${fixes} of 3` : "being built") : fixes ? `new · fixed ${fixes} of 3` : "new";
     groups.push({ key: p.key, title: p.title, label, files: partFiles(p).map(added) });
   }
   if (written.length) {

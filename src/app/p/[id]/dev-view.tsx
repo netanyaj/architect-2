@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { Button } from "@/components/ax/button";
 import { Icon } from "@/components/ax/icon";
 import { SimTag } from "@/components/ax/pill";
 import { Segmented } from "@/components/ax/segmented";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
+import { suggestPart, withEdits } from "@/lib/code-edits";
 import {
   activityFeed,
   branchInfo,
@@ -15,10 +19,11 @@ import {
   type DevPart,
   type TerminalLine,
 } from "@/lib/dev-view";
+import { canBuild } from "@/lib/permissions";
 import type { LiveRun } from "@/lib/sim/replay";
 import { useUi } from "@/lib/ui-store";
 import { cn } from "@/lib/utils";
-import { loadRepoFile, loadRepoView, type RepoView } from "@/server/actions/dev";
+import { loadRepoFile, loadRepoView, saveCodeEdit, type RepoView } from "@/server/actions/dev";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 
 /* Developer view (screen 8). Simulated from the plan and its run, except an imported repo's files, which are real. */
@@ -36,6 +41,7 @@ const toParts = (items: WorkspaceItem[]): DevPart[] =>
     provider: i.provider,
     position: i.position,
     untouched: Boolean(i.statusDetail?.startsWith("Works today")),
+    rechecking: Boolean(i.statusDetail?.startsWith("Re-running its check")),
   }));
 
 /** Events the run has played so far: a running build replays on the clock; a finished one shows them all. */
@@ -220,7 +226,14 @@ function Tree({ nodes, selected, onSelect, depth = 0, marks }: { nodes: TreeNode
 export function CodeView({ project, items, live }: { project: ProjectWorkspace; items: WorkspaceItem[]; live: LiveRun }) {
   const parts = useMemo(() => toParts(items), [items]);
   const version = project.plan?.version ?? 1;
-  const groups = useMemo(() => changesByPart({ name: project.name, parts, version, fixes: fixesOf(project), imported: Boolean(project.repo) }), [project, parts, version]);
+  const baseGroups = useMemo(() => changesByPart({ name: project.name, parts, version, fixes: fixesOf(project), imported: Boolean(project.repo) }), [project, parts, version]);
+  // Edits saved in Developer view lay over Architect's changes, under the part each belongs to.
+  const groups = useMemo(() => withEdits(baseGroups, project.codeEdits.files), [baseGroups, project.codeEdits.files]);
+  const editedContent = useMemo(() => new Map(project.codeEdits.files.map((f) => [f.path, f.content])), [project.codeEdits.files]);
+  const canEdit = canBuild(project.role);
+  const [editing, setEditing] = useState<{ path: string; before: string; text: string } | null>(null);
+  const [saving, setSaving] = useState<{ path: string; before: string; text: string } | null>(null);
+  const [notice, setNotice] = useState<string>();
   const changeCount = groups.reduce((n, g) => n + g.files.length, 0);
   const [mode, setMode] = useState<"changes" | "files">(changeCount || !project.repo ? "changes" : "files");
   const [selected, setSelected] = useState<string | null>(null);
@@ -263,6 +276,9 @@ export function CodeView({ project, items, live }: { project: ProjectWorkspace; 
 
   const open = (path: string) => {
     setSelected(path);
+    setEditing(null);
+    setNotice(undefined);
+    if (mode === "files" && editedContent.has(path)) return setFile({ path, text: editedContent.get(path)! });
     if (mode === "changes" || path === ENV_PATH) return;
     const own = generated.get(path);
     if (own !== undefined && !repo?.entries.some((e) => e.path === path)) return setFile({ path, text: own });
@@ -278,6 +294,13 @@ export function CodeView({ project, items, live }: { project: ProjectWorkspace; 
   };
 
   const shownChange = mode === "changes" ? (changeFile && changeFile.path === current ? changeFile : groups.flatMap((g) => g.files).find((f) => f.path === current)) : null;
+  // The file as it is now, for Edit: the viewer's text, or the new side of its change.
+  const currentText =
+    current && current !== ENV_PATH
+      ? (editedContent.get(current) ??
+        (mode === "files" ? file?.text : shownChange ? shownChange.lines.filter((l) => l.kind !== "del").map((l) => l.text).join("\n") : undefined))
+      : undefined;
+  const activeParts = items.filter((i) => i.status !== "dropped");
 
   return (
     <div className="flex min-h-0 flex-1 gap-0 px-3 pb-3 max-lg:flex-col">
@@ -341,12 +364,49 @@ export function CodeView({ project, items, live }: { project: ProjectWorkspace; 
           {shownChange && <Counts added={shownChange.added} removed={shownChange.removed} />}
           {current && current !== ENV_PATH && (
             <span className="text-small text-ink-2">
-              {mode === "files" && repo?.entries.some((e) => e.path === current) ? "From GitHub · read-only" : "Read-only"}
+              {editedContent.has(current) ? "Edited here" : mode === "files" && repo?.entries.some((e) => e.path === current) ? "From GitHub" : "Architect's code"}
             </span>
+          )}
+          {current && current !== ENV_PATH && currentText !== undefined && !editing && (
+            <Button
+              size="sm"
+              disabledReason={!canEdit ? "Viewers can read the code but can't change it." : !activeParts.length ? "Write the plan first: an edit belongs to one of its parts." : undefined}
+              onClick={() => (setEditing({ path: current, before: currentText, text: currentText }), setNotice(undefined))}
+            >
+              Edit
+            </Button>
           )}
           {current && current !== ENV_PATH && !(mode === "files" && repo?.entries.some((e) => e.path === current)) && <SimTag title="Architect's code is simulated in this prototype." />}
         </div>
-        {current === ENV_PATH ? (
+        {notice && (
+          <p role="status" className="border-b border-line px-4 py-2 text-small font-semibold">
+            {notice}
+          </p>
+        )}
+        {editing && editing.path === current ? (
+          <div className="flex min-h-0 flex-1 flex-col">
+            {/* The actions sit above the text, so nothing below can cover them. */}
+            <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2.5">
+              <Button variant="primary" size="sm" disabledReason={editing.text === editing.before ? "Change something first." : undefined} onClick={() => setSaving(editing)}>
+                Save edit…
+              </Button>
+              <Button size="sm" variant="quiet" onClick={() => setEditing(null)}>
+                Cancel
+              </Button>
+              <span className="text-small text-ink-2">Saving asks which part this belongs to, and runs that part&apos;s check again.</span>
+            </div>
+            <label htmlFor="code-edit" className="sr-only">
+              Edit {editing.path}
+            </label>
+            <textarea
+              id="code-edit"
+              value={editing.text}
+              onChange={(e) => setEditing({ ...editing, text: e.target.value })}
+              spellCheck={false}
+              className="min-h-[280px] flex-1 resize-none border-0 bg-surface px-4 py-3 font-mono text-[12.5px] leading-[1.75] text-ink"
+            />
+          </div>
+        ) : current === ENV_PATH ? (
           <KeysTable keys={keys} />
         ) : mode === "changes" ? (
           shownChange ? <Diff file={shownChange} /> : <p className="p-4 text-ink-2">Choose a file to see what changed.</p>
@@ -357,9 +417,100 @@ export function CodeView({ project, items, live }: { project: ProjectWorkspace; 
             {loadingFile ? "Reading the file from GitHub…" : (file?.note ?? "Choose a file on the left.")}
           </p>
         )}
-        <TerminalStrip project={project} items={items} live={live} />
+        {!editing && <TerminalStrip project={project} items={items} live={live} />}
       </section>
+      {saving && (
+        <EditPartDialog
+          projectId={project.id}
+          repo={project.repo}
+          edit={saving}
+          parts={activeParts.map((i) => ({ key: i.key, title: i.title, status: i.status }))}
+          suggested={suggestPart(saving.path, baseGroups, activeParts)}
+          onClose={() => setSaving(null)}
+          onSaved={(note) => {
+            setSaving(null);
+            setEditing(null);
+            setNotice(note);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+/** Which part an edit belongs to (a suggestion is chosen), then save: that part's check runs again. */
+function EditPartDialog({
+  projectId,
+  repo,
+  edit,
+  parts,
+  suggested,
+  onClose,
+  onSaved,
+}: {
+  projectId: string;
+  repo: string | null;
+  edit: { path: string; before: string; text: string };
+  parts: { key: string; title: string; status: string }[];
+  suggested: string | null;
+  onClose: () => void;
+  onSaved: (note: string) => void;
+}) {
+  const router = useRouter();
+  const [partKey, setPartKey] = useState(suggested ?? parts[0]?.key ?? "");
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string>();
+  const part = parts.find((p) => p.key === partKey);
+  const ordered = [...parts].sort((a, b) => Number(b.key === suggested) - Number(a.key === suggested));
+  return (
+    <Dialog open onOpenChange={(o) => !o && !pending && onClose()}>
+      <DialogContent className="max-h-[90dvh] overflow-auto rounded-pane border border-line bg-surface p-6 shadow-pop sm:max-w-[480px]" showCloseButton={false}>
+        <div className="flex items-center gap-2">
+          <DialogTitle className="flex-1 text-sub font-semibold">Which part does this edit belong to?</DialogTitle>
+          <SimTag title="Edits are simulated: nothing is written to a repo, and the check run is simulated." />
+        </div>
+        <DialogDescription className="text-ink-2">
+          <code className="font-mono text-small">{edit.path}</code>. Its check runs again, and only a passing check marks the part Works{repo ? `. The edit goes on the pull request into ${repo}` : ""}.
+        </DialogDescription>
+        <fieldset className="flex flex-col gap-1.5">
+          <legend className="sr-only">Part</legend>
+          {ordered.map((p) => (
+            <label key={p.key} className={cn("flex items-center gap-2.5 rounded-card border border-line px-3 py-2", partKey === p.key && "border-2 border-ink px-[11px] py-[7px]")}>
+              <input type="radio" name="edit-part" className="size-4 accent-[var(--ink)]" checked={partKey === p.key} onChange={() => setPartKey(p.key)} />
+              <span className="flex-1">{p.title}</span>
+              {p.key === suggested && <span className="text-small font-semibold text-ink-2">Suggested</span>}
+            </label>
+          ))}
+        </fieldset>
+        {error && (
+          <p role="alert" className="text-small font-semibold text-failed">
+            {error}
+          </p>
+        )}
+        <DialogFooter className="gap-2">
+          <Button variant="quiet" disabledReason={pending ? "Saving…" : undefined} onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            disabledReason={pending ? "Saving…" : partKey ? undefined : "Pick a part first."}
+            onClick={() =>
+              start(async () => {
+                setError(undefined);
+                const r = await saveCodeEdit({ projectId, path: edit.path, partKey, before: edit.before, content: edit.text });
+                if (!r.ok) return setError(r.message);
+                onSaved(
+                  `Saved. ${r.rechecks ? `${part?.title}'s check is running again.` : `${part?.title} gets its check when it's built.`}${r.prNumber ? ` The edit is on PR #${r.prNumber}.` : ""}`,
+                );
+                router.refresh();
+              })
+            }
+          >
+            Save to {part?.title ?? "the part"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

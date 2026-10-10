@@ -29,8 +29,8 @@ export function rowFor(i: WorkspaceItem): { status: Status; icon?: StatusIcon; d
     case "sample_data":
       return { status: "works", detail: "using sample data" };
     case "building":
-      // A coding agent's change waiting for the checker says so (F4).
-      return { status: "building", detail: i.statusDetail?.startsWith("Waiting for its check") ? i.statusDetail : "Building now" };
+      // A coding agent's change waiting for the checker (F4), or a code edit's check running again, says so.
+      return { status: "building", detail: i.statusDetail?.startsWith("Waiting for its check") || i.statusDetail?.startsWith("Re-running its check") ? i.statusDetail : "Building now" };
     case "failed":
       return { status: "failed", detail: i.statusDetail ?? "A check failed. Fixing it." };
     case "paused":

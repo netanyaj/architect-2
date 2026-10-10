@@ -12,6 +12,7 @@ import { MODEL_LABEL, toModelChoice, type ModelChoice, type ModelOption } from "
 import { detectTools, projectIcon, summarizeProject, type ProjectInput } from "@/lib/project-status";
 import { createAdminDb, createServerDb } from "./db";
 import { allowRuleFor, blockedServices, liveDecisions, loadPolicies, orgBudget, projectFlows, type Policies } from "./policy";
+import { loadCodeEdits, settleCodeEdits } from "./code-edits";
 import { projectKeyRows } from "./keys";
 import { loadPullRequests } from "./pull-requests";
 import { catchUpRuns, dbNow } from "./sim/run";
@@ -150,6 +151,8 @@ export type ProjectWorkspace = {
   messages: ChatMessage[];
   changes: ChangeCardData[];
   uploads: { id: string; name: string; mime: string | null; size: number | null; read: boolean }[];
+  /** Edits made in Developer view (simulated): the chat cards, and each edited file for Changes and the viewer. */
+  codeEdits: Awaited<ReturnType<typeof loadCodeEdits>>;
   /** Launch (screen 4): loaded only on the Launch page. */
   launch: LaunchData | null;
 };
@@ -281,6 +284,8 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     await catchUpRuns(createAdminDb(), p.id);
     return getProjectWorkspace(id, ctx, creditsLeft, { launch: opts.launch });
   }
+  // Code edits whose re-run check is due finish before the parts are read (simulated).
+  await settleCodeEdits(createAdminDb(), p.id);
 
   const versions: PlanVersion[] = [...(p.blueprints ?? [])]
     .sort((a, b) => b.version - a.version)
@@ -427,7 +432,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
   }
 
   // Read together: the database's clock, the apps held back here, and the organisation's cap (C-3, C-7).
-  const [serverNow, denied, budget] = await Promise.all([
+  const [serverNow, denied, budget, codeEdits] = await Promise.all([
     dbNow(createAdminDb()),
     blockedServices(createAdminDb(), p.workspace_id, p.id, knownApps(list.map((i) => i.provider ?? "")), policies),
     (async () => {
@@ -435,6 +440,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
       const { data: raise } = b.level === "stopped" ? await createAdminDb().from("approvals").select("id").eq("workspace_id", p.workspace_id).eq("kind", "budget").eq("status", "waiting").limit(1) : { data: [] };
       return { cap: b.cap, spent: Math.round(b.spent), level: b.level, percent: b.percent, raiseWaiting: Boolean(raise?.length) };
     })(),
+    loadCodeEdits(createAdminDb(), p.id),
   ]);
 
   return {
@@ -495,6 +501,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
       : null,
     spent: { total: credits(["build", "fix", "change", "blueprint", "running"]), build: credits(["build", "change"]), fix: credits(["fix"]) },
     serverNow,
+    codeEdits,
     connected: (conns ?? []).filter((c) => c.status === "connected").map((c) => c.provider),
     // Apps held back here: the plan's own and any an agent uses as a tool (the Agents graph shows both).
     denied,
