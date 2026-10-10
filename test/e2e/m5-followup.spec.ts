@@ -187,4 +187,26 @@ test.describe("M5 follow-up", () => {
     const { data: after } = await db.from("projects").select("launch_settings").eq("id", mp!.id).single();
     expect((after!.launch_settings as { badge?: boolean }).badge).toBe(false);
   });
+
+  test("Drift 1: approving an app also allows its data host, ticked by default; Lead scorer's egress hold clears", async ({ page }) => {
+    await start(page);
+    const db = adminDb();
+    await page.goto("/governance?section=egress");
+    await expect(page.getByRole("region", { name: "Policies", exact: true }).getByRole("button", { name: /Data and egress.*1 project held/ })).toBeVisible();
+
+    await page.goto("/governance/approvals");
+    const requests = page.getByRole("region", { name: "Requests" });
+    const detail = page.getByRole("region", { name: "Request", exact: true });
+    await requests.getByRole("button", { name: /Allow HubSpot in the workspace/ }).click();
+    const box = detail.getByRole("checkbox", { name: /Also allow api\.hubapi\.com for data/ });
+    await expect(box).toBeChecked();
+    await detail.getByLabel(/^Reason/).fill("Sales needs it");
+    await detail.getByRole("button", { name: "Approve and allow everywhere" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Approved" }).first()).toBeVisible();
+
+    const { data: egress } = await db.from("policies").select("config").eq("workspace_id", workspace).eq("kind", "egress").single();
+    expect((egress!.config as { hosts: string[] }).hosts).toContain("api.hubapi.com");
+    await page.goto("/governance?section=egress");
+    await expect(page.getByRole("region", { name: "Policies", exact: true }).getByRole("button", { name: /Data and egress/ })).not.toContainText("held");
+  });
 });

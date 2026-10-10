@@ -140,13 +140,16 @@ function Detail({ request: r, onDecided }: { request: Request; onDecided: (note:
   const router = useRouter();
   const id = useId();
   const [reason, setReason] = useState("");
+  // Approving an app whose data host isn't allowed: allow the host too, in the same step (ticked by default).
+  const hostHeld = Boolean(r.flow && !r.flow.allowed);
+  const [alsoHost, setAlsoHost] = useState(true);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string>();
   const waiting = r.status === "waiting";
   const act = (decision: "approve" | "reject", scope: DecisionScope = "once") =>
     start(async () => {
       setError(undefined);
-      const res = await decideApproval({ approvalId: r.id, decision, scope, reason });
+      const res = await decideApproval({ approvalId: r.id, decision, scope, reason, allowHost: decision === "approve" && hostHeld && alsoHost });
       if (!res.ok) return setError(res.message);
       onDecided(`${r.title}: ${res.note ?? (decision === "approve" ? "Approved. The person who asked can carry on." : "Rejected. The person who asked sees your reason.")}`);
       router.refresh();
@@ -193,6 +196,17 @@ function Detail({ request: r, onDecided }: { request: Request; onDecided: (note:
                   {r.flow.allowed ? "" : " · not on your allowed list"}
                 </Tag>
               </div>
+              {waiting && hostHeld && (
+                <label className="ml-7 flex items-start gap-2.5">
+                  <input type="checkbox" checked={alsoHost} onChange={(e) => setAlsoHost(e.target.checked)} className="mt-1 size-4 accent-[var(--ink)]" />
+                  <span className="flex flex-col">
+                    <span className="font-semibold">Also allow {r.flow.host} for data</span>
+                    <span className="text-small text-ink-2">
+                      {alsoHost ? "Approving adds it to your allowed hosts too, so Launch doesn't hold the deploy on it." : "Approving allows the app only. Launch then holds the deploy until the host is allowed."}
+                    </span>
+                  </span>
+                </label>
+              )}
             </div>
           )}
 

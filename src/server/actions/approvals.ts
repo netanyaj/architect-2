@@ -7,7 +7,7 @@ import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
 
 /** Approve (once, or with an allow-rule) or reject a request on the Approvals page (screen 11). */
-export async function decideApproval(input: { approvalId: string; decision: "approve" | "reject"; scope?: DecisionScope; reason?: string }): Promise<ActionResult<{ note?: string }>> {
+export async function decideApproval(input: { approvalId: string; decision: "approve" | "reject"; scope?: DecisionScope; reason?: string; allowHost?: boolean }): Promise<ActionResult<{ note?: string }>> {
   const ctx = await getAppContext();
   return decide(createAdminDb(), ctx, input);
 }

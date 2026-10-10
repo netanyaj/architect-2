@@ -2,8 +2,9 @@ import "server-only";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { decisionProblem } from "@/lib/approvals";
+import { decisionProblem, hostAllowed, serviceHost } from "@/lib/approvals";
 import type { Json } from "@/lib/database.types";
+import { egressConfig, egressOf } from "@/lib/egress";
 import { canManageMembers } from "@/lib/permissions";
 import { providerName } from "@/lib/providers";
 import { goLive } from "./actions/launch";
@@ -22,6 +23,8 @@ const input = z.object({
   decision: z.enum(["approve", "reject"]),
   scope: z.enum(["once", "rule"]).default("once"),
   reason: z.string().default(""),
+  /** Approving an app (or calls with a key): also allow the service's host for data (C-4), in the same step. */
+  allowHost: z.boolean().default(false),
 });
 
 /**
@@ -116,6 +119,10 @@ export async function decide(admin: AdminDb, ctx: AppContext, raw: z.input<typeo
     }
   }
 
+  if (decision === "approve" && parsed.data.allowHost && provider && (a.kind === "connector" || a.kind === "external_call")) {
+    await allowDataHost(admin, ctx, serviceHost(provider).host, a.id);
+  }
+
   if (a.kind === "token") {
     // The token row points at its request (0014); a seeded request has no token behind it.
     if (decision === "approve") await admin.from("project_tokens").update({ status: "active" }).eq("approval_id", a.id).eq("status", "waiting");
@@ -162,6 +169,18 @@ const firstName = (v: unknown) => (typeof v === "string" && v ? v.split(" ")[0] 
 async function workspaceProjects(admin: AdminDb, workspaceId: string): Promise<string[]> {
   const { data } = await admin.from("projects").select("id").eq("workspace_id", workspaceId);
   return (data ?? []).map((p) => p.id);
+}
+
+/** The egress policy (C-4): the host joins the allowed hosts, unless it's already covered. Audited like any policy change. */
+async function allowDataHost(admin: AdminDb, ctx: AppContext, host: string, approvalId: string) {
+  const { data: row } = await admin.from("policies").select("id, config").eq("workspace_id", ctx.workspace.id).eq("kind", "egress").maybeSingle();
+  // No egress policy means nothing is held back, so there's nothing to add.
+  if (!row) return;
+  const policy = egressOf(row.config);
+  if (!policy.restricted || hostAllowed(host, policy.hosts)) return;
+  await admin.from("policies").update({ config: egressConfig({ ...policy, hosts: [...policy.hosts, host] }) as Json }).eq("id", row.id);
+  await admin.from("audit_log").insert({ workspace_id: ctx.workspace.id, actor: ctx.name, action: "policy.changed", target: `Host allowed: ${host}`, details: { policy: "egress", from_approval: approvalId, simulated: true } as Json });
+  revalidatePath("/governance");
 }
 
 /** The connector policy: the service moves from not allowed to allowed. */

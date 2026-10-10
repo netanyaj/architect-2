@@ -73,7 +73,7 @@ test.describe("Data and egress", () => {
       await db.from("blueprints").update({ agreed_at: new Date().toISOString() }).eq("project_id", id);
 
       await page.goto("/governance?section=egress");
-      await expect(page.getByRole("region", { name: "Policies", exact: true }).getByRole("button", { name: /Data and egress.*1 project held/ })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Policies", exact: true }).getByRole("button", { name: /Data and egress.*2 projects held/ })).toBeVisible();
       await expect(policy(page).getByLabel("Project", { exact: true })).toHaveValue(id);
       const flow = policy(page).getByRole("list", { name: "Where Lead brief's data goes" });
       await expect(flow.getByRole("listitem").filter({ hasText: "HubSpot" })).toContainText("Not allowed");
@@ -85,9 +85,10 @@ test.describe("Data and egress", () => {
       await policy(page).getByRole("checkbox", { name: "People's names" }).check();
       await policy(page).getByRole("button", { name: "Save data rules" }).click();
       await expect(policy(page).getByRole("status")).toContainText("Saved.");
+      // Lead scorer (seeded, 0019) read HubSpot too, so allowing hubapi.com clears both.
       await expect(page.getByRole("region", { name: "Policies", exact: true }).getByRole("button", { name: /Data and egress/ })).not.toContainText("held");
       const { data: egress } = await db.from("policies").select("config").eq("workspace_id", ws).eq("kind", "egress").single();
-      expect(egress!.config).toMatchObject({ hosts: ["slack.com", "googleapis.com", "zendesk.com", "hubapi.com"], redact: ["email", "phone", "card", "name"] });
+      expect(egress!.config).toMatchObject({ hosts: ["slack.com", "googleapis.com", "zendesk.com", "api.clearbit.com", "hubapi.com"], redact: ["email", "phone", "card", "name"] });
     } finally {
       await deleteTestUser(other);
     }

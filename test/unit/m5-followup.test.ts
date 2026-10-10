@@ -315,3 +315,37 @@ describe("plans and the Built with Architect badge (simulated billing)", () => {
     expect(db.tables.audit_log.at(-1)).toMatchObject({ action: "plan.changed", details: { from: "pro", to: "free", simulated: true } });
   });
 });
+
+describe("approving an app can allow its data host in the same step (drift 1)", () => {
+  const P = "88888888-8888-4888-8888-888888888888";
+  const seed = () =>
+    new FakeDb({
+      workspaces: [{ id: "ws-1", governance_enabled: true }],
+      policies: [
+        { id: "pol-e", workspace_id: "ws-1", kind: "egress", config: { mode: "allow_list", hosts: ["slack.com"], redact: ["email"] } },
+        { id: "pol-c", workspace_id: "ws-1", kind: "connectors", config: { allow: ["slack"] } },
+      ],
+      approvals: [{ id: "a1", workspace_id: "ws-1", project_id: P, kind: "connector", title: "Lead brief: HubSpot", status: "waiting", payload: { provider: "hubspot" } }],
+      projects: [{ id: P, name: "Lead brief", workspace_id: "ws-1" }],
+      runs: [],
+      items: [],
+      allow_rules: [],
+      audit_log: [],
+    });
+  const ctx = { user: { id: "me" }, name: "Rita", role: "admin", workspace: { id: "ws-1", name: "Acme", governanceEnabled: true } } as never;
+
+  it("ticked (the default in the panel): api.hubapi.com joins the allowed hosts, audited", async () => {
+    db = seed();
+    const { decide } = await import("@/server/approvals");
+    expect((await decide(db as never, ctx, { approvalId: "a1", decision: "approve", scope: "once", reason: "", allowHost: true })).ok).toBe(true);
+    expect(db.tables.policies[0].config).toEqual({ mode: "allow_list", hosts: ["slack.com", "api.hubapi.com"], redact: ["email"] });
+    expect(db.tables.audit_log.map((a) => a.target)).toContain("Host allowed: api.hubapi.com");
+  });
+
+  it("unticked: the app is approved and the host stays held, as before", async () => {
+    db = seed();
+    const { decide } = await import("@/server/approvals");
+    expect((await decide(db as never, ctx, { approvalId: "a1", decision: "approve", scope: "once", reason: "", allowHost: false })).ok).toBe(true);
+    expect((db.tables.policies[0].config as { hosts: string[] }).hosts).toEqual(["slack.com"]);
+  });
+});
