@@ -255,6 +255,28 @@ Unit tests: 362. Lint and typecheck clean.
 
 Model-dependent steps are tested on rules, not exact output: the import test checks that every part with tests gets them as proof (and that the known-failing test never makes a part Works) rather than which parts Gemini writes, because Gemini Flash Lite splits behaviour differently between runs.
 
+## M5 acceptance (11 Oct 2026, production)
+
+Run against https://ticket-triage-gamma.vercel.app with `E2E_BASE_URL` set, one browser at a time.
+
+| Flow | Test | Result |
+|---|---|---|
+| F5: connect an integration that needs approval | `approvals.spec.ts`: a HubSpot part files a request; the admin approves it for that project with a reason; the part asks to connect; connecting makes it work; an audit row | Passed |
+| F6: enterprise setup and the approval queue | `governance.spec.ts` (where it runs, models, apps), `egress.spec.ts` (a held data path, the admin's fix), `rules-budgets-keys.spec.ts` (permission rules, Live keys, budgets, audit log and CSV), `approvals.spec.ts` (allow everywhere, Rules, reject with a reason, Live approval) | Passed |
+| F9: move an Architect 1.0 app to 2.0 | `move-and-more.spec.ts`: the 1.0 app keeps running; Move to 2.0 opens Import with its repo chosen; the plan from the repo; the 1.0 app points at it | Passed |
+| Full suite | `pnpm e2e` (52 tests) | 50 passed, 2 skipped by design (the no-Lyzr fallback needs a server without LYZR_API_KEY; the rate-limit banner's test hook is off in production). The first full run had 7 failures and 10 tests that didn't run; all 17 passed when rerun (below) |
+
+Every Must in the PRD is accounted for in `docs/COVERAGE.md`. Unit tests: 410. Lint and typecheck clean.
+
+### Flaky during M5, and why
+
+| Test | What happened | Cause | Done |
+|---|---|---|---|
+| Any test that creates a user | 6 failures in each of two production runs: "createUser failed: fetch failed" | This laptop's network calls to Supabase dropped during long runs; the same call worked straight after, and the tests passed on rerun | None; local network. If it recurs in CI, retry `createTestUser` once |
+| `launch.spec.ts` | Once on production: "Applied as plan v2" didn't appear after Apply on a live app | A slow response during the same network trouble | Passed on rerun |
+| `plan.spec.ts` change card | Twice: Apply stayed disabled ("Decide what happens to … first") | Gemini read the request as also weakening a part, so the conflict guard asked for a decision (correct behaviour); the test expects no conflict on the first change | Passed on rerun. Known limit: model output varies |
+| Local runs of build, plan and launch specs together | Waits of 15 s ran out after actions | The local dev server under load; project pages also loaded the project twice (fixed: the page title reads only the name) | Passed alone and on production |
+
 ## Known limits
 
 | Limit | Effect | Why it's acceptable for now |

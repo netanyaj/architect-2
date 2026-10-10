@@ -109,6 +109,7 @@ Screen numbers refer to the final canvas. Interface words follow the design-syst
 - **Effects inline:** "Needs approval" on items, allowed models only in pickers, a Production deploy waiting for approval.
 - **Migration flow (F9):** "Move to 2.0" on a legacy app opens import with the repo pre-selected.
 - **Acceptance:** F5, F6 and F9 can be shown, and every Real/Sim row in the PRD is done.
+- **Status (11 Oct 2026): done and accepted on production.** F5, F6 and F9 pass on production, and so does the full browser suite (50 passed, 2 skipped by design). Every PRD Must, row by row: `docs/COVERAGE.md`. Details and deviations: DECISIONS.md "M5" and "M5 acceptance".
 
 ### M6 · QA and submission (Fri 9)
 - Work through `docs/QA-CHECKLIST.md`.
