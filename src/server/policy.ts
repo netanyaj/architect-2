@@ -59,6 +59,15 @@ export async function blockedServices(admin: AdminDb, workspaceId: string, proje
   return wanted.filter((p) => !ok.has(p));
 }
 
+/** Services the workspace's parts use or holds an API key for: what Governance › Apps can list (C-3). */
+export async function usedApps(admin: AdminDb, workspaceId: string): Promise<string[]> {
+  const [{ data: items }, { data: conns }] = await Promise.all([
+    admin.from("items").select("provider, projects!inner(workspace_id)").eq("projects.workspace_id", workspaceId).not("provider", "is", null),
+    admin.from("connections").select("provider").eq("workspace_id", workspaceId),
+  ]);
+  return [...(items ?? []).map((i) => i.provider as string), ...(conns ?? []).map((c) => c.provider)];
+}
+
 /** The newest decision on each Live deploy request of a project, newest first (Launch picks the current version's). */
 export async function liveDecisions(admin: AdminDb, projectId: string): Promise<LiveDecision[]> {
   const { data } = await admin.from("approvals").select("status, payload, decided_by_name, decided_at, reason").eq("project_id", projectId).eq("kind", "deploy").in("status", ["approved", "rejected"]);

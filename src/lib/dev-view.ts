@@ -3,6 +3,7 @@
  * grouped by part, the terminal session and the activity, all derived from the plan and its run. Pure functions;
  * an imported repo's real files come from the server instead (src/server/actions/dev.ts).
  */
+import { apiKeyEnvName } from "./api-keys";
 import { providerName } from "./providers";
 import type { RunEvent } from "./sim/replay";
 
@@ -301,7 +302,8 @@ export function envKeys(input: {
   }
   const active = input.parts.filter((p) => p.status !== "dropped" && p.status !== "deferred");
   for (const p of active) {
-    const k = p.provider ? KEY_FOR[p.provider] : undefined;
+    // A service outside the list is called with an API key from its connection (BL-9): CLEARBIT_API_KEY.
+    const k = p.provider ? (KEY_FOR[p.provider] ?? { name: apiKeyEnvName(p.provider), why: providerName(p.provider) }) : undefined;
     if (k) add(k.name, `For ${k.why}`, input.connected.includes(p.provider!), p.provider);
   }
   if (active.some((p) => p.grp === "agents")) add("LYZR_API_KEY", "For the app's agents", true);

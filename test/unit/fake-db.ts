@@ -166,6 +166,7 @@ class Query implements PromiseLike<Result> {
     ok?: ((v: Result) => A | PromiseLike<A>) | null,
     fail?: ((e: unknown) => B | PromiseLike<B>) | null,
   ): PromiseLike<A | B> {
-    return Promise.resolve<Result>({ data: this.run(), error: null }).then(ok, fail);
+    const data = this.run();
+    return Promise.resolve<Result>({ data, error: null, count: data.length } as Result).then(ok, fail);
   }
 }

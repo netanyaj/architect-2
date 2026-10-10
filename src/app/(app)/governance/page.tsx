@@ -5,7 +5,7 @@ import { canManageMembers } from "@/lib/permissions";
 import { auditEntries, type AuditRow } from "@/lib/audit";
 import { knownApps } from "@/lib/policies";
 import { createAdminDb } from "@/server/db";
-import { loadPolicies, projectFlows, workspaceSpend } from "@/server/policy";
+import { loadPolicies, projectFlows, usedApps, workspaceSpend } from "@/server/policy";
 import { getAppContext } from "@/server/workspace";
 import { GovernanceView, type Section } from "./governance-view";
 
@@ -19,9 +19,9 @@ export default async function GovernancePage({ searchParams }: PageProps<"/gover
   if (!canManageMembers(ctx.role) || !ctx.workspace.governanceEnabled) notFound();
   const sp = await searchParams;
   const admin = createAdminDb();
-  const [policies, { data: used }, { data: projects }] = await Promise.all([
+  const [policies, used, { data: projects }] = await Promise.all([
     loadPolicies(admin, ctx.workspace.id),
-    admin.from("items").select("provider, projects!inner(workspace_id)").eq("projects.workspace_id", ctx.workspace.id).not("provider", "is", null),
+    usedApps(admin, ctx.workspace.id),
     admin.from("projects").select("id, name, budget_credits").eq("workspace_id", ctx.workspace.id).order("updated_at", { ascending: false }),
   ]);
   const [{ data: usage }, { data: audit }, spent] = await Promise.all([
@@ -49,7 +49,7 @@ export default async function GovernancePage({ searchParams }: PageProps<"/gover
       projectBudgets={(projects ?? []).map((p) => ({ id: p.id, name: p.name, cap: p.budget_credits === null ? null : Number(p.budget_credits), spent: spentBy(p.id) }))}
       audit={auditEntries((audit ?? []) as AuditRow[], names)}
       availability={modelAvailability()}
-      known={knownApps((used ?? []).map((i) => i.provider as string))}
+      known={knownApps(used)}
     />
   );
 }

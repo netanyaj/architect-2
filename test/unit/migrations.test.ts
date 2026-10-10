@@ -432,9 +432,10 @@ describe("allow-rules (0016)", () => {
     const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'reviewer@example.com', 'Rita') as ws", [REVIEWER]);
     await db.query("insert into allow_rules (workspace_id, action, target, created_by_name) values ($1, 'connector', 'hubspot', 'Rita')", [ws]);
     await expect(db.query("insert into allow_rules (workspace_id, action, created_by_name) values ($1, 'anything', 'Rita')", [ws])).rejects.toThrow(/check/);
-    expect(await count("select count(*) as n from allow_rules where workspace_id = $1", [ws])).toBe(1);
+    // Plus the seeded Lead scorer and Clearbit rules (0019, 0020).
+    expect(await count("select count(*) as n from allow_rules where workspace_id = $1", [ws])).toBe(3);
     await db.query("select reset_demo_workspace($1, $2)", [ws, REVIEWER]);
-    expect(await count("select count(*) as n from allow_rules where workspace_id = $1", [ws])).toBe(0);
+    expect(await count("select count(*) as n from allow_rules where workspace_id = $1 and created_by_name = 'Rita'", [ws])).toBe(0);
     expect(await one("select relrowsecurity from pg_class where relname = 'allow_rules'")).toEqual({ relrowsecurity: true });
   });
 });
@@ -470,5 +471,37 @@ describe("the Architect 1.0 app and part comments (0018)", () => {
   it("workspaces from before 0018 got the app too", async () => {
     const n = await count("select count(*) as n from workspaces w where not exists (select 1 from projects p where p.workspace_id = w.id and p.legacy_repo is not null) and exists (select 1 from members m where m.workspace_id = w.id and m.role = 'owner' and m.user_id is not null)");
     expect(n).toBe(0);
+  });
+});
+
+describe("API keys, plans, external-call rules and the Lead scorer seed (0019, 0020)", () => {
+  it("a new or reset workspace's Lead scorer reads HubSpot under an allow-rule, with a Clearbit key set by Jordan", async () => {
+    const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'reviewer2@example.com', 'Rita') as ws", [REVIEWER]);
+    const parts = await db.query<{ key: string; provider: string }>("select i.key, i.provider from items i join projects p on p.id = i.project_id where p.workspace_id = $1 and p.name = 'Lead scorer' and i.provider is not null order by i.position", [ws]);
+    expect(parts.rows).toEqual([
+      { key: "new-hubspot-leads-read", provider: "hubspot" },
+      { key: "company-size-lookup", provider: "clearbit" },
+      { key: "top-5-posted-to-sales", provider: "slack" },
+    ]);
+    const rules = await db.query("select action, target, project_id is null as everywhere, created_by_name from allow_rules where workspace_id = $1 order by target", [ws]);
+    expect(rules.rows).toEqual([
+      { action: "connector", target: "clearbit", everywhere: true, created_by_name: "Jordan (IT)" },
+      { action: "connector", target: "hubspot", everywhere: false, created_by_name: "Jordan (IT)" },
+    ]);
+    // Clearbit's host is allowed for data (0020); HubSpot's isn't, so Lead scorer is held on api.hubapi.com.
+    const { hosts } = await one<{ hosts: string[] }>("select config -> 'hosts' as hosts from policies where workspace_id = $1 and kind = 'egress'", [ws]);
+    expect(hosts).toContain("api.clearbit.com");
+    expect(hosts).not.toContain("api.hubapi.com");
+    expect(await one("select kind, status, set_by_name from connections where workspace_id = $1 and provider = 'clearbit'", [ws])).toEqual({ kind: "api_key", status: "connected", set_by_name: "Jordan (IT)" });
+    await db.query("select reset_demo_workspace($1, $2)", [ws, REVIEWER]);
+    expect(await count("select count(*) as n from allow_rules where workspace_id = $1", [ws])).toBe(2);
+    expect(await count("select count(*) as n from connections where workspace_id = $1 and provider = 'clearbit'", [ws])).toBe(1);
+    expect(await count("select count(*) as n from policies, jsonb_array_elements_text(config -> 'hosts') h where workspace_id = $1 and kind = 'egress' and h = 'api.clearbit.com'", [ws])).toBe(1);
+    // The seeded demo is on Enterprise; a workspace made any other way starts on Free.
+    expect(await one("select plan from workspaces where id = $1", [ws])).toEqual({ plan: "enterprise" });
+    expect(await one("insert into workspaces (name) values ('Blank') returning plan")).toEqual({ plan: "free" });
+    await expect(db.query("update workspaces set plan = 'gold' where id = $1", [ws])).rejects.toThrow(/check/);
+    await db.query("insert into allow_rules (workspace_id, action, target, created_by_name) values ($1, 'external_call', 'clearbit', 'Jordan (IT)')", [ws]);
+    await db.query("insert into approvals (workspace_id, kind, title) values ($1, 'external_call', 'Clearbit calls with a key')", [ws]);
   });
 });

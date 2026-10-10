@@ -498,24 +498,33 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          kind: string
           provider: string
           scopes: string[]
+          set_at: string | null
+          set_by_name: string | null
           status: string
           workspace_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          kind?: string
           provider: string
           scopes?: string[]
+          set_at?: string | null
+          set_by_name?: string | null
           status: string
           workspace_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          kind?: string
           provider?: string
           scopes?: string[]
+          set_at?: string | null
+          set_by_name?: string | null
           status?: string
           workspace_id?: string
         }
@@ -1725,6 +1734,7 @@ export type Database = {
           governance_enabled: boolean
           id: string
           name: string
+          plan: string
         }
         Insert: {
           created_at?: string
@@ -1733,6 +1743,7 @@ export type Database = {
           governance_enabled?: boolean
           id?: string
           name: string
+          plan?: string
         }
         Update: {
           created_at?: string
@@ -1741,6 +1752,7 @@ export type Database = {
           governance_enabled?: boolean
           id?: string
           name?: string
+          plan?: string
         }
         Relationships: []
       }
@@ -1776,6 +1788,10 @@ export type Database = {
       }
       seed_demo_workspace: {
         Args: { p_owner: string; p_workspace: string }
+        Returns: undefined
+      }
+      seed_lead_scorer_egress: {
+        Args: { p_workspace: string }
         Returns: undefined
       }
       set_run_timeline: {

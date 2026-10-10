@@ -25,7 +25,7 @@ import {
   type ModelPolicy,
 } from "@/lib/policies";
 import { createAdminDb, type AdminDb } from "../db";
-import { loadPolicies } from "../policy";
+import { loadPolicies, usedApps } from "../policy";
 import { getAppContext, type AppContext } from "../workspace";
 import type { ActionResult } from "./members";
 
@@ -125,11 +125,6 @@ const appInput = z.object({
   whoCanConnect: z.enum(["builders", "admins"]),
   scopes: z.record(z.string(), z.enum(["read", "read_write"])),
 });
-
-async function usedApps(admin: AdminDb, workspaceId: string): Promise<string[]> {
-  const { data } = await admin.from("items").select("provider, projects!inner(workspace_id)").eq("projects.workspace_id", workspaceId).not("provider", "is", null);
-  return (data ?? []).map((i) => i.provider as string);
-}
 
 /** C-3: which apps any project may use, what each may do, and who connects them. */
 export async function saveAppPolicy(raw: z.input<typeof appInput>): Promise<ActionResult> {

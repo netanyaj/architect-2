@@ -190,6 +190,16 @@ Where the prototype differs from the spec, or fills a gap the spec left open. On
 | Milestone labels | No milestone labels in the UI | None left: Help me decide, Download code and GitHub in ⋯ are built, and Keys and passwords came with task 4 | |
 | Project page metadata | Not specified | The page title reads only the project's name; it used to load the whole project a second time | Every project page was doing the work twice |
 
+## M5 follow-up (gap analysis, 11 Oct 2026)
+
+From `reviews/m5-gap-analysis-2026-10-11.md`. One row per item, in the order built.
+
+| Area | The spec said | We did | Why |
+|---|---|---|---|
+| Migrations 0019 and 0020 | — | 0019: `connections.kind` (`oauth` or `api_key`), `set_by_name`, `set_at`; `workspaces.plan` (Free, Starter, Pro, Enterprise; default Free); `external_call` for allow-rules and approvals; Lead scorer's HubSpot, Clearbit and Slack parts get their services, with a HubSpot rule for Lead scorer by Jordan (IT) and a Clearbit API key set by Jordan. **Backfill:** every existing workspace with Lead scorer got the same seed, and every seeded Acme Ops workspace (all 6 on production) moved to Enterprise; a workspace made any other way starts on Free. 0020 fixes 0019's seed: under governance Clearbit wasn't an allowed app, so its part would have waited for approval and api.clearbit.com would also have been held. Jordan now allows Clearbit in every project (a rule in Approvals › Rules) and its host for data, so Lead scorer's one egress hold is HubSpot's api.hubapi.com | Netanya approved both, and asked for the Enterprise backfill to be logged here |
+| ticket-triage's missing key | Gap analysis drift 3: a key nothing provides | One line, `ZENDESK_WEBHOOK_SECRET=`, pushed to `.env.example` in netanyaj/ticket-triage (07204b6, only that file). The analysis now counts `*_WEBHOOK_SECRET` and `*_SIGNING_SECRET` as keys a person sets, not ones that come with connecting the app, so an import of the repo shows it missing for Live | Netanya's choice: real in the repo rather than seeded in the app. A webhook signing secret is chosen by the person, so the rule is true beyond this repo |
+| API key connections (BL-9) | Connections hub: OAuth, MCP, **API keys** | Connections › Add an API key: a service name and the key. The key is checked and thrown away; the row records only Set or Not set, by whom and when, with Replace key and Remove (Remove keeps the row, Not set, so its parts show they need it). The audit log says set, replaced or removed, never the value. Under governance the service must be an allowed app (or allowed everywhere by a rule), as for any connection. A part that calls a keyed service gets `<SERVICE>_API_KEY` in Keys and passwords, provided by the connection. Tagged Simulated | Same rule as Keys and passwords: values never stored |
+
 ## Numbers we set, and how we picked them
 
 | Number | Value | How we picked it |

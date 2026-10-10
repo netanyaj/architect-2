@@ -1,13 +1,19 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useId, useState, useTransition, type FormEvent } from "react";
 import { Button, TextLink } from "@/components/ax/button";
 import { ListRow, Tray } from "@/components/ax/list-row";
+import { Tag } from "@/components/ax/pill";
 import { StatusLine } from "@/components/ax/status-mark";
-import { connectProvider } from "@/server/actions/connections";
+import { clearApiKey, connectProvider, setApiKey } from "@/server/actions/connections";
 
 export type ConnectionRow = {
   id: string;
+  /** Signing in (OAuth), or a key (BL-9). */
+  kind: "oauth" | "api_key";
+  /** An API key that's set: who set it and when ("Jordan (IT) · 3 days ago"). */
+  setBy?: string;
   name: string;
   what: string;
   usedBy: string[];
@@ -19,6 +25,149 @@ export type ConnectionRow = {
 type Access = { canConnect: boolean; refusal?: string; isAdmin: boolean };
 
 function Row({ c, access }: { c: ConnectionRow; access: Access }) {
+  if (c.kind === "api_key") return <KeyRow c={c} access={access} />;
+  return <OauthRow c={c} access={access} />;
+}
+
+/** An API key connection: Set (by whom, when) or Not set. The key itself is never stored or shown. */
+function KeyRow({ c, access }: { c: ConnectionRow; access: Access }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string>();
+  const [replacing, setReplacing] = useState(false);
+  const used = c.usedBy.length ? `Used by ${c.usedBy.join(", ")}` : "Not used by a project yet";
+  const status =
+    c.state === "connected" ? (
+      <StatusLine status="works">Set</StatusLine>
+    ) : c.state === "blocked" ? (
+      <StatusLine status="blocked" icon="lock">
+        Not allowed by policy
+      </StatusLine>
+    ) : (
+      <StatusLine status="attention" icon="plug">
+        Not set
+      </StatusLine>
+    );
+  return (
+    <ListRow
+      icon="connections"
+      name={
+        <span className="flex flex-wrap items-center gap-2">
+          {c.name} <Tag>API key</Tag>
+        </span>
+      }
+      meta={
+        <>
+          {c.what} {used}.{c.setBy ? ` Set by ${c.setBy}.` : ""}
+        </>
+      }
+      status={status}
+      trailing={
+        c.state === "blocked" ? null : c.state === "connected" ? (
+          <span className="flex gap-1.5">
+            <Button size="sm" disabledReason={access.canConnect ? undefined : "Viewers can't change keys."} onClick={() => setReplacing(true)}>
+              Replace key
+            </Button>
+            <Button
+              size="sm"
+              variant="quiet"
+              disabledReason={!access.canConnect ? "Viewers can't remove keys." : pending ? "Removing…" : undefined}
+              onClick={() =>
+                start(async () => {
+                  const r = await clearApiKey({ connectionId: c.id });
+                  if (!r.ok) setError(r.message);
+                  else router.refresh();
+                })
+              }
+            >
+              Remove
+            </Button>
+          </span>
+        ) : (
+          <Button size="sm" disabledReason={access.canConnect ? access.refusal : "Viewers can't add keys."} onClick={() => setReplacing(true)}>
+            Add the key
+          </Button>
+        )
+      }
+      footer={
+        replacing ? (
+          <KeyForm fixedName={c.name} onDone={() => setReplacing(false)} />
+        ) : error ? (
+          <p role="alert" className="text-small font-semibold text-failed">
+            {error}
+          </p>
+        ) : undefined
+      }
+    />
+  );
+}
+
+/** Paste a key: it's checked and thrown away; the row records only that it's set (Simulated). */
+function KeyForm({ fixedName, onDone }: { fixedName?: string; onDone: () => void }) {
+  const router = useRouter();
+  const ids = { name: useId(), value: useId() };
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string>();
+  const submit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    start(async () => {
+      setError(undefined);
+      const r = await setApiKey({ name: fixedName ?? String(f.get("name") ?? ""), value: String(f.get("value") ?? "") });
+      if (!r.ok) return setError(r.message);
+      onDone();
+      router.refresh();
+    });
+  };
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-end gap-2">
+        {!fixedName && (
+          <span className="flex flex-col gap-1">
+            <label htmlFor={ids.name} className="text-small font-semibold">
+              Service
+            </label>
+            <input id={ids.name} name="name" placeholder="Clearbit" maxLength={40} autoComplete="off" className="min-h-8 w-44 rounded-full border border-line-ctl bg-surface px-3" />
+          </span>
+        )}
+        <span className="flex min-w-0 flex-1 flex-col gap-1">
+          <label htmlFor={ids.value} className="text-small font-semibold">
+            {fixedName ? `${fixedName} API key` : "API key"}
+          </label>
+          <input id={ids.value} name="value" type="password" autoComplete="off" spellCheck={false} className="min-h-8 w-full rounded-full border border-line-ctl bg-surface px-3 font-mono" />
+        </span>
+        <Button size="sm" type="submit" disabledReason={pending ? "Saving…" : undefined}>
+          {pending ? "Saving…" : "Save key"}
+        </Button>
+        <Button size="sm" variant="quiet" onClick={onDone}>
+          Cancel
+        </Button>
+      </div>
+      <p className="text-small text-ink-2">The key is checked and thrown away: Architect records only that it&apos;s set, by you, now.</p>
+      {error && (
+        <p role="alert" className="text-small font-semibold text-failed">
+          {error}
+        </p>
+      )}
+    </form>
+  );
+}
+
+/** "Add an API key" above the list, for a service that has no row yet. */
+export function AddApiKey({ refusal }: { refusal?: string }) {
+  const [open, setOpen] = useState(false);
+  return open ? (
+    <div className="rounded-card border border-line bg-surface px-4 py-3.5">
+      <KeyForm onDone={() => setOpen(false)} />
+    </div>
+  ) : (
+    <Button icon="plus" className="self-start" disabledReason={refusal} onClick={() => setOpen(true)}>
+      Add an API key
+    </Button>
+  );
+}
+
+function OauthRow({ c, access }: { c: ConnectionRow; access: Access }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string>();
   const used = c.usedBy.length ? `Used by ${c.usedBy.join(", ")}` : "Not used by a project yet";

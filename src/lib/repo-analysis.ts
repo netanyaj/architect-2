@@ -115,6 +115,8 @@ function pythonDeps(files: Record<string, string>): string[] {
 }
 
 const KEY_SERVICES: [RegExp, string | null, boolean][] = [
+  // A webhook signing secret is chosen by the person, not handed over by connecting the app: someone sets it.
+  [/_(WEBHOOK|SIGNING)_SECRET$/, null, false],
   [/^(OPENAI|ANTHROPIC|GEMINI|GOOGLE_GENERATIVE_AI|GROQ|MISTRAL|COHERE|OPENROUTER)_/, null, true],
   [/^SLACK_/, "slack", false],
   [/^ZENDESK_/, "zendesk", false],

@@ -53,10 +53,11 @@ describe("analyzeRepo on ticket-triage", () => {
     expect(a.testCommand).toBe("npm test");
   });
 
-  it("finds the keys it needs; PORT is a setting, OPENAI_API_KEY can come from Lyzr", () => {
+  it("finds the keys it needs; PORT is a setting, OPENAI_API_KEY can come from Lyzr, a webhook secret is set by a person", () => {
     expect(a.keys).toEqual([
       { name: "OPENAI_API_KEY", service: null, lyzrInstead: true },
       { name: "SLACK_WEBHOOK_URL", service: "slack", lyzrInstead: false },
+      { name: "ZENDESK_WEBHOOK_SECRET", service: null, lyzrInstead: false },
     ]);
     expect(a.settings).toEqual(["PORT"]);
   });
@@ -170,7 +171,7 @@ describe("today's behaviour (model labels, server decides)", () => {
     const withAgent = repoPlanRequest({ repo: "r/x", branch: "main", folder: "/", analysis, behaviour: [{ title: "Triage with AI", description: "Suggests a priority.", tests: [], agent: "triager" }], port: false });
     expect(withAgent).toContain("- Triage with AI: Suggests a priority. An AI agent in CrewAI (agents/triage_agent.py); keep it in CrewAI. (no tests yet)");
     expect(req).toContain("It has 3 tests already, in tests/triage.test.js, run with npm test; they are the checks for the parts above.");
-    expect(req).toContain("Keys it needs (settings, not parts): OPENAI_API_KEY, SLACK_WEBHOOK_URL.");
+    expect(req).toContain("Keys it needs (settings, not parts): OPENAI_API_KEY, SLACK_WEBHOOK_URL, ZENDESK_WEBHOOK_SECRET.");
     expect(req.length).toBeLessThanOrEqual(3900);
   });
 });

@@ -48,6 +48,8 @@ export type ProjectRow = {
   updatedAt: string;
   creditsUsed: number;
   tools: string[];
+  /** Service ids its current parts use ("hubspot", "clearbit"). */
+  providers: string[];
   summary: ProjectSummary;
   prompt: string | null;
   budgetCredits: number | null;
@@ -64,7 +66,7 @@ export async function listProjects(ctx: AppContext): Promise<ProjectRow[]> {
   const [{ data: projects, error }, { data: owners }, { data: usage }] = await Promise.all([
     db
       .from("projects")
-      .select("id, name, icon, status, owner_id, owner_display_name, updated_at, budget_credits, prompt, legacy_repo, moved_to, items(status, title, grp, blueprint_id), blueprints(id, version), runs(status, started_at)")
+      .select("id, name, icon, status, owner_id, owner_display_name, updated_at, budget_credits, prompt, legacy_repo, moved_to, items(status, title, grp, blueprint_id, provider), blueprints(id, version), runs(status, started_at)")
       .eq("workspace_id", ws)
       .order("updated_at", { ascending: false }),
     db.from("members").select("user_id, display_name").eq("workspace_id", ws).eq("status", "active"),
@@ -93,6 +95,7 @@ export async function listProjects(ctx: AppContext): Promise<ProjectRow[]> {
       updatedAt: p.updated_at,
       creditsUsed: Math.round(spent.get(p.id) ?? 0),
       tools: detectTools([p.prompt, ...items.map((i) => i.title)]),
+      providers: [...new Set(items.map((i) => i.provider).filter((x): x is string => Boolean(x)))],
       summary: summarizeProject({
         status: p.status as ProjectInput["status"],
         budgetCredits: p.budget_credits === null ? null : Number(p.budget_credits),
