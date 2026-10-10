@@ -14,8 +14,10 @@ import { Segmented } from "@/components/ax/segmented";
 import { Stepper } from "@/components/ax/stepper";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { missingForLive } from "@/lib/keys";
+import { BUDGET_STOPPED } from "@/lib/policies";
 import { MODEL_LABEL, type ModelChoice } from "@/lib/models";
-import { canBuild } from "@/lib/permissions";
+import { canBuild, canManageMembers } from "@/lib/permissions";
 import { relativeTime } from "@/lib/project-status";
 import { etaWords, withLive, type LiveRun } from "@/lib/sim/replay";
 import { useUi } from "@/lib/ui-store";
@@ -28,6 +30,7 @@ import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 import { AgentSessionLines, useAgentSession, withSession } from "./agent-session";
 import { AgentsPlanPanel, AgentsView } from "./agents-view";
 import { DataView } from "./data-view";
+import { OrgBudgetBanner } from "@/components/ax/org-budget-banner";
 import { CodeView, DevActivity, PrStatus, TerminalView } from "./dev-view";
 import { HandoffBanner, TransferDialog } from "./handoff";
 import { SyncBanner } from "./pr-card";
@@ -310,6 +313,8 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
         liveDecisions: project.launch!.liveDecisions,
         liveRule: project.launch!.liveRule,
         flows: project.launch!.flows,
+        deployNeedsApproval: project.policy.permissions.deploy,
+        keysMissingForLive: missingForLive(project.launch!.keys),
         testsPassed: project.launch!.testsPassed,
         repo: project.repo
           ? { prNumber: project.pullRequests[0]?.number ?? null, branch: project.pullRequests[0]?.branch ?? null, merged: project.pullRequests[0]?.status === "merged" }
@@ -337,7 +342,10 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
     : baseState;
   // Unsaved agent settings come first: the stage action waits for Save or Discard (screen 9).
   const agentsWaiting = !planStage && !onLaunch && view === "agents" && agentChanges > 0;
-  const state = agentsWaiting ? { ...stageState, action: { ...stageState.action, disabledReason: "Save or discard your agent changes first." } } : stageState;
+  const agentsState = agentsWaiting ? { ...stageState, action: { ...stageState.action, disabledReason: "Save or discard your agent changes first." } } : stageState;
+  // The organisation's monthly cap (C-7): at 100%, Build and the other paid actions stop until an admin raises it.
+  const state =
+    !launch && project.policy.budget.level === "stopped" && !agentsState.action.disabledReason ? { ...agentsState, action: { ...agentsState.action, disabledReason: BUDGET_STOPPED } } : agentsState;
 
   const toggleDev = () => {
     const next = new URLSearchParams(params);
@@ -479,6 +487,8 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
           {actionError}
         </p>
       )}
+
+      <OrgBudgetBanner budget={project.policy.budget} isAdmin={canManageMembers(project.role)} canBuild={canAct} />
 
       <div className="flex min-h-0 flex-1 gap-2.5 max-lg:flex-col">
         {planPanel}

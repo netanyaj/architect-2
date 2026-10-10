@@ -2,15 +2,17 @@ import "server-only";
 
 import type { Role } from "@/lib/db";
 import type { FlowPath } from "@/lib/egress";
+import type { KeyRow } from "@/lib/keys";
 import type { Deployment, LaunchSettings, LiveDecision } from "@/lib/launch";
-import { connectRefusal, knownApps, locationLabel, scopeOf, type Scope } from "@/lib/policies";
+import { connectRefusal, knownApps, locationLabel, scopeOf, type PermissionRules, type Scope } from "@/lib/policies";
 import type { PullRequestView } from "@/lib/pull-requests";
 import type { RunEvent, RunInfo } from "@/lib/sim/replay";
 import { modelAvailability } from "@/lib/gateway";
 import { MODEL_LABEL, toModelChoice, type ModelChoice, type ModelOption } from "@/lib/models";
 import { detectTools, projectIcon, summarizeProject, type ProjectInput } from "@/lib/project-status";
 import { createAdminDb, createServerDb } from "./db";
-import { allowRuleFor, blockedServices, liveDecisions, loadPolicies, projectFlows, type Policies } from "./policy";
+import { allowRuleFor, blockedServices, liveDecisions, loadPolicies, orgBudget, projectFlows, type Policies } from "./policy";
+import { projectKeyRows } from "./keys";
 import { loadPullRequests } from "./pull-requests";
 import { catchUpRuns, dbNow } from "./sim/run";
 import type { AppContext } from "./workspace";
@@ -126,8 +128,15 @@ export type ProjectWorkspace = {
   /** Services this workspace has connected, and those of this project's that its policy holds back (C-3). */
   connected: string[];
   denied: string[];
-  /** What the organisation's policies mean here (C-1, C-3): shown where builders work. Empty with governance off. */
-  policy: { governance: boolean; location: string | null; connectRefusal: string | null; scopes: Record<string, Scope> };
+  /** What the organisation's policies mean here (C-1, C-3, C-7, C-10): shown where builders work. Empty with governance off. */
+  policy: {
+    governance: boolean;
+    location: string | null;
+    connectRefusal: string | null;
+    scopes: Record<string, Scope>;
+    permissions: PermissionRules;
+    budget: { cap: number | null; spent: number; level: "none" | "ok" | "alert" | "stopped"; percent: number; raiseWaiting: boolean };
+  };
   tools: string[];
   summary: ReturnType<typeof summarizeProject>;
   /** The person's role in the project's workspace. */
@@ -174,6 +183,8 @@ export type LaunchData = {
   liveRule: boolean;
   /** Where the app's data would go (C-4), with governance on. */
   flows: FlowPath[];
+  /** Keys and passwords per version (C-10): what's provided, set (by whom, when), waiting or missing. */
+  keys: KeyRow[];
   testsPassed: number;
 };
 
@@ -182,7 +193,7 @@ async function loadLaunch(
   projectId: string,
   workspaceId: string,
   names: Map<string, string>,
-  extra: { governance: boolean; settings: LaunchSettings; testShareToken: string | null; domain: string; policies: Policies; parts: { key: string; title: string; status: string; grp: string; provider: string | null }[] },
+  extra: { governance: boolean; settings: LaunchSettings; testShareToken: string | null; domain: string; policies: Policies; parts: { key: string; title: string; status: string; grp: string; provider: string | null }[]; connected: string[] },
 ): Promise<LaunchData> {
   const [{ data: deps }, { data: envs }, { data: approvals }, { data: proofs }, { data: changes }] = await Promise.all([
     db.from("deployments").select("id, environment, blueprint_version, status, created_at, created_by, checks").eq("project_id", projectId).order("created_at", { ascending: false }),
@@ -209,6 +220,7 @@ async function loadLaunch(
     ].join(", ");
   }
   const env = (n: string) => (envs ?? []).some((e) => e.name === n && e.status === "live");
+  const keys = await projectKeyRows(admin, { projectId, parts: extra.parts, connected: extra.connected, envLive: { staging: env("staging"), production: env("production") } });
   return {
     governance: extra.governance,
     settings: extra.settings,
@@ -231,6 +243,7 @@ async function loadLaunch(
     liveDecisions: decisions,
     liveRule,
     flows,
+    keys,
     testsPassed: (proofs ?? []).reduce((s, p) => s + Number(p.assertions_passed ?? 0), 0),
   };
 }
@@ -409,8 +422,20 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
       domain: ctx.user.email?.split("@")[1] ?? "your company",
       policies,
       parts: list,
+      connected: (conns ?? []).filter((c) => c.status === "connected").map((c) => c.provider),
     });
   }
+
+  // Read together: the database's clock, the apps held back here, and the organisation's cap (C-3, C-7).
+  const [serverNow, denied, budget] = await Promise.all([
+    dbNow(createAdminDb()),
+    blockedServices(createAdminDb(), p.workspace_id, p.id, knownApps(list.map((i) => i.provider ?? "")), policies),
+    (async () => {
+      const b = await orgBudget(createAdminDb(), p.workspace_id, policies);
+      const { data: raise } = b.level === "stopped" ? await createAdminDb().from("approvals").select("id").eq("workspace_id", p.workspace_id).eq("kind", "budget").eq("status", "waiting").limit(1) : { data: [] };
+      return { cap: b.cap, spent: Math.round(b.spent), level: b.level, percent: b.percent, raiseWaiting: Boolean(raise?.length) };
+    })(),
+  ]);
 
   return {
     id: p.id,
@@ -469,15 +494,17 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
       ? { id: latestRun.id, kind: latestRun.kind, status: latestRun.status, variant: latestRun.variant, startedAt: latestRun.started_at, endsAt: latestRun.ends_at, events: runEvents }
       : null,
     spent: { total: credits(["build", "fix", "change", "blueprint", "running"]), build: credits(["build", "change"]), fix: credits(["fix"]) },
-    serverNow: await dbNow(createAdminDb()),
+    serverNow,
     connected: (conns ?? []).filter((c) => c.status === "connected").map((c) => c.provider),
     // Apps held back here: the plan's own and any an agent uses as a tool (the Agents graph shows both).
-    denied: await blockedServices(createAdminDb(), p.workspace_id, p.id, knownApps(list.map((i) => i.provider ?? "")), policies),
+    denied,
     policy: {
       governance: policies.governance,
       location: policies.governance ? locationLabel(policies.location) : null,
       connectRefusal: connectRefusal(policies.apps, policies.governance, membership?.role === "owner" || membership?.role === "admin") ?? null,
       scopes: policies.governance ? Object.fromEntries(list.filter((i) => i.provider).map((i) => [i.provider!, scopeOf(policies.apps, i.provider!)])) : {},
+      permissions: policies.permissions,
+      budget,
     },
     tools: detectTools([p.prompt, ...list.map((i) => i.title)]),
     summary: summarizeProject({

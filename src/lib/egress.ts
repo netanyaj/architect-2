@@ -18,13 +18,14 @@ export const REDACTIONS: { id: Redaction; label: string }[] = [
   { id: "name", label: "People's names" },
 ];
 
-export type EgressPolicy = { hosts: string[]; redact: Redaction[] };
+/** `restricted` is false when the workspace has no egress policy at all: then nothing is held back. */
+export type EgressPolicy = { hosts: string[]; redact: Redaction[]; restricted?: boolean };
 
 export function egressOf(config: unknown): EgressPolicy {
   const c = (config ?? {}) as { hosts?: unknown; redact?: unknown };
   const hosts = Array.isArray(c.hosts) ? [...new Set(c.hosts.filter((h): h is string => typeof h === "string").map((h) => h.trim().toLowerCase()))] : [];
   const redact = Array.isArray(c.redact) ? c.redact.filter((r): r is Redaction => REDACTIONS.some((x) => x.id === r)) : ["email", "phone", "card"];
-  return { hosts, redact: [...new Set(redact)] as Redaction[] };
+  return { hosts, redact: [...new Set(redact)] as Redaction[], restricted: Array.isArray(c.hosts) };
 }
 
 export function egressConfig(p: EgressPolicy) {
@@ -94,7 +95,7 @@ export function dataFlow(input: {
   for (const p of active.filter((p) => p.provider)) apps.set(p.provider!, [...(apps.get(p.provider!) ?? []), p.title]);
   for (const [provider, from] of apps) {
     const { host, data } = serviceHost(provider);
-    const allowed = hostAllowed(host, input.egress.hosts);
+    const allowed = input.egress.restricted === false || hostAllowed(host, input.egress.hosts);
     paths.push({ id: `app-${provider}`, kind: "app", to: providerName(provider), host, data, from, allowed, rule: allowed ? null : RULE_HOSTS, redacted: [] });
   }
   const byModel = new Map<ModelChoice, string[]>();

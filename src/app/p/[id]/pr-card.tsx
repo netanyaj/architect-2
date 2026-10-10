@@ -26,7 +26,7 @@ export function PrCard({ pr, project, governance }: { pr: PullRequestView; proje
   const [pending, start] = useTransition();
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
-  const owner = !governance || canManageMembers(project.role) || pr.pushAllowed;
+  const owner = !governance || canManageMembers(project.role) || pr.pushAllowed || !project.policy.permissions.push;
   const viewer = canBuild(project.role) ? null : "Viewers can't merge pull requests.";
   const blocked = viewer ?? mergeBlocker(pr, owner);
   const word = pr.status === "merged" ? "Merged" : pr.status === "closed" ? "Closed" : pr.pushRequested ? "Waiting for approval" : pr.checks === "passing" ? "Ready to merge" : STATE[pr.checks];

@@ -1077,6 +1077,57 @@ export type Database = {
           },
         ]
       }
+      project_keys: {
+        Row: {
+          approval_id: string | null
+          environment: string
+          id: string
+          name: string
+          project_id: string
+          set_at: string
+          set_by: string | null
+          set_by_name: string
+          status: string
+        }
+        Insert: {
+          approval_id?: string | null
+          environment: string
+          id?: string
+          name: string
+          project_id: string
+          set_at?: string
+          set_by?: string | null
+          set_by_name: string
+          status?: string
+        }
+        Update: {
+          approval_id?: string | null
+          environment?: string
+          id?: string
+          name?: string
+          project_id?: string
+          set_at?: string
+          set_by?: string | null
+          set_by_name?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_keys_approval_id_fkey"
+            columns: ["approval_id"]
+            isOneToOne: false
+            referencedRelation: "approvals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_keys_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_tokens: {
         Row: {
           approval_id: string | null

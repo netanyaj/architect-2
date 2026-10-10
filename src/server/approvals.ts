@@ -121,6 +121,20 @@ export async function decide(admin: AdminDb, ctx: AppContext, raw: z.input<typeo
     else await admin.from("project_tokens").update({ status: "revoked", revoked_at: now }).eq("approval_id", a.id).eq("status", "waiting");
   }
 
+  if (a.kind === "secret" && project && typeof payload.key === "string") {
+    // The key was typed and thrown away when it was asked for; approving records it as set for Live.
+    if (decision === "approve") await admin.from("project_keys").update({ status: "set" }).eq("approval_id", a.id).eq("status", "waiting");
+    else await admin.from("project_keys").delete().eq("approval_id", a.id).eq("status", "waiting");
+  }
+
+  if (a.kind === "budget" && decision === "approve" && typeof payload.cap === "number") {
+    // Raising the organisation's monthly cap (C-7): paid actions start again.
+    const { data: row } = await admin.from("policies").select("id").eq("workspace_id", ctx.workspace.id).eq("kind", "budget").maybeSingle();
+    if (row) await admin.from("policies").update({ config: { monthly_cap: payload.cap } }).eq("id", row.id);
+    else await admin.from("policies").insert({ workspace_id: ctx.workspace.id, kind: "budget", config: { monthly_cap: payload.cap } });
+    await audit("policy.changed", `Monthly cap raised to ${payload.cap} credits`, { policy: "budget", from_approval: a.id });
+  }
+
   if (a.kind === "deploy" && project && decision === "approve") {
     // A seeded "Production deploy" part waits on this request; it works once Live is approved.
     await approveDeployParts(admin, project.id, ctx.name);

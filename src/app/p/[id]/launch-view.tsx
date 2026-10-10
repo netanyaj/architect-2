@@ -14,12 +14,13 @@ import { canBuild, canManageMembers } from "@/lib/permissions";
 import { relativeTime } from "@/lib/project-status";
 import { useUi } from "@/lib/ui-store";
 import { cn } from "@/lib/utils";
-import { goBack, shareTestLink, shareWithTeam } from "@/server/actions/launch";
+import { bringBackLive, goBack, shareTestLink, shareWithTeam, takeOffline } from "@/server/actions/launch";
 import { allowHost } from "@/server/actions/policies";
 import { setPartAside, setWaitingAside } from "@/server/actions/run";
 import type { ProjectWorkspace } from "@/server/project";
 import { ConnectButton } from "./connect-button";
-import { AccessSetting, AnalyticsSetting, DomainSetting, LaterRow, SignInSetting, MarketplaceSetting } from "./launch-settings";
+import { KeysDialog } from "./launch-keys";
+import { AccessSetting, AnalyticsSetting, DomainSetting, SignInSetting, MarketplaceSetting } from "./launch-settings";
 
 const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "app";
 const ENV_LABEL = { staging: "Team version", production: "Live" } as const;
@@ -96,6 +97,47 @@ function VersionCard({
   );
 }
 
+/** Take offline, or Go live again with the version that was taken offline, after a confirmation. */
+function LiveDialog({ kind, projectId, name, version, onClose }: { kind: "offline" | "back"; projectId: string; name: string; version: number; onClose: () => void }) {
+  const { pending, error, act } = useAct();
+  const off = kind === "offline";
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="rounded-pane border border-line bg-surface p-6 shadow-pop sm:max-w-[460px]" showCloseButton={false}>
+        <DialogTitle className="text-sub font-semibold">{off ? `Take ${name} offline?` : `Bring back v${version} on Live?`}</DialogTitle>
+        <DialogDescription className="text-ink-2">
+          {off
+            ? `People can't open it until it goes live again. Its data and every version are kept, and Go live again brings back v${version}.`
+            : `v${version} serves Live again, with its data as it was when it went offline.`}
+        </DialogDescription>
+        {error && (
+          <p role="alert" className="text-small font-semibold text-failed">
+            {error}
+          </p>
+        )}
+        <DialogFooter className="mt-2 gap-2">
+          <Button variant="quiet" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            disabledReason={pending ? (off ? "Taking it offline…" : "Going live…") : undefined}
+            onClick={() =>
+              act(async () => {
+                const r = off ? await takeOffline({ projectId }) : await bringBackLive({ projectId });
+                if (r.ok) onClose();
+                return r;
+              })
+            }
+          >
+            {off ? "Take offline" : `Go live with v${version}`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /** Go back, after a confirmation that says what changes (review gap 11). */
 function GoBackDialog({ target, notes, current, onClose }: { target: Deployment; notes: Record<number, string>; current: number | null; onClose: () => void }) {
   const { pending, error, act } = useAct();
@@ -169,6 +211,11 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
   const fine = state.rows.filter((r) => r.kind === "fine").length;
   const history = [...launch.deployments].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const [confirm, setConfirm] = useState<Deployment | null>(null);
+  const [keysOpen, setKeysOpen] = useState(false);
+  const [liveAsk, setLiveAsk] = useState<"offline" | "back" | null>(null);
+  // Taken offline (Take offline): the version that was live is kept, and Go live again brings it back.
+  const offline = state.live.version === null ? history.find((d) => d.environment === "production" && d.status === "offline") : undefined;
+  const liveRule = launch.governance && project.policy.permissions.deploy && !isAdmin ? "Only Owners and Admins can take Live offline or bring it back." : undefined;
   const liveDomain = settings.domains?.production?.status === "secured" ? settings.domains.production.name : `${s}.architect.app`;
   const teamDomain = settings.domains?.staging?.status === "secured" ? settings.domains.staging.name : `${s}--team.architect.space`;
   const testPath = launch.testShareToken ? `/share/${launch.testShareToken}` : null;
@@ -299,7 +346,9 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
           detail={audience}
           url={state.live.version !== null ? liveDomain : undefined}
           status={
-            state.live.current ? (
+            offline ? (
+              <StatusWord status="blocked">Offline · v{offline.version} kept</StatusWord>
+            ) : state.live.current ? (
               <StatusWord status="works">v{state.live.version} is live</StatusWord>
             ) : state.live.behind ? (
               // Live is behind (review gap 8): the change is built but not out yet; Update live is the stage action.
@@ -326,6 +375,20 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
             <span className="text-small text-ink-2">
               {state.repo.merged ? `Deploys from main · PR #${state.repo.prNumber} merged` : `Deploys from main after ${state.repo.prNumber ? `PR #${state.repo.prNumber}` : "the pull request"} merges`}
             </span>
+          )}
+          {offline ? (
+            <span className="flex flex-col items-start gap-1.5 text-small text-ink-2">
+              People can&apos;t open it. Its data and every version are kept.
+              <Button size="sm" disabledReason={readOnly ?? liveRule ?? busy} onClick={() => setLiveAsk("back")}>
+                Go live again with v{offline.version}
+              </Button>
+            </span>
+          ) : (
+            state.live.version !== null && (
+              <Button size="sm" variant="quiet" className="self-start" disabledReason={readOnly ?? liveRule ?? busy} onClick={() => setLiveAsk("offline")}>
+                Take offline
+              </Button>
+            )
           )}
           {/* Where it runs (C-1): the organisation's choice, shown where the app goes live. */}
           {project.policy.location && (
@@ -408,6 +471,11 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
                       Switch the agents&apos; model
                     </Button>
                   ))}
+                {r.kind === "keys" && (
+                  <Button variant={primary ? "primary" : "secondary"} size="sm" onClick={() => setKeysOpen(true)}>
+                    Set keys
+                  </Button>
+                )}
                 {r.kind === "fine" && <SimTag title="Checks run in the simulated build" />}
               </li>
             );
@@ -436,7 +504,20 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
           <DomainSetting projectId={project.id} env="production" state={settings.domains?.production} fallback={`${s}.architect.app`} readOnly={readOnly} />
           <AnalyticsSetting projectId={project.id} on={Boolean(settings.analytics)} readOnly={readOnly} />
           <SignInSetting projectId={project.id} value={settings.signIn ?? "google"} governance={launch.governance} access={access} readOnly={readOnly} />
-          <LaterRow title="Keys and passwords" detail="Saved per version, never in the code" label="Manage" reason="Not in this prototype yet: keys per version are planned next." />
+          <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-2 font-semibold">
+                Keys and passwords <SimTag title="Keys are simulated: values are checked and thrown away." />
+              </span>
+              <span className="block text-small text-ink-2">
+                Saved per version, never in the code
+                {launch.keys.length ? ` · ${launch.keys.length} ${launch.keys.length === 1 ? "key" : "keys"}` : ""}
+              </span>
+            </span>
+            <Button size="sm" onClick={() => setKeysOpen(true)}>
+              Manage
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -485,6 +566,16 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
         This project has used {Math.round(project.spent.total)} credits. <TextLink href="/usage">See Usage</TextLink>
       </p>
 
+      <KeysDialog projectId={project.id} rows={launch.keys} open={keysOpen} onOpenChange={setKeysOpen} canSet={canAct} liveNeedsApproval={launch.governance && project.policy.permissions.secrets && !isAdmin} />
+      {liveAsk && (
+        <LiveDialog
+          kind={liveAsk}
+          projectId={project.id}
+          name={project.name}
+          version={liveAsk === "back" ? (offline?.version ?? 1) : (state.live.version ?? 1)}
+          onClose={() => setLiveAsk(null)}
+        />
+      )}
       {confirm && (
         <GoBackDialog
           target={confirm}

@@ -7,7 +7,7 @@ import type { StatusIcon } from "@/components/ax/status-mark";
 import { SCOPES } from "./mcp";
 import { providerName, PROVIDERS } from "./providers";
 
-export type ApprovalKind = "connector" | "deploy" | "token" | "push" | "budget";
+export type ApprovalKind = "connector" | "deploy" | "token" | "push" | "budget" | "secret";
 export type ApprovalStatus = "waiting" | "approved" | "rejected";
 /** Approve this one request, or approve it and record an allow-rule so the same request doesn't wait again. */
 export type DecisionScope = "once" | "rule";
@@ -91,7 +91,7 @@ export function scopeSummary(scopes: string[]): string {
 
 const firstName = (name: string | null) => (name ? name.split(" ")[0] : "Someone");
 
-const ICON: Record<ApprovalKind, StatusIcon> = { connector: "plug", deploy: "lines", token: "lock", push: "lines", budget: "dot" };
+const ICON: Record<ApprovalKind, StatusIcon> = { connector: "plug", deploy: "lines", token: "lock", push: "lines", budget: "dot", secret: "lock" };
 
 export const RULE_LINE: Record<ApprovalKind, string> = {
   connector: "New tool · rule: tools not on your approved list need an admin",
@@ -99,6 +99,7 @@ export const RULE_LINE: Record<ApprovalKind, string> = {
   push: "Push to main · rule: pushes to main need an admin",
   token: "Coding agent · rule: coding-agent tokens need an admin",
   budget: "Budget · rule: going over the org budget needs an admin",
+  secret: "Live key · rule: keys and passwords for Live need an admin",
 };
 
 export function formatDay(iso: string): string {
@@ -164,6 +165,24 @@ export function approvalView(a: ApprovalInput): ApprovalView {
     facts.push({ label: "Agent", value: `${agent}, through Architect's MCP server` });
     facts.push({ label: "Can", value: can.charAt(0).toUpperCase() + can.slice(1) });
     consequence = `Approving turns the token on. ${agent} can then ${can.replace(/ only$/, "")}, and every change still waits for its check.`;
+    actions.push({ scope: "once", label: "Approve", consequence });
+  } else if (a.kind === "secret") {
+    const key = typeof p.key === "string" ? p.key : "A key";
+    title = project ? `Set ${key} for Live in ${project}` : a.title;
+    meta = `${firstName(by)} · Live`;
+    facts.push({ label: "Asked by", value: by ?? "Someone" });
+    facts.push({ label: "Key", value: `${key}, for Live` });
+    facts.push({ label: "Value", value: "Never stored: Architect only records that it's set, by whom and when" });
+    consequence = `Approving sets ${key} for Live${project ? ` in ${project}` : ""}.`;
+    actions.push({ scope: "once", label: "Approve", consequence });
+  } else if (a.kind === "budget") {
+    const cap = typeof p.cap === "number" ? p.cap : null;
+    title = cap ? `Raise the monthly cap to ${cap.toLocaleString("en-GB")} credits` : a.title;
+    meta = `${firstName(by)} · ${typeof p.current === "number" ? `now ${p.current.toLocaleString("en-GB")}` : "monthly cap"}`;
+    facts.push({ label: "Asked by", value: by ?? "Someone" });
+    if (typeof p.current === "number") facts.push({ label: "Cap now", value: `${p.current.toLocaleString("en-GB")} credits a month, all used` });
+    if (typeof p.why === "string" && p.why.trim()) facts.push({ label: "Why", value: p.why });
+    consequence = cap ? `Approving raises the organisation's monthly cap to ${cap.toLocaleString("en-GB")} credits, and paid actions start again.` : consequence;
     actions.push({ scope: "once", label: "Approve", consequence });
   } else {
     facts.push({ label: "Asked by", value: by ?? "Someone" });

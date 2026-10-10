@@ -8,7 +8,11 @@ let role: Role;
 let governance: boolean;
 vi.mock("@/server/db", () => ({ createAdminDb: () => db }));
 vi.mock("@/server/workspace", () => ({
-  getAppContext: async () => ({ user: { id: "me" }, name: "Morgan Lee", role, workspace: { id: "ws-1", name: "Acme", governanceEnabled: governance }, memberships: [] }),
+  // The policies read the workspace's governance setting from the database: keep it in step with the context.
+  getAppContext: async () => {
+    db.tables.workspaces = [{ id: "ws-1", governance_enabled: governance }];
+    return { user: { id: "me" }, name: "Morgan Lee", role, workspace: { id: "ws-1", name: "Acme", governanceEnabled: governance }, memberships: [] };
+  },
 }));
 
 const { shareWithTeam, goLive, goBack, setAccess, setAnalytics, saveListing, setDomain, shareTestLink, setGovernance } = await import("@/server/actions/launch");

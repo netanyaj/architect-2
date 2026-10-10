@@ -359,18 +359,3 @@ export function MarketplaceSetting({ projectId, listing, isLive, readOnly, name 
     </div>
   );
 }
-
-/** For the settings section: a row that isn't built in this prototype yet. */
-export function LaterRow({ title, detail, label, reason }: { title: string; detail: string; label: string; reason: string }) {
-  return (
-    <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-      <span className="min-w-0 flex-1">
-        <span className="block font-semibold">{title}</span>
-        <span className="block text-small text-ink-2">{detail}</span>
-      </span>
-      <Button size="sm" disabledReason={reason}>
-        {label}
-      </Button>
-    </div>
-  );
-}

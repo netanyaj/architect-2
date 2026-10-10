@@ -134,8 +134,8 @@ describe("envKeys", () => {
   it("an imported repo's keys from its .env.example; a model key can come from Lyzr", () => {
     const keys = envKeys({ parts: [], repoKeys: [{ name: "OPENAI_API_KEY", service: null, lyzrInstead: true }, { name: "SLACK_WEBHOOK_URL", service: "slack", lyzrInstead: false }], connected: [], envLive: { staging: false, production: false } });
     expect(keys).toEqual([
-      { name: "OPENAI_API_KEY", why: "Model key: Lyzr can provide it", test: true, team: false, live: false },
-      { name: "SLACK_WEBHOOK_URL", why: "For Slack", test: false, team: false, live: false },
+      { name: "OPENAI_API_KEY", why: "Model key: Lyzr can provide it", test: true, team: false, live: false, service: null },
+      { name: "SLACK_WEBHOOK_URL", why: "For Slack", test: false, team: false, live: false, service: "slack" },
     ]);
   });
 });

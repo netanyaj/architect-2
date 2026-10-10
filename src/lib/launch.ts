@@ -81,6 +81,7 @@ export type CheckRow =
   | { id: string; kind: "blocked"; status: "blocked"; title: string; detail: string; itemKey: string }
   | { id: string; kind: "unbuilt"; status: "blocked"; title: string; detail: string; count: number }
   | { id: string; kind: "egress"; status: "blocked"; title: string; detail: string; path: FlowPath }
+  | { id: string; kind: "keys"; status: "attention"; title: string; detail: string; names: string[] }
   | { id: string; kind: "fine"; status: "works"; title: string; detail: string };
 
 export type Action = { label: string; disabledReason?: string };
@@ -136,6 +137,10 @@ export function launchState(input: {
   /** An admin decided this version's request, or an allow-rule lets this project go live without one (C-10). */
   liveDecisions?: LiveDecision[];
   liveRule?: boolean;
+  /** Keys and passwords Live can't run without (must-fix for Live, not for the team version). */
+  keysMissingForLive?: string[];
+  /** The permission rule on Live deploys (C-10). Off, a Builder goes live without asking. Default on. */
+  deployNeedsApproval?: boolean;
   /** Checks that passed (built parts' proofs). */
   testsPassed: number;
   /** Where the app's data would go (C-4), with governance on. A path the policy doesn't allow blocks every deploy. */
@@ -161,6 +166,10 @@ export function launchState(input: {
   // Data that would go somewhere the organisation doesn't allow (C-4): fixed before any deploy.
   const egress = (input.flows ?? []).filter((f) => !f.allowed);
   for (const f of egress) rows.push({ id: `egress-${f.id}`, kind: "egress", status: "blocked", ...blockedLine(f), path: f });
+  const keysMissing = input.keysMissingForLive ?? [];
+  if (keysMissing.length) {
+    rows.push({ id: "keys-live", kind: "keys", status: "attention", title: `${plural(keysMissing.length, "key")} ${keysMissing.length === 1 ? "isn't" : "aren't"} set for Live`, detail: `${keysMissing.join(", ")}. Live can't run without ${keysMissing.length === 1 ? "it" : "them"}. Set ${keysMissing.length === 1 ? "it" : "them"} in Keys and passwords.`, names: keysMissing });
+  }
   const unbuilt = active.filter((p) => ["agreed", "proposed", "building"].includes(p.status));
   if (unbuilt.length) {
     rows.push({ id: "unbuilt", kind: "unbuilt", status: "blocked", title: `${plural(unbuilt.length, "part")} ${unbuilt.length === 1 ? "isn't" : "aren't"} built`, detail: `${unbuilt.map((p) => p.title).join(", ")}. Build ${unbuilt.length === 1 ? "it" : "them"}, or leave ${unbuilt.length === 1 ? "it" : "them"} out for now.`, count: unbuilt.length });
@@ -168,6 +177,8 @@ export function launchState(input: {
   rows.push({ id: "tests", kind: "fine", status: "works", title: "Tests, security and privacy checks passed", detail: `${plural(input.testsPassed, "test")} · no secrets in the code · personal data hidden in logs` });
 
   const toFix = rows.filter((r) => r.kind !== "fine").length;
+  // A key missing for Live doesn't hold the team version.
+  const toFixTeam = rows.filter((r) => r.kind !== "fine" && r.kind !== "keys").length;
   const team = liveVersion(input.deployments, "staging", input.envLive.staging, currentVersion);
   const live = liveVersion(input.deployments, "production", input.envLive.production, currentVersion);
   const fast = !input.governance;
@@ -181,12 +192,12 @@ export function launchState(input: {
     label: team !== null && !teamCurrent ? `Share v${currentVersion} with your team` : "Share with your team",
     disabledReason:
       viewer ??
-      (toFix ? `Fix ${plural(toFix, "thing")} in the checklist first.` : teamCurrent ? `Your team already has v${currentVersion}.` : undefined),
+      (toFixTeam ? `Fix ${plural(toFixTeam, "thing")} in the checklist first.` : teamCurrent ? `Your team already has v${currentVersion}.` : undefined),
   };
   // Without governance there's nobody to approve: anyone who can build goes live (review gap 1).
   // An approval for this version, or an allow-rule for this project, lets a Builder go live without asking again.
   const decision = input.liveRequested ? null : decisionFor(input.liveDecisions ?? [], currentVersion);
-  const admin = fast || canManageMembers(role) || decision?.status === "approved" || Boolean(input.liveRule);
+  const admin = fast || canManageMembers(role) || decision?.status === "approved" || Boolean(input.liveRule) || input.deployNeedsApproval === false;
   const behind = live !== null && !liveCurrent ? Math.max(1, currentVersion - live) : 0;
   const goLive = {
     label: behind ? "Update live" : admin ? "Go live" : "Ask to go live",
@@ -195,6 +206,8 @@ export function launchState(input: {
       viewer ??
       (egress.length
         ? "Data would go somewhere your organisation doesn't allow. Fix it in the checklist first."
+        : keysMissing.length && !(fast && toFix)
+        ? `Set ${plural(keysMissing.length, "key")} for Live first, in Keys and passwords.`
         : fast && toFix
         ? `Fix ${plural(toFix, "thing")} in the checklist first.`
         : !fast && !teamCurrent
@@ -219,8 +232,8 @@ export function launchState(input: {
     ? "Live"
     : failure
       ? "deploy failed"
-      : toFix
-        ? `${plural(toFix, "thing")} before ${fast || teamCurrent ? "going live" : "sharing"}`
+      : (fast || teamCurrent ? toFix : toFixTeam)
+        ? `${plural(fast || teamCurrent ? toFix : toFixTeam, "thing")} before ${fast || teamCurrent ? "going live" : "sharing"}`
         : !fast && !teamCurrent
           ? "ready to share"
           : behind

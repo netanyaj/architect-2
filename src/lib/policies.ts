@@ -211,3 +211,55 @@ export function summaries(input: { location: LocationPolicy; models: ModelPolicy
 }
 
 export { providerName };
+
+/* ------------------------------------------------------------------ C-10 Permission rules */
+
+/** Actions that leave the sandbox and need an Owner or Admin when a Builder (or their coding agent) does them. */
+export type PermissionRules = { deploy: boolean; push: boolean; secrets: boolean };
+
+export const PERMISSIONS: { id: keyof PermissionRules; key: string; label: string; effect: string }[] = [
+  { id: "deploy", key: "production_deploy", label: "Live deploys", effect: "A Builder's Go live asks an Owner or Admin." },
+  { id: "push", key: "push_to_main", label: "Pushes to main", effect: "A Builder's merge of a pull request asks an Owner or Admin." },
+  { id: "secrets", key: "live_secrets", label: "Keys and passwords for Live", effect: "A Builder's key for Live waits for an Owner or Admin." },
+];
+
+/**
+ * Reads the permission policy. The seed listed only push and deploy, before keys existed: until the rules are saved
+ * from Governance (`rules_version` 2), a Live key needs approval too, as the brief asks.
+ */
+export function permissionsOf(config: unknown): PermissionRules {
+  const c = (config ?? {}) as { needs_approval?: unknown; rules_version?: unknown };
+  const list = Array.isArray(c.needs_approval) ? (c.needs_approval as string[]) : ["production_deploy", "push_to_main"];
+  return { deploy: list.includes("production_deploy"), push: list.includes("push_to_main"), secrets: c.rules_version === 2 ? list.includes("live_secrets") : true };
+}
+
+export function permissionConfig(p: PermissionRules) {
+  return { rules_version: 2, needs_approval: PERMISSIONS.filter((x) => p[x.id]).map((x) => x.key) };
+}
+
+export const NO_RULES: PermissionRules = { deploy: false, push: false, secrets: false };
+
+/* ------------------------------------------------------------------ C-7 Budgets */
+
+export type OrgBudget = { monthlyCap: number | null };
+
+export function budgetOf(config: unknown): OrgBudget {
+  const cap = Number((config as { monthly_cap?: unknown } | null)?.monthly_cap);
+  return { monthlyCap: Number.isFinite(cap) && cap > 0 ? Math.round(cap) : null };
+}
+
+/** Where the organisation is against its monthly cap: an alert from 80%, paid actions stopped at 100%. */
+export function budgetState(cap: number | null, spent: number): { level: "none" | "ok" | "alert" | "stopped"; percent: number; left: number } {
+  if (!cap) return { level: "none", percent: 0, left: Infinity };
+  const percent = Math.floor((spent / cap) * 100);
+  return { level: spent >= cap ? "stopped" : percent >= 80 ? "alert" : "ok", percent, left: Math.max(0, Math.round(cap - spent)) };
+}
+
+export const BUDGET_STOPPED = "Your organisation has used its monthly credit cap. Paid actions are stopped until an Owner or Admin raises it.";
+
+/** Why a cap can't be saved, or null. */
+export function capProblem(cap: number | null): string | null {
+  if (cap === null) return null;
+  if (!Number.isInteger(cap) || cap < 10 || cap > 1_000_000) return "Set a cap between 10 and 1,000,000 credits, or none.";
+  return null;
+}

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { mergeBlocker } from "@/lib/pull-requests";
 import { canBuild, canManageMembers } from "@/lib/permissions";
 import { createAdminDb } from "../db";
+import { loadPolicies } from "../policy";
 import { loadPullRequests } from "../pull-requests";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
@@ -22,7 +23,9 @@ export async function mergePullRequest(input: { prId: string }): Promise<ActionR
   if (!row || row.projects.workspace_id !== ctx.workspace.id) return { ok: false, message: "That pull request isn't here." };
   const pr = (await loadPullRequests(admin, row.project_id, new Map())).find((p) => p.id === row.id);
   if (!pr) return { ok: false, message: "That pull request isn't here." };
-  const owner = !ctx.workspace.governanceEnabled || canManageMembers(ctx.role) || pr.pushAllowed;
+  // The permission rule on pushes to main (C-10): off, a Builder merges without asking.
+  const { permissions } = await loadPolicies(admin, ctx.workspace.id);
+  const owner = !ctx.workspace.governanceEnabled || canManageMembers(ctx.role) || pr.pushAllowed || !permissions.push;
   const blocked = mergeBlocker(pr, owner);
   if (blocked) return { ok: false, message: blocked };
 

@@ -438,3 +438,18 @@ describe("allow-rules (0016)", () => {
     expect(await one("select relrowsecurity from pg_class where relname = 'allow_rules'")).toEqual({ relrowsecurity: true });
   });
 });
+
+describe("keys, offline and secret requests (0017)", () => {
+  it("a key is a name per version with who set it, never a value; Live can go offline; a secret request is an approval", async () => {
+    const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'reviewer@example.com', 'Rita') as ws", [REVIEWER]);
+    const { id: project } = await one<{ id: string }>("select id from projects where workspace_id = $1 and name = 'Meeting Prep'", [ws]);
+    await db.query("insert into project_keys (project_id, name, environment, set_by_name) values ($1, 'SLACK_BOT_TOKEN', 'production', 'Rita')", [project]);
+    await expect(db.query("insert into project_keys (project_id, name, environment, set_by_name) values ($1, 'SLACK_BOT_TOKEN', 'production', 'Rita')", [project])).rejects.toThrow(/unique|duplicate/);
+    await expect(db.query("insert into project_keys (project_id, name, environment, set_by_name) values ($1, 'bad name', 'staging', 'Rita')", [project])).rejects.toThrow(/check/);
+    const cols = await db.query<{ column_name: string }>("select column_name from information_schema.columns where table_name = 'project_keys'");
+    expect(cols.rows.map((c) => c.column_name)).not.toContain("value");
+    expect(await one("select relrowsecurity from pg_class where relname = 'project_keys'")).toEqual({ relrowsecurity: true });
+    await db.query("insert into deployments (project_id, environment, blueprint_version, status) values ($1, 'production', 1, 'offline')", [project]);
+    await db.query("insert into approvals (workspace_id, project_id, kind, title) values ($1, $2, 'secret', 'Live key')", [ws, project]);
+  });
+});

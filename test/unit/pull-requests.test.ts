@@ -10,7 +10,11 @@ let governance: boolean;
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 vi.mock("@/server/db", () => ({ createAdminDb: () => db, createServerDb: async () => db }));
 vi.mock("@/server/workspace", () => ({
-  getAppContext: async () => ({ user: { id: "me" }, name: "Sam Lee", role, workspace: { id: "ws-1", name: "Acme", governanceEnabled: governance }, memberships: [] }),
+  // The policies read the workspace's governance setting from the database: keep it in step with the context.
+  getAppContext: async () => {
+    db.tables.workspaces = [{ id: "ws-1", governance_enabled: governance }];
+    return { user: { id: "me" }, name: "Sam Lee", role, workspace: { id: "ws-1", name: "Acme", governanceEnabled: governance }, memberships: [] };
+  },
 }));
 
 const P = "11111111-1111-4111-8111-111111111111";

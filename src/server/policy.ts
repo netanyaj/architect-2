@@ -3,8 +3,9 @@ import "server-only";
 import { dataFlow, egressOf, type EgressPolicy, type FlowPath } from "@/lib/egress";
 import type { LiveDecision } from "@/lib/launch";
 import { toModelChoice, type ModelChoice } from "@/lib/models";
-import { appPolicyOf, locationOf, modelPolicyOf, OPEN_MODELS, type AppPolicy, type LocationPolicy, type ModelPolicy } from "@/lib/policies";
+import { appPolicyOf, BUDGET_STOPPED, budgetOf, budgetState, locationOf, modelPolicyOf, NO_RULES, OPEN_MODELS, permissionsOf, type AppPolicy, type LocationPolicy, type ModelPolicy, type OrgBudget, type PermissionRules } from "@/lib/policies";
 import type { AdminDb } from "./db";
+import { periodStart } from "./queries";
 
 /* What the workspace's rules allow, read by the build, Connect, Launch and merge (C-3, C-10). Approvals and
    allow-rules can lift a rule for one project or for all of them; see ./approvals. */
@@ -17,7 +18,7 @@ export async function allowRuleFor(admin: AdminDb, workspaceId: string, action: 
   return (data ?? []).some((r) => !r.removed_at && (r.project_id === null || r.project_id === projectId) && (target === undefined || r.target === target));
 }
 
-export type Policies = { governance: boolean; location: LocationPolicy; models: ModelPolicy; apps: AppPolicy; egress: EgressPolicy };
+export type Policies = { governance: boolean; location: LocationPolicy; models: ModelPolicy; apps: AppPolicy; egress: EgressPolicy; permissions: PermissionRules; budget: OrgBudget };
 
 /**
  * The workspace's policies (C-1 to C-3). They apply only while governance is on: off, every model and app is
@@ -29,10 +30,10 @@ export async function loadPolicies(admin: AdminDb, workspaceId: string): Promise
     admin.from("policies").select("kind, config").eq("workspace_id", workspaceId),
   ]);
   const config = (kind: string) => (rows ?? []).find((r) => r.kind === kind)?.config;
-  const stored = { location: locationOf(config("location")), models: modelPolicyOf(config("models")), apps: appPolicyOf(config("connectors")), egress: egressOf(config("egress")) };
+  const stored = { location: locationOf(config("location")), models: modelPolicyOf(config("models")), apps: appPolicyOf(config("connectors")), egress: egressOf(config("egress")), permissions: permissionsOf(config("permission")), budget: budgetOf(config("budget")) };
   const governance = Boolean(ws?.governance_enabled);
   if (governance) return { governance, ...stored, stored };
-  return { governance, location: { mode: "lyzr_cloud", region: null }, models: OPEN_MODELS, apps: { allow: [], whoCanConnect: "builders", scopes: {}, mcp: [] }, egress: stored.egress, stored };
+  return { governance, location: { mode: "lyzr_cloud", region: null }, models: OPEN_MODELS, apps: { allow: [], whoCanConnect: "builders", scopes: {}, mcp: [] }, egress: stored.egress, permissions: NO_RULES, budget: { monthlyCap: null }, stored };
 }
 
 /**
@@ -87,4 +88,25 @@ export async function projectFlows(admin: AdminDb, projectId: string, policies: 
     ? agents.map((a) => ({ name: a.name, model: toModelChoice(a.model) }))
     : active.filter((p) => p.grp === "agents").map((p) => ({ name: p.title, model: policies.models.agentDefault }));
   return dataFlow({ parts: list, agentModels, egress: policies.egress, models: policies.models });
+}
+
+/** Credits the workspace has used since its allowance last reset (the same period as the side nav's credits). */
+export async function workspaceSpend(admin: AdminDb, workspaceId: string): Promise<number> {
+  const { data: ws } = await admin.from("workspaces").select("credits_reset_on").eq("id", workspaceId).maybeSingle();
+  if (!ws) return 0;
+  const { data } = await admin.from("usage_ledger").select("credits").eq("workspace_id", workspaceId).gte("created_at", periodStart(ws.credits_reset_on));
+  return (data ?? []).reduce((s, r) => s + Number(r.credits), 0);
+}
+
+/** The organisation's cap this month (C-7): where it stands, with governance on and a cap set. */
+export async function orgBudget(admin: AdminDb, workspaceId: string, loaded?: Policies) {
+  const policies = loaded ?? (await loadPolicies(admin, workspaceId));
+  const cap = policies.governance ? policies.budget.monthlyCap : null;
+  const spent = cap ? await workspaceSpend(admin, workspaceId) : 0;
+  return { cap, spent, ...budgetState(cap, spent) };
+}
+
+/** Paid actions (writing a plan, Build, Apply, a fix, continuing) stop at 100% of the cap until an admin raises it. */
+export async function budgetRefusal(admin: AdminDb, workspaceId: string): Promise<string | undefined> {
+  return (await orgBudget(admin, workspaceId)).level === "stopped" ? BUDGET_STOPPED : undefined;
 }

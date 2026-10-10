@@ -1,6 +1,9 @@
 import { HelpHost } from "@/components/ax/help-host";
 import { SideNav } from "@/components/ax/side-nav";
-import { createServerDb } from "@/server/db";
+import { OrgBudgetBanner } from "@/components/ax/org-budget-banner";
+import { canBuild } from "@/lib/permissions";
+import { createAdminDb, createServerDb } from "@/server/db";
+import { orgBudget } from "@/server/policy";
 import { getHelpContext, getNavData } from "@/server/queries";
 import { getAppContext } from "@/server/workspace";
 
@@ -14,7 +17,10 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   if (!user) return <>{children}</>;
 
   const ctx = await getAppContext();
-  const [nav, help] = await Promise.all([getNavData(ctx), getHelpContext(ctx)]);
+  const admin = createAdminDb();
+  const [nav, help, budget] = await Promise.all([getNavData(ctx), getHelpContext(ctx), orgBudget(admin, ctx.workspace.id)]);
+  // At 100% of the organisation's cap, say whether someone already asked to raise it (C-7).
+  const { data: raise } = budget.level === "stopped" ? await admin.from("approvals").select("id").eq("workspace_id", ctx.workspace.id).eq("kind", "budget").eq("status", "waiting").limit(1) : { data: [] };
   const isAdmin = ctx.role === "owner" || ctx.role === "admin";
 
   return (
@@ -29,7 +35,14 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         approvalsWaiting={nav.approvalsWaiting}
         credits={nav.credits}
       />
-      <main className="flex min-w-0 flex-1 flex-col rounded-pane border border-line bg-surface shadow-pane">{children}</main>
+      <main className="flex min-w-0 flex-1 flex-col rounded-pane border border-line bg-surface shadow-pane">
+        {(budget.level === "alert" || budget.level === "stopped") && (
+          <div className="px-6 pt-4 max-sm:px-4">
+            <OrgBudgetBanner budget={{ cap: budget.cap, spent: budget.spent, level: budget.level, percent: budget.percent, raiseWaiting: Boolean(raise?.length) }} isAdmin={isAdmin} canBuild={canBuild(ctx.role)} />
+          </div>
+        )}
+        {children}
+      </main>
       <HelpHost context={help} />
     </div>
   );

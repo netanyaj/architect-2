@@ -8,6 +8,7 @@ import { allowedModels } from "../blueprint/write-plan";
 import { weakensCheck, type VersionItem } from "@/lib/plan-diff";
 import { parseSim, startRun } from "../sim/run";
 import { createAdminDb, createServerDb, type AdminDb } from "../db";
+import { budgetRefusal } from "../policy";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
 
@@ -165,6 +166,9 @@ export async function buildPlan(input: { blueprintId: string; sim?: string }): P
   const admin = createAdminDb();
   const { data: bp } = await admin.from("blueprints").select("id, project_id, total_likely, projects!inner(workspace_id, budget_credits)").eq("id", input.blueprintId).maybeSingle();
   if (!bp || bp.projects.workspace_id !== ctx.workspace.id) return { ok: false, message: "That plan isn't in this workspace." };
+  // The organisation's monthly cap (C-7): paid actions stop at 100% until an admin raises it.
+  const stopped = await budgetRefusal(admin, ctx.workspace.id);
+  if (stopped) return { ok: false, message: stopped };
 
   const { data: runId, error } = await admin.rpc("agree_and_build", { p_blueprint: bp.id, p_user: ctx.user.id, p_kind: "build" });
   if (error || !runId) {

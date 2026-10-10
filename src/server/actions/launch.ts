@@ -4,9 +4,11 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { Json } from "@/lib/database.types";
+import { missingForLive } from "@/lib/keys";
 import { DEPLOY_STEPS, DOMAIN_CHECK_MS, DomainName, launchState, Listing, type Access, type Deployment, type DomainState, type LaunchSettings } from "@/lib/launch";
 import { canBuild, canManageMembers } from "@/lib/permissions";
 import { createAdminDb, type AdminDb } from "../db";
+import { projectKeyRows } from "../keys";
 import { allowRuleFor, liveDecisions, loadPolicies, projectFlows } from "../policy";
 import { getAppContext, type AppContext } from "../workspace";
 import type { ActionResult } from "./members";
@@ -44,6 +46,9 @@ async function loadState(admin: AdminDb, projectId: string, ctx: AppContext) {
   const [decisions, liveRule, policies] = await Promise.all([liveDecisions(admin, project.id), allowRuleFor(admin, project.workspace_id, "production_deploy", project.id), loadPolicies(admin, project.workspace_id)]);
   // Where its data would go (C-4): a path the policy doesn't allow blocks the deploy, here as on the page.
   const flows = await projectFlows(admin, project.id, policies, items ?? []);
+  const { data: conns } = await admin.from("connections").select("provider").eq("workspace_id", project.workspace_id).eq("status", "connected");
+  const env = (n: string) => (envs ?? []).some((e) => e.name === n && e.status === "live");
+  const keys = await projectKeyRows(admin, { projectId: project.id, parts: items ?? [], connected: (conns ?? []).map((c) => c.provider), envLive: { staging: env("staging"), production: env("production") } });
   const deployments: Deployment[] = (deps ?? [])
     .filter((d) => d.environment === "staging" || d.environment === "production")
     .map((d) => ({ id: d.id, environment: d.environment as Env, version: d.blueprint_version, status: d.status, createdAt: d.created_at, by: null }));
@@ -58,6 +63,8 @@ async function loadState(admin: AdminDb, projectId: string, ctx: AppContext) {
     liveDecisions: decisions,
     liveRule,
     flows,
+    deployNeedsApproval: policies.permissions.deploy,
+    keysMissingForLive: missingForLive(keys),
     testsPassed: 0,
     repo: project.repo_full_name ? { prNumber: pr?.number ?? null, branch: pr?.branch ?? null, merged: pr?.status === "merged" } : null,
   });
@@ -294,4 +301,63 @@ export async function setGovernance(input: { on: boolean }): Promise<ActionResul
   await admin.from("audit_log").insert({ workspace_id: ctx.workspace.id, actor: ctx.name, action: input.on ? "governance.on" : "governance.off", target: ctx.workspace.name, details: {} as Json });
   revalidatePath("/", "layout");
   return { ok: true };
+}
+
+/** Who may take Live offline or bring it back: anyone who can build, or under the Live deploy rule, Owners and Admins. */
+async function liveChangeRefusal(admin: AdminDb, ctx: AppContext): Promise<string | undefined> {
+  if (!canBuild(ctx.role)) return "Viewers can't change what's live.";
+  if (!ctx.workspace.governanceEnabled || canManageMembers(ctx.role)) return undefined;
+  const { permissions } = await loadPolicies(admin, ctx.workspace.id);
+  return permissions.deploy ? "Only Owners and Admins can take Live offline or bring it back." : undefined;
+}
+
+/**
+ * Take offline (after a confirmation): Live stops answering, but its data and every version are kept, and the
+ * version that was live is marked so Go live again brings it back. Simulated.
+ */
+export async function takeOffline(input: { projectId: string }): Promise<ActionResult> {
+  const ctx = await getAppContext();
+  const admin = createAdminDb();
+  const refused = await liveChangeRefusal(admin, ctx);
+  if (refused) return { ok: false, message: refused };
+  if (!uuid.safeParse(input.projectId).success) return { ok: false, message: "That project isn't in this workspace." };
+  const { data: project } = await admin.from("projects").select("id, name, workspace_id, current_version").eq("id", input.projectId).maybeSingle();
+  if (!project || project.workspace_id !== ctx.workspace.id) return { ok: false, message: "That project isn't in this workspace." };
+  const [{ data: live }, { data: env }] = await Promise.all([
+    admin.from("deployments").select("id, blueprint_version").eq("project_id", project.id).eq("environment", "production").eq("status", "live").maybeSingle(),
+    admin.from("environments").select("id, status").eq("project_id", project.id).eq("name", "production").maybeSingle(),
+  ]);
+  if (!live && env?.status !== "live") return { ok: false, message: "Nothing is live to take offline." };
+  const version = live?.blueprint_version ?? project.current_version ?? 1;
+  if (live) await admin.from("deployments").update({ status: "offline" }).eq("id", live.id);
+  // A seeded live app has no deployment history: record the version that was live, so it can come back.
+  else await admin.from("deployments").insert({ project_id: project.id, environment: "production", blueprint_version: version, status: "offline", created_by: ctx.user.id });
+  if (env) await admin.from("environments").update({ status: "offline" }).eq("id", env.id);
+  await admin.from("projects").update({ status: "built", updated_at: new Date().toISOString() }).eq("id", project.id);
+  await admin.from("audit_log").insert({ workspace_id: project.workspace_id, actor: ctx.name, action: "deploy.offline", target: project.name, details: { version, simulated: true } });
+  revalidatePath(`/p/${project.id}/launch`);
+  revalidatePath(`/p/${project.id}`);
+  revalidatePath("/projects");
+  return { ok: true };
+}
+
+/** Go live again (after a confirmation): the version that was taken offline serves Live again, data as it was. */
+export async function bringBackLive(input: { projectId: string }): Promise<ActionResult<{ version: number }>> {
+  const ctx = await getAppContext();
+  const admin = createAdminDb();
+  const refused = await liveChangeRefusal(admin, ctx);
+  if (refused) return { ok: false, message: refused };
+  if (!uuid.safeParse(input.projectId).success) return { ok: false, message: "That project isn't in this workspace." };
+  const { data: project } = await admin.from("projects").select("id, name, workspace_id, launch_settings").eq("id", input.projectId).maybeSingle();
+  if (!project || project.workspace_id !== ctx.workspace.id) return { ok: false, message: "That project isn't in this workspace." };
+  const { data: rows } = await admin.from("deployments").select("id, blueprint_version, created_at").eq("project_id", project.id).eq("environment", "production").eq("status", "offline");
+  const last = [...(rows ?? [])].sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+  if (!last) return { ok: false, message: "Nothing was taken offline." };
+  await admin.from("deployments").update({ status: "rolled_back" }).eq("id", last.id);
+  await deploy(admin, ctx, project, "production", last.blueprint_version);
+  await admin.from("projects").update({ status: "live", updated_at: new Date().toISOString() }).eq("id", project.id);
+  revalidatePath(`/p/${project.id}/launch`);
+  revalidatePath(`/p/${project.id}`);
+  revalidatePath("/projects");
+  return { ok: true, version: last.blueprint_version };
 }

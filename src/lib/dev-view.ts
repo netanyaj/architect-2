@@ -267,7 +267,7 @@ export function activityFeed(input: { events: RunEvent[]; titles: Record<string,
   return out;
 }
 
-export type EnvKey = { name: string; why: string; test: boolean; team: boolean; live: boolean };
+export type EnvKey = { name: string; why: string; test: boolean; team: boolean; live: boolean; service?: string | null };
 
 const KEY_FOR: Record<string, { name: string; why: string }> = {
   slack: { name: "SLACK_BOT_TOKEN", why: "Slack" },
@@ -289,18 +289,18 @@ export function envKeys(input: {
   envLive: { staging: boolean; production: boolean };
 }): EnvKey[] {
   const keys = new Map<string, EnvKey>();
-  const add = (name: string, why: string, ready: boolean) => {
+  const add = (name: string, why: string, ready: boolean, service: string | null = null) => {
     const prev = keys.get(name);
     if (prev) return;
-    keys.set(name, { name, why, test: ready, team: ready && input.envLive.staging, live: ready && input.envLive.production });
+    keys.set(name, { name, why, test: ready, team: ready && input.envLive.staging, live: ready && input.envLive.production, service });
   };
   if (input.repoKeys) {
-    for (const k of input.repoKeys) add(k.name, k.lyzrInstead ? "Model key: Lyzr can provide it" : k.service ? `For ${providerName(k.service)}` : "From .env.example", k.lyzrInstead || (k.service !== null && input.connected.includes(k.service)));
+    for (const k of input.repoKeys) add(k.name, k.lyzrInstead ? "Model key: Lyzr can provide it" : k.service ? `For ${providerName(k.service)}` : "From .env.example", k.lyzrInstead || (k.service !== null && input.connected.includes(k.service)), k.lyzrInstead ? null : k.service);
   }
   const active = input.parts.filter((p) => p.status !== "dropped" && p.status !== "deferred");
   for (const p of active) {
     const k = p.provider ? KEY_FOR[p.provider] : undefined;
-    if (k) add(k.name, `For ${k.why}`, input.connected.includes(p.provider!));
+    if (k) add(k.name, `For ${k.why}`, input.connected.includes(p.provider!), p.provider);
   }
   if (active.some((p) => p.grp === "agents")) add("LYZR_API_KEY", "For the app's agents", true);
   if (active.some((p) => p.grp === "data")) add("DATABASE_URL", "For the app's tables", true);

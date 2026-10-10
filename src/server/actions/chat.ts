@@ -12,6 +12,7 @@ import { allowedModels } from "../blueprint/write-plan";
 import { createAdminDb, type AdminDb } from "../db";
 import { estimate, totals as planTotals } from "../estimate";
 import { startRun } from "../sim/run";
+import { budgetRefusal } from "../policy";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
 
@@ -202,6 +203,11 @@ export async function applyChange(input: { proposalId: string; decisions?: Recor
   const { data: items } = await admin.from("items").select(ITEM_FIELDS).eq("blueprint_id", plan.id).order("position");
   const current = (items ?? []) as (VersionItem & Record<string, unknown>)[];
   const built = Boolean(plan.agreed_at);
+  // After a build, Apply builds the change: a paid action, stopped at the organisation's cap (C-7).
+  if (built) {
+    const stopped = await budgetRefusal(admin, ctx.workspace.id);
+    if (stopped) return { ok: false, message: stopped };
+  }
   let next: VersionItem[];
   try {
     next = applyDiff(current, diff, decisions.data, { built });

@@ -5,7 +5,7 @@ import { GatewayRateLimited, GatewaySlow, GatewayUnavailable, resolveModel } fro
 import { canBuild } from "@/lib/permissions";
 import { MODEL_LABEL, toModelChoice, type ModelChoice } from "@/lib/models";
 import type { AdminDb } from "../db";
-import { loadPolicies } from "../policy";
+import { budgetRefusal, loadPolicies } from "../policy";
 import { draftingCredits, estimate, totals as planTotals } from "../estimate";
 import { applyRepoProofs } from "../import";
 import type { AppContext } from "../workspace";
@@ -83,6 +83,9 @@ export async function writePlan(
   if (!(await allowedModels(admin, ctx.workspace.id)).includes(model)) {
     throw new PlanRefused(`${MODEL_LABEL[model]} isn't allowed in this workspace. Pick another model.`, 403);
   }
+  // Drafting a plan costs credits: stopped at the organisation's cap (C-7).
+  const stopped = await budgetRefusal(admin, ctx.workspace.id);
+  if (stopped) throw new PlanRefused(stopped, 402);
   const resolved = resolveModel(model);
 
   const { data: last } = await admin.from("blueprints").select("version").eq("project_id", project.id).order("version", { ascending: false }).limit(1).maybeSingle();

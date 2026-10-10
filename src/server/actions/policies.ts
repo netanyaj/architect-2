@@ -5,7 +5,7 @@ import { z } from "zod";
 import type { Json } from "@/lib/database.types";
 import { egressConfig, hostProblem, REDACTIONS, type Redaction } from "@/lib/egress";
 import { MODEL_CHOICES } from "@/lib/models";
-import { canManageMembers } from "@/lib/permissions";
+import { canBuild, canManageMembers } from "@/lib/permissions";
 import {
   appConfig,
   AWS_REGIONS,
@@ -14,8 +14,11 @@ import {
   LOCATIONS,
   locationLabel,
   mcpProblem,
+  capProblem,
   modelConfig,
   modelPolicyProblem,
+  PERMISSIONS,
+  permissionConfig,
   privateModelProblem,
   type AppPolicy,
   type LocationPolicy,
@@ -29,7 +32,7 @@ import type { ActionResult } from "./members";
 /* Governance › Where it runs, Models, Apps and MCP servers (C-1 to C-3). Owners and Admins change them while
    governance is on; every change is audited with what it was and what it became. Enforcement is simulated. */
 
-type Kind = "location" | "models" | "connectors" | "egress";
+type Kind = "location" | "models" | "connectors" | "egress" | "permission" | "budget";
 
 async function guard(): Promise<{ ctx: AppContext; refused?: string }> {
   const ctx = await getAppContext();
@@ -211,5 +214,80 @@ export async function allowHost(input: { host: string; projectId?: string }): Pr
     revalidatePath(`/p/${input.projectId}/launch`);
     revalidatePath(`/p/${input.projectId}`);
   }
+  return { ok: true };
+}
+
+/** C-10: which actions leaving the sandbox need an Owner or Admin when a Builder (or their coding agent) does them. */
+export async function savePermissionRules(input: { deploy: boolean; push: boolean; secrets: boolean }): Promise<ActionResult> {
+  const { ctx, refused } = await guard();
+  if (refused) return { ok: false, message: refused };
+  const next = { deploy: Boolean(input.deploy), push: Boolean(input.push), secrets: Boolean(input.secrets) };
+  const admin = createAdminDb();
+  const before = (await loadPolicies(admin, ctx.workspace.id)).stored.permissions;
+  const words = (p: typeof next) => PERMISSIONS.filter((x) => p[x.id]).map((x) => x.label).join(", ") || "none";
+  await save(admin, ctx, "permission", permissionConfig(next), `Needs approval: ${words(next)}`, { before: words(before), after: words(next) });
+  revalidatePath("/p", "layout");
+  return { ok: true };
+}
+
+const budgetInput = z.object({
+  monthlyCap: z.number().int().nullable(),
+  projects: z.array(z.object({ id: z.string().uuid(), cap: z.number().int().min(1).max(100_000).nullable() })).max(200),
+});
+
+/** C-7: the organisation's monthly cap and each project's cap. Alerts at 80%; paid actions stop at 100%. */
+export async function saveBudgets(raw: z.input<typeof budgetInput>): Promise<ActionResult> {
+  const { ctx, refused } = await guard();
+  if (refused) return { ok: false, message: refused };
+  const parsed = budgetInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, message: "Project caps are whole numbers from 1 to 100,000 credits, or none." };
+  const problem = capProblem(parsed.data.monthlyCap);
+  if (problem) return { ok: false, message: problem };
+  const admin = createAdminDb();
+  const before = (await loadPolicies(admin, ctx.workspace.id)).stored.budget;
+  const { data: projects } = await admin.from("projects").select("id, name, budget_credits").eq("workspace_id", ctx.workspace.id);
+  const changed: string[] = [];
+  for (const p of parsed.data.projects) {
+    const row = (projects ?? []).find((x) => x.id === p.id);
+    if (!row) return { ok: false, message: "That project isn't in this workspace." };
+    if ((row.budget_credits === null ? null : Number(row.budget_credits)) === p.cap) continue;
+    await admin.from("projects").update({ budget_credits: p.cap }).eq("id", p.id);
+    changed.push(`${row.name}: ${p.cap ?? "no cap"}`);
+  }
+  if (before.monthlyCap !== parsed.data.monthlyCap || !changed.length) {
+    await save(admin, ctx, "budget", { monthly_cap: parsed.data.monthlyCap }, `Monthly cap: ${parsed.data.monthlyCap === null ? "none" : `${parsed.data.monthlyCap} credits`}`, { before: before.monthlyCap, after: parsed.data.monthlyCap, projects: changed });
+  } else {
+    await admin.from("audit_log").insert({ workspace_id: ctx.workspace.id, actor: ctx.name, action: "policy.changed", target: "Project caps", details: { policy: "budget", projects: changed, simulated: true } });
+    revalidatePath("/governance");
+  }
+  revalidatePath("/p", "layout");
+  return { ok: true };
+}
+
+/** At 100% of the cap, anyone who can build asks to raise it: an approval request (C-5, C-7). */
+export async function requestCapRaise(input: { cap: number; why?: string }): Promise<ActionResult> {
+  const ctx = await getAppContext();
+  if (!canBuild(ctx.role)) return { ok: false, message: "Viewers can't ask for a higher cap." };
+  if (!ctx.workspace.governanceEnabled) return { ok: false, message: "Governance is off, so there's no cap to raise." };
+  const admin = createAdminDb();
+  const { budget } = await loadPolicies(admin, ctx.workspace.id);
+  const cap = Math.round(Number(input.cap));
+  if (!budget.monthlyCap) return { ok: false, message: "There's no monthly cap to raise." };
+  if (!Number.isFinite(cap) || cap <= budget.monthlyCap) return { ok: false, message: `Ask for more than the cap now (${budget.monthlyCap.toLocaleString("en-GB")} credits).` };
+  const problem = capProblem(cap);
+  if (problem) return { ok: false, message: problem };
+  const { data: waiting } = await admin.from("approvals").select("id").eq("workspace_id", ctx.workspace.id).eq("kind", "budget").eq("status", "waiting").limit(1);
+  if (waiting?.length) return { ok: false, message: "A request to raise the cap is already waiting for an Owner or Admin." };
+  const why = (input.why ?? "").trim().slice(0, 300);
+  await admin.from("approvals").insert({
+    workspace_id: ctx.workspace.id,
+    kind: "budget",
+    status: "waiting",
+    title: `Raise the monthly cap to ${cap} credits`,
+    requested_by: ctx.user.id,
+    payload: { cap, current: budget.monthlyCap, why, requested_by_name: ctx.name },
+  });
+  await admin.from("audit_log").insert({ workspace_id: ctx.workspace.id, actor: ctx.name, action: "budget.raise_requested", target: `${cap} credits a month`, details: { current: budget.monthlyCap, simulated: true } });
+  revalidatePath("/", "layout");
   return { ok: true };
 }

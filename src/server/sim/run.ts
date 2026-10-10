@@ -3,7 +3,7 @@ import "server-only";
 import type { Json } from "@/lib/database.types";
 import { buildTimeline, SCENARIO, type SimItem, type Variant } from "@/lib/sim/timeline";
 import type { AdminDb } from "../db";
-import { blockedServices } from "../policy";
+import { blockedServices, budgetRefusal } from "../policy";
 import { openPullRequest } from "../pull-requests";
 
 /** `?sim=` on the workspace URL: a demo variant and/or a faster pace (docs/SIMULATOR.md). */
@@ -130,6 +130,10 @@ export async function startFollowupRun(
   admin: AdminDb,
   input: { projectId: string; userId: string; kind: "build" | "fix"; focus: string[] | null; estimate: number },
 ): Promise<{ ok: true; runId: string } | { ok: false; message: string }> {
+  // Fixes and continuing are paid: stopped at the organisation's cap (C-7).
+  const { data: proj } = await admin.from("projects").select("workspace_id").eq("id", input.projectId).maybeSingle();
+  const stopped = proj ? await budgetRefusal(admin, proj.workspace_id) : undefined;
+  if (stopped) return { ok: false, message: stopped };
   const { data: runId, error } = await admin.rpc("start_followup_run", {
     p_project: input.projectId,
     p_user: input.userId,
