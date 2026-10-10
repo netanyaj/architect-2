@@ -157,3 +157,13 @@ export function sessionLine(session: AgentSession, step: SessionStep): string {
 
 /** The token a coding agent would use: shown once; only its hash is stored. */
 export const TOKEN_PREFIX = "ax_pt_";
+
+/** The audit action for an agent step of the scripted session (they show under "Coding agent" in the audit log). */
+export function sessionAuditAction(step: SessionStep): string {
+  if (step.kind === "fail") return "coding_agent.refused";
+  if (step.text.startsWith("read the plan")) return "coding_agent.read_plan";
+  if (step.text.startsWith("updated")) return "coding_agent.changed_part";
+  if (step.text.startsWith("ran the tests")) return "coding_agent.ran_tests";
+  if (step.text.startsWith("opened a pull request")) return "coding_agent.opened_pr";
+  return "coding_agent.acted";
+}

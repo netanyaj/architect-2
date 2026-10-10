@@ -86,6 +86,12 @@ class Query implements PromiseLike<Result> {
     this.filters.push((r) => r[col] !== value);
     return this;
   }
+  /** SQL LIKE with % wildcards only. */
+  like(col: string, pattern: string) {
+    const re = new RegExp(`^${pattern.split("%").map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`);
+    this.filters.push((r) => re.test(String(r[col] ?? "")));
+    return this;
+  }
   gte(col: string, value: unknown) {
     this.filters.push((r) => String(r[col] ?? "") >= String(value));
     return this;

@@ -209,4 +209,21 @@ test.describe("M5 follow-up", () => {
     await page.goto("/governance?section=egress");
     await expect(page.getByRole("region", { name: "Policies", exact: true }).getByRole("button", { name: /Data and egress/ })).not.toContainText("held");
   });
+
+  test("Drift 4: ?sim=byoagent writes the coding agent's steps to the audit log, under Coding agent, marked simulated", async ({ page }) => {
+    await start(page);
+    const db = adminDb();
+    const { data: mp } = await db.from("projects").select("id").eq("workspace_id", workspace).eq("name", "Meeting Prep").single();
+    await db.from("project_tokens").insert({ project_id: mp!.id, name: "Claude Code", scopes: ["read_plan", "change_parts", "run"], token_hash: `e2e-${Date.now()}`, last4: "e2e0", status: "active", created_by: user.id });
+    await page.goto(`/p/${mp!.id}?sim=byoagent`);
+    await expect(page.getByRole("region", { name: "Coding agent session" })).toContainText("tried to set a key for Live · refused", { timeout: 20_000 });
+    await expect.poll(async () => (await db.from("audit_log").select("action").eq("workspace_id", workspace).like("action", "coding_agent.%")).data?.length ?? 0, { timeout: 20_000 }).toBeGreaterThan(4);
+
+    await page.goto("/governance?section=audit");
+    const policy = page.getByRole("region", { name: "Policy", exact: true });
+    await policy.getByRole("group", { name: "Done by" }).getByRole("button", { name: "Coding agent" }).click();
+    const list = policy.getByRole("list", { name: "Audit entries" });
+    await expect(list).toContainText("A coding agent was refused");
+    await expect(list).toContainText("Coding agent: Claude Code (you)");
+  });
 });

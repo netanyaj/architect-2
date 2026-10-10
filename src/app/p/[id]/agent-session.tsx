@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { SimTag } from "@/components/ax/pill";
 import { agentSession, sessionLine, sessionPart, type AgentSession, type SessionStep } from "@/lib/mcp";
 import { cn } from "@/lib/utils";
+import { recordAgentSession } from "@/server/actions/agent-session";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 
 export type SessionState = { session: AgentSession; played: SessionStep[]; waiting: boolean; done: boolean } | { blocked: string } | null;
@@ -23,6 +24,10 @@ export function useAgentSession(project: ProjectWorkspace, items: WorkspaceItem[
     [part?.key, project.id],
   );
   const ready = enabled && project.tokens.active > 0 && session !== null;
+  // The session's steps go to the audit log once, as the MCP server would write them (simulated).
+  useEffect(() => {
+    if (ready) void recordAgentSession({ projectId: project.id });
+  }, [ready, project.id]);
   useEffect(() => {
     if (!ready || !session) return;
     const start = Date.now();

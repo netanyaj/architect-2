@@ -349,3 +349,26 @@ describe("approving an app can allow its data host in the same step (drift 1)", 
     expect((db.tables.policies[0].config as { hosts: string[] }).hosts).toEqual(["slack.com"]);
   });
 });
+
+describe("?sim=byoagent writes the coding agent's steps to the audit log (drift 4)", () => {
+  const P = "99999999-9999-4999-8999-999999999999";
+  it("one row per agent step, under Coding agent, marked simulated; once per session", async () => {
+    db = new FakeDb({
+      projects: [{ id: P, name: "Meeting Prep", workspace_id: "ws-1", owner_id: "me", owner_display_name: null, repo_full_name: null }],
+      project_tokens: [{ project_id: P, status: "active" }],
+      blueprints: [{ id: "bp", project_id: P, version: 2 }],
+      items: [{ blueprint_id: "bp", key: "brief-writer", title: "Brief writer", grp: "agents", status: "built" }],
+      members: [],
+      audit_log: [],
+    });
+    const { recordAgentSession } = await import("@/server/actions/agent-session");
+    const r = await recordAgentSession({ projectId: P });
+    expect(r).toEqual({ ok: true, written: 7 });
+    const { auditBy } = await import("@/lib/audit");
+    expect(db.tables.audit_log.every((a) => auditBy(a as never) === "coding_agent" && (a.details as { simulated: boolean }).simulated)).toBe(true);
+    expect(db.tables.audit_log[0]).toMatchObject({ actor: "Coding agent: Claude Code (you)", action: "coding_agent.read_plan", target: "Meeting Prep: read the plan (v2, 1 parts)" });
+    expect(db.tables.audit_log.filter((a) => a.action === "coding_agent.refused")).toHaveLength(4);
+    for (const a of db.tables.audit_log) a.created_at = new Date().toISOString();
+    expect(await recordAgentSession({ projectId: P })).toEqual({ ok: true, written: 0 });
+  });
+});

@@ -42,6 +42,17 @@ const WHAT: Record<string, string> = {
   "member.removed": "Removed someone",
   "member.role_changed": "Changed someone's role",
   "workspace.seeded": "Demo data was set up",
+  "coding_agent.read_plan": "A coding agent read the plan",
+  "coding_agent.changed_part": "A coding agent changed a part",
+  "coding_agent.refused": "A coding agent was refused",
+  "coding_agent.ran_tests": "A coding agent ran tests",
+  "coding_agent.opened_pr": "A coding agent opened a pull request",
+  "connection.api_key_set": "Set an API key",
+  "connection.api_key_replaced": "Replaced an API key",
+  "connection.api_key_removed": "Removed an API key",
+  "check.edited": "Edited a part's check",
+  "plan.changed": "Changed the plan",
+  "launch.badge": "Changed the Built with Architect badge",
 };
 
 export function auditWhat(action: string): string {
