@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/ax/icon";
 import { SimTag } from "@/components/ax/pill";
-import { MCP_TOOLS, SCOPES } from "@/lib/mcp";
+import { AGENT_RULES, MCP_TOOLS, SCOPES } from "@/lib/mcp";
+import { PERMISSIONS } from "@/lib/policies";
 import { origin } from "@/server/origin";
 
 export const metadata: Metadata = { title: "MCP server · Architect", description: "The tools a coding agent can use on an Architect project, with a project token." };
@@ -65,7 +66,17 @@ export default async function McpDocsPage() {
               <li>A token belongs to one project and only has the scopes it was made with: {SCOPES.map((s) => s.label.toLowerCase()).join("; ")}.</li>
               <li>A coding agent can&apos;t mark a part Works. Any change sends the part back to wait for its check; the checker re-runs the part&apos;s locked check.</li>
               <li>Nothing goes to main directly. Work lands on a branch and comes back as a pull request; merging is a person&apos;s click.</li>
-              <li>Policies apply as for Architect&apos;s own agent: allowed models and connectors, egress, and approvals for deploys and pushes to main.</li>
+              <li>Policies apply as for Architect&apos;s own agent: allowed models and connectors, egress and the organisation&apos;s budget.</li>
+              <li>
+                Every permission rule applies, and an agent is never an Owner or Admin, so each of these is a request through <code className="font-mono">request_approval</code>, never something it does itself:
+                <ul className="mt-1 flex list-[circle] flex-col gap-0.5 pl-5">
+                  {AGENT_RULES.map((r) => (
+                    <li key={r.rule}>
+                      {PERMISSIONS.find((p) => p.id === r.rule)?.label}: {r.refusal.replace(/; use request_approval$/, "")}.
+                    </li>
+                  ))}
+                </ul>
+              </li>
               <li>Everything the agent does shows in Activity as &ldquo;Coding agent: &lt;agent&gt; (&lt;person&gt;) · via MCP&rdquo;, and in the audit log.</li>
             </ul>
           </section>

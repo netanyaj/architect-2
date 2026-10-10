@@ -45,7 +45,7 @@ export async function decide(admin: AdminDb, ctx: AppContext, raw: z.input<typeo
   const provider = typeof payload.provider === "string" ? payload.provider : null;
   const { data: project } = a.project_id ? await admin.from("projects").select("id, name").eq("id", a.project_id).maybeSingle() : { data: null };
 
-  if (decision === "approve" && scope === "rule" && (a.kind === "token" || a.kind === "budget" || (a.kind !== "connector" && !project))) {
+  if (decision === "approve" && scope === "rule" && (a.kind === "token" || a.kind === "budget" || a.kind === "secret" || (a.kind !== "connector" && a.kind !== "external_call" && !project))) {
     return { ok: false, message: "This request can only be approved once." };
   }
   if (decision === "approve" && scope === "once" && a.kind === "connector" && !project) {
@@ -79,8 +79,9 @@ export async function decide(admin: AdminDb, ctx: AppContext, raw: z.input<typeo
 
   let note: string | undefined;
   if (decision === "approve" && scope === "rule") {
-    const action: RuleAction = a.kind === "connector" ? "connector" : a.kind === "deploy" ? "production_deploy" : "push_to_main";
-    const everywhere = a.kind === "connector";
+    const action: RuleAction = a.kind === "connector" ? "connector" : a.kind === "external_call" ? "external_call" : a.kind === "deploy" ? "production_deploy" : "push_to_main";
+    // An app, or calls to a service with a key, are allowed in every project; Live deploys and pushes per project.
+    const everywhere = a.kind === "connector" || a.kind === "external_call";
     await admin.from("allow_rules").insert({
       workspace_id: ctx.workspace.id,
       action,
@@ -91,8 +92,8 @@ export async function decide(admin: AdminDb, ctx: AppContext, raw: z.input<typeo
       created_by: ctx.user.id,
       created_by_name: ctx.name,
     });
-    if (everywhere && provider) await allowService(admin, ctx.workspace.id, provider);
-    await audit("rule.created", everywhere ? `${providerName(provider)} allowed in every project` : `${project!.name}: ${action === "production_deploy" ? "Live deploys" : "pushes to main"} without an admin`, { action, from_approval: a.id, reason: reason || null });
+    if (a.kind === "connector" && provider) await allowService(admin, ctx.workspace.id, provider);
+    await audit("rule.created", a.kind === "external_call" ? `${providerName(provider)} can be called with a key in every project` : everywhere ? `${providerName(provider)} allowed in every project` : `${project!.name}: ${action === "production_deploy" ? "Live deploys" : "pushes to main"} without an admin`, { action, from_approval: a.id, reason: reason || null });
   }
 
   if (a.kind === "connector" && provider) {

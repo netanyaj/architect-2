@@ -13,10 +13,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } f
 import { runningCredits, type Deployment, type LaunchState } from "@/lib/launch";
 import { canBuild, canManageMembers } from "@/lib/permissions";
 import { relativeTime } from "@/lib/project-status";
+import { providerName } from "@/lib/providers";
 import { whatsNotDone } from "@/lib/readiness";
 import { useUi } from "@/lib/ui-store";
 import { cn } from "@/lib/utils";
 import { bringBackLive, goBack, shareTestLink, shareWithTeam, takeOffline } from "@/server/actions/launch";
+import { allowExternalCall } from "@/server/actions/external-calls";
 import { allowHost } from "@/server/actions/policies";
 import { setPartAside, setWaitingAside } from "@/server/actions/run";
 import type { ProjectWorkspace } from "@/server/project";
@@ -444,7 +446,7 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
             const primary = r === firstFix;
             return (
               <li key={r.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                <StatusMark status={r.status} icon={r.kind === "connect" ? "plug" : r.kind === "sample" ? "lines" : r.status === "blocked" ? "pause" : undefined} />
+                <StatusMark status={r.status} icon={r.kind === "connect" ? "plug" : r.kind === "sample" ? "lines" : r.status === "blocked" ? "pause" : r.status === "approval" ? "lock" : undefined} />
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold">{r.title}</span>
                   <span className="block text-small text-ink-2">{r.detail}</span>
@@ -496,6 +498,18 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
                     Set keys
                   </Button>
                 )}
+                {r.kind === "external" &&
+                  (isAdmin ? (
+                    <Button variant={primary ? "primary" : "secondary"} size="sm" disabledReason={busy} onClick={() => act(() => allowExternalCall({ projectId: project.id, provider: r.provider }), `${providerName(r.provider)} can be called with its key on Live.`)}>
+                      Allow {providerName(r.provider)} calls
+                    </Button>
+                  ) : r.waiting ? (
+                    <StatusWord status="approval">Waiting for an Owner or Admin</StatusWord>
+                  ) : (
+                    <Button variant={primary ? "primary" : "secondary"} size="sm" disabledReason={!canAct ? "Viewers can't ask for approval." : busy} onClick={() => act(() => allowExternalCall({ projectId: project.id, provider: r.provider }), "Asked. An Owner or Admin decides in Approvals.")}>
+                      Ask for approval
+                    </Button>
+                  ))}
                 {r.id === "tests" && <SimTag title="Checks run in the simulated build: tests, the security scan and the personal-data check" />}
               </li>
             );

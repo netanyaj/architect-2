@@ -46,6 +46,12 @@ describe("the scripted session (?sim=byoagent)", () => {
     expect(lines).toContain("Coding agent: Claude Code (Sam) · via MCP · updated ‘Brief writer’");
     expect(lines).toContain("Coding agent: Claude Code (Sam) · via MCP · tried to mark ‘Brief writer’ Works · refused: Only the checker can mark a part Works. It re-runs the part's check after this change.");
     expect(lines).toContain("Checker · Passed 3 of 3 · ‘Brief writer’ works");
+    // Every permission rule applies to the agent (C-10): each attempt is refused and points at request_approval.
+    for (const tried of ["tried to deploy to Live", "tried to merge its branch into main", "tried to set a key for Live", "tried to call an outside service with a key on Live"]) {
+      expect(lines.find((l) => l.includes(tried))).toMatch(/· refused: .*use request_approval$/);
+    }
+    // Without a repo there's no main to merge into.
+    expect(agentSession({ part: parts[1], partCount: 2, version: 1, owner: "Sam", repo: false }).steps.some((x) => x.text.includes("merge"))).toBe(false);
     expect(lines.at(-1)).toBe("Coding agent: Claude Code (Sam) · via MCP · opened a pull request for ‘Brief writer’");
     // The part waits from the change until the checker passes it; the agent's own test run is inside that window.
     const tests = s.steps.find((x) => x.text.startsWith("ran the tests"))!;

@@ -82,6 +82,7 @@ export type CheckRow =
   | { id: string; kind: "unbuilt"; status: "blocked"; title: string; detail: string; count: number }
   | { id: string; kind: "egress"; status: "blocked"; title: string; detail: string; path: FlowPath }
   | { id: string; kind: "keys"; status: "attention"; title: string; detail: string; names: string[] }
+  | { id: string; kind: "external"; status: "approval"; title: string; detail: string; provider: string; waiting: boolean }
   | { id: string; kind: "fine"; status: "works"; title: string; detail: string };
 
 export type Action = { label: string; disabledReason?: string };
@@ -141,6 +142,8 @@ export function launchState(input: {
   keysMissingForLive?: string[];
   /** The permission rule on Live deploys (C-10). Off, a Builder goes live without asking. Default on. */
   deployNeedsApproval?: boolean;
+  /** Services called with an API key that wait for an admin's OK before Live (C-10). Must-fix for Live only. */
+  externalCalls?: { provider: string; parts: string[]; waiting: boolean }[];
   /** Checks that passed (built parts' proofs). */
   testsPassed: number;
   /** Where the app's data would go (C-4), with governance on. A path the policy doesn't allow blocks every deploy. */
@@ -170,6 +173,19 @@ export function launchState(input: {
   if (keysMissing.length) {
     rows.push({ id: "keys-live", kind: "keys", status: "attention", title: `${plural(keysMissing.length, "key")} ${keysMissing.length === 1 ? "isn't" : "aren't"} set for Live`, detail: `${keysMissing.join(", ")}. Live can't run without ${keysMissing.length === 1 ? "it" : "them"}. Set ${keysMissing.length === 1 ? "it" : "them"} in Keys and passwords.`, names: keysMissing });
   }
+  const external = input.externalCalls ?? [];
+  for (const x of external) {
+    const name = providerName(x.provider);
+    rows.push({
+      id: `external-${x.provider}`,
+      kind: "external",
+      status: "approval",
+      title: `${name} is called with a key: an Owner or Admin allows it first`,
+      detail: `${x.parts.join(", ")} ${x.parts.length === 1 ? "calls" : "call"} ${name} with an API key. Live waits until it's allowed (the external-calls rule).`,
+      provider: x.provider,
+      waiting: x.waiting,
+    });
+  }
   const unbuilt = active.filter((p) => ["agreed", "proposed", "building"].includes(p.status));
   if (unbuilt.length) {
     rows.push({ id: "unbuilt", kind: "unbuilt", status: "blocked", title: `${plural(unbuilt.length, "part")} ${unbuilt.length === 1 ? "isn't" : "aren't"} built`, detail: `${unbuilt.map((p) => p.title).join(", ")}. Build ${unbuilt.length === 1 ? "it" : "them"}, or leave ${unbuilt.length === 1 ? "it" : "them"} out for now.`, count: unbuilt.length });
@@ -180,8 +196,8 @@ export function launchState(input: {
   rows.push({ id: "privacy", kind: "fine", status: "works", title: "Personal data is hidden in logs", detail: "Email addresses, phone numbers and card numbers are taken out before anything is logged" });
 
   const toFix = rows.filter((r) => r.kind !== "fine").length;
-  // A key missing for Live doesn't hold the team version.
-  const toFixTeam = rows.filter((r) => r.kind !== "fine" && r.kind !== "keys").length;
+  // A key missing for Live, or an external call waiting for an admin, doesn't hold the team version.
+  const toFixTeam = rows.filter((r) => r.kind !== "fine" && r.kind !== "keys" && r.kind !== "external").length;
   const team = liveVersion(input.deployments, "staging", input.envLive.staging, currentVersion);
   const live = liveVersion(input.deployments, "production", input.envLive.production, currentVersion);
   const fast = !input.governance;
@@ -211,6 +227,8 @@ export function launchState(input: {
         ? "Data would go somewhere your organisation doesn't allow. Fix it in the checklist first."
         : keysMissing.length && !(fast && toFix)
         ? `Set ${plural(keysMissing.length, "key")} for Live first, in Keys and passwords.`
+        : external.length
+        ? `${external.map((x) => providerName(x.provider)).join(", ")} ${external.length === 1 ? "is" : "are"} called with a key. An Owner or Admin allows ${external.length === 1 ? "it" : "them"} first.`
         : fast && toFix
         ? `Fix ${plural(toFix, "thing")} in the checklist first.`
         : !fast && !teamCurrent

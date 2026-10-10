@@ -5,9 +5,10 @@
  */
 import type { StatusIcon } from "@/components/ax/status-mark";
 import { SCOPES } from "./mcp";
+import { permissionsOf } from "./policies";
 import { providerName, PROVIDERS } from "./providers";
 
-export type ApprovalKind = "connector" | "deploy" | "token" | "push" | "budget" | "secret";
+export type ApprovalKind = "connector" | "deploy" | "token" | "push" | "budget" | "secret" | "external_call";
 export type ApprovalStatus = "waiting" | "approved" | "rejected";
 /** Approve this one request, or approve it and record an allow-rule so the same request doesn't wait again. */
 export type DecisionScope = "once" | "rule";
@@ -91,7 +92,7 @@ export function scopeSummary(scopes: string[]): string {
 
 const firstName = (name: string | null) => (name ? name.split(" ")[0] : "Someone");
 
-const ICON: Record<ApprovalKind, StatusIcon> = { connector: "plug", deploy: "lines", token: "lock", push: "lines", budget: "dot", secret: "lock" };
+const ICON: Record<ApprovalKind, StatusIcon> = { connector: "plug", deploy: "lines", token: "lock", push: "lines", budget: "dot", secret: "lock", external_call: "plug" };
 
 export const RULE_LINE: Record<ApprovalKind, string> = {
   connector: "New tool · rule: tools not on your approved list need an admin",
@@ -100,6 +101,7 @@ export const RULE_LINE: Record<ApprovalKind, string> = {
   token: "Coding agent · rule: coding-agent tokens need an admin",
   budget: "Budget · rule: going over the org budget needs an admin",
   secret: "Live key · rule: keys and passwords for Live need an admin",
+  external_call: "External call · rule: calls to outside services with a key need an admin",
 };
 
 export function formatDay(iso: string): string {
@@ -175,6 +177,21 @@ export function approvalView(a: ApprovalInput): ApprovalView {
     facts.push({ label: "Value", value: "Never stored: Architect only records that it's set, by whom and when" });
     consequence = `Approving sets ${key} for Live${project ? ` in ${project}` : ""}.`;
     actions.push({ scope: "once", label: "Approve", consequence });
+  } else if (a.kind === "external_call") {
+    const provider = String(p.provider ?? "");
+    const name = providerName(provider);
+    const parts = Array.isArray(p.parts) ? (p.parts as string[]) : [];
+    title = project ? `Let ${project} call ${name} with a key` : a.title;
+    meta = `${firstName(by)} · ${parts.length ? `for “${parts[0]}”${parts.length > 1 ? ` and ${parts.length - 1} more` : ""}` : "on Live"}`;
+    facts.push({ label: "Asked by", value: by ?? "Someone" });
+    if (parts.length) facts.push({ label: "Parts", value: parts.join(", ") });
+    if (typeof p.why === "string" && p.why.trim()) facts.push({ label: "Why", value: p.why });
+    facts.push({ label: "Key", value: "An API key in Connections: Architect records only that it's set" });
+    const { host } = serviceHost(provider);
+    flow = { from: project ?? "Your projects", data: `requests with the ${name} key`, host, allowed: hostAllowed(host, a.egressHosts) };
+    consequence = `Approving lets ${project ?? "the project"} call ${name} with its key on Live.`;
+    actions.push({ scope: "once", label: "Approve for this project", consequence });
+    actions.push({ scope: "rule", label: "Approve and allow everywhere", consequence: `Any project can call ${name} with its key on Live without asking.` });
   } else if (a.kind === "budget") {
     const cap = typeof p.cap === "number" ? p.cap : null;
     title = cap ? `Raise the monthly cap to ${cap.toLocaleString("en-GB")} credits` : a.title;
@@ -209,10 +226,11 @@ export function decisionProblem(decision: "approve" | "reject", reason: string):
 }
 
 /** An allow-rule in plain words, for the Rules tab. */
-export type AllowRule = { id: string; action: "connector" | "production_deploy" | "push_to_main"; projectName: string | null; target: string | null; createdByName: string; createdAt: string; reason: string | null };
+export type AllowRule = { id: string; action: "connector" | "production_deploy" | "push_to_main" | "external_call"; projectName: string | null; target: string | null; createdByName: string; createdAt: string; reason: string | null };
 
 export function ruleTitle(r: Pick<AllowRule, "action" | "projectName" | "target">): string {
   if (r.action === "connector") return `${providerName(r.target)} allowed in ${r.projectName ?? "every project"}`;
+  if (r.action === "external_call") return `${providerName(r.target)} can be called with a key in ${r.projectName ?? "every project"}`;
   const where = r.projectName ?? "every project";
   return r.action === "production_deploy" ? `${where}: Live deploys don't need an admin` : `${where}: pushes to main don't need an admin`;
 }
@@ -225,6 +243,9 @@ export function queueRules(policies: { kind: string; config: Record<string, unkn
   const rules: { title: string; detail: string }[] = [];
   if (permission.includes("production_deploy")) rules.push({ title: "Live deploys need an Owner or Admin", detail: "A Builder's Go live waits here. Owners and Admins go live themselves." });
   if (permission.includes("push_to_main")) rules.push({ title: "Pushes to main need an Owner or Admin", detail: "A Builder's merge of a pull request waits here." });
+  const rules_ = permissionsOf(policies.find((p) => p.kind === "permission")?.config);
+  if (rules_.secrets) rules.push({ title: "Keys and passwords for Live need an Owner or Admin", detail: "A Builder's key for Live waits here; the value is never stored." });
+  if (rules_.external) rules.push({ title: "Calls to outside services with a key need an Owner or Admin", detail: "A part that calls a service with an API key waits here before it runs on Live." });
   rules.push({ title: "Coding-agent tokens need an Owner or Admin", detail: "Every new project token waits here before an agent can use it." });
   const allow = list(connectors.allow).map(providerName);
   const deny = list(connectors.deny).map(providerName);

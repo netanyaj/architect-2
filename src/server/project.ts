@@ -11,7 +11,7 @@ import { modelAvailability } from "@/lib/gateway";
 import { MODEL_LABEL, toModelChoice, type ModelChoice, type ModelOption } from "@/lib/models";
 import { detectTools, projectIcon, summarizeProject, type ProjectInput } from "@/lib/project-status";
 import { createAdminDb, createServerDb } from "./db";
-import { allowRuleFor, blockedServices, liveDecisions, loadPolicies, orgBudget, projectFlows, type Policies } from "./policy";
+import { allowRuleFor, blockedServices, externalCallHolds, liveDecisions, loadPolicies, orgBudget, projectFlows, type ExternalCall, type Policies } from "./policy";
 import { loadCodeEdits, settleCodeEdits } from "./code-edits";
 import { projectKeyRows } from "./keys";
 import { loadPullRequests } from "./pull-requests";
@@ -194,6 +194,8 @@ export type LaunchData = {
   flows: FlowPath[];
   /** Keys and passwords per version (C-10): what's provided, set (by whom, when), waiting or missing. */
   keys: KeyRow[];
+  /** Services called with an API key that wait for an admin's OK before Live (C-10). */
+  externalCalls: ExternalCall[];
   testsPassed: number;
 };
 
@@ -213,10 +215,11 @@ async function loadLaunch(
   ]);
   // Decisions and allow-rules are read with the admin client; the project was read under RLS by the caller.
   const admin = createAdminDb();
-  const [decisions, liveRule, flows] = await Promise.all([
+  const [decisions, liveRule, flows, externalCalls] = await Promise.all([
     liveDecisions(admin, projectId),
     allowRuleFor(admin, workspaceId, "production_deploy", projectId),
     projectFlows(admin, projectId, extra.policies, extra.parts),
+    externalCallHolds(admin, workspaceId, projectId, extra.parts, extra.policies),
   ]);
   const versionNotes: Record<number, string> = {};
   for (const c of changes ?? []) {
@@ -253,6 +256,7 @@ async function loadLaunch(
     liveRule,
     flows,
     keys,
+    externalCalls,
     testsPassed: (proofs ?? []).reduce((s, p) => s + Number(p.assertions_passed ?? 0), 0),
   };
 }

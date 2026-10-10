@@ -41,7 +41,7 @@ export const MCP_TOOLS: McpTool[] = [
     does: "Runs a command in the project's sandbox, on the agent's branch.",
     input: "{ command: string, timeoutSeconds?: number }",
     output: "{ exitCode, stdout, stderr, durationMs }",
-    policy: "No network beyond the workspace's allowed hosts. Keys come from the test version only.",
+    policy: "No network beyond the workspace's allowed hosts. Keys come from the test version only; calls with a key on Live follow the external-calls rule.",
   },
   {
     name: "run_tests",
@@ -62,8 +62,8 @@ export const MCP_TOOLS: McpTool[] = [
   {
     name: "request_approval",
     scope: "approvals",
-    does: "Asks an Owner or Admin for something a policy holds (a connector, a deploy, a push to main).",
-    input: "{ kind: \"connector\" | \"deploy\" | \"push\", reason: string }",
+    does: "Asks an Owner or Admin for something a rule holds: an app, a Live deploy, a push to main, a key for Live, or calls to a service with a key on Live.",
+    input: "{ kind: \"connector\" | \"deploy\" | \"push\" | \"secret\" | \"external_call\", reason: string }",
     output: "{ approvalId, status: \"waiting\" }",
     policy: "Lands in Approvals with the agent named as the requester. The agent can't approve its own request.",
   },
@@ -100,6 +100,22 @@ export type SessionStep = { atMs: number; who: "agent" | "checker"; text: string
 /** A coding agent can't deploy on its own: the same rule as Architect's agent (B-7, C-10). */
 export const DEPLOY_REFUSAL = "a Live deploy needs an Owner or Admin's approval; use request_approval";
 
+/**
+ * The permission rules (C-10) for coding agents. An agent is never an Owner or Admin, so each action a rule covers is
+ * a request through request_approval, never something it does itself, whether or not the rule is on for people.
+ */
+export const AGENT_RULES: { rule: "deploy" | "push" | "secrets" | "external"; tried: string; refusal: string }[] = [
+  { rule: "deploy", tried: "tried to deploy to Live", refusal: DEPLOY_REFUSAL },
+  { rule: "push", tried: "tried to merge its branch into main", refusal: "a push to main needs an Owner or Admin's approval; use request_approval" },
+  { rule: "secrets", tried: "tried to set a key for Live", refusal: "a key for Live needs an Owner or Admin's approval, and the value is never stored; use request_approval" },
+  { rule: "external", tried: "tried to call an outside service with a key on Live", refusal: "calls with a key on Live need an Owner or Admin's OK; use request_approval" },
+];
+
+/** The refusal a coding agent gets for an action a permission rule covers. */
+export function agentRefusal(rule: (typeof AGENT_RULES)[number]["rule"]): string {
+  return AGENT_RULES.find((r) => r.rule === rule)!.refusal;
+}
+
 export type AgentSession = { partKey: string; partTitle: string; agent: string; steps: SessionStep[]; waitFromMs: number; worksAtMs: number; endMs: number };
 
 /** The part a session works on: Brief writer if the plan has it, else an agent part that works, else any part that works. */
@@ -110,8 +126,9 @@ export function sessionPart<T extends { key: string; title: string; grp: string;
 
 /**
  * ?sim=byoagent: a short scripted session by a coding agent over MCP. It reads the plan, updates a part, tries to
- * mark it Works (refused by codingAgentUpdate), runs the tests, tries to deploy to Live without approval (refused, as
- * it would be for Architect's own agent: B-7, C-10), and the part waits until the checker passes it.
+ * mark it Works (refused by codingAgentUpdate), runs the tests, tries each action a permission rule covers (deploy to
+ * Live, merge into main, set a Live key, call a service with a key on Live: all refused, as for Architect's own agent:
+ * B-7, C-10), and the part waits until the checker passes it.
  */
 export function agentSession(input: { part: { key: string; title: string }; partCount: number; version: number; owner: string; repo: boolean }): AgentSession {
   const agent = `Claude Code (${input.owner})`;
@@ -124,7 +141,8 @@ export function agentSession(input: { part: { key: string; title: string }; part
     { atMs: 1600, who: "checker", kind: "info", text: update.ok ? `‘${t}’ changed, so it waits for its check` : "" },
     { atMs: 3000, who: "agent", kind: "fail", text: `tried to mark ‘${t}’ Works · refused: ${mark.ok ? "" : mark.reason}` },
     { atMs: 4500, who: "agent", kind: "info", text: `ran the tests for ‘${t}’ in the sandbox · 3 of 3 passed (not proof)` },
-    { atMs: 5200, who: "agent", kind: "fail", text: `tried to deploy to Live · refused: ${DEPLOY_REFUSAL}` },
+    // Every permission rule applies to the agent (C-10): each attempt is refused and points at request_approval.
+    ...AGENT_RULES.filter((r) => input.repo || r.rule !== "push").map((r, i) => ({ atMs: 5200 + i * 150, who: "agent" as const, kind: "fail" as const, text: `${r.tried} · refused: ${r.refusal}` })),
     { atMs: 6000, who: "checker", kind: "info", text: `re-running the locked check for ‘${t}’` },
     { atMs: 9000, who: "checker", kind: "ok", text: `Passed 3 of 3 · ‘${t}’ works` },
   ];

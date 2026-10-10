@@ -106,4 +106,40 @@ test.describe("M5 follow-up", () => {
     await expect(notDone).toContainText("Waiting for an Owner or Admin's approval");
     for (const check of ["Tests passed", "Security scan passed", "Personal data is hidden in logs"]) await expect(page.getByText(check, { exact: true })).toBeVisible();
   });
+
+  test("C-10: a part calling a service with a key waits for an admin before Live; a Builder asks, an admin allows everywhere; coding agents get the same rules", async ({ page }) => {
+    await start(page);
+    const db = adminDb();
+    const { data: mp } = await db.from("projects").select("id").eq("workspace_id", workspace).eq("name", "Meeting Prep").single();
+    await db.from("items").update({ provider: "clearbit" }).eq("project_id", mp!.id).eq("title", "Research agent (yours)");
+    await db.from("members").update({ role: "builder" }).eq("workspace_id", workspace).eq("user_id", user.id);
+    try {
+      await page.goto(`/p/${mp!.id}/launch`);
+      const row = page.getByRole("listitem").filter({ hasText: "Clearbit is called with a key: an Owner or Admin allows it first" });
+      await expect(row).toContainText("Research agent (yours) calls Clearbit with an API key.");
+      await row.getByRole("button", { name: "Ask for approval" }).click();
+      await expect(page.getByText("Asked. An Owner or Admin decides in Approvals.")).toBeVisible();
+      await expect(row).toContainText("Waiting for an Owner or Admin");
+    } finally {
+      await db.from("members").update({ role: "owner" }).eq("workspace_id", workspace).eq("user_id", user.id);
+    }
+
+    await page.goto("/governance/approvals");
+    const requests = page.getByRole("region", { name: "Requests" });
+    const detail = page.getByRole("region", { name: "Request", exact: true });
+    await requests.getByRole("button", { name: /Let Meeting Prep call Clearbit with a key/ }).click();
+    await expect(detail).toContainText("External call · rule: calls to outside services with a key need an admin");
+    await detail.getByLabel(/^Reason/).fill("Company data only, read only");
+    await detail.getByRole("button", { name: "Approve and allow everywhere" }).click();
+    await requests.getByRole("button", { name: "Rules" }).click();
+    await expect(requests.getByRole("button", { name: /Clearbit can be called with a key in every project/ })).toBeVisible();
+    await page.goto(`/p/${mp!.id}/launch`);
+    await expect(page.getByText("Clearbit is called with a key")).toHaveCount(0);
+
+    // The rule is listed with the others in Governance, and the coding-agent docs list every rule.
+    await page.goto("/governance?section=rules");
+    await expect(page.getByText("External calls with a key", { exact: true })).toBeVisible();
+    await page.goto("/docs/mcp");
+    await expect(page.getByText(/External calls with a key: calls with a key on Live need an Owner or Admin's OK/)).toBeVisible();
+  });
 });

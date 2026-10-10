@@ -338,6 +338,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
         flows: project.launch!.flows,
         deployNeedsApproval: project.policy.permissions.deploy,
         keysMissingForLive: missingForLive(project.launch!.keys),
+        externalCalls: project.launch!.externalCalls,
         testsPassed: project.launch!.testsPassed,
         repo: project.repo
           ? { prNumber: project.pullRequests[0]?.number ?? null, branch: project.pullRequests[0]?.branch ?? null, merged: project.pullRequests[0]?.status === "merged" }

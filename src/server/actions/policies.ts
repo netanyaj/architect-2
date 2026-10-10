@@ -18,6 +18,7 @@ import {
   modelConfig,
   modelPolicyProblem,
   PERMISSIONS,
+  type PermissionRules,
   permissionConfig,
   privateModelProblem,
   type AppPolicy,
@@ -213,10 +214,10 @@ export async function allowHost(input: { host: string; projectId?: string }): Pr
 }
 
 /** C-10: which actions leaving the sandbox need an Owner or Admin when a Builder (or their coding agent) does them. */
-export async function savePermissionRules(input: { deploy: boolean; push: boolean; secrets: boolean }): Promise<ActionResult> {
+export async function savePermissionRules(input: PermissionRules): Promise<ActionResult> {
   const { ctx, refused } = await guard();
   if (refused) return { ok: false, message: refused };
-  const next = { deploy: Boolean(input.deploy), push: Boolean(input.push), secrets: Boolean(input.secrets) };
+  const next: PermissionRules = { deploy: Boolean(input.deploy), push: Boolean(input.push), secrets: Boolean(input.secrets), external: Boolean(input.external) };
   const admin = createAdminDb();
   const before = (await loadPolicies(admin, ctx.workspace.id)).stored.permissions;
   const words = (p: typeof next) => PERMISSIONS.filter((x) => p[x.id]).map((x) => x.label).join(", ") || "none";

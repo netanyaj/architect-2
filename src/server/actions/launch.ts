@@ -9,7 +9,7 @@ import { DEPLOY_STEPS, DOMAIN_CHECK_MS, DomainName, launchState, Listing, type A
 import { canBuild, canManageMembers } from "@/lib/permissions";
 import { createAdminDb, type AdminDb } from "../db";
 import { projectKeyRows } from "../keys";
-import { allowRuleFor, liveDecisions, loadPolicies, projectFlows } from "../policy";
+import { allowRuleFor, externalCallHolds, liveDecisions, loadPolicies, projectFlows } from "../policy";
 import { getAppContext, type AppContext } from "../workspace";
 import type { ActionResult } from "./members";
 
@@ -49,6 +49,7 @@ async function loadState(admin: AdminDb, projectId: string, ctx: AppContext) {
   const { data: conns } = await admin.from("connections").select("provider").eq("workspace_id", project.workspace_id).eq("status", "connected");
   const env = (n: string) => (envs ?? []).some((e) => e.name === n && e.status === "live");
   const keys = await projectKeyRows(admin, { projectId: project.id, parts: items ?? [], connected: (conns ?? []).map((c) => c.provider), envLive: { staging: env("staging"), production: env("production") } });
+  const externalCalls = await externalCallHolds(admin, project.workspace_id, project.id, items ?? [], policies);
   const deployments: Deployment[] = (deps ?? [])
     .filter((d) => d.environment === "staging" || d.environment === "production")
     .map((d) => ({ id: d.id, environment: d.environment as Env, version: d.blueprint_version, status: d.status, createdAt: d.created_at, by: null }));
@@ -65,6 +66,7 @@ async function loadState(admin: AdminDb, projectId: string, ctx: AppContext) {
     flows,
     deployNeedsApproval: policies.permissions.deploy,
     keysMissingForLive: missingForLive(keys),
+    externalCalls,
     testsPassed: 0,
     repo: project.repo_full_name ? { prNumber: pr?.number ?? null, branch: pr?.branch ?? null, merged: pr?.status === "merged" } : null,
   });

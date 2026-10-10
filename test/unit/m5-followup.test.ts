@@ -14,6 +14,8 @@ let role: Role;
 let governance = true;
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 vi.mock("@/server/db", () => ({ createAdminDb: () => db, createServerDb: async () => db }));
+vi.mock("@/server/actions/launch", () => ({ goLive: async () => ({ ok: true }) }));
+vi.mock("@/server/actions/pull-requests", () => ({ mergePullRequest: async () => ({ ok: true }) }));
 vi.mock("@/server/workspace", () => ({
   getAppContext: async () => ({ user: { id: "me" }, name: "Rita", role, workspace: { id: "ws-1", name: "Acme", governanceEnabled: governance }, memberships: [] }),
 }));
@@ -192,5 +194,70 @@ describe("readiness: what's not done (A-10) and the named pre-publish checks (BL
     const s = launchState({ deployments: [], envLive: { staging: false, production: false }, currentVersion: 1, role: "owner", governance: true, liveRequested: false, testsPassed: 4, parts: [{ id: "1", key: "a", title: "A", status: "built", provider: null, estimate: 1 }] });
     expect(s.rows.filter((r) => r.kind === "fine").map((r) => r.title)).toEqual(["Tests passed", "Security scan passed", "Personal data is hidden in logs"]);
     expect(s.toFix).toBe(0);
+  });
+});
+
+describe("the external-calls rule (C-10)", () => {
+  const P = "66666666-6666-4666-8666-666666666666";
+  const seed = (permission: Record<string, unknown> = { needs_approval: ["production_deploy"] }) =>
+    new FakeDb({
+      workspaces: [{ id: "ws-1", governance_enabled: true }],
+      policies: [{ workspace_id: "ws-1", kind: "permission", config: permission }],
+      connections: [{ workspace_id: "ws-1", provider: "clearbit", kind: "api_key", status: "connected" }],
+      projects: [{ id: P, name: "Lead scorer", workspace_id: "ws-1" }],
+      blueprints: [{ id: "bp", project_id: P, version: 1 }],
+      items: [
+        { blueprint_id: "bp", project_id: P, title: "Company size lookup", status: "built", provider: "clearbit" },
+        { blueprint_id: "bp", project_id: P, title: "Top 5 posted to #sales", status: "built", provider: "slack" },
+      ],
+      allow_rules: [],
+      approvals: [],
+      audit_log: [],
+    });
+  beforeEach(() => {
+    governance = true;
+    db = seed();
+  });
+
+  it("a part calling a keyed service is held for Live until allowed; the team version isn't held", async () => {
+    const { externalCallHolds, loadPolicies } = await import("@/server/policy");
+    const holds = await externalCallHolds(db as never, "ws-1", P, db.tables.items as never, await loadPolicies(db as never, "ws-1"));
+    expect(holds).toEqual([{ provider: "clearbit", parts: ["Company size lookup"], waiting: false }]);
+    const s = launchState({ deployments: [], envLive: { staging: false, production: false }, currentVersion: 1, role: "owner", governance: true, liveRequested: false, testsPassed: 3, externalCalls: holds, parts: [{ id: "1", key: "a", title: "A", status: "built", provider: null, estimate: 1 }] });
+    expect(s.rows[0]).toMatchObject({ kind: "external", status: "approval", title: "Clearbit is called with a key: an Owner or Admin allows it first" });
+    expect(s.share.disabledReason).toBeUndefined();
+    // Rule off, or governance off: nothing is held.
+    db = seed({ rules_version: 3, needs_approval: [] });
+    expect(await externalCallHolds(db as never, "ws-1", P, db.tables.items as never, await loadPolicies(db as never, "ws-1"))).toEqual([]);
+  });
+
+  it("an Owner or Admin allows it for the project (a rule, audited); a Builder asks, once", async () => {
+    const { allowExternalCall } = await import("@/server/actions/external-calls");
+    role = "builder";
+    expect(await allowExternalCall({ projectId: P, provider: "clearbit" })).toEqual({ ok: true, asked: true });
+    expect(db.tables.approvals[0]).toMatchObject({ kind: "external_call", project_id: P, payload: { provider: "clearbit", parts: ["Company size lookup"], requested_by_name: "Rita" } });
+    expect(await allowExternalCall({ projectId: P, provider: "clearbit" })).toEqual({ ok: false, message: "Your request is waiting for an Owner or Admin." });
+    role = "admin";
+    db = seed();
+    expect(await allowExternalCall({ projectId: P, provider: "clearbit" })).toEqual({ ok: true, asked: false });
+    expect(db.tables.allow_rules[0]).toMatchObject({ action: "external_call", project_id: P, target: "clearbit", created_by_name: "Rita" });
+    expect(db.tables.audit_log[0]).toMatchObject({ action: "rule.created", target: "Lead scorer: Clearbit called with a key" });
+    expect(await allowExternalCall({ projectId: P, provider: "clearbit" })).toEqual({ ok: false, message: "Clearbit doesn't need an admin's OK in Lead scorer any more." });
+  });
+
+  it("approving everywhere makes a workspace rule; the request's view names the parts and the host", async () => {
+    const { approvalView } = await import("@/lib/approvals");
+    const v = approvalView({ id: "a1", kind: "external_call", status: "waiting", title: "x", payload: { provider: "clearbit", parts: ["Company size lookup"], requested_by_name: "Sam" }, requestedByName: null, project: { id: P, name: "Lead scorer" }, egressHosts: ["api.clearbit.com"], decidedByName: null, decidedAt: null, reason: null } as never);
+    expect(v).toMatchObject({ title: "Let Lead scorer call Clearbit with a key", ruleLine: "External call · rule: calls to outside services with a key need an admin", flow: { host: "api.clearbit.com", allowed: true } });
+    expect(v.actions.map((a) => a.label)).toEqual(["Approve for this project", "Approve and allow everywhere"]);
+
+    role = "admin";
+    db.tables.approvals.push({ id: "a1", workspace_id: "ws-1", project_id: P, kind: "external_call", title: "Lead scorer: call Clearbit with a key", status: "waiting", payload: { provider: "clearbit" } });
+    const { decide } = await import("@/server/approvals");
+    const r = await decide(db as never, { user: { id: "me" }, name: "Rita", role: "admin", workspace: { id: "ws-1", name: "Acme", governanceEnabled: true } } as never, { approvalId: "a1", decision: "approve", scope: "rule", reason: "Read only" });
+    expect(r.ok).toBe(true);
+    expect(db.tables.allow_rules[0]).toMatchObject({ action: "external_call", project_id: null, target: "clearbit" });
+    const { externalCallHolds, loadPolicies } = await import("@/server/policy");
+    expect(await externalCallHolds(db as never, "ws-1", P, db.tables.items as never, await loadPolicies(db as never, "ws-1"))).toEqual([]);
   });
 });

@@ -215,29 +215,33 @@ export { providerName };
 /* ------------------------------------------------------------------ C-10 Permission rules */
 
 /** Actions that leave the sandbox and need an Owner or Admin when a Builder (or their coding agent) does them. */
-export type PermissionRules = { deploy: boolean; push: boolean; secrets: boolean };
+export type PermissionRules = { deploy: boolean; push: boolean; secrets: boolean; external: boolean };
 
 export const PERMISSIONS: { id: keyof PermissionRules; key: string; label: string; effect: string }[] = [
   { id: "deploy", key: "production_deploy", label: "Live deploys", effect: "A Builder's Go live asks an Owner or Admin." },
   { id: "push", key: "push_to_main", label: "Pushes to main", effect: "A Builder's merge of a pull request asks an Owner or Admin." },
   { id: "secrets", key: "live_secrets", label: "Keys and passwords for Live", effect: "A Builder's key for Live waits for an Owner or Admin." },
+  { id: "external", key: "external_calls", label: "External calls with a key", effect: "A part that calls an outside service with an API key waits for an Owner or Admin's OK before it runs on Live." },
 ];
 
 /**
  * Reads the permission policy. The seed listed only push and deploy, before keys existed: until the rules are saved
- * from Governance (`rules_version` 2), a Live key needs approval too, as the brief asks.
+ * from Governance (`rules_version` 2), a Live key needs approval too, as the brief asks. External calls with a key came
+ * with `rules_version` 3 and are on the same way.
  */
 export function permissionsOf(config: unknown): PermissionRules {
   const c = (config ?? {}) as { needs_approval?: unknown; rules_version?: unknown };
   const list = Array.isArray(c.needs_approval) ? (c.needs_approval as string[]) : ["production_deploy", "push_to_main"];
-  return { deploy: list.includes("production_deploy"), push: list.includes("push_to_main"), secrets: c.rules_version === 2 ? list.includes("live_secrets") : true };
+  // External calls (added with rules_version 3) are on until the rules are saved with them off, like Live keys before.
+  const v = typeof c.rules_version === "number" ? c.rules_version : 1;
+  return { deploy: list.includes("production_deploy"), push: list.includes("push_to_main"), secrets: v >= 2 ? list.includes("live_secrets") : true, external: v >= 3 ? list.includes("external_calls") : true };
 }
 
 export function permissionConfig(p: PermissionRules) {
-  return { rules_version: 2, needs_approval: PERMISSIONS.filter((x) => p[x.id]).map((x) => x.key) };
+  return { rules_version: 3, needs_approval: PERMISSIONS.filter((x) => p[x.id]).map((x) => x.key) };
 }
 
-export const NO_RULES: PermissionRules = { deploy: false, push: false, secrets: false };
+export const NO_RULES: PermissionRules = { deploy: false, push: false, secrets: false, external: false };
 
 /* ------------------------------------------------------------------ C-7 Budgets */
 

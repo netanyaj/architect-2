@@ -10,7 +10,7 @@ import { periodStart } from "./queries";
 /* What the workspace's rules allow, read by the build, Connect, Launch and merge (C-3, C-10). Approvals and
    allow-rules can lift a rule for one project or for all of them; see ./approvals. */
 
-export type RuleAction = "connector" | "production_deploy" | "push_to_main";
+export type RuleAction = "connector" | "production_deploy" | "push_to_main" | "external_call";
 
 /** Active allow-rules matching an action, for one project (a rule with no project covers every project). */
 export async function allowRuleFor(admin: AdminDb, workspaceId: string, action: RuleAction, projectId: string | null, target?: string): Promise<boolean> {
@@ -57,6 +57,37 @@ export async function blockedServices(admin: AdminDb, workspaceId: string, proje
     ...(rules ?? []).filter((r) => !r.removed_at && (r.project_id === null || r.project_id === projectId)).map((r) => r.target ?? ""),
   ]);
   return wanted.filter((p) => !ok.has(p));
+}
+
+/** A service a project's parts call with an API key, held for Live by the external-calls rule (C-10). */
+export type ExternalCall = { provider: string; parts: string[]; waiting: boolean };
+
+/**
+ * Parts that call an outside service with an API key (BL-9) need an Owner or Admin's OK before they run on Live, once
+ * per service and project, while governance and the rule are on. An approved request or an allow-rule covers it.
+ */
+export async function externalCallHolds(admin: AdminDb, workspaceId: string, projectId: string, parts: { title: string; status: string; provider: string | null }[], policies: Policies): Promise<ExternalCall[]> {
+  if (!policies.governance || !policies.permissions.external) return [];
+  const { data: keyed } = await admin.from("connections").select("provider").eq("workspace_id", workspaceId).eq("kind", "api_key");
+  const services = new Set((keyed ?? []).map((c) => c.provider));
+  const byService = new Map<string, string[]>();
+  for (const p of parts) {
+    if (!p.provider || !services.has(p.provider) || p.status === "dropped" || p.status === "deferred") continue;
+    byService.set(p.provider, [...(byService.get(p.provider) ?? []), p.title]);
+  }
+  if (!byService.size) return [];
+  const [{ data: rules }, { data: requests }] = await Promise.all([
+    admin.from("allow_rules").select("project_id, target, removed_at").eq("workspace_id", workspaceId).eq("action", "external_call"),
+    admin.from("approvals").select("status, payload").eq("project_id", projectId).eq("kind", "external_call").in("status", ["waiting", "approved"]),
+  ]);
+  const out: ExternalCall[] = [];
+  for (const [provider, titles] of byService) {
+    const ruled = (rules ?? []).some((r) => !r.removed_at && r.target === provider && (r.project_id === null || r.project_id === projectId));
+    const asked = (requests ?? []).filter((r) => (r.payload as { provider?: string } | null)?.provider === provider);
+    if (ruled || asked.some((r) => r.status === "approved")) continue;
+    out.push({ provider, parts: titles, waiting: asked.some((r) => r.status === "waiting") });
+  }
+  return out;
 }
 
 /** Services the workspace's parts use or holds an API key for: what Governance › Apps can list (C-3). */

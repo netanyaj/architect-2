@@ -89,6 +89,7 @@ describe("approval views (screen 11)", () => {
     expect(decisionProblem("approve", "x".repeat(501))).toMatch(/500/);
     expect(ruleTitle({ action: "connector", projectName: null, target: "hubspot" })).toBe("HubSpot allowed in every project");
     expect(ruleTitle({ action: "production_deploy", projectName: "ticket-triage", target: null })).toBe("ticket-triage: Live deploys don't need an admin");
+    expect(ruleTitle({ action: "external_call", projectName: null, target: "clearbit" })).toBe("Clearbit can be called with a key in every project");
     const q = queueRules([
       { kind: "permission", config: { needs_approval: ["push_to_main", "production_deploy"] } },
       { kind: "connectors", config: { allow: ["slack"], deny: ["hubspot"] } },
@@ -96,10 +97,12 @@ describe("approval views (screen 11)", () => {
     expect(q.map((r) => r.title)).toEqual([
       "Live deploys need an Owner or Admin",
       "Pushes to main need an Owner or Admin",
+      "Keys and passwords for Live need an Owner or Admin",
+      "Calls to outside services with a key need an Owner or Admin",
       "Coding-agent tokens need an Owner or Admin",
       "Apps not on your allowed list need an Owner or Admin",
     ]);
-    expect(q[3].detail).toBe("Allowed: Slack. Not allowed: HubSpot.");
+    expect(q[5].detail).toBe("Allowed: Slack. Not allowed: HubSpot.");
   });
 });
 

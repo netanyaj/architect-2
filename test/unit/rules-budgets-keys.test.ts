@@ -23,9 +23,11 @@ const P = "11111111-1111-4111-8111-111111111111";
 
 describe("permission rules (C-10)", () => {
   it("the seed's rules, with Live keys on until the rules are saved; saved rules round-trip", () => {
-    expect(permissionsOf({ needs_approval: ["push_to_main", "production_deploy"] })).toEqual({ deploy: true, push: true, secrets: true });
-    expect(permissionsOf(permissionConfig({ deploy: false, push: true, secrets: false }))).toEqual({ deploy: false, push: true, secrets: false });
-    expect(permissionConfig({ deploy: true, push: false, secrets: true })).toEqual({ rules_version: 2, needs_approval: ["production_deploy", "live_secrets"] });
+    expect(permissionsOf({ needs_approval: ["push_to_main", "production_deploy"] })).toEqual({ deploy: true, push: true, secrets: true, external: true });
+    // Saved before external calls existed (rules_version 2): that rule is on until saved again.
+    expect(permissionsOf({ rules_version: 2, needs_approval: ["push_to_main"] })).toEqual({ deploy: false, push: true, secrets: false, external: true });
+    expect(permissionsOf(permissionConfig({ deploy: false, push: true, secrets: false, external: false }))).toEqual({ deploy: false, push: true, secrets: false, external: false });
+    expect(permissionConfig({ deploy: true, push: false, secrets: true, external: true })).toEqual({ rules_version: 3, needs_approval: ["production_deploy", "live_secrets", "external_calls"] });
   });
 
   it("with the Live deploy rule off, a Builder goes live without asking", () => {
