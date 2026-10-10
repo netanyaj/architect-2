@@ -46,7 +46,8 @@ describe("agentGraph: any plan", () => {
     const g = agentGraph({ projectName: "Lead scorer", prompt: null, parts, uploads: ["pricing.pdf", "icp.md"] });
     expect(g.agents[0].tools).toEqual(["Gmail"]);
     expect(g.agents[1].tools).toEqual([]);
-    expect(g.agents[0].knowledge).toEqual(["Your files · 2 docs"]);
+    // A PDF is a knowledge base; other files aren't.
+    expect(g.agents[0].knowledge).toEqual(["Knowledge base · pricing.pdf"]);
     expect(g.toolProviders).toEqual({ Gmail: "gmail" });
   });
 

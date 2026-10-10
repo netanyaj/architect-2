@@ -60,8 +60,8 @@ export function HomeComposer({
     setError(undefined);
     const next = [...files];
     for (const f of Array.from(list)) {
-      if (!UPLOAD_LIMITS.types.includes(f.type)) {
-        setError(`${f.name} isn't a PDF or an image (PNG, JPG, WebP).`);
+      if (!UPLOAD_LIMITS.types.includes(f.type) && !/\.csv$/i.test(f.name)) {
+        setError(`${f.name} isn't a PDF, a CSV or an image (PNG, JPG, WebP).`);
         continue;
       }
       if (f.size > UPLOAD_LIMITS.maxBytes) {
@@ -189,7 +189,7 @@ export function HomeComposer({
           type="file"
           multiple
           accept={UPLOAD_LIMITS.accept}
-          aria-label="Add files: PDFs or images"
+          aria-label="Add files: PDFs, CSVs or images"
           className="sr-only"
           tabIndex={-1}
           onChange={(e) => {

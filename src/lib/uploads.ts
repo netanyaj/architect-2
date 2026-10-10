@@ -1,9 +1,10 @@
-/** What can be attached to a request (Home's "Add files"): PDFs and images, a few at a time. */
+/** What can be attached to a request (Home's "Add files"): PDFs, CSVs and images, a few at a time. */
 export const UPLOAD_LIMITS = {
   maxFiles: 5,
   maxBytes: 10 * 1024 * 1024,
-  types: ["application/pdf", "image/png", "image/jpeg", "image/webp"],
-  accept: ".pdf,.png,.jpg,.jpeg,.webp",
+  // Browsers label CSVs "text/csv" or, on Windows, "application/vnd.ms-excel".
+  types: ["application/pdf", "text/csv", "application/vnd.ms-excel", "image/png", "image/jpeg", "image/webp"],
+  accept: ".pdf,.csv,.png,.jpg,.jpeg,.webp",
 };
 
 /** 1536 → "1.5 KB" */

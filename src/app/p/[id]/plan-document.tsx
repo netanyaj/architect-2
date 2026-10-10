@@ -1,5 +1,6 @@
 "use client";
 
+import { FILE_QUOTE } from "@/lib/file-parts";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition, type FormEvent } from "react";
 import { Button, TextLink } from "@/components/ax/button";
@@ -237,7 +238,7 @@ function ItemRow({ item, editReason, fromRepo = false, projectId, comments }: { 
           {item.statusDetail && <span className="text-small font-semibold text-ink-2">{item.statusDetail}</span>}
           {item.sourceQuote && (
             <span className="text-small text-ink-3">
-              {fromRepo ? "From the repo" : "From your words"}: “{item.sourceQuote}”
+              {item.sourceQuote.startsWith(FILE_QUOTE) ? `From your file: ${item.sourceQuote.slice(FILE_QUOTE.length)}` : <>{fromRepo ? "From the repo" : "From your words"}: “{item.sourceQuote}”</>}
             </span>
           )}
           {item.dropReason && <span className="text-small text-ink-2">Left out: {item.dropReason}</span>}

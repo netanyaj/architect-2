@@ -1,3 +1,4 @@
+import { attachedFileKind, fileParts, type AttachedFile } from "@/lib/file-parts";
 import "server-only";
 
 import type { Item as ItemT } from "@/lib/blueprint";
@@ -158,6 +159,9 @@ export async function writePlan(
       },
     );
     const plan = result.blueprint;
+    // A PDF the plan doesn't use becomes a knowledge base, a CSV a data analyst (simulated, as today's Architect).
+    const files = attachments.map((a) => ({ name: a.name, kind: attachedFileKind(a.name) })).filter((f): f is AttachedFile => f.kind !== null);
+    plan.items.push(...fileParts(files, plan.items));
 
     // Reconcile with the final plan: same keys in the same order (streamed parts are almost always identical).
     for (const [i, item] of plan.items.entries()) await saveItem(item, i);

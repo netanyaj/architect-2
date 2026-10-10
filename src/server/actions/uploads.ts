@@ -43,9 +43,11 @@ export async function finishUploads(input: { projectId: string; uploads: { name:
     const { data: blob, error } = await admin.storage.from("uploads").download(u.path);
     if (error || !blob) continue;
     const bytes = new Uint8Array(await blob.arrayBuffer());
-    const mime = blob.type || (u.path.endsWith(".pdf") ? "application/pdf" : "application/octet-stream");
+    const csv = /\.csv$/i.test(u.path);
+    const mime = csv ? "text/csv" : blob.type || (u.path.endsWith(".pdf") ? "application/pdf" : "application/octet-stream");
     const size = bytes.byteLength; // before reading: the PDF reader takes over the buffer it's given
-    const text = mime === "application/pdf" ? await pdfText(bytes.slice()) : null;
+    // A CSV's first 40,000 characters go to the planner as text (its header and a sample of rows).
+    const text = mime === "application/pdf" ? await pdfText(bytes.slice()) : csv ? new TextDecoder().decode(bytes.slice(0, 40_000)) || null : null;
     if (mime === "application/pdf" && !text) unreadable.push(u.name);
     await admin.from("files").insert({
       project_id: project.id,

@@ -212,7 +212,8 @@ export function agentGraph(input: { projectName: string; prompt: string | null; 
         instructions: defaultInstructions(a),
         output: `Plain text that passes this check: ${lowerFirst(a.provedWhen)}`,
         tools: toolsFor.get(a.key) ?? [],
-        knowledge: i === 0 && input.uploads.length ? [`Your files · ${input.uploads.length} ${input.uploads.length === 1 ? "doc" : "docs"}`] : [],
+        // A PDF is a knowledge base the first agent searches; a CSV belongs to its data analyst (its own agent part).
+        knowledge: i === 0 ? input.uploads.filter((u) => /\.pdf$/i.test(u)).map((u) => `Knowledge base · ${u}`) : [],
         origin: "new",
         handoff: next ? clip(`Hands over ${lowerFirst(a.title)}`) : delivery.edge,
         sample:

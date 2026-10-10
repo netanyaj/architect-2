@@ -251,4 +251,23 @@ test.describe("M5 follow-up", () => {
     const { data: runs } = await db.from("runs").select("id").eq("project_id", id);
     expect(runs).toEqual([]);
   });
+
+  test("Files: a PDF becomes a knowledge base and a CSV a data analyst in the plan (simulated)", async ({ page }) => {
+    await start(page);
+    await page.goto("/home");
+    await page.getByLabel("Add files: PDFs, CSVs or images").setInputFiles(["test/fixtures/files/q3-pricing-sheet.pdf", "test/fixtures/files/renewals-2026.csv"]);
+    await expect(page.getByText("q3-pricing-sheet.pdf")).toBeVisible();
+    await page.getByLabel("Describe your app").fill("Every Monday, post to #ops which vendors renew this month, with their owner and cost.");
+    await page.getByRole("button", { name: /^Write the plan/ }).click();
+    await page.waitForURL(/\/p\/[0-9a-f-]{36}/, { timeout: 90_000 });
+    await expect(page.getByRole("button", { name: /^Build · ~\d+ credits$/ })).toBeVisible({ timeout: 120_000 });
+    const id = page.url().split("/p/")[1].split("?")[0];
+    const { data: bp } = await adminDb().from("blueprints").select("id").eq("project_id", id).single();
+    const { data: items } = await adminDb().from("items").select("key, title, grp, source_quote").eq("blueprint_id", bp!.id);
+    // Either the plan used each file itself, or Architect added the part for it.
+    const uses = (name: string) => items!.some((i) => `${i.title} ${i.source_quote}`.toLowerCase().includes(name));
+    expect(uses("q3-pricing-sheet") || uses("pricing")).toBe(true);
+    expect(items!.some((i) => i.grp === "agents" && /renewals-2026|data analyst/i.test(i.title)) || uses("renewals-2026")).toBe(true);
+    if (items!.some((i) => i.key === "knowledge-q3-pricing-sheet")) await expect(page.getByText("From your file: q3-pricing-sheet.pdf")).toBeVisible();
+  });
 });

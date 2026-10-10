@@ -24,7 +24,7 @@ export async function prepareUploads(admin: AdminDb, workspaceId: string, projec
   const parsed = z.array(fileMeta).max(UPLOAD_LIMITS.maxFiles).safeParse(files);
   if (!parsed.success) return { error: `Attach up to ${UPLOAD_LIMITS.maxFiles} files.` } as const;
   for (const f of parsed.data) {
-    if (!UPLOAD_LIMITS.types.includes(f.type)) return { error: `${f.name} isn't a PDF or an image (PNG, JPG, WebP).` } as const;
+    if (!UPLOAD_LIMITS.types.includes(f.type) && !/\.csv$/i.test(f.name)) return { error: `${f.name} isn't a PDF, a CSV or an image (PNG, JPG, WebP).` } as const;
     if (f.size > UPLOAD_LIMITS.maxBytes) return { error: `${f.name} is over ${UPLOAD_LIMITS.maxBytes / 1024 / 1024} MB.` } as const;
   }
   const slots: UploadSlot[] = [];

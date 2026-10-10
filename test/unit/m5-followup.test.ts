@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiKeyEnvName, apiKeyProblem, apiKeyServiceId } from "@/lib/api-keys";
 import type { Role } from "@/lib/db";
 import { envKeys } from "@/lib/dev-view";
+import { attachedFileKind, fileParts } from "@/lib/file-parts";
+import { Item } from "@/lib/blueprint";
 import { analyzeRepo } from "@/lib/repo-analysis";
 import { whatsNotDone } from "@/lib/readiness";
 import { launchState } from "@/lib/launch";
@@ -370,5 +372,29 @@ describe("?sim=byoagent writes the coding agent's steps to the audit log (drift 
     expect(db.tables.audit_log.filter((a) => a.action === "coding_agent.refused")).toHaveLength(4);
     for (const a of db.tables.audit_log) a.created_at = new Date().toISOString();
     expect(await recordAgentSession({ projectId: P })).toEqual({ ok: true, written: 0 });
+  });
+});
+
+describe("files become parts: a PDF a knowledge base, a CSV a data analyst", () => {
+  it("adds them when the plan doesn't use the file, and the parts are valid plan items", () => {
+    expect(attachedFileKind("Agenda.PDF")).toBe("pdf");
+    expect(attachedFileKind("leads.csv")).toBe("csv");
+    expect(attachedFileKind("logo.png")).toBeNull();
+    const parts = fileParts(
+      [
+        { name: "agenda.pdf", kind: "pdf" },
+        { name: "leads.csv", kind: "csv" },
+      ],
+      [{ key: "brief-writer", title: "Brief writer", description: "Writes the brief", grp: "agents" }],
+    );
+    expect(parts.map((p) => [p.key, p.grp, p.title, p.source_quote])).toEqual([
+      ["knowledge-agenda", "data", "Knowledge base from agenda.pdf", "Attached: agenda.pdf"],
+      ["analyst-leads", "agents", "Data analyst for leads.csv", "Attached: leads.csv"],
+    ]);
+    for (const p of parts) expect(Item.safeParse(p).success).toBe(true);
+  });
+  it("leaves a file alone when the plan already uses it", () => {
+    expect(fileParts([{ name: "agenda.pdf", kind: "pdf" }], [{ key: "agenda", title: "Agenda summary", description: "Summarises agenda.pdf", grp: "agents" }])).toEqual([]);
+    expect(fileParts([{ name: "leads.csv", kind: "csv" }], [{ key: "x", title: "Lead questions", description: "Answers from leads.csv", grp: "agents" }])).toEqual([]);
   });
 });
