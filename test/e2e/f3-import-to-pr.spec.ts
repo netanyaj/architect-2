@@ -64,5 +64,10 @@ test.describe("M4 acceptance: F3 import → plan from repo → build → PR", ()
     const { data: works } = await db.from("items").select("key, status_detail").eq("project_id", id).like("status_detail", "Works today%");
     const inPr = new Set((prs![0].parts as { key: string }[]).map((p) => p.key));
     for (const w of works ?? []) expect(inPr.has(w.key)).toBe(false);
+
+    // The repo's .env.example names a webhook secret no connection provides: Launch holds Live until it's set.
+    await page.goto(`/p/${id}/launch`);
+    const keys = page.getByRole("listitem").filter({ hasText: "1 key isn't set for Live" });
+    await expect(keys).toContainText("ZENDESK_WEBHOOK_SECRET. Live can't run without it.");
   });
 });
