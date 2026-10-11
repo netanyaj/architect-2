@@ -86,12 +86,14 @@ test.describe("M5 follow-up", () => {
     await expect(page.getByRole("dialog", { name: "Brief writer" })).toContainText("Passed the edited check against the code already built");
   });
 
-  test("A-10: the stepper lists what's not done with a reason, and Launch shows it before any deploy; BL-13's checks are named", async ({ page }) => {
+  test("A-10: Launch says what's not done, with a reason, before any deploy; the Launch button carries the count; BL-13's checks are named", async ({ page }) => {
     await start(page);
     const db = adminDb();
     const { data: lead } = await db.from("projects").select("id").eq("workspace_id", workspace).eq("name", "Lead scorer").single();
     await page.goto(`/p/${lead!.id}`);
-    await page.getByRole("navigation", { name: "Project stage" }).getByRole("button", { name: "Not done · 3" }).click();
+    // The stepper holds no actions any more (M5.5 review); the Launch button opens Launch with the count.
+    await expect(page.getByRole("navigation", { name: "Project stage" }).getByRole("button", { name: /Not done/ })).toHaveCount(0);
+    await page.getByRole("link", { name: "Launch · 3 to fix" }).click();
     const list = page.getByRole("list", { name: "What's not done" });
     await expect(list.getByRole("listitem")).toHaveCount(3);
     await expect(list.getByRole("listitem").first()).toContainText("Not built yet: the build paused at the budget");

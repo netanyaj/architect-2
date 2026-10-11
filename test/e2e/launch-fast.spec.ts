@@ -30,7 +30,7 @@ test.describe("M3: Launch, fast path and options", () => {
     const id = await seedPlan(user, "Fast Prep");
     await page.goto(`/p/${id}?sim=fast`);
     await page.getByRole("button", { name: /^Build · ~\d+ credits$/ }).click();
-    await expect(page.getByRole("link", { name: "Launch", exact: true })).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByText(/^(Build finished|The change is built)\./).first()).toBeVisible({ timeout: 90_000 });
 
     // ?sim=deployfail: the health check fails; nothing was live before, so nothing broke.
     await page.goto(`/p/${id}/launch?sim=deployfail`);

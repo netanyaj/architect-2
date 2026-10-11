@@ -33,7 +33,7 @@ test.describe("Data and egress", () => {
     await db.from("approvals").insert({ workspace_id: workspace, project_id: id, kind: "connector", title: "Hubspot connector", status: "approved", payload: { provider: "hubspot" } });
     await page.goto(`/p/${id}?sim=fast`);
     await page.getByRole("button", { name: /^Build · ~\d+ credits$/ }).click();
-    await expect(page.getByRole("link", { name: "Launch", exact: true })).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByText(/^(Build finished|The change is built)\./).first()).toBeVisible({ timeout: 90_000 });
 
     await page.goto(`/p/${id}/launch`);
     const row = page.getByRole("listitem").filter({ hasText: "Contact details would go to api.hubapi.com, which isn't allowed" });

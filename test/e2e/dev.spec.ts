@@ -83,7 +83,7 @@ test.describe("M4: Developer view", () => {
     const id = await seedPlan(user, "Dev Prep");
     await page.goto(`/p/${id}?sim=fast`);
     await page.getByRole("button", { name: /^Build · ~\d+ credits$/ }).click();
-    await expect(page.getByRole("link", { name: "Launch", exact: true })).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByText(/^(Build finished|The change is built)\./).first()).toBeVisible({ timeout: 120_000 });
 
     await page.goto(`/p/${id}?dev=1`);
     await expect(page.getByRole("tab", { name: "Code" })).toHaveAttribute("aria-selected", "true");

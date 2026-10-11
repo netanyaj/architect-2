@@ -25,7 +25,7 @@ test.describe("M4: Changes as pull requests", () => {
 
     await page.goto(`/p/${id}?sim=fast`);
     await page.getByRole("button", { name: /^Build · ~\d+ credits$/ }).click();
-    await expect(page.getByRole("link", { name: "Launch", exact: true })).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByText(/^(Build finished|The change is built)\./).first()).toBeVisible({ timeout: 120_000 });
     const chat = page.getByRole("complementary", { name: "Chat" });
     const first = chat.getByRole("region", { name: "Pull request #12" });
     await expect(first).toContainText("PR #12 · Build:");

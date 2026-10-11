@@ -9,6 +9,8 @@ export type StageAction = {
   disabledReason?: string;
   /** The short line beside the button, e.g. "Answer 1 question to build · 1,240 credits available". */
   beside?: string;
+  /** Navigation, not an action: the button opens Launch (it's never disabled; M5.5 review). */
+  opensLaunch?: boolean;
 };
 
 export type WorkspaceState = { stage: Stage; progress?: string; paused: boolean; action: StageAction };
@@ -50,6 +52,8 @@ export function workspaceState(input: {
   runStatus?: string | null;
   creditsLeft: number;
   build?: BuildProgress;
+  /** Parts that need something before they work (what's not done, not counting parts set aside). */
+  toFix?: number;
 }): WorkspaceState {
   const { status, role, summary, plan, creditsLeft } = input;
   const viewerReason = buildBlockedReason(role);
@@ -91,45 +95,25 @@ export function workspaceState(input: {
     };
   }
 
+  // After Build, the stage action is navigation: it opens Launch, whose checklist is the release gate. It carries
+  // how many things are left to fix, and is never disabled (M5.5 review). Blockers are acted on in Parts.
+  const toFix = input.toFix ?? 0;
+  const openLaunch: StageAction = { label: toFix ? `Launch · ${toFix} to fix` : "Launch", opensLaunch: true };
+
   if ((status === "building" || status === "paused") && input.build) {
     const b = input.build;
     const working = `${b.works} of ${b.total} working`;
-    const launch = (reason: string, beside: string): StageAction => ({ label: "Launch", disabledReason: viewerReason ?? reason, beside: viewerReason ? "Viewers can't launch" : beside });
-    if (b.budgetPaused) {
-      return { stage: "build", progress: `paused at budget · ${working}`, paused: true, action: launch("The build is paused at its budget. Raise it, or set the waiting parts aside.", "Blocked: budget used") };
-    }
-    if (b.playing) {
-      return { stage: "build", progress: b.eta ? `${working} · ${b.eta}` : working, paused: false, action: launch("Launch opens when the build finishes.", `${b.works} of ${b.total} parts work`) };
-    }
-    if (b.blocked) {
-      return { stage: "build", progress: `${working} · ${b.blocked} blocked`, paused: true, action: launch(`Launch opens when no part is blocked. ${plural(b.blocked, "part")} needs a decision.`, `Blocked: ${plural(b.blocked, "part")}`) };
-    }
+    if (b.budgetPaused) return { stage: "build", progress: `paused at budget · ${working}`, paused: true, action: openLaunch };
+    if (b.playing) return { stage: "build", progress: b.eta ? `${working} · ${b.eta}` : working, paused: false, action: openLaunch };
+    if (b.blocked) return { stage: "build", progress: `${working} · ${b.blocked} blocked`, paused: true, action: openLaunch };
   }
 
   if (status === "building" || status === "paused") {
     const paused = status === "paused";
     const queued = input.runStatus === "queued";
-    return {
-      stage: "build",
-      progress: paused ? "paused at budget" : queued ? "build queued" : `${summary.works} of ${summary.total} working`,
-      paused,
-      action: {
-        label: "Launch",
-        disabledReason: viewerReason ?? (paused ? "The build is paused at its budget. Raise it or set parts aside first." : "Launch opens when every part works."),
-        beside: viewerReason ? "Viewers can't launch" : paused ? "Blocked: budget used" : queued ? "Build queued" : `${summary.works} of ${summary.total} parts work`,
-      },
-    };
+    return { stage: "build", progress: paused ? "paused at budget" : queued ? "build queued" : `${summary.works} of ${summary.total} working`, paused, action: openLaunch };
   }
 
-  // built or live: the stage action opens Launch, where sharing and going Live happen (screen 4).
-  return {
-    stage: "launch",
-    progress: status === "live" ? "Live" : `${summary.works} of ${summary.total} working`,
-    paused: false,
-    action: {
-      label: status === "live" ? "Open Launch" : "Launch",
-      disabledReason: viewerReason,
-      beside: viewerReason ? "Viewers can't launch" : summary.next.text,
-    },
-  };
+  // Built or live: the Launch stage, where sharing and going Live happen (screen 4).
+  return { stage: "launch", progress: status === "live" ? "Live" : `${summary.works} of ${summary.total} working`, paused: false, action: openLaunch };
 }

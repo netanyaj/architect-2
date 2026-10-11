@@ -11,7 +11,6 @@ import { NeedsYouCard } from "@/components/ax/needs-you-card";
 import { Pill, SimTag } from "@/components/ax/pill";
 import { PlanGroup, PlanPanel, PlanRow } from "@/components/ax/plan-panel";
 import { Segmented } from "@/components/ax/segmented";
-import { NotDoneButton } from "@/components/ax/not-done";
 import { Stepper } from "@/components/ax/stepper";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -300,7 +299,6 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   const params = useSearchParams();
   const openHelp = useUi((s) => s.openHelp);
   const sendToChat = useUi((s) => s.sendToChat);
-  const openPart = useUi((s) => s.openPart);
   const agentChanges = useUi((s) => s.agentChanges);
   const agentOpen = useUi((s) => s.agentKey !== null);
   // "Plan" is the tab's name; its old address (?view=files) still works.
@@ -421,6 +419,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
     writingNow,
     runStatus: project.runStatus,
     creditsLeft: project.creditsLeft,
+    toFix: whatsNotDone(items).filter((r) => r.reason !== "Set aside: not in this version").length,
     build: project.run
       ? { works: worksNow, total: counted.length, blocked: counted.filter((i) => i.status === "paused").length, eta: etaWords(live.etaSeconds), playing: live.playing, budgetPaused }
       : undefined,
@@ -436,7 +435,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   const agentsState = agentsWaiting ? { ...stageState, action: { ...stageState.action, disabledReason: "Save or discard your agent changes first." } } : stageState;
   // The organisation's monthly cap (C-7): at 100%, Build and the other paid actions stop until an admin raises it.
   const state =
-    !launch && project.policy.budget.level === "stopped" && !agentsState.action.disabledReason ? { ...agentsState, action: { ...agentsState.action, disabledReason: BUDGET_STOPPED } } : agentsState;
+    !launch && !agentsState.action.opensLaunch && project.policy.budget.level === "stopped" && !agentsState.action.disabledReason ? { ...agentsState, action: { ...agentsState.action, disabledReason: BUDGET_STOPPED } } : agentsState;
 
   const toggleDev = () => {
     const next = new URLSearchParams(params);
@@ -518,14 +517,16 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
             </span>
           </div>
         </div>
+        {/* The stepper: the stage, progress inside it, and navigation. Nothing to act on lives in it (M5.5 review). */}
         <Stepper
-          after={planStage ? undefined : <NotDoneButton rows={whatsNotDone(items, { budgetPaused: budgetPaused || project.run?.status === "paused_budget" })} onOpen={openPart} />}
           current={state.stage}
           progress={state.progress}
           paused={state.paused}
           onSelect={(stage) => {
-            if (stage === "launch" && (project.status === "built" || project.status === "live")) router.push(`/p/${project.id}/launch`);
-            else if (stage !== "launch" && onLaunch) router.push(`/p/${project.id}`);
+            if (stage === "launch") {
+              // No Launch before a build: until the plan is agreed, Launch isn't a place yet.
+              if (project.plan?.agreedAt) router.push(`/p/${project.id}/launch`);
+            } else router.push(`/p/${project.id}${stage === "plan" && !planStage ? "?view=plan" : ""}`);
           }}
         />
         <div className="flex items-center gap-2">
@@ -553,7 +554,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
                   : "secondary"
             }
             disabledReason={pending ? (launch ? "Sharing…" : "Starting the build…") : state.action.disabledReason}
-            href={!launch && state.stage === "launch" ? `/p/${project.id}/launch` : undefined}
+            href={!launch && state.action.opensLaunch ? `/p/${project.id}/launch` : undefined}
             onClick={() => {
               if (launch) {
                 setActionError(undefined);

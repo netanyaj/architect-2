@@ -31,10 +31,11 @@ test.describe("M3: the simulated build", () => {
       timeout: 60_000,
     });
     await expect(panel(page).getByRole("button", { name: "Connect Google account" })).toBeVisible();
-    await expect(page.getByTitle("Launch opens when the build finishes.")).toBeVisible();
+    // Launch is navigation even mid-build, with what's left to fix (M5.5 review); nothing is written beside it.
+    await expect(page.getByRole("link", { name: /^Launch · \d+ to fix$/ })).toBeVisible();
 
     // Settled: the Launch stage, and the database has the real outcome.
-    await expect(page.getByRole("link", { name: "Launch", exact: true })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText(/^(Build finished|The change is built)\./).first()).toBeVisible({ timeout: 60_000 });
     const db = adminDb();
     const { data: runs } = await db.from("runs").select("status, kind").eq("project_id", id);
     expect(runs).toEqual([{ status: "done", kind: "build" }]);
@@ -70,7 +71,7 @@ test.describe("M3: the simulated build", () => {
     const blocked = panel(page).getByRole("button", { name: /Talking points generator is blocked/ });
     await expect(blocked).toBeVisible({ timeout: 90_000 });
     await expect(page.getByRole("navigation", { name: "Project stage" })).toContainText("1 blocked");
-    await expect(page.getByRole("link", { name: "Launch", exact: true }).or(page.getByTitle(/no part is blocked/))).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText(/^(Build finished|The change is built)\./).first()).toBeVisible({ timeout: 60_000 });
     await blocked.click();
 
     const drawer = page.getByRole("dialog", { name: "Talking points generator is blocked" });
@@ -104,7 +105,7 @@ test.describe("M3: the simulated build", () => {
     const raise = banner.getByRole("button", { name: /^Raise budget to \d+ and continue$/ });
     await raise.click();
     await expect(banner).toHaveCount(0, { timeout: 20_000 });
-    await expect(page.getByRole("link", { name: "Launch", exact: true })).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByText(/^(Build finished|The change is built)\./).first()).toBeVisible({ timeout: 90_000 });
     const db = adminDb();
     const { data: runs } = await db.from("runs").select("status").eq("project_id", id).order("started_at");
     expect(runs!.map((r) => r.status)).toEqual(["paused_budget", "done"]);
@@ -141,9 +142,9 @@ test.describe("M3: the simulated build", () => {
     expect(changed![0].details).toMatchObject({ during_build: true });
 
     // The build finishes with that part working.
-    await expect(page.getByRole("link", { name: "Launch", exact: true })).toBeVisible({ timeout: 90_000 });
-    const { data: part } = await db.from("items").select("status").eq("project_id", id).eq("key", "talking-points-generator").single();
-    expect(part!.status).toBe("built");
+    await expect(page.getByText(/^(Build finished|The change is built)\./).first()).toBeVisible({ timeout: 90_000 });
+    // The chat says so as the replay ends; the server records it a moment later.
+    await expect.poll(async () => (await db.from("items").select("status").eq("project_id", id).eq("key", "talking-points-generator").single()).data?.status, { timeout: 30_000 }).toBe("built");
 
     // The dock: phone size, Point at something into chat, Test the app.
     const dock = page.getByRole("toolbar", { name: "Preview tools" });

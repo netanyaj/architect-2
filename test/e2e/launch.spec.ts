@@ -9,7 +9,7 @@ const stepper = (page: Page) => page.getByRole("navigation", { name: "Project st
 async function buildAndFinish(page: Page, id: string) {
   await page.goto(`/p/${id}?sim=fast`);
   await page.getByRole("button", { name: /^Build · ~\d+ credits$/ }).click();
-  await expect(page.getByRole("link", { name: "Launch", exact: true })).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByText(/^(Build finished|The change is built)\./).first()).toBeVisible({ timeout: 90_000 });
 }
 
 test.describe("M3: Launch", () => {
@@ -29,7 +29,7 @@ test.describe("M3: Launch", () => {
     await buildAndFinish(page, id);
 
     // Launch: Gmail still uses sample data, so the team version waits for it; the fix is the primary.
-    await page.getByRole("link", { name: "Launch", exact: true }).click();
+    await page.getByRole("link", { name: /^Launch/ }).click();
     await page.waitForURL(new RegExp(`/p/${id}/launch$`));
     await expect(page.getByRole("heading", { name: /^Launch Meeting Prep L/ })).toBeVisible();
     await expect(stepper(page)).toContainText("1 thing before sharing");
@@ -69,14 +69,15 @@ test.describe("M3: Launch", () => {
     const chat = page.getByRole("complementary", { name: "Chat" });
     await chat.getByRole("button", { name: "Apply" }).click();
     await expect(chat.getByText("Applied as plan v2. Building the change now.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Open Launch" })).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByText(/^The change is built\./).first()).toBeVisible({ timeout: 90_000 });
+    await expect.poll(async () => (await db.from("runs").select("status").eq("project_id", id).eq("kind", "change")).data?.[0]?.status, { timeout: 30_000 }).toBe("done");
     const { data: runs } = await db.from("runs").select("kind, status").eq("project_id", id).order("started_at");
     expect(runs).toEqual([
       { kind: "build", status: "done" },
       { kind: "change", status: "done" },
     ]);
 
-    await page.getByRole("link", { name: "Open Launch" }).click();
+    await page.getByRole("link", { name: /^Launch/ }).click();
     // Live is behind (review gap 8) until the change is shared and sent out.
     await expect(page.getByText("1 change not live yet · Update live")).toBeVisible();
     await page.getByRole("button", { name: "Share v2 with your team" }).click();

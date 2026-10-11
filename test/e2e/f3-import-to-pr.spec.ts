@@ -54,7 +54,7 @@ test.describe("M4 acceptance: F3 import → plan from repo → build → PR", ()
     await expect(pr).toContainText("PR #12 · Build:");
     await expect(pr).toContainText("→ main on netanyaj/ticket-triage");
     await expect(pr.getByText(/^Test: /).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: /Launch/ }).first()).toBeVisible({ timeout: 150_000 });
+    await expect(page.getByText(/^(Build finished|The change is built)\./).first()).toBeVisible({ timeout: 150_000 });
 
     const { data: prs } = await db.from("pull_requests").select("number, branch, parts").eq("project_id", id);
     expect(prs).toHaveLength(1);
