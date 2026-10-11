@@ -37,22 +37,13 @@ export function PreviewFrame({
   );
 }
 
-/** Architect's preview tools in one dark dock at the bottom of the frame. It never shrinks the app. */
+/** Architect's preview tools in one dark dock at the bottom of the frame: Point at something and the problems. The size and Light / Dark switches are in the project header (M5.8). */
 export function PreviewDock({
-  size,
-  onSizeChange,
-  scheme,
-  onSchemeChange,
   pointing,
   onPointToggle,
   problems,
   onOpenProblems,
 }: {
-  size: "desktop" | "phone";
-  onSizeChange: (size: "desktop" | "phone") => void;
-  /** The app preview's colour scheme (M5.8), whatever Architect's own theme is. */
-  scheme?: "light" | "dark";
-  onSchemeChange?: (scheme: "light" | "dark") => void;
   pointing: boolean;
   onPointToggle: () => void;
   problems: number;
@@ -65,24 +56,6 @@ export function PreviewDock({
       aria-label="Preview tools"
       className="absolute bottom-3.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-primary p-[5px] text-on-primary shadow-[0_10px_30px_rgba(0,0,0,.2)]"
     >
-      <button type="button" aria-label="Desktop size" aria-pressed={size === "desktop"} onClick={() => onSizeChange("desktop")} className={cn(btn, size === "desktop" && "bg-on-primary/20")}>
-        <Icon name="desktop" size="sm" />
-      </button>
-      <button type="button" aria-label="Phone size" aria-pressed={size === "phone"} onClick={() => onSizeChange("phone")} className={cn(btn, size === "phone" && "bg-on-primary/20")}>
-        <Icon name="phone" size="sm" />
-      </button>
-      {scheme && onSchemeChange && (
-        <>
-          <span className="h-5 w-px bg-on-primary/25" aria-hidden="true" />
-          <button type="button" aria-label="Light view of the app" title="Light view of the app" aria-pressed={scheme === "light"} onClick={() => onSchemeChange("light")} className={cn(btn, scheme === "light" && "bg-on-primary/20")}>
-            <Icon name="sun" size="sm" />
-          </button>
-          <button type="button" aria-label="Dark view of the app" title="Dark view of the app" aria-pressed={scheme === "dark"} onClick={() => onSchemeChange("dark")} className={cn(btn, scheme === "dark" && "bg-on-primary/20")}>
-            <Icon name="moon" size="sm" />
-          </button>
-        </>
-      )}
-      <span className="h-5 w-px bg-on-primary/25" aria-hidden="true" />
       <button type="button" aria-pressed={pointing} onClick={onPointToggle} className={cn(btn, pointing && "bg-on-primary/20")}>
         <Icon name="pointer" size="sm" />
         Point at something

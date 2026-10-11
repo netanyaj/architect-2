@@ -14,11 +14,22 @@ import { PlanGroup, PlanPanel, PlanRow } from "@/components/ax/plan-panel";
 import { Segmented } from "@/components/ax/segmented";
 import { Stepper } from "@/components/ax/stepper";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { initials } from "@/components/ax/account-menu";
 import { missingForLive } from "@/lib/keys";
 import { BUDGET_STOPPED } from "@/lib/policies";
 import { AUTO, AUTO_LABEL, AUTO_NOTE, MODEL_LABEL, type ModelPick } from "@/lib/models";
-import { canBuild, canManageMembers } from "@/lib/permissions";
+import { canBuild, canManageMembers, ROLE_INFO } from "@/lib/permissions";
 import { relativeTime } from "@/lib/project-status";
 import { etaWords, withLive, type LiveRun } from "@/lib/sim/replay";
 import { whatsNotDone } from "@/lib/readiness";
@@ -38,7 +49,7 @@ import { OrgBudgetBanner } from "@/components/ax/org-budget-banner";
 import { CodeView, DevActivity, downloadCode, PrStatus, TerminalView } from "./dev-view";
 import { HandoffBanner, TransferDialog } from "./handoff";
 import { SyncBanner } from "./pr-card";
-import { AppPreview, BudgetBanner, BuildActivity, BuildPanel, TestTheApp } from "./build-stage";
+import { AppPreview, BudgetBanner, BuildActivity, BuildPanel, PreviewControls, TestTheApp } from "./build-stage";
 import { ChatPane } from "./chat-pane";
 import { ChangesPanel, currentChange } from "./changes-panel";
 import { ActionNeeded } from "./key-action";
@@ -153,18 +164,71 @@ function Rail({ label, icon, onOpen }: { label: string; icon: "panelLeft" | "pan
   );
 }
 
+const RANK: Record<string, number> = { viewer: 0, builder: 1, admin: 2, owner: 3 };
+
+/**
+ * The project's ⋯ (M5.8): View as role, Download code, GitHub, Hand off to coding agent, Activity and Duplicate, then
+ * Developer view, ownership and settings, and Delete. Everything that used to sit in the header beside it is here.
+ */
 function MoreMenu({ project, items, canAct, dev, onToggleDev, onTransfer, onDelete }: { project: ProjectWorkspace; items: WorkspaceItem[]; canAct: boolean; dev: boolean; onToggleDev: () => void; onTransfer: () => void; onDelete: () => void }) {
   const router = useRouter();
+  const params = useSearchParams();
   const [, start] = useTransition();
   const item = "flex min-h-10 items-center gap-2.5 rounded-tile px-2.5";
+  const realRole = project.viewingAs?.real ?? project.role;
+  const viewAs = (role: "builder" | "viewer" | null) => {
+    const next = new URLSearchParams(params);
+    if (role) next.set("as", role);
+    else next.delete("as");
+    if (role === "viewer") next.delete("dev");
+    router.replace(`/p/${project.id}${next.size ? `?${next}` : ""}`, { scroll: false });
+  };
+  const roles = (["builder", "viewer"] as const).filter((r) => RANK[r] < RANK[realRole]);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger aria-label="More for this project" className="grid size-[38px] place-items-center rounded-full border border-line-ctl bg-surface hover:bg-selected">
         <Icon name="more" size="sm" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64 rounded-card border border-line bg-surface p-1.5 shadow-pop">
-        <DropdownMenuItem className={item} onSelect={onToggleDev}>
-          {dev ? "Leave Developer view" : "Developer view"}
+      <DropdownMenuContent align="end" collisionPadding={12} className="w-72 rounded-card border border-line bg-surface p-1.5 shadow-pop">
+        {project.viewingAs ? (
+          <DropdownMenuItem className={item} onSelect={() => viewAs(null)}>
+            <Icon name="person" size="sm" className="text-ink-2" />
+            Stop viewing as {project.viewingAs.role === "viewer" ? "Viewer" : "Builder"}
+          </DropdownMenuItem>
+        ) : (
+          roles.length > 0 && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className={item}>
+                <Icon name="person" size="sm" className="text-ink-2" />
+                View as role
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-56 rounded-card border border-line bg-surface p-1.5 shadow-pop">
+                {roles.map((r) => (
+                  <DropdownMenuItem key={r} className="flex min-h-10 flex-col items-start gap-0 rounded-tile px-2.5 py-1" onSelect={() => viewAs(r)}>
+                    <span className="font-semibold">{r === "viewer" ? "Viewer" : "Builder"}</span>
+                    <span className="text-small text-ink-2">{r === "viewer" ? "Sees and comments, can't change" : "Builds and changes, can't approve"}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )
+        )}
+        <DropdownMenuItem className={item} onSelect={() => downloadCode(project, items)}>
+          <Icon name="download" size="sm" className="text-ink-2" />
+          <span className="flex-1">{project.repo ? "Download code from GitHub" : "Download code"}</span>
+          {!project.repo && <SimTag title="Architect's code is simulated in this prototype; the .zip says so." />}
+        </DropdownMenuItem>
+        <DropdownMenuItem className={item} onSelect={() => (project.repo ? window.open(`https://github.com/${project.repo}`, "_blank", "noopener") : router.push("/settings#github"))}>
+          <Icon name="repo" size="sm" className="text-ink-2" />
+          <span className="truncate">{project.repo ? `GitHub · ${project.repo}` : "GitHub settings"}</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem className={item} disabled={!canAct} title={canAct ? undefined : "Viewers can't hand a project to a coding agent."} onSelect={() => router.push(`/p/${project.id}/settings#coding-agents`)}>
+          <Icon name="code" size="sm" className="text-ink-2" />
+          Hand off to coding agent
+        </DropdownMenuItem>
+        <DropdownMenuItem className={item} onSelect={() => (dev ? undefined : onToggleDev())} title="The checker, Architect, coding agents and GitHub, in Developer view">
+          <Icon name="lines" size="sm" className="text-ink-2" />
+          Activity
         </DropdownMenuItem>
         <DropdownMenuItem
           className={item}
@@ -177,16 +241,15 @@ function MoreMenu({ project, items, canAct, dev, onToggleDev, onTransfer, onDele
             })
           }
         >
+          <Icon name="copy" size="sm" className="text-ink-2" />
           Duplicate
         </DropdownMenuItem>
-        <DropdownMenuItem className={item} onSelect={() => downloadCode(project, items)}>
-          <span className="flex-1">{project.repo ? "Download code from GitHub" : "Download code"}</span>
-          {!project.repo && <SimTag title="Architect's code is simulated in this prototype; the .zip says so." />}
-        </DropdownMenuItem>
-        <DropdownMenuItem className={item} onSelect={() => (project.repo ? window.open(`https://github.com/${project.repo}`, "_blank", "noopener") : router.push("/settings#github"))}>
-          {project.repo ? `GitHub · ${project.repo}` : "GitHub settings"}
-        </DropdownMenuItem>
         <DropdownMenuSeparator />
+        {canAct && (
+          <DropdownMenuItem className={item} onSelect={onToggleDev}>
+            {dev ? "Leave Developer view" : "Developer view"}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem
           className={item}
           disabled={!project.handoff.canTransfer}
@@ -270,8 +333,11 @@ function DeleteProjectDialog({ project, open, onOpenChange }: { project: Project
   );
 }
 
-/** Share: copy a version's address, or open Launch to share with the team and go live. */
-function ShareMenu({ project }: { project: ProjectWorkspace }) {
+/**
+ * People (M5.8, in place of the Share button): who's in the workspace, as initials; the menu shares the project
+ * (copy a version's address, share with the team or go live on Launch) and invites people.
+ */
+function PeopleMenu({ project }: { project: ProjectWorkspace }) {
   const router = useRouter();
   const [copied, setCopied] = useState<string | null>(null);
   const slug = project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "app";
@@ -282,16 +348,55 @@ function ShareMenu({ project }: { project: ProjectWorkspace }) {
     setCopied(label);
     setTimeout(() => setCopied(null), 1500);
   };
-  if (project.status === "draft") return <Button disabledReason="Build the plan first. Then you can share a test version.">Share</Button>;
+  const shown = project.people.slice(0, 3);
+  const more = project.people.length - shown.length;
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="inline-flex min-h-[38px] items-center rounded-full border border-line-ctl bg-surface px-4 font-[550] hover:bg-selected">{copied ? "Copied" : "Share"}</DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-72 rounded-card border border-line bg-surface p-1.5 shadow-pop">
-        <DropdownMenuItem className={item} onSelect={() => copy("test", `${slug}--test.architect.space`)}>
-          <Icon name="copy" size="sm" />
-          <span className="flex-1">Copy the test version link</span>
-          <SimTag />
+      <DropdownMenuTrigger
+        aria-label={`People and sharing: ${project.people.length} ${project.people.length === 1 ? "person" : "people"} in this workspace`}
+        title="People and sharing"
+        className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-line-ctl bg-surface py-1 pr-3 pl-1.5 font-[550] hover:bg-selected"
+      >
+        <span className="flex -space-x-1.5" aria-hidden="true">
+          {shown.map((p) => (
+            <span key={`${p.name}-${p.role}`} className="grid size-[26px] place-items-center rounded-full border-2 border-surface bg-selected text-[11px] font-bold">
+              {initials(p.name)}
+            </span>
+          ))}
+        </span>
+        {copied ? "Copied" : more > 0 ? `+${more}` : "Share"}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" collisionPadding={12} className="w-72 rounded-card border border-line bg-surface p-1.5 shadow-pop">
+        <DropdownMenuLabel className="px-2.5 py-1 text-small font-[650] text-ink-3">People in this workspace</DropdownMenuLabel>
+        {project.people.slice(0, 6).map((p) => (
+          <div key={`${p.name}-${p.role}`} className="flex min-h-9 items-center gap-2.5 px-2.5">
+            <span className="grid size-6 place-items-center rounded-full bg-selected text-[11px] font-bold" aria-hidden="true">
+              {initials(p.name)}
+            </span>
+            <span className="min-w-0 flex-1 truncate">
+              {p.name}
+              {p.you ? " (you)" : ""}
+            </span>
+            <span className="text-small text-ink-2">{ROLE_INFO[p.role].label}</span>
+          </div>
+        ))}
+        <DropdownMenuItem className={item} onSelect={() => router.push("/settings#people")}>
+          <Icon name="invite" size="sm" className="text-ink-2" />
+          Invite people
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {project.status === "draft" ? (
+          <DropdownMenuItem className={item} disabled title="Build the plan first. Then you can share a test version.">
+            <Icon name="copy" size="sm" className="text-ink-3" />
+            <span className="flex-1">Copy the test version link</span>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem className={item} onSelect={() => copy("test", `${slug}--test.architect.space`)}>
+            <Icon name="copy" size="sm" />
+            <span className="flex-1">Copy the test version link</span>
+            <SimTag />
+          </DropdownMenuItem>
+        )}
         {project.status === "live" && (
           <DropdownMenuItem className={item} onSelect={() => copy("live", `${slug}.architect.app`)}>
             <Icon name="copy" size="sm" />
@@ -299,7 +404,6 @@ function ShareMenu({ project }: { project: ProjectWorkspace }) {
             <SimTag />
           </DropdownMenuItem>
         )}
-        <DropdownMenuSeparator />
         <DropdownMenuItem className={item} disabled={!built} title={built ? undefined : "Launch opens when the build finishes."} onSelect={() => router.push(`/p/${project.id}/launch`)}>
           Share with your team or go live…
         </DropdownMenuItem>
@@ -454,6 +558,26 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   const state =
     !launch && !agentsState.action.opensLaunch && project.policy.budget.level === "stopped" && !agentsState.action.disabledReason ? { ...agentsState, action: { ...agentsState.action, disabledReason: BUDGET_STOPPED } } : agentsState;
 
+  // The stage tabs, now in the header's middle zone (M5.8).
+  const tabs: { value: View; label: string }[] = !planStage || dev || (project.plan && !writing && !failed) ? [
+                  // Before Build, Developer view shows the plan beside the code (an imported repo's files are real already).
+                  ...(planStage && dev
+                    ? [{ value: "files" as const, label: "Plan" }]
+                    : planStage
+                    ? [
+                        { value: "app" as const, label: "App" },
+                        { value: "files" as const, label: "Plan" },
+                        { value: "agents" as const, label: "Agents" },
+                      ]
+                    : [
+                        { value: "app" as const, label: "App" },
+                        { value: "files" as const, label: "Plan" },
+                        { value: "agents" as const, label: "Agents" },
+                        { value: "data" as const, label: "Data" },
+                      ]),
+                  ...(dev ? [{ value: "code" as const, label: "Code" }, ...(canAct ? [{ value: "terminal" as const, label: "Terminal" }] : [])] : []),
+                ] : [];
+
   const toggleDev = () => {
     const next = new URLSearchParams(params);
     if (dev) {
@@ -518,53 +642,82 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
 
   return (
     <div className="flex h-dvh flex-col bg-canvas px-2.5 pb-2.5 max-lg:h-auto max-lg:min-h-dvh">
-      <header className="flex min-h-[66px] flex-wrap items-center gap-3 px-1 py-2">
-        <Link href="/projects" aria-label="Back to projects" className="grid size-[38px] place-items-center rounded-full hover:bg-selected">
-          <Icon name="chevronLeft" size="sm" />
-        </Link>
-        <div className="flex min-w-0 items-center gap-2.5">
+      {/* View as role (M5.8): the page shows the project as that role sees it; the server still checks the real role. */}
+      {project.viewingAs && (
+        <div role="status" className="mt-2 flex items-center justify-center gap-2 rounded-card bg-selected px-4 py-2 text-small">
+          <Icon name="person" size="sm" />
+          <span>
+            Viewing as <b>{project.viewingAs.role === "viewer" ? "Viewer" : "Builder"}</b>
+          </span>
+          ·
+          <TextLink
+            className="text-small"
+            onClick={() => {
+              const next = new URLSearchParams(params);
+              next.delete("as");
+              router.replace(`/p/${project.id}${next.size ? `?${next}` : ""}`, { scroll: false });
+            }}
+          >
+            Stop
+          </TextLink>
+        </div>
+      )}
+      {/* Three zones (M5.8): back, name and stepper · the tabs and the preview's size · Changes, people, ⋯ and Launch. */}
+      {/* One row on wide screens; below 1600px the name and stepper take the first row, the rest the second. */}
+      <header className="flex min-h-[66px] flex-wrap items-center gap-x-3 gap-y-2 px-1 py-2 min-[1600px]:grid min-[1600px]:grid-cols-[auto_minmax(0,1fr)_auto]">
+        <div className="flex min-w-0 flex-wrap items-center gap-2.5 max-[1599px]:basis-full">
+          <Link href="/projects" aria-label="Back to projects" className="grid size-[38px] flex-none place-items-center rounded-full hover:bg-selected">
+            <Icon name="chevronLeft" size="sm" />
+          </Link>
           <IconTile icon={project.icon} dark />
           <div className="flex min-w-0 flex-col leading-tight">
-            <h1 className="flex items-center gap-2 truncate text-sub font-semibold">
-              {project.name}
-              {dev && <span className="rounded-full bg-selected px-2 py-0.5 text-small font-semibold text-ink-2">Developer view</span>}
+            <h1 className="flex min-w-0 items-center gap-2 text-sub font-semibold">
+              <span className="truncate">{project.name}</span>
+              {dev && <span className="flex-none rounded-full bg-selected px-2 py-0.5 text-small font-semibold text-ink-2">Developer view</span>}
             </h1>
             <span className="truncate text-small text-ink-2">
               Edited by {project.ownerName} · {relativeTime(project.updatedAt)}
             </span>
           </div>
+          {/* The stepper: the stage, progress inside it, and navigation. Nothing to act on lives in it (M5.5 review). */}
+          <Stepper
+            className="ml-2 max-sm:ml-0"
+            current={state.stage}
+            progress={state.progress}
+            paused={state.paused}
+            onSelect={(stage) => {
+              if (stage === "launch") {
+                // No Launch before a build: until the plan is agreed, Launch isn't a place yet.
+                if (project.plan?.agreedAt) router.push(`/p/${project.id}/launch`);
+              } else router.push(`/p/${project.id}${stage === "plan" && !planStage ? "?view=plan" : ""}`);
+            }}
+          />
         </div>
-        {/* The stepper: the stage, progress inside it, and navigation. Nothing to act on lives in it (M5.5 review). */}
-        <Stepper
-          current={state.stage}
-          progress={state.progress}
-          paused={state.paused}
-          onSelect={(stage) => {
-            if (stage === "launch") {
-              // No Launch before a build: until the plan is agreed, Launch isn't a place yet.
-              if (project.plan?.agreedAt) router.push(`/p/${project.id}/launch`);
-            } else router.push(`/p/${project.id}${stage === "plan" && !planStage ? "?view=plan" : ""}`);
-          }}
-        />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {!launch && tabs.length > 0 && <Segmented label="Stage view" value={view} onChange={setView} options={tabs} />}
+          {!launch && view === "app" && <PreviewControls projectId={project.id} />}
+        </div>
+        <div className="flex items-center justify-end gap-2 max-[1599px]:ml-auto">
           {/* Developer view is a mode that stays on, so it's a switch (M5.5 review). Builders and up; Viewers don't see it. */}
           {canAct && (
             <button
               type="button"
               role="switch"
               aria-checked={dev}
+              aria-label="Developer view"
               onClick={toggleDev}
               title="The code, files and terminal for this project"
               className="inline-flex min-h-8 items-center gap-2 rounded-full px-2 text-small font-[600] text-ink hover:bg-selected max-sm:hidden"
             >
-              Developer view
+              <span className="max-2xl:sr-only">Developer view</span>
+              <Icon name="code" size="sm" className="2xl:hidden" />
               <span aria-hidden="true" className={cn("relative h-[18px] w-[30px] flex-none rounded-full", dev ? "bg-ink" : "bg-line-ctl")}>
                 <span className={cn("absolute top-[2px] size-[14px] rounded-full bg-surface transition-[left]", dev ? "left-[14px]" : "left-[2px]")} />
               </span>
             </button>
           )}
           {project.repo && <ChangesButton project={project} />}
-          <ShareMenu project={project} />
+          <PeopleMenu project={project} />
           <MoreMenu project={project} items={items} canAct={canAct} dev={dev} onToggleDev={toggleDev} onTransfer={() => setTransferOpen(true)} onDelete={() => setDeleteOpen(true)} />
           {state.action.beside && <span className="max-w-[190px] text-right text-small leading-tight text-ink-2 max-md:hidden">{state.action.beside}</span>}
           <Button
@@ -626,31 +779,9 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
             </div>
           ) : (
             <>
-          {(!planStage || dev || (project.plan && !writing && !failed)) && (
+          {/* The stage's own tools (the tabs are in the header): only when there's something to show. */}
+          {(dev || (planStage && (view === "app" || view === "agents") && project.plan && !writing && !failed) || (!planStage && (view === "app" || view === "agents"))) && (
             <div className="flex flex-wrap items-center gap-2.5 px-3 py-2.5">
-              <Segmented
-                label="Stage view"
-                value={view}
-                onChange={setView}
-                options={[
-                  // Before Build, Developer view shows the plan beside the code (an imported repo's files are real already).
-                  ...(planStage && dev
-                    ? [{ value: "files" as const, label: "Plan" }]
-                    : planStage
-                    ? [
-                        { value: "app" as const, label: "App" },
-                        { value: "files" as const, label: "Plan" },
-                        { value: "agents" as const, label: "Agents" },
-                      ]
-                    : [
-                        { value: "app" as const, label: "App" },
-                        { value: "files" as const, label: "Plan" },
-                        { value: "agents" as const, label: "Agents" },
-                        { value: "data" as const, label: "Data" },
-                      ]),
-                  ...(dev ? [{ value: "code" as const, label: "Code" }, ...(canAct ? [{ value: "terminal" as const, label: "Terminal" }] : [])] : []),
-                ]}
-              />
               {dev && (
                 <span className="ml-auto">
                   <PrStatus project={project} items={items} />

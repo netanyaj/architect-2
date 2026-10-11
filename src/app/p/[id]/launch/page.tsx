@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { HelpHost } from "@/components/ax/help-host";
 import { HelpLauncher } from "@/components/ax/help-launcher";
 import { ToastHost } from "@/components/ax/toast";
-import { getProjectWorkspace } from "@/server/project";
+import { getProjectWorkspace, viewingAs } from "@/server/project";
 import { getHelpContext, getNavData } from "@/server/queries";
 import { getAppContext } from "@/server/workspace";
 import { SwitchWorkspaceCard } from "../switch-workspace-card";
@@ -12,8 +12,9 @@ import { Workspace } from "../workspace";
 export const metadata: Metadata = { title: "Launch · Architect" };
 
 /** Launch (screen 4): the workspace with the Launch stage in place of the app. */
-export default async function LaunchPage({ params }: PageProps<"/p/[id]/launch">) {
+export default async function LaunchPage({ params, searchParams }: PageProps<"/p/[id]/launch">) {
   const { id } = await params;
+  const { as } = await searchParams;
   const ctx = await getAppContext();
   const [nav, help] = await Promise.all([getNavData(ctx), getHelpContext(ctx)]);
   const project = await getProjectWorkspace(id, ctx, nav.credits.left, { catchUp: true, launch: true });
@@ -24,7 +25,7 @@ export default async function LaunchPage({ params }: PageProps<"/p/[id]/launch">
   if (!project.plan?.agreedAt) redirect(`/p/${project.id}`);
   return (
     <>
-      <Workspace project={project} page="launch" />
+      <Workspace project={viewingAs(project, as)} page="launch" />
       <HelpHost context={help} />
       <HelpLauncher projectId={project.id} />
       <ToastHost />

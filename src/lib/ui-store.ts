@@ -25,6 +25,9 @@ type UiState = {
   /** The Changes review panel (repo projects, M5.5 review). */
   changesOpen: boolean;
   openChanges: (open: boolean) => void;
+  /** The app preview's size (M5.8: its switch sits in the project header, beside the tabs). */
+  previewSize: "desktop" | "phone";
+  setPreviewSize: (size: "desktop" | "phone") => void;
   /** One toast at a time, bottom-centre (e.g. "Moved to Trash · Undo · View Trash"). Survives client navigation. */
   toast: Toast | null;
   showToast: (t: Omit<Toast, "n">) => void;
@@ -49,6 +52,8 @@ export const useUi = create<UiState>((set) => ({
   setAgentChanges: (n) => set({ agentChanges: n }),
   changesOpen: false,
   openChanges: (open) => set({ changesOpen: open }),
+  previewSize: "desktop",
+  setPreviewSize: (size) => set({ previewSize: size }),
   toast: null,
   showToast: (t) => set((s) => ({ toast: { ...t, n: (s.toast?.n ?? 0) + 1 } })),
   dismissToast: () => set({ toast: null }),

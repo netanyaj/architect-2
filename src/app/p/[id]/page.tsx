@@ -6,7 +6,7 @@ import { ToastHost } from "@/components/ax/toast";
 import { canBuild } from "@/lib/permissions";
 import { createServerDb } from "@/server/db";
 import { getHelpContext, getNavData } from "@/server/queries";
-import { getProjectWorkspace } from "@/server/project";
+import { getProjectWorkspace, viewingAs } from "@/server/project";
 import { getAppContext } from "@/server/workspace";
 import { LegacyProject } from "./legacy-project";
 import { SwitchWorkspaceCard } from "./switch-workspace-card";
@@ -23,8 +23,9 @@ export async function generateMetadata({ params }: PageProps<"/p/[id]">): Promis
   return { title: data ? `${data.name} · Architect` : "Project · Architect" };
 }
 
-export default async function ProjectPage({ params }: PageProps<"/p/[id]">) {
+export default async function ProjectPage({ params, searchParams }: PageProps<"/p/[id]">) {
   const { id } = await params;
+  const { as } = await searchParams;
   const ctx = await getAppContext();
   // An Architect 1.0 app (F9) has no plan: it keeps running as it is until someone moves it to 2.0.
   if (UUID.test(id)) {
@@ -41,7 +42,7 @@ export default async function ProjectPage({ params }: PageProps<"/p/[id]">) {
   if (project.otherWorkspace) return <SwitchWorkspaceCard name={project.name} workspace={project.otherWorkspace} />;
   return (
     <>
-      <Workspace project={project} />
+      <Workspace project={viewingAs(project, as)} />
       <HelpHost context={help} />
       <HelpLauncher projectId={project.id} />
       <ToastHost />

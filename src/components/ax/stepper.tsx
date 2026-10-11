@@ -21,6 +21,7 @@ export function Stepper<T extends string = Stage>({
   steps = STAGES as unknown as { id: T; label: string }[],
   label = "Project stage",
   after,
+  className = "mx-auto",
 }: {
   current: T;
   /** e.g. "7 of 12 working · about 6 min", "1 question left", "paused at budget" */
@@ -32,13 +33,15 @@ export function Stepper<T extends string = Stage>({
   label?: string;
   /** Shown at the end of the stepper: the project's "What's not done" (A-10). */
   after?: ReactNode;
+  /** Centred by default; the project header's left zone places it beside the name (M5.8). */
+  className?: string;
 }) {
   const stages = steps;
   const currentIndex = stages.findIndex((s) => s.id === current);
   return (
     <nav
       aria-label={label}
-      className="mx-auto flex items-center gap-1 rounded-full border border-line bg-surface p-1"
+      className={cn("flex items-center gap-1 rounded-full border border-line bg-surface p-1", className)}
     >
       {stages.map((s, i) => {
         const done = i < currentIndex;

@@ -245,11 +245,42 @@ function NoDarkTheme({ project }: { project: ProjectWorkspace }) {
   );
 }
 
+/**
+ * The preview's size and Light / Dark view (M5.8), in the project header's middle zone beside the tabs. The scheme
+ * is remembered per project; it colours the app's preview only, whatever Architect's theme is.
+ */
+export function PreviewControls({ projectId }: { projectId: string }) {
+  const { previewSize, setPreviewSize } = useUi();
+  const [scheme, setScheme] = usePreviewScheme(projectId);
+  const btn = "grid size-8 place-items-center rounded-full text-ink-2 hover:text-ink aria-pressed:bg-surface aria-pressed:text-ink aria-pressed:shadow-[0_1px_2px_rgba(0,0,0,.08)]";
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span role="group" aria-label="Preview size" className="inline-flex gap-0.5 rounded-full bg-selected p-[3px]">
+        <button type="button" aria-label="Desktop size" title="Desktop size" aria-pressed={previewSize === "desktop"} onClick={() => setPreviewSize("desktop")} className={btn}>
+          <Icon name="desktop" size="sm" />
+        </button>
+        <button type="button" aria-label="Phone size" title="Phone size" aria-pressed={previewSize === "phone"} onClick={() => setPreviewSize("phone")} className={btn}>
+          <Icon name="phone" size="sm" />
+        </button>
+      </span>
+      <span role="group" aria-label="Preview colours" className="inline-flex gap-0.5 rounded-full bg-selected p-[3px]">
+        <button type="button" aria-label="Light view of the app" title="Light view of the app" aria-pressed={scheme === "light"} onClick={() => setScheme("light")} className={btn}>
+          <Icon name="sun" size="sm" />
+        </button>
+        <button type="button" aria-label="Dark view of the app" title="Dark view of the app" aria-pressed={scheme === "dark"} onClick={() => setScheme("dark")} className={btn}>
+          <Icon name="moon" size="sm" />
+        </button>
+      </span>
+    </span>
+  );
+}
+
 /** The app in its Test version, with the dock: sizes, Point at something, N problems (BL-6). */
 export function AppPreview({ project, items }: { project: ProjectWorkspace; items: WorkspaceItem[] }) {
   const { partKey, openPart, sendToChat } = useUi();
+  // The size and the Light / Dark view are switched in the project header (M5.8), beside the tabs.
+  const size = useUi((s) => s.previewSize);
   const frame = useRef<HTMLIFrameElement>(null);
-  const [size, setSize] = useState<"desktop" | "phone">("desktop");
   const [pointing, setPointing] = useState(false);
   const [console_, setConsole] = useState(false);
   const preview = previewState(items, project.connected, { name: project.name });
@@ -268,7 +299,7 @@ export function AppPreview({ project, items }: { project: ProjectWorkspace; item
   // Look and feel (Plan › Design): the chosen theme, sent to the preview as CSS variables. The Light / Dark view
   // (M5.8) picks its light or dark variables; an app without a dark theme stays light, with a note saying so.
   const theme = themeOf(project.look);
-  const [scheme, setScheme] = usePreviewScheme(project.id);
+  const [scheme] = usePreviewScheme(project.id);
   const dark = hasDarkTheme(theme.id, items);
   const shown = scheme === "dark" && dark ? "dark" : "light";
   const vars = previewVars(theme.id, shown);
@@ -318,7 +349,7 @@ export function AppPreview({ project, items }: { project: ProjectWorkspace; item
             </div>
           )}
           {scheme === "dark" && !dark && <NoDarkTheme project={project} />}
-          <PreviewDock size={size} onSizeChange={setSize} scheme={scheme} onSchemeChange={setScheme} pointing={pointing} onPointToggle={() => setPointing((p) => !p)} problems={preview.problems.length} onOpenProblems={() => setConsole((c) => !c)} />
+          <PreviewDock pointing={pointing} onPointToggle={() => setPointing((p) => !p)} problems={preview.problems.length} onOpenProblems={() => setConsole((c) => !c)} />
         </>
       }
     >

@@ -130,6 +130,10 @@ export type ProjectWorkspace = {
   look: ThemeId;
   /** Hand-off (F8): who may hand the project over, to whom, and any offer or new ownership to show. */
   handoff: Handoff;
+  /** The workspace's active people, for the header's people button (M5.8): names and roles, you first. */
+  people: { name: string; role: Role; you: boolean }[];
+  /** View as role (M5.8): set when the page shows the project as a Builder or Viewer sees it. The server still checks the real role. */
+  viewingAs?: { role: "builder" | "viewer"; real: Role };
   /** Coding agent tokens (F4): active ones let ?sim=byoagent play. */
   tokens: { active: number; waiting: number };
   ownerName: string;
@@ -312,6 +316,17 @@ export function blockedModelsFor(policies: Policies): ModelOption[] {
 
 export async function modelOptionsFor(workspaceId: string, loaded?: Policies): Promise<ModelOption[]> {
   return (await modelSetupFor(workspaceId, loaded)).options;
+}
+
+/**
+ * View as role (M5.8): the project as a Builder or Viewer sees it, for someone whose real role is higher. Only what the
+ * page shows changes; every server action still checks the real role. Anything else (or a lower role) is ignored.
+ */
+export function viewingAs(project: ProjectWorkspace, as: unknown): ProjectWorkspace {
+  const rank: Record<Role, number> = { viewer: 0, builder: 1, admin: 2, owner: 3 };
+  if (as !== "builder" && as !== "viewer") return project;
+  if (rank[as] >= rank[project.role]) return project;
+  return { ...project, role: as, viewingAs: { role: as, real: project.role } };
 }
 
 /** One project for its workspace screen, read under RLS (so only members see it). Null when it doesn't exist. */
@@ -591,6 +606,10 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     otherWorkspace: p.workspace_id === ctx.workspace.id || !membership ? null : { id: membership.workspaceId, label: membership.label },
     creditsLeft,
     creditsTotal: ctx.workspace.creditsTotal,
+    people: (memberRows ?? [])
+      .filter((m) => m.status === "active")
+      .map((m) => ({ name: m.display_name ?? m.email ?? "Someone", role: m.role as Role, you: m.user_id === ctx.user.id }))
+      .sort((a, b) => Number(b.you) - Number(a.you) || a.name.localeCompare(b.name)),
     model: projectModel,
     modelPick: toModelPick(p.model),
     locked: ((p.launch_settings ?? {}) as LaunchSettings).locked ?? [],

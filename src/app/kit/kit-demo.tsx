@@ -37,7 +37,6 @@ export function KitDemo() {
   const [prompt, setPrompt] = useState("");
   const [drawer, setDrawer] = useState(false);
   const [toggle, setToggle] = useState(true);
-  const [size, setSize] = useState<"desktop" | "phone">("desktop");
   const [point, setPoint] = useState(false);
   const [help, setHelp] = useState(false);
   const [answer, setAnswer] = useState("acme");
@@ -171,7 +170,7 @@ export function KitDemo() {
 
         <Section title="Preview, versions, settings, table">
           <div className="flex h-[260px] flex-col">
-            <PreviewFrame url="meeting-prep--test.architect.space" badge={<span className="inline-flex h-6 items-center rounded-full bg-building-bg px-2.5 text-small font-[650] text-building">Test version</span>} dock={<PreviewDock size={size} onSizeChange={setSize} pointing={point} onPointToggle={() => setPoint(!point)} problems={2} onOpenProblems={() => {}} />}>
+            <PreviewFrame url="meeting-prep--test.architect.space" badge={<span className="inline-flex h-6 items-center rounded-full bg-building-bg px-2.5 text-small font-[650] text-building">Test version</span>} dock={<PreviewDock pointing={point} onPointToggle={() => setPoint(!point)} problems={2} onOpenProblems={() => {}} />}>
               <div className="p-6 text-[#1d2330]">The app preview goes here.</div>
             </PreviewFrame>
           </div>

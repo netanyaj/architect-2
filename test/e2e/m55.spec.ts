@@ -282,6 +282,8 @@ test.describe("M5.5", () => {
     await expect(themes.getByRole("radio", { name: /Soft Tray/ })).toHaveAttribute("aria-checked", "true");
     await themes.getByRole("radio", { name: /Graphite/ }).click();
     await expect(themes.getByRole("radio", { name: /Graphite/ })).toHaveAttribute("aria-checked", "true");
+    // Picking only selects (M5.8): Apply to plan is the one action.
+    await page.getByRole("button", { name: "Apply to plan" }).click();
     await expect.poll(async () => ((await db.from("projects").select("launch_settings").eq("id", mp!.id).single()).data!.launch_settings as { look?: string }).look).toBe("graphite");
     await page.getByRole("tablist", { name: "Stage view" }).getByRole("tab", { name: "App" }).click();
     const frame = page.frameLocator("iframe[title='Meeting Prep, test version']");
