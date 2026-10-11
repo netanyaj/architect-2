@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Button, TextLink } from "@/components/ax/button";
 import { ArchitectMessage, chatTime } from "@/components/ax/chat-message";
+import { Icon } from "@/components/ax/icon";
 import { NeedsYouCard } from "@/components/ax/needs-you-card";
 import { SimTag } from "@/components/ax/pill";
 import { PlanGroup, PlanRow } from "@/components/ax/plan-panel";
@@ -11,7 +12,7 @@ import { PreviewDock, PreviewFrame } from "@/components/ax/preview-dock";
 import { StageBanner } from "@/components/ax/stage-banner";
 import type { Status, StatusIcon } from "@/components/ax/status-mark";
 import { canBuild, canManageMembers } from "@/lib/permissions";
-import { providerName } from "@/lib/providers";
+import { isSignInService, providerName, WAITING_FOR_KEY } from "@/lib/providers";
 import { previewState } from "@/lib/sim/preview";
 import type { LiveRun } from "@/lib/sim/replay";
 import { usePreviewScheme } from "@/lib/preview-scheme";
@@ -21,6 +22,7 @@ import { proposeDarkTheme } from "@/server/actions/chat";
 import { raiseBudgetAndContinue, setWaitingAside, stopHere } from "@/server/actions/run";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 import { ConnectButton } from "./connect-button";
+import { KeyAction, partsNeedingKey } from "./key-action";
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const time = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
@@ -45,6 +47,9 @@ export function rowFor(i: WorkspaceItem): { status: Status; icon?: StatusIcon; d
       return { status: "todo", icon: "minus", struck: true };
     case "agreed":
       return { status: "todo", detail: i.statusDetail ?? (i.estimate ? `About ${Math.round(i.estimate)} credits` : undefined) };
+    case "needs_connection":
+      // Skipped from Action needed (M5.8): sample data until its key is added.
+      return { status: "todo", icon: "pause", detail: i.statusDetail === WAITING_FOR_KEY ? WAITING_FOR_KEY : "Using sample data until connected" };
     default:
       return { status: "todo" };
   }
@@ -71,14 +76,17 @@ export function BuildPanel({ project, items, budgetPaused }: { project: ProjectW
   const canAct = canBuild(project.role);
   // Parts connected in this tab leave Needs you at once, even if a slower page refresh lands later.
   const [connectedHere, setConnectedHere] = useState<Set<string>>(new Set());
-  const connect = items.filter((i) => i.status === "needs_connection" && !connectedHere.has(i.id));
+  // Sign-in services get Connect; key services get Add key · Skip, the same item as chat's Action needed (M5.8).
+  const connect = items.filter((i) => i.status === "needs_connection" && isSignInService(i.provider) && !connectedHere.has(i.id));
+  const keys = partsNeedingKey(items);
+  const skipped = items.filter((i) => i.status === "needs_connection" && i.statusDetail === WAITING_FOR_KEY);
   const blocked = items.filter((i) => i.status === "paused");
   const approval = items.filter((i) => i.status === "needs_approval");
   const doing = items.filter((i) => i.status === "building" || i.status === "failed");
   const works = items.filter((i) => i.status === "built" || i.status === "sample_data");
   const waiting = budgetPaused ? items.filter((i) => i.status === "agreed") : [];
-  const next = items.filter((i) => (!budgetPaused && i.status === "agreed") || ["proposed", "deferred", "dropped"].includes(i.status));
-  const needs = blocked.length + connect.length + approval.length;
+  const next = [...skipped, ...items.filter((i) => (!budgetPaused && i.status === "agreed") || ["proposed", "deferred", "dropped"].includes(i.status))];
+  const needs = blocked.length + connect.length + keys.length + approval.length;
   const row = (i: WorkspaceItem) => <PlanRow key={i.id} title={i.title} {...rowFor(i)} selected={partKey === i.key} onClick={() => openPart(i.key)} />;
 
   return (
@@ -111,6 +119,11 @@ export function BuildPanel({ project, items, budgetPaused }: { project: ProjectW
                 }
               >
                 {i.title} uses sample data until Architect can read yours. Everything else keeps building.
+              </NeedsYouCard>
+            )),
+            ...keys.map((i) => (
+              <NeedsYouCard key={i.id} status="attention" icon="lock" name={`Add the ${providerName(i.provider)} key`} action={<KeyAction item={i} project={project} primary={blocked.length === 0 && connect.length === 0 && !budgetPaused} />}>
+                {i.title} uses sample data until it has the key. Everything else keeps building.
               </NeedsYouCard>
             )),
             ...approval.map((i) => (
@@ -330,6 +343,47 @@ export function AppPreview({ project, items }: { project: ProjectWorkspace; item
   );
 }
 
+/** The build's steps by part, in the order each part started; steps without a part ("Setting up") come first. */
+function stepGroups(activity: LiveRun["activity"], items: WorkspaceItem[]) {
+  const groups = new Map<string, { key: string; title: string; lines: LiveRun["activity"] }>();
+  for (const a of activity) {
+    const key = a.itemKey ?? "_setup";
+    if (!groups.has(key)) groups.set(key, { key, title: a.itemKey ? (items.find((i) => i.key === a.itemKey)?.title ?? a.itemKey.replace(/-/g, " ")) : "Setting up", lines: [] });
+    groups.get(key)!.lines.push(a);
+  }
+  return [...groups.values()];
+}
+
+function StepGroup({ title, lines }: { title: string; lines: { id: number; at: string; verb: string; object: string }[] }) {
+  const [open, setOpen] = useState(false);
+  const last = lines[lines.length - 1];
+  return (
+    <li>
+      <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="flex min-h-7 w-full items-center gap-1.5 text-left hover:text-ink">
+        <Icon name={open ? "chevronDown" : "chevronRight"} size="sm" className="text-ink-3" />
+        <span className="min-w-0 flex-1 truncate">
+          <span className="font-semibold">{title}</span>
+          <span className="text-ink-2">
+            {" "}
+            · {last.verb} {last.object}
+          </span>
+        </span>
+        <span className="flex-none text-ink-3 tabular-nums">{lines.length}</span>
+      </button>
+      {open && (
+        <ol className="mb-1 ml-[22px] flex flex-col gap-0.5">
+          {lines.map((a) => (
+            <li key={a.id}>
+              <span className="text-ink-3">{a.at} · </span>
+              <span className="font-semibold">{a.verb}</span> <span className={/[/.]/.test(a.object) ? "font-mono" : undefined}>{a.object}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </li>
+  );
+}
+
 /** What Architect is doing, in chat: a short summary, then the steps behind it (screen 3). */
 export function BuildActivity({ project, items, live }: { project: ProjectWorkspace; items: WorkspaceItem[]; live: LiveRun }) {
   const [open, setOpen] = useState(false);
@@ -374,13 +428,11 @@ export function BuildActivity({ project, items, live }: { project: ProjectWorksp
           <TextLink className="self-start" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
             {open ? "Hide the steps" : `Show what I did (${plural(live.activity.length, "step")})`}
           </TextLink>
+          {/* Each part's progress lines fold into one line that expands (M5.8). */}
           {open && (
-            <ol className="flex flex-col gap-1 border-l-2 border-line pl-3 text-small">
-              {live.activity.map((a) => (
-                <li key={a.id}>
-                  <span className="text-ink-3">{run.startedAt ? time(new Date(new Date(run.startedAt).getTime() + a.atMs).toISOString()) : ""} · </span>
-                  <span className="font-semibold">{a.verb}</span> <span className={/[/.]/.test(a.object) ? "font-mono" : undefined}>{a.object}</span>
-                </li>
+            <ol aria-label="Steps by part" className="flex flex-col gap-0.5 border-l-2 border-line pl-3 text-small">
+              {stepGroups(live.activity, items).map((g) => (
+                <StepGroup key={g.key} title={g.title} lines={g.lines.map((a) => ({ id: a.id, at: run.startedAt ? time(new Date(new Date(run.startedAt).getTime() + a.atMs).toISOString()) : "", verb: a.verb, object: a.object }))} />
               ))}
             </ol>
           )}

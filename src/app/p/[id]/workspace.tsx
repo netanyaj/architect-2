@@ -41,6 +41,7 @@ import { SyncBanner } from "./pr-card";
 import { AppPreview, BudgetBanner, BuildActivity, BuildPanel, TestTheApp } from "./build-stage";
 import { ChatPane } from "./chat-pane";
 import { ChangesPanel, currentChange } from "./changes-panel";
+import { ActionNeeded } from "./key-action";
 import { LookAndFeel } from "./look-and-feel";
 import { PartDrawer } from "./part-drawer";
 import { LaunchView } from "./launch-view";
@@ -708,6 +709,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
               planStage ? null : (
                 <>
                   <BuildActivity project={project} items={items} live={live} />
+                  <ActionNeeded project={project} items={items} />
                   <AgentSessionLines project={project} state={agentSession} />
                 </>
               )

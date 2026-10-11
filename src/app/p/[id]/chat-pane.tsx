@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { Button, IconButton, TextLink } from "@/components/ax/button";
 import { ArchitectMessage, ChatCard, chatTime, YouMessage } from "@/components/ax/chat-message";
+import { Icon } from "@/components/ax/icon";
 import { AttachmentChip, Composer, QueueLine } from "@/components/ax/composer";
 import { SimTag } from "@/components/ax/pill";
 import { ModelNotAllowed, ModelPicker } from "@/components/ax/model-picker";
@@ -11,7 +13,7 @@ import { Option } from "@/components/ax/stage-banner";
 import type { ModelPick } from "@/lib/models";
 import { canBuild } from "@/lib/permissions";
 import { useUi } from "@/lib/ui-store";
-import { answerInstead, applyChange, discardChange, sendMessage, turnIntoChange } from "@/server/actions/chat";
+import { answerInstead, applyChange, discardChange, sendMessage, turnIntoChange, undoChange } from "@/server/actions/chat";
 import type { ChangeCardData, ProjectWorkspace } from "@/server/project";
 import { ChatAddMenu, useAttachments } from "./chat-add-menu";
 import { ChatMoreMenu } from "./chat-more-menu";
@@ -135,6 +137,17 @@ function ChangeCardView({ card, canChange, onEdit }: { card: ChangeCardData; can
           );
         })}
 
+      {/* Undo this change (M5.8): a new plan version with the change taken back. */}
+      {card.status === "applied" &&
+        (card.undoneIn ? (
+          <span className="text-small text-ink-2">Undone in plan v{card.undoneIn}.</span>
+        ) : (
+          canChange && (
+            <Button size="sm" variant="quiet" icon="undo" className="self-start" disabledReason={pending ? "Undoing…" : undefined} onClick={() => run(() => undoChange({ proposalId: card.id }))}>
+              {pending ? "Undoing…" : "Undo this change"}
+            </Button>
+          )
+        ))}
       {card.status === "proposed" && (
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <Button size="sm" disabledReason={applyReason} onClick={() => run(() => applyChange({ proposalId: card.id, decisions: choices }))}>
@@ -311,6 +324,14 @@ export function ChatPane({
     return [...project.messages.slice(0, idx)].reverse().find((m) => m.role === "user")?.content ?? "";
   };
 
+  // After a build has finished: the plan's open items as next steps (left out for now, then set aside).
+  const finished = project.run?.status === "done" && Boolean(project.plan?.agreedAt) && canChange && !body;
+  const nextSteps = finished
+    ? [
+        ...(project.plan?.notInThisVersion ?? []).map((n) => `Add ${n.title.replace(/^./, (c) => c.toLowerCase())}`),
+        ...project.items.filter((i) => i.status === "deferred").map((i) => `Build ${i.title.replace(/^./, (c) => c.toLowerCase())} now`),
+      ].slice(0, 3)
+    : [];
   // The intro is about the first plan: it carries that version's time.
   const introAt = [...project.versions].sort((a, b) => a.version - b.version)[0]?.createdAt ?? null;
   return (
@@ -400,6 +421,33 @@ export function ChatPane({
         </QueueLine>
       ))}
       <div className="px-4">
+        {/* After a build: three next steps from the plan's open items (M5.8). They fill the composer; nothing sends. */}
+        {nextSteps.length > 0 && !draft && queue.length === 0 && sending === null && (
+          <div role="group" aria-label="Suggested next steps" className="mb-2 flex flex-wrap gap-1.5">
+            {nextSteps.map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setDraft(n)}
+                className="min-h-8 max-w-full truncate rounded-full border border-line-ctl bg-surface px-3 text-left text-small font-[550] hover:bg-selected"
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        )}
+        {/* Under 10% of the month's credits (M5.8): one quiet line, never a block. */}
+        {project.creditsTotal > 0 && project.creditsLeft < project.creditsTotal * 0.1 && (
+          <p className="mb-1.5 flex items-center gap-1.5 text-small text-ink-2">
+            <Icon name="credits" size="sm" />
+            <span>
+              Low on credits ({project.creditsLeft.toLocaleString("en-US")} left) ·{" "}
+              <Link href="/settings#plan" className="font-semibold text-ink underline decoration-line-ctl underline-offset-[3px]">
+                View plans
+              </Link>
+            </span>
+          </p>
+        )}
         {!modelAllowed &&
           (canChange ? (
             <ModelNotAllowed className="mb-1.5" onSwitch={() => setPickerOpen(true)} />

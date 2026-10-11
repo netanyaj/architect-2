@@ -8,7 +8,7 @@ import { intentByRules, type Intent } from "@/lib/intent";
 import { DEFAULT_MODEL, type ModelChoice } from "@/lib/models";
 import { MODEL_NOT_ALLOWED } from "@/lib/policies";
 import { canBuild } from "@/lib/permissions";
-import { applyDiff, ChangeDraft, conflictsOf, isEmpty, normalizeChange, type Decision, type Diff, type VersionItem } from "@/lib/plan-diff";
+import { applyDiff, ChangeDraft, conflictsOf, isEmpty, normalizeChange, undoDiff, type Decision, type Diff, type VersionItem } from "@/lib/plan-diff";
 import { allowedModels, stepModel } from "../blueprint/write-plan";
 import { createAdminDb, type AdminDb } from "../db";
 import { estimate, totals as planTotals } from "../estimate";
@@ -384,6 +384,35 @@ export async function applyChange(input: { proposalId: string; decisions?: Recor
     return { ok: false, message: e instanceof Error ? e.message : "Decide what happens to each part first." };
   }
 
+  const saved = await saveNextVersion(admin, ctx, project, plan, current, next, built);
+  if (!saved) return { ok: false, message: "The new version couldn't be saved. Nothing changed. Try again." };
+  const { id: bpId, version } = saved;
+
+  await admin
+    .from("change_proposals")
+    .update({
+      status: "applied",
+      version_created: version,
+      decided_by: ctx.user.id,
+      decided_at: new Date().toISOString(),
+      conflict: proposal.conflict ? ({ ...(proposal.conflict as object), decisions: decisions.data } as unknown as Json) : null,
+    })
+    .eq("id", proposal.id);
+
+  const note = await buildNextVersion(admin, ctx, bpId, version, built, "Applied");
+  await admin.from("messages").insert({ project_id: project.id, role: "system", mode: "build", content: note });
+  revalidatePath(`/p/${project.id}`);
+  return { ok: true, version };
+}
+
+type ChatCtx = Awaited<ReturnType<typeof getAppContext>>;
+
+/**
+ * Saves the plan's next version (a change applied, or one taken back): its parts with their prices (new parts priced
+ * now, the rest keep theirs), totals, and the questions and defaults copied over. Before a build the old version is
+ * superseded. Returns the new version, or null if it couldn't be saved.
+ */
+async function saveNextVersion(admin: AdminDb, ctx: ChatCtx, project: ChatProject, plan: ChatPlan, current: (VersionItem & Record<string, unknown>)[], next: VersionItem[], built: boolean) {
   const model = await stepModel(admin, ctx.workspace.id, project.model);
   const version = plan.version + 1;
   const priced = new Map(current.map((i) => [i.key, i]));
@@ -430,7 +459,7 @@ export async function applyChange(input: { proposalId: string; decisions?: Recor
     })
     .select("id")
     .single();
-  if (error || !bp) return { ok: false, message: "The new version couldn't be saved. Nothing changed. Try again." };
+  if (error || !bp) return null;
   await admin.from("items").insert(rows.map((r) => ({ ...r, blueprint_id: bp.id, project_id: project.id })));
   const [{ data: qs }, { data: ds }] = await Promise.all([
     admin.from("questions").select("text, affects, options, recommended, answer, blocking, position, answered_by, answered_at").eq("blueprint_id", plan.id),
@@ -439,38 +468,63 @@ export async function applyChange(input: { proposalId: string; decisions?: Recor
   if (qs?.length) await admin.from("questions").insert(qs.map((q) => ({ ...q, blueprint_id: bp.id })));
   if (ds?.length) await admin.from("defaults").insert(ds.map((d) => ({ ...d, blueprint_id: bp.id })));
   if (!built) await admin.from("blueprints").update({ status: "superseded" }).eq("id", plan.id);
-
-  await admin
-    .from("change_proposals")
-    .update({
-      status: "applied",
-      version_created: version,
-      decided_by: ctx.user.id,
-      decided_at: new Date().toISOString(),
-      conflict: proposal.conflict ? ({ ...(proposal.conflict as object), decisions: decisions.data } as unknown as Json) : null,
-    })
-    .eq("id", proposal.id);
   await admin.from("projects").update({ current_version: version, updated_at: new Date().toISOString() }).eq("id", project.id);
+  return { id: bp.id, version };
+}
 
-  let note = `Applied. This is now plan v${version}.`;
-  if (built) {
-    // After a build, Apply is the click that builds the change.
-    const { data: runId, error: gate } = await admin.rpc("agree_and_build", { p_blueprint: bp.id, p_user: ctx.user.id, p_kind: "change" });
-    if (gate || !runId) {
-      const why = gate?.message.includes("over_budget")
-        ? "it would go past the budget"
-        : gate?.message.includes("run_in_progress")
-          ? "a build is still running. Apply it again when that finishes"
-          : "answer the open question first";
-      note = `Applied as plan v${version}. It isn't building yet: ${why}.`;
-    } else {
-      await startRun(admin, runId);
-      note = `Applied as plan v${version}. Building the change now.`;
-    }
+/** After a build, the click that made the new version also builds it, through the Build gate (CLAUDE.md rule 1). */
+async function buildNextVersion(admin: AdminDb, ctx: ChatCtx, bpId: string, version: number, built: boolean, verb: "Applied" | "Undone"): Promise<string> {
+  if (!built) return verb === "Applied" ? `Applied. This is now plan v${version}.` : `Undone. This is now plan v${version}.`;
+  const { data: runId, error: gate } = await admin.rpc("agree_and_build", { p_blueprint: bpId, p_user: ctx.user.id, p_kind: "change" });
+  if (gate || !runId) {
+    const why = gate?.message.includes("over_budget")
+      ? "it would go past the budget"
+      : gate?.message.includes("run_in_progress")
+        ? `a build is still running. ${verb === "Applied" ? "Apply" : "Undo"} it again when that finishes`
+        : "answer the open question first";
+    return `${verb} as plan v${version}. It isn't building yet: ${why}.`;
   }
-  await admin.from("messages").insert({ project_id: project.id, role: "system", mode: "build", content: note });
+  await startRun(admin, runId);
+  return `${verb} as plan v${version}. Building the change now.`;
+}
+
+/**
+ * "Undo this change" (M5.8), on an applied change card: a new plan version with the change taken back (undoDiff).
+ * The click is the person's, so after a build it also builds what's restored, through the Build gate (rule 1).
+ */
+export async function undoChange(input: { proposalId: string }): Promise<ActionResult<{ version: number }>> {
+  const ctx = await getAppContext();
+  if (!canBuild(ctx.role)) return { ok: false, message: "Viewers can't change the plan. Ask an Owner, Admin or Builder." };
+  const admin = createAdminDb();
+  const found = await proposalInWorkspace(admin, input.proposalId, ctx.workspace.id);
+  if (!found) return { ok: false, message: "That change isn't in this project." };
+  const { proposal, project } = found;
+  const { data: row } = await admin.from("change_proposals").select("version_created").eq("id", proposal.id).single();
+  const diff = (proposal.diff ?? {}) as Diff & { undone_in?: number };
+  if (proposal.status !== "applied" || !row?.version_created) return { ok: false, message: "Only an applied change can be undone." };
+  if (diff.undone_in) return { ok: false, message: `This change was already undone in plan v${diff.undone_in}.` };
+  const plan = await latestPlan(admin, project.id);
+  if (!plan || plan.generation !== "ready") return { ok: false, message: "Wait for the plan to finish writing." };
+  const { data: beforeBp } = await admin.from("blueprints").select("id").eq("project_id", project.id).eq("version", row.version_created - 1).maybeSingle();
+  if (!beforeBp) return { ok: false, message: "The version before this change isn't there any more, so it can't be undone." };
+  const [{ data: items }, { data: beforeItems }] = await Promise.all([
+    admin.from("items").select(ITEM_FIELDS).eq("blueprint_id", plan.id).order("position"),
+    admin.from("items").select(ITEM_FIELDS).eq("blueprint_id", beforeBp.id).order("position"),
+  ]);
+  const current = (items ?? []) as (VersionItem & Record<string, unknown>)[];
+  const built = Boolean(plan.agreed_at);
+  if (built) {
+    const stopped = await budgetRefusal(admin, ctx.workspace.id);
+    if (stopped) return { ok: false, message: stopped };
+  }
+  const next = undoDiff(current, (beforeItems ?? []) as VersionItem[], { add: diff.add ?? [], change: diff.change ?? [], remove: diff.remove ?? [] }, { built });
+  const saved = await saveNextVersion(admin, ctx, project, plan, current, next, built);
+  if (!saved) return { ok: false, message: "The new version couldn't be saved. Nothing changed. Try again." };
+  await admin.from("change_proposals").update({ diff: { ...(proposal.diff as object), undone_in: saved.version } as unknown as Json }).eq("id", proposal.id);
+  const note = await buildNextVersion(admin, ctx, saved.id, saved.version, built, "Undone");
+  await admin.from("messages").insert({ project_id: project.id, role: "system", mode: "build", content: `${note} The change from plan v${row.version_created} is taken back.` });
   revalidatePath(`/p/${project.id}`);
-  return { ok: true, version };
+  return { ok: true, version: saved.version };
 }
 
 /** Discard a change card. Nothing changes. */

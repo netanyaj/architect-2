@@ -103,6 +103,8 @@ export type ChangeCardData = {
   answered: boolean;
   /** A Viewer's change request, waiting for an Owner, Admin or Builder to turn it into a change (M5.8). */
   suggestion: { text: string; by: string; turnedBy: string | null } | null;
+  /** The plan version an "Undo this change" made, once undone (M5.8). */
+  undoneIn: number | null;
 };
 
 export type PlanVersion = { id: string; version: number; status: string; generation: string; createdAt: string; totalLikely: number | null };
@@ -165,6 +167,8 @@ export type ProjectWorkspace = {
   /** Set when the project lives in another workspace the person belongs to (they need to switch first). */
   otherWorkspace: { id: string; label: string } | null;
   creditsLeft: number;
+  /** This month's credits (M5.8: under 10% left, chat says "Low on credits · View plans"). */
+  creditsTotal: number;
   model: ModelChoice;
   /** What the person picked: a model, or Auto (M5.8), which `model` resolves. */
   modelPick: ModelPick;
@@ -383,6 +387,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
       answered?: boolean;
       suggestion?: { text: string; by: string };
       turned_by?: string;
+      undone_in?: number;
     };
     const conflict = (c.conflict ?? null) as { items?: ChangeCardData["conflicts"] } | null;
     return {
@@ -407,6 +412,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
       unclear: Boolean(d.unclear),
       answered: Boolean(d.answered),
       suggestion: d.suggestion ? { text: d.suggestion.text, by: d.suggestion.by, turnedBy: d.turned_by ?? null } : null,
+      undoneIn: d.undone_in ?? null,
     };
   });
 
@@ -584,6 +590,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     role: membership?.role ?? "viewer",
     otherWorkspace: p.workspace_id === ctx.workspace.id || !membership ? null : { id: membership.workspaceId, label: membership.label },
     creditsLeft,
+    creditsTotal: ctx.workspace.creditsTotal,
     model: projectModel,
     modelPick: toModelPick(p.model),
     locked: ((p.launch_settings ?? {}) as LaunchSettings).locked ?? [],

@@ -11,6 +11,8 @@ import { createAdminDb, createServerDb, type AdminDb } from "../db";
 import { blockedServices, loadPolicies } from "../policy";
 import { amendRun, blockedInRun, settleRun, startFollowupRun } from "../sim/run";
 import { getAppContext } from "../workspace";
+import { isSignInService, providerName, WAITING_FOR_KEY } from "@/lib/providers";
+import { setApiKey } from "./connections";
 import type { ActionResult } from "./members";
 
 const uuid = z.string().uuid();
@@ -111,6 +113,39 @@ export async function connectPart(input: { itemId: string }): Promise<ActionResu
   await refreshStatus(admin, part.project_id);
   revalidatePath(`/p/${part.project_id}`);
   revalidatePath("/connections");
+  return { ok: true };
+}
+
+/**
+ * Action needed · Add key (M5.8): a part whose service connects with an API key (not by signing in). The same object
+ * as its Needs you item: setting the key connects the service, and every part waiting for it works with real data.
+ * SIMULATED: the key is checked and thrown away; only that it's set, by whom and when, is recorded.
+ */
+export async function addPartKey(input: { itemId: string; value: string }): Promise<ActionResult> {
+  const ctx = await getAppContext();
+  if (!canBuild(ctx.role)) return { ok: false, message: "Viewers can't add keys. Ask an Owner, Admin or Builder." };
+  const admin = createAdminDb();
+  const part = await partOf(admin, input.itemId, ctx.workspace.id);
+  if (!part?.provider || isSignInService(part.provider)) return { ok: false, message: "That part doesn't need a key." };
+  const r = await setApiKey({ name: providerName(part.provider), value: input.value });
+  if (!r.ok) return r;
+  const { data: waiting } = await admin.from("items").select("id, key").eq("blueprint_id", part.blueprint_id).eq("provider", part.provider).eq("status", "built");
+  for (const w of waiting ?? []) await logEvent(admin, part.project_id, w.id, "item.built", { item_key: w.key, connected: part.provider, at_ms: 0 });
+  await refreshStatus(admin, part.project_id);
+  revalidatePath(`/p/${part.project_id}`);
+  return { ok: true };
+}
+
+/** Action needed · Skip (M5.8): the part keeps its sample data and is marked "Waiting for a key", out of Needs you. */
+export async function skipPartKey(input: { itemId: string }): Promise<ActionResult> {
+  const ctx = await getAppContext();
+  if (!canBuild(ctx.role)) return { ok: false, message: BUILDERS_ONLY };
+  const admin = createAdminDb();
+  const part = await partOf(admin, input.itemId, ctx.workspace.id);
+  if (!part?.provider || isSignInService(part.provider)) return { ok: false, message: "That part doesn't need a key." };
+  if (part.status !== "needs_connection") return { ok: false, message: "That part isn't waiting for a key any more." };
+  await admin.from("items").update({ status_detail: WAITING_FOR_KEY }).eq("id", part.id);
+  revalidatePath(`/p/${part.project_id}`);
   return { ok: true };
 }
 

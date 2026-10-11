@@ -8,6 +8,14 @@ export const PROVIDERS: Record<string, { name: string; tool: string; what: strin
   github: { name: "GitHub", tool: "GitHub", what: "Reads the repos you pick.", account: "GitHub account" },
 };
 
+/** Services Architect connects by signing in (the list above); any other service connects with an API key (BL-9). */
+export function isSignInService(provider: string | null | undefined): boolean {
+  return Boolean(provider && PROVIDERS[provider]);
+}
+
+/** A key-service part after Action needed › Skip (M5.8): it keeps sample data and leaves Needs you. */
+export const WAITING_FOR_KEY = "Waiting for a key";
+
 /** "google_drive" → "Google Drive" for services we don't list. */
 export function providerName(provider: string | null | undefined): string {
   if (!provider) return "the service";

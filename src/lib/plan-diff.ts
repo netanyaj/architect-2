@@ -256,3 +256,29 @@ export function compareVersions(before: VersionItem[], after: VersionItem[]): Ve
   }
   return { added, changed, removed };
 }
+
+/**
+ * "Undo this change" (M5.8): the next version's parts with an applied change taken back. Parts the change added are
+ * dropped ("Undone"); parts it changed or weakened get their wording back from the version before it; parts it removed
+ * or set aside get back the status they had. Everything else stays as it is now (built stays built). A part that
+ * gets its wording back after a build is rebuilt ("agreed"), like any changed part.
+ */
+export function undoDiff(current: VersionItem[], before: VersionItem[], d: Diff, opts: { built: boolean }): VersionItem[] {
+  const fresh = opts.built ? "agreed" : "proposed";
+  const was = new Map(before.map((i) => [i.key, i]));
+  const added = new Set(d.add.map((a) => a.key));
+  const changed = new Set(d.change.map((c) => c.key));
+  const removed = new Set(d.remove.map((r) => r.key));
+  return current.map((item) => {
+    const b = was.get(item.key);
+    if (added.has(item.key) && !b) return { ...item, status: "dropped", drop_reason: "Undone: this change was taken back" };
+    if (!b) return item;
+    if (removed.has(item.key)) return { ...item, status: b.status, drop_reason: b.drop_reason ?? null };
+    if (changed.has(item.key)) {
+      const same = (["title", "description", "proved_when"] as const).every((f) => (item[f] ?? "") === (b[f] ?? ""));
+      if (same) return { ...item, drop_reason: b.drop_reason ?? null };
+      return { ...item, title: b.title, description: b.description, proved_when: b.proved_when, drop_reason: b.drop_reason ?? null, status: item.status === "dropped" ? b.status : fresh };
+    }
+    return item;
+  });
+}
