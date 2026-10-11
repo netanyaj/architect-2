@@ -9,7 +9,7 @@ import type { PlanEvent, PlanItem } from "@/server/blueprint/write-plan";
 export type WriterState =
   | { phase: "idle" }
   | { phase: "writing"; items: PlanItem[]; model?: { label: string; simulated: boolean }; retrying: boolean }
-  | { phase: "failed"; kind: "rate_limited" | "slow" | "invalid" | "unavailable" | "refused"; message: string; items: PlanItem[] };
+  | { phase: "failed"; kind: "rate_limited" | "slow" | "invalid" | "unavailable" | "refused" | "daily_limit"; message: string; items: PlanItem[] };
 
 /** Reads newline-delimited JSON events from the plan route. */
 async function* readEvents(body: ReadableStream<Uint8Array>): AsyncGenerator<PlanEvent> {
@@ -53,7 +53,8 @@ export function usePlanWriter(opts: { projectId: string; writingBlueprintId: str
           const { message } = await res.json().catch(() => ({ message: "The plan couldn't be started. Try again." }));
           // Another tab is already writing it: follow along instead.
           if (res.status === 409) router.refresh();
-          setState({ phase: "failed", kind: "refused", message, items: [] });
+          // 429 here is the per-person daily limit (M5.5), not the model's: nothing to retry until tomorrow.
+          setState({ phase: "failed", kind: res.status === 429 ? "daily_limit" : "refused", message, items: [] });
           return;
         }
         for await (const e of readEvents(res.body)) {

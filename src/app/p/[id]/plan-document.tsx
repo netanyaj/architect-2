@@ -396,6 +396,10 @@ export function PlanDocument({
               {items.length ? `The ${items.length} parts written so far are kept. ` : ""}Nothing was built or charged.{" "}
               {switchTo ? `Switch to ${switchTo.label}, or try again${failed.kind === "slow" ? "" : " in a minute"}.` : "Try again in a minute."}
             </StageBanner>
+          ) : failed.kind === "daily_limit" ? (
+            <StageBanner kind="paused" title="Today's plans are used up">
+              {failed.message}
+            </StageBanner>
           ) : (
             <StageBanner
               kind="error"

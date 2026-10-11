@@ -247,4 +247,24 @@ test.describe("M5.5", () => {
       console.log(`"${prompt}": ${items!.length} parts, ${agents} agents`);
     });
   }
+
+  test("the daily plan limit: past it, the plan says so plainly, with nothing to retry", async ({ page }) => {
+    const limited = await createTestUser("limited");
+    try {
+      await signIn(page, limited);
+      const db = adminDb();
+      const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", limited.id).eq("role", "owner").eq("workspaces.kind", "personal").single();
+      const { data: p } = await db.from("projects").insert({ workspace_id: m!.workspace_id, name: "Filler", owner_id: limited.id, status: "draft", model: "gemini", prompt: "x" }).select("id").single();
+      await db.from("blueprints").insert(Array.from({ length: 20 }, (_, i) => ({ project_id: p!.id, version: i + 1, prompt: "x", created_by: limited.id, generation: "ready" })));
+      await page.goto("/home", { waitUntil: "networkidle" });
+      await page.getByLabel("Describe your app").fill("An internal sales dashboard");
+      await page.getByRole("button", { name: /^Write the plan/ }).click();
+      await page.waitForURL(/\/p\/[0-9a-f-]{36}/, { timeout: 60_000 });
+      await expect(page.getByRole("heading", { name: "Today's plans are used up" })).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByText(/You've written 20 plans today/)).toBeVisible();
+      await expect(page.getByRole("button", { name: "Try again" })).toHaveCount(0);
+    } finally {
+      await deleteTestUser(limited);
+    }
+  });
 });

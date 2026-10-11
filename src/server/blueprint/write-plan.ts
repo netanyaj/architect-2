@@ -1,3 +1,4 @@
+import { planDailyLimit, planLimitMessage, startOfDayUtc } from "@/lib/plan-limit";
 import { attachedFileKind, fileParts, type AttachedFile } from "@/lib/file-parts";
 import "server-only";
 
@@ -87,6 +88,11 @@ export async function writePlan(
   // Drafting a plan costs credits: stopped at the organisation's cap (C-7).
   const stopped = await budgetRefusal(admin, ctx.workspace.id);
   if (stopped) throw new PlanRefused(stopped, 402);
+  // The daily limit per person (M5.5): before any model call, so a refused plan costs no quota.
+  const now = new Date();
+  const limit = planDailyLimit(process.env.PLAN_DAILY_LIMIT);
+  const { count: today } = await admin.from("blueprints").select("id", { count: "exact", head: true }).eq("created_by", ctx.user.id).gte("created_at", startOfDayUtc(now).toISOString());
+  if ((today ?? 0) >= limit) throw new PlanRefused(planLimitMessage(limit, now), 429);
   const resolved = resolveModel(model);
 
   const { data: last } = await admin.from("blueprints").select("version").eq("project_id", project.id).order("version", { ascending: false }).limit(1).maybeSingle();

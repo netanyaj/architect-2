@@ -152,6 +152,31 @@ describe("writePlan", () => {
     expect(generate).not.toHaveBeenCalled();
   });
 
+  it("a daily limit per person, counted from midnight UTC across workspaces, before any model call (M5.5)", async () => {
+    const today = new Date().toISOString();
+    const yesterday = new Date(Date.now() - 36 * 3600_000).toISOString();
+    db.tables.blueprints.push(...Array.from({ length: 19 }, (_, i) => ({ id: `t${i}`, project_id: `other-${i}`, created_by: "me", created_at: today })));
+    db.tables.blueprints.push(...Array.from({ length: 5 }, (_, i) => ({ id: `y${i}`, project_id: `old-${i}`, created_by: "me", created_at: yesterday })));
+    db.tables.blueprints.push({ id: "someone", project_id: "x", created_by: "someone-else", created_at: today });
+    generate.mockImplementation(async (_input, ev) => {
+      for (const [i, item] of plan.items.entries()) await ev.onItem(item, i);
+      return { blueprint: plan, tokens: 10, label: "Gemini", simulated: false, ms: 10 };
+    });
+    await run(); // 19 so far today: the 20th is allowed
+    db.tables.blueprints.push({ id: "t19", project_id: "other-19", created_by: "me", created_at: today });
+    const err = await run().catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(PlanRefused);
+    expect((err as InstanceType<typeof PlanRefused>).status).toBe(429);
+    expect(String((err as Error).message)).toMatch(/^You've written 20 plans today, the most for one person while Architect runs on a free model quota\. You can write more after midnight UTC, in about \d+ hours?\./);
+    expect(generate).toHaveBeenCalledTimes(1);
+    process.env.PLAN_DAILY_LIMIT = "50";
+    try {
+      await expect(run()).resolves.toBeUndefined();
+    } finally {
+      delete process.env.PLAN_DAILY_LIMIT;
+    }
+  });
+
   it("an edited request is saved on the project and written as the next version", async () => {
     generate.mockResolvedValue({ blueprint: plan, tokens: 100, label: "Gemini", simulated: false, ms: 1 });
     db.tables.blueprints.push({ id: "old", project_id: PROJECT, version: 1 });
