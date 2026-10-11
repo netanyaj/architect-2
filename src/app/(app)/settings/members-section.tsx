@@ -6,7 +6,7 @@ import { Tag } from "@/components/ax/pill";
 import { Select } from "@/components/ax/select";
 import type { Role } from "@/lib/db";
 import { ROLE_INFO } from "@/lib/permissions";
-import { changeRole, inviteMember, removeMember } from "@/server/actions/members";
+import { changeRole, inviteMember, removeMember, resendInvite } from "@/server/actions/members";
 
 export type MemberRow = {
   id: string;
@@ -111,6 +111,70 @@ function MemberItem({ m, canManage, assignable }: { m: MemberRow; canManage: boo
   );
 }
 
+/** A pending invite: who, as what, its link, and Resend link (a fresh link; the old one stops working) or Revoke. */
+function PendingItem({ m, canManage }: { m: MemberRow; canManage: boolean }) {
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string>();
+  const [link, setLink] = useState(m.inviteLink);
+  const [note, setNote] = useState<string>();
+  return (
+    <li className="flex flex-col gap-2 rounded-card border border-line bg-surface px-4 py-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate font-semibold">{m.name !== m.email ? m.name : m.email}</span>
+          <span className="truncate text-small text-ink-2">
+            {m.name !== m.email ? `${m.email} · ` : ""}Invited as {ROLE_INFO[m.role].label}
+          </span>
+        </div>
+        {canManage && (
+          <>
+            <Button
+              size="sm"
+              disabledReason={pending ? "Making a new link…" : undefined}
+              onClick={() =>
+                start(async () => {
+                  setError(undefined);
+                  const r = await resendInvite({ memberId: m.id });
+                  if (!r.ok) return setError(r.message);
+                  setLink(r.link);
+                  setNote(r.emailed ? "New link made and emailed. The old link no longer works." : "New link made. Send it to them; the old link no longer works.");
+                })
+              }
+            >
+              Resend link
+            </Button>
+            <Button
+              size="sm"
+              variant="quiet"
+              disabledReason={pending ? "Revoking…" : undefined}
+              onClick={() =>
+                start(async () => {
+                  setError(undefined);
+                  const r = await removeMember({ memberId: m.id });
+                  if (!r.ok) setError(r.message);
+                })
+              }
+            >
+              Revoke
+            </Button>
+          </>
+        )}
+      </div>
+      {canManage && link && <CopyLink link={link} />}
+      {note && (
+        <p role="status" className="text-small text-ink-2">
+          {note}
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="text-small font-semibold text-failed">
+          {error}
+        </p>
+      )}
+    </li>
+  );
+}
+
 export function MembersSection({
   workspaceName,
   members,
@@ -123,10 +187,12 @@ export function MembersSection({
   assignable: Exclude<Role, "owner">[];
 }) {
   const [role, setRole] = useState<Exclude<Role, "owner">>("viewer");
-  const [result, setResult] = useState<{ link?: string; error?: string }>({});
+  const [result, setResult] = useState<{ link?: string; emailed?: boolean; error?: string }>({});
   const [pending, start] = useTransition();
   const emailId = useId();
   const roleId = useId();
+  const active = members.filter((m) => !m.invited);
+  const invited = members.filter((m) => m.invited);
 
   // Reads the email from the form on submit, so text typed before the page finished loading still counts.
   const submit = (e: FormEvent<HTMLFormElement>) => {
@@ -140,7 +206,7 @@ export function MembersSection({
     start(async () => {
       const r = await inviteMember({ email, role });
       if (r.ok) {
-        setResult({ link: r.link });
+        setResult({ link: r.link, emailed: r.emailed });
         form.reset();
       } else setResult({ error: r.message });
     });
@@ -193,7 +259,7 @@ export function MembersSection({
           </p>
           {result.link && (
             <div role="status" className="flex flex-col gap-1.5">
-              <span className="text-small font-semibold">Invite link ready. Send it to them:</span>
+              <span className="text-small font-semibold">{result.emailed ? "Invite emailed. The link, in case they need it:" : "Invite link ready. Send it to them:"}</span>
               <CopyLink link={result.link} />
             </div>
           )}
@@ -205,11 +271,27 @@ export function MembersSection({
         </form>
       )}
 
+      <h3 className="flex items-baseline gap-2 font-semibold">
+        Members <span className="text-small font-normal text-ink-2 tabular-nums">{active.length}</span>
+      </h3>
       <ul aria-label="Members" className="flex flex-col gap-1.5 rounded-pane border border-line bg-tray p-1.5">
-        {members.map((m) => (
+        {active.map((m) => (
           <MemberItem key={m.id} m={m} canManage={canManage} assignable={assignable} />
         ))}
       </ul>
+
+      <h3 className="flex items-baseline gap-2 font-semibold">
+        Pending invites <span className="text-small font-normal text-ink-2 tabular-nums">{invited.length}</span>
+      </h3>
+      {invited.length ? (
+        <ul aria-label="Pending invites" className="flex flex-col gap-1.5 rounded-pane border border-line bg-tray p-1.5">
+          {invited.map((m) => (
+            <PendingItem key={m.id} m={m} canManage={canManage} />
+          ))}
+        </ul>
+      ) : (
+        <p className="text-small text-ink-2">No invites waiting. A new invite shows here until they join.</p>
+      )}
     </section>
   );
 }

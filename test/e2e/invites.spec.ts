@@ -26,8 +26,9 @@ test.describe("roles and invites", () => {
     const ownerPage = await (await browser.newContext()).newPage();
     await signIn(ownerPage, owner, "/settings");
     await expect(ownerPage.getByRole("heading", { name: "People in Acme Ops (Enterprise)" })).toBeVisible();
-    // The seeded teammates are listed as invited.
-    await expect(ownerPage.getByRole("list", { name: "Members" }).getByText("Jordan (IT)", { exact: true })).toBeVisible();
+    // The seeded teammates are pending invites, apart from the members.
+    await expect(ownerPage.getByRole("list", { name: "Pending invites" }).getByText("Jordan (IT)", { exact: true })).toBeVisible();
+    await expect(ownerPage.getByRole("list", { name: "Members" }).getByText("Jordan (IT)", { exact: true })).toHaveCount(0);
 
     await ownerPage.getByLabel("Email", { exact: true }).fill(viewer.email);
     await ownerPage.getByLabel("Role", { exact: true }).selectOption("viewer");

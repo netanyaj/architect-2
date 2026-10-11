@@ -26,7 +26,7 @@ const inviteSchema = z.object({
 });
 
 /** Invite someone by link, with a role. Re-inviting a pending address updates its role and keeps its link. */
-export async function inviteMember(input: { email: string; role: string }): Promise<ActionResult<{ link: string }>> {
+export async function inviteMember(input: { email: string; role: string }): Promise<ActionResult<{ link: string; emailed: boolean }>> {
   const ctx = await getAppContext();
   if (!canManageMembers(ctx.role)) return { ok: false, message: "Only Owners and Admins can invite people." };
   const parsed = inviteSchema.safeParse(input);
@@ -62,8 +62,41 @@ export async function inviteMember(input: { email: string; role: string }): Prom
   if (!token) return { ok: false, message: "The invite has no link. Remove it and invite again." };
 
   await audit(ws, ctx.name, "member.invited", email, { role });
+  const link = `${await origin()}/invite/${token}`;
+  const emailed = await emailInvite(email, link);
   revalidatePath("/settings");
-  return { ok: true, link: `${await origin()}/invite/${token}` };
+  return { ok: true, link, emailed };
+}
+
+/**
+ * With custom SMTP set up in Supabase Auth and INVITE_EMAILS=on, the invite also goes by email (Supabase's invite
+ * mail, which signs them in and lands on the invite link). Otherwise, and whenever it can't (they already have an
+ * account), it's copy-a-link only. Never throws: the link always works.
+ */
+async function emailInvite(email: string, link: string): Promise<boolean> {
+  if (process.env.INVITE_EMAILS !== "on") return false;
+  try {
+    const { error } = await createAdminDb().auth.admin.inviteUserByEmail(email, { redirectTo: link });
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+/** Pending invites: a fresh link replaces the old one (which stops working). Owners and Admins only. */
+export async function resendInvite(input: { memberId: string }): Promise<ActionResult<{ link: string; emailed: boolean }>> {
+  const ctx = await getAppContext();
+  if (!canManageMembers(ctx.role)) return { ok: false, message: "Only Owners and Admins can resend invites." };
+  const target = await loadTarget(input.memberId, ctx.workspace.id);
+  if (!target || target.status !== "invited") return { ok: false, message: "That invite isn't pending any more." };
+  const { data, error } = await createAdminDb().from("members").update({ invite_token: crypto.randomUUID() }).eq("id", target.id).select("invite_token").single();
+  if (error || !data?.invite_token) return { ok: false, message: "A new link couldn't be made. Try again." };
+  const link = `${await origin()}/invite/${data.invite_token}`;
+  const email = target.invited_email ?? target.email ?? "";
+  const emailed = email ? await emailInvite(email, link) : false;
+  await audit(ctx.workspace.id, ctx.name, "member.invite_resent", email || target.id, { role: target.role, emailed });
+  revalidatePath("/settings");
+  return { ok: true, link, emailed };
 }
 
 async function loadTarget(memberId: string, workspaceId: string) {

@@ -60,4 +60,26 @@ test.describe("M5.5", () => {
     await page.getByRole("menuitem", { name: "Log out" }).click();
     await page.waitForURL(/\/login/);
   });
+
+  test("People: members and pending invites apart; Resend link makes a new link and the old one stops working; Revoke", async ({ page }) => {
+    await start(page);
+    await page.goto("/settings");
+    const email = `invitee-${Date.now()}@example.com`;
+    await page.getByLabel("Email", { exact: true }).fill(email);
+    await page.getByRole("button", { name: "Create invite link" }).click();
+    const first = await page.getByRole("status").getByLabel("Invite link").inputValue();
+    const pending = page.getByRole("list", { name: "Pending invites" }).getByRole("listitem").filter({ hasText: email });
+    await expect(pending).toContainText("Invited as Viewer");
+    await pending.getByRole("button", { name: "Resend link" }).click();
+    await expect(pending.getByRole("status")).toContainText("New link made");
+    const second = await pending.getByLabel("Invite link").inputValue();
+    expect(second).not.toBe(first);
+    await page.goto(first);
+    await expect(page.getByText("This invite link doesn't work any more")).toBeVisible();
+    await page.goto("/settings");
+    await page.getByRole("list", { name: "Pending invites" }).getByRole("listitem").filter({ hasText: email }).getByRole("button", { name: "Revoke" }).click();
+    await expect(page.getByRole("list", { name: "Pending invites" }).getByText(email)).toHaveCount(0);
+    const { data: audit } = await adminDb().from("audit_log").select("action").eq("target", email);
+    expect(audit!.map((a) => a.action).sort()).toEqual(["member.invite_cancelled", "member.invite_resent", "member.invited"]);
+  });
 });
