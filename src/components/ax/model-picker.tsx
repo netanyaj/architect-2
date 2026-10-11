@@ -75,7 +75,7 @@ export function ModelPicker<V extends ModelPick = ModelChoice>({
         {current?.simulated && <span className="rounded-full border border-dashed border-line-ctl px-1.5 text-small leading-4 text-ink-2">Sim</span>}
         <Icon name="chevronDown" size="sm" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-72 rounded-card border border-line bg-surface p-1.5 shadow-pop">
+      <DropdownMenuContent align="start" collisionPadding={12} className="w-72 rounded-card border border-line bg-surface p-1.5 shadow-pop">
         {auto && (
           <DropdownMenuItem onSelect={() => !isAuto && onChange(AUTO as V)} className="flex min-h-11 items-center gap-2.5 rounded-tile px-2.5" title={autoTitle}>
             <span className="flex min-w-0 flex-1 flex-col">

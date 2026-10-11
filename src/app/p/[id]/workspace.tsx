@@ -727,6 +727,10 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
             }
             onCollapse={() => setChatOpen(false)}
             onPickModel={(m) => (project.plan ? setModelAsk(m) : switchModel(m, false))}
+            onOpenDesign={() => {
+              setView("files");
+              setTimeout(() => scrollTo("design"), 300);
+            }}
           />
         ) : (
           <Rail label="Chat" icon="panelRight" onOpen={() => setChatOpen(true)} />

@@ -168,6 +168,9 @@ export type ProjectWorkspace = {
   model: ModelChoice;
   /** What the person picked: a model, or Auto (M5.8), which `model` resolves. */
   modelPick: ModelPick;
+  /** Composer ⋯ (M5.8): locked part keys, and the project's instructions. */
+  locked: string[];
+  instructions: string;
   /** The models this workspace allows, and whether each is real here (BL-3). */
   models: ModelOption[];
   /** Models the workspace's policy blocks: shown in the picker, disabled (M5.8). Empty with governance off. */
@@ -583,6 +586,8 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     creditsLeft,
     model: projectModel,
     modelPick: toModelPick(p.model),
+    locked: ((p.launch_settings ?? {}) as LaunchSettings).locked ?? [],
+    instructions: ((p.launch_settings ?? {}) as LaunchSettings).instructions ?? "",
     models: await modelOptionsFor(p.workspace_id, policies),
     blockedModels: blockedModelsFor(policies),
     messages: (msgs ?? []).map((m) => ({ id: m.id, role: m.role as ChatMessage["role"], mode: m.mode as ChatMessage["mode"], content: m.content, createdAt: m.created_at })),

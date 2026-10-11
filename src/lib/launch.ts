@@ -53,6 +53,10 @@ export type LaunchSettings = {
   badge?: boolean;
   /** Look and feel (Files): the app's theme preset. */
   look?: string;
+  /** Lock parts (composer ⋯, M5.8): part keys Architect may not change or remove. */
+  locked?: string[];
+  /** Project instructions (composer ⋯, M5.8): what Architect keeps in mind for every message and plan. */
+  instructions?: string;
 };
 
 /** "meeting-prep.acme.com", "app.example.co.uk": a host name with at least one dot, no scheme or path. */

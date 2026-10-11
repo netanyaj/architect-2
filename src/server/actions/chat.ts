@@ -15,6 +15,7 @@ import { estimate, totals as planTotals } from "../estimate";
 import { startRun } from "../sim/run";
 import { budgetRefusal } from "../policy";
 import { getAppContext } from "../workspace";
+import type { LaunchSettings } from "@/lib/launch";
 import { DARK_THEME_PART } from "@/lib/themes";
 import type { ActionResult } from "./members";
 
@@ -23,7 +24,7 @@ const ITEM_FIELDS =
 
 async function projectInWorkspace(admin: AdminDb, projectId: string, workspaceId: string) {
   if (!z.string().uuid().safeParse(projectId).success) return null;
-  const { data } = await admin.from("projects").select("id, name, model, prompt, status").eq("id", projectId).eq("workspace_id", workspaceId).maybeSingle();
+  const { data } = await admin.from("projects").select("id, name, model, prompt, status, launch_settings").eq("id", projectId).eq("workspace_id", workspaceId).maybeSingle();
   return data;
 }
 
@@ -98,7 +99,14 @@ async function chatPrompt(admin: AdminDb, project: ChatProject, plan: ChatPlan, 
     admin.from("messages").select("role, content").eq("project_id", project.id).order("created_at", { ascending: false }).limit(8 + skipLatest),
   ]);
   const current = (items ?? []) as VersionItem[];
-  const context = planContext(plan.name ?? project.name, current, questions ?? []);
+  const settings = (project.launch_settings ?? {}) as LaunchSettings;
+  const locked = current.filter((i) => settings.locked?.includes(i.key)).map((i) => `[${i.key}]`);
+  // Composer ⋯ (M5.8): the project's instructions, and the parts Architect may not change.
+  const rules = [
+    settings.instructions?.trim() ? `Project instructions from its owner (follow them): ${settings.instructions.trim()}` : "",
+    locked.length ? `Locked parts (never change or remove them): ${locked.join(", ")}` : "",
+  ].filter(Boolean);
+  const context = [...rules, planContext(plan.name ?? project.name, current, questions ?? [])].join("\n\n");
   const convo = (history ?? [])
     .slice(skipLatest) // the message just saved
     .reverse()
@@ -126,9 +134,14 @@ async function proposeChange(
 ): Promise<{ proposalId?: string }> {
   const { current, prompt } = await chatPrompt(admin, project, plan, content, opts.skipLatest);
   const { object } = await askObject({ instructions: CHANGE, prompt, schema: ChangeDraft, model, fast: true });
-  const diff = normalizeChange(object, current);
+  const proposed = normalizeChange(object, current);
+  // Locked parts (M5.8) are never in a card: anything touching them is left out, and the reply says so.
+  const locks = new Set(((project.launch_settings ?? {}) as LaunchSettings).locked ?? []);
+  const diff = { ...proposed, change: proposed.change.filter((c) => !locks.has(c.key)), remove: proposed.remove.filter((r) => !locks.has(r.key)) };
+  const kept = [...proposed.change, ...proposed.remove].filter((c) => locks.has(c.key)).map((c) => current.find((i) => i.key === c.key)?.title ?? c.key);
+  const lockNote = kept.length ? ` I left ${kept.map((t) => `“${t}”`).join(" and ")} as ${kept.length === 1 ? "it is: it's" : "they are: they're"} locked.` : "";
   if (isEmpty(diff)) {
-    await opts.say(object.reply || "Nothing in the plan needs to change for that.", "plan");
+    await opts.say(kept.length ? `Nothing changes:${lockNote} Unlock in ⋯ › Lock parts to change ${kept.length === 1 ? "it" : "them"}.` : object.reply || "Nothing in the plan needs to change for that.", "plan");
     return {};
   }
   // Price the change: new parts, plus rebuilding changed parts that were already built.
@@ -142,7 +155,7 @@ async function proposeChange(
   ];
   const t = planTotals(priced);
   const conflicts = conflictsOf(diff, current);
-  const messageId = await opts.say(object.reply || "Here's the change. Nothing changes until you apply it.", "build");
+  const messageId = await opts.say(`${object.reply || "Here's the change. Nothing changes until you apply it."}${lockNote}`, "build");
   const { data: proposal } = await admin
     .from("change_proposals")
     .insert({
@@ -350,6 +363,10 @@ export async function applyChange(input: { proposalId: string; decisions?: Recor
   const plan = await latestPlan(admin, project.id);
   const diff = proposal.diff as unknown as Diff & { base_version: number };
   if (!plan || plan.generation !== "ready") return { ok: false, message: "Wait for the plan to finish writing." };
+  // A part locked after the card was made (M5.8) holds the card until it's unlocked.
+  const locks = ((project.launch_settings ?? {}) as LaunchSettings).locked ?? [];
+  const touched = [...(diff.change ?? []), ...(diff.remove ?? [])].map((c) => c.key).filter((k) => locks.includes(k));
+  if (touched.length) return { ok: false, message: `This change touches a locked part. Unlock it in ⋯ › Lock parts first, or ask again.` };
   if (plan.version !== diff.base_version) return { ok: false, message: "The plan changed since this card was made. Ask again and I'll make a fresh one." };
 
   const { data: items } = await admin.from("items").select(ITEM_FIELDS).eq("blueprint_id", plan.id).order("position");
@@ -513,4 +530,24 @@ export async function proposeDarkTheme(input: { projectId: string }): Promise<Ch
     .single();
   revalidatePath(`/p/${project.id}`);
   return { ok: true, proposalId: proposal?.id, intent: "change" };
+}
+
+/** Composer ⋯ (M5.8): saves Lock parts and Project instructions on the project. Builders and up. */
+export async function saveComposerSettings(input: { projectId: string; locked?: string[]; instructions?: string }): Promise<ActionResult> {
+  const ctx = await getAppContext();
+  if (!canBuild(ctx.role)) return { ok: false, message: "Viewers can't change a project's settings." };
+  const parsed = z
+    .object({ locked: z.array(z.string().regex(/^[a-z0-9-]{1,60}$/)).max(200).optional(), instructions: z.string().max(2000, "Keep the instructions under 2,000 characters.").optional() })
+    .safeParse(input);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0].message };
+  const admin = createAdminDb();
+  const project = await projectInWorkspace(admin, input.projectId, ctx.workspace.id);
+  if (!project) return { ok: false, message: "That project isn't in this workspace." };
+  const settings = { ...((project.launch_settings ?? {}) as LaunchSettings) };
+  if (parsed.data.locked) settings.locked = [...new Set(parsed.data.locked)];
+  if (parsed.data.instructions !== undefined) settings.instructions = parsed.data.instructions.trim();
+  const { error } = await admin.from("projects").update({ launch_settings: settings as unknown as Json }).eq("id", project.id);
+  if (error) return { ok: false, message: "That couldn't be saved. Try again." };
+  revalidatePath(`/p/${project.id}`);
+  return { ok: true };
 }

@@ -2,7 +2,7 @@
 
 import { useId, useRef, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { Icon } from "./icon";
+import { Icon, type IconName } from "./icon";
 
 /**
  * The message box for Home and Chat.
@@ -152,13 +152,13 @@ export function QueueLine({ children, onEdit }: { children: ReactNode; onEdit?: 
 }
 
 /** A removable attachment chip inside the composer. */
-export function AttachmentChip({ icon, children, onRemove }: { icon: "file" | "agent"; children: ReactNode; onRemove?: () => void }) {
+export function AttachmentChip({ icon, children, onRemove }: { icon: IconName; children: ReactNode; onRemove?: () => void }) {
   return (
-    <span className="inline-flex h-[30px] items-center gap-1.5 rounded-[9px] border border-line bg-tray pr-1 pl-2.5">
+    <span className="inline-flex h-[30px] max-w-full min-w-0 items-center gap-1.5 rounded-[9px] border border-line bg-tray pr-1 pl-2.5 [&>span]:truncate">
       <Icon name={icon} size="sm" />
       {children}
       {onRemove && (
-        <button type="button" onClick={onRemove} aria-label="Remove" className="grid size-6 place-items-center text-ink-2">
+        <button type="button" onClick={onRemove} aria-label="Remove" className="grid size-6 flex-none place-items-center text-ink-2">
           <Icon name="close" size="sm" />
         </button>
       )}

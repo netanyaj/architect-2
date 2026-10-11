@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { Button, IconButton, TextLink } from "@/components/ax/button";
 import { ArchitectMessage, ChatCard, chatTime, YouMessage } from "@/components/ax/chat-message";
-import { Composer, QueueLine } from "@/components/ax/composer";
+import { AttachmentChip, Composer, QueueLine } from "@/components/ax/composer";
+import { SimTag } from "@/components/ax/pill";
 import { ModelNotAllowed, ModelPicker } from "@/components/ax/model-picker";
 import { Option } from "@/components/ax/stage-banner";
 import type { ModelPick } from "@/lib/models";
@@ -12,6 +13,8 @@ import { canBuild } from "@/lib/permissions";
 import { useUi } from "@/lib/ui-store";
 import { answerInstead, applyChange, discardChange, sendMessage, turnIntoChange } from "@/server/actions/chat";
 import type { ChangeCardData, ProjectWorkspace } from "@/server/project";
+import { ChatAddMenu, useAttachments } from "./chat-add-menu";
+import { ChatMoreMenu } from "./chat-more-menu";
 import { CodeEditCard } from "./code-edit-card";
 import { PrCard } from "./pr-card";
 
@@ -236,6 +239,7 @@ export function ChatPane({
   body,
   onCollapse,
   onPickModel,
+  onOpenDesign,
 }: {
   project: ProjectWorkspace;
   writing: boolean;
@@ -246,11 +250,16 @@ export function ChatPane({
   body?: React.ReactNode;
   onCollapse: () => void;
   onPickModel: (m: ModelPick) => void;
+  /** + › Design system: opens Plan › Design. */
+  onOpenDesign: () => void;
 }) {
   const router = useRouter();
   const canChange = canBuild(project.role);
   const [draft, setDraft] = useState("");
   const [queue, setQueue] = useState<{ id: number; text: string }[]>([]);
+  // The + menu's files, building blocks and looks: chips in the composer, sent with the next message (M5.8).
+  const attachments = useAttachments();
+  const [addStatus, setAddStatus] = useState<string>();
   const [sending, setSending] = useState<string | null>(null);
   const [error, setError] = useState<string>();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -289,7 +298,9 @@ export function ChatPane({
 
   const submit = (text: string) => {
     setError(undefined);
-    setQueue((q) => [...q, { id: nextId.current++, text }]);
+    const carried = attachments.items.map((a) => a.line).join("\n");
+    setQueue((q) => [...q, { id: nextId.current++, text: carried ? `${text}\n\n${carried}` : text }]);
+    attachments.clear();
     setDraft("");
   };
 
@@ -390,11 +401,41 @@ export function ChatPane({
           ) : (
             <p className="mb-1.5 text-small font-semibold text-attention">This model is no longer allowed. A Builder can switch it.</p>
           ))}
+        {addStatus && (
+          <p role="status" className="mb-1.5 text-small text-ink-2">
+            {addStatus}
+          </p>
+        )}
         <Composer
           variant="chat"
           value={draft}
           onChange={setDraft}
           onSubmit={submit}
+          attachments={
+            attachments.items.length ? (
+              <>
+                {attachments.items.map((a) => (
+                  <AttachmentChip key={a.id} icon={a.icon} onRemove={() => attachments.remove(a.id)}>
+                    <span className="truncate">{a.label}</span>
+                    {a.simulated && <SimTag className="flex-none" />}
+                  </AttachmentChip>
+                ))}
+              </>
+            ) : undefined
+          }
+          tools={
+            <>
+              <ChatAddMenu
+                project={project}
+                attached={attachments.items}
+                onAdd={attachments.add}
+                onPlanView={onOpenDesign}
+                onStatus={setAddStatus}
+                disabledReason={canChange ? undefined : "Viewers can't add files or building blocks."}
+              />
+              <ChatMoreMenu project={project} items={project.items} />
+            </>
+          }
           placeholder={canChange ? "Ask a question, or describe a change…" : "Ask about the plan, or suggest a change…"}
           label="Message Architect"
           modelPicker={

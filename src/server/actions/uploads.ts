@@ -6,6 +6,7 @@ import { canBuild } from "@/lib/permissions";
 import { csvLine } from "@/lib/csv";
 import { UPLOAD_LIMITS } from "@/lib/uploads";
 import { createAdminDb } from "../db";
+import { prepareUploads, type UploadSlot } from "../uploads";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
 
@@ -34,6 +35,22 @@ async function xlsxText(bytes: Uint8Array): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Upload slots for files added to an existing project from chat's + menu (M5.8): the same signed, private upload as
+ * Home's, then finishUploads registers them. Builders and up.
+ */
+export async function prepareProjectUploads(input: { projectId: string; files: { name: string; type: string; size: number }[] }): Promise<ActionResult<{ uploads: UploadSlot[] }>> {
+  const ctx = await getAppContext();
+  if (!canBuild(ctx.role)) return { ok: false, message: "Viewers can't add files." };
+  if (!z.string().uuid().safeParse(input.projectId).success) return { ok: false, message: "That project isn't in this workspace." };
+  const admin = createAdminDb();
+  const { data: project } = await admin.from("projects").select("id").eq("id", input.projectId).eq("workspace_id", ctx.workspace.id).maybeSingle();
+  if (!project) return { ok: false, message: "That project isn't in this workspace." };
+  const prepared = await prepareUploads(admin, ctx.workspace.id, project.id, input.files);
+  if ("error" in prepared) return { ok: false, message: prepared.error ?? "The files couldn't be prepared." };
+  return { ok: true, uploads: prepared.slots };
 }
 
 /**

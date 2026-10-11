@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ax/button";
 import { Icon } from "@/components/ax/icon";
 import { SimTag } from "@/components/ax/pill";
@@ -19,19 +19,8 @@ type Listed = { id: string; name: string; description: string };
  */
 export function AddMenu({ onAddFiles, attached, onAttach, disabledReason }: { onAddFiles: () => void; attached: AttachedAgent[]; onAttach: (a: AttachedAgent) => void; disabledReason?: string }) {
   const [open, setOpen] = useState(false);
-  const [list, setList] = useState<{ agents: Listed[]; simulated: boolean; note?: string } | null>(null);
-  const [error, setError] = useState<string>();
-  const [pending, start] = useTransition();
-  const openAgents = () => {
-    setOpen(true);
-    setError(undefined);
-    start(async () => {
-      const r = await studioAgents();
-      if (!r.ok) return setError(r.message);
-      setList({ agents: r.agents, simulated: r.simulated, note: r.note });
-    });
-  };
   const full = attached.length >= 3;
+  const openAgents = () => setOpen(true);
   return (
     <>
       <DropdownMenu>
@@ -54,6 +43,32 @@ export function AddMenu({ onAddFiles, attached, onAttach, disabledReason }: { on
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <StudioAgentDialog open={open} onOpenChange={setOpen} attached={attached} onAttach={onAttach} />
+    </>
+  );
+}
+
+/**
+ * Attach a Lyzr Studio agent (BL-2): Studio's own list (real) when a Lyzr key is set, else a sample list marked
+ * Simulated. Used by Home's add menu and chat's + menu (M5.8). Up to 3.
+ */
+export function StudioAgentDialog({ open, onOpenChange, attached, onAttach }: { open: boolean; onOpenChange: (o: boolean) => void; attached: AttachedAgent[]; onAttach: (a: AttachedAgent) => void }) {
+  const setOpen = onOpenChange;
+  const [list, setList] = useState<{ agents: Listed[]; simulated: boolean; note?: string } | null>(null);
+  const [error, setError] = useState<string>();
+  const [pending, start] = useTransition();
+  // Loads Studio's list the first time the dialog opens.
+  useEffect(() => {
+    if (!open || list) return;
+    start(async () => {
+      setError(undefined);
+      const r = await studioAgents();
+      if (!r.ok) return setError(r.message);
+      setList({ agents: r.agents, simulated: r.simulated, note: r.note });
+    });
+  }, [open, list]);
+  const full = attached.length >= 3;
+  return (
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[85dvh] overflow-auto rounded-pane border border-line bg-surface p-6 shadow-pop sm:max-w-[560px]">
           <div className="flex items-center gap-2">
@@ -93,6 +108,5 @@ export function AddMenu({ onAddFiles, attached, onAttach, disabledReason }: { on
           ))}
         </DialogContent>
       </Dialog>
-    </>
   );
 }
