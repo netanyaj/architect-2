@@ -184,4 +184,27 @@ test.describe("M5.5", () => {
       await db.from("members").update({ role: "owner" }).eq("workspace_id", ws).eq("user_id", user.id);
     }
   });
+
+  test("uploaded data: a CSV and an Excel file become the Test version's data, From your file; the rest is Sample data", async ({ page }) => {
+    await start(page);
+    await page.goto("/home", { waitUntil: "networkidle" });
+    await page.getByLabel("Add files: PDFs, CSV or Excel files, or images").setInputFiles(["test/fixtures/files/renewals-2026.csv", "test/fixtures/files/accounts-q4.xlsx"]);
+    // Both attached before writing the plan (a file chosen before the page is interactive isn't kept).
+    await expect(page.getByText("renewals-2026.csv")).toBeVisible();
+    await expect(page.getByText("accounts-q4.xlsx")).toBeVisible();
+    await page.getByLabel("Describe your app").fill("Every Monday, post to #ops which vendors renew this month, with their owner and cost.");
+    await page.getByRole("button", { name: /^Write the plan/ }).click();
+    await page.waitForURL(/\/p\/[0-9a-f-]{36}/, { timeout: 90_000 });
+    const id = page.url().split("/p/")[1].split("?")[0];
+    await page.goto(`/p/${id}?view=data`);
+    const tables = page.getByRole("navigation", { name: "Tables" });
+    await expect(tables.getByRole("button", { name: /renewals-2026/ })).toContainText("From your file · 3 rows");
+    await tables.getByRole("button", { name: /accounts-q4/ }).click();
+    const table = page.getByRole("region", { name: "accounts-q4" });
+    await expect(table).toContainText("From your file");
+    await expect(table).toContainText("Northwind");
+    await expect(table).toContainText("42000");
+    const { data: files } = await adminDb().from("files").select("name, mime").eq("project_id", id);
+    expect(files!.map((f) => f.name).sort()).toEqual(["accounts-q4.xlsx", "renewals-2026.csv"]);
+  });
 });

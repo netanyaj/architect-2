@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ax/button";
 import { EmptyState } from "@/components/ax/empty-state";
-import { SimTag } from "@/components/ax/pill";
+import { SimTag, Tag } from "@/components/ax/pill";
 import { Segmented } from "@/components/ax/segmented";
 import { Select } from "@/components/ax/select";
 import { appTables, appUsers, filterRows, SIGN_IN_LABEL, toCsv, VERSION_LABEL, type DataVersion } from "@/lib/app-data";
@@ -30,9 +30,15 @@ function StatusCell({ value }: { value: string }) {
  */
 export function DataView({ project, items }: { project: ProjectWorkspace; items: WorkspaceItem[] }) {
   const [version, setVersion] = useState<DataVersion>("test");
+  // The test version's data: an uploaded CSV or Excel file is parsed for real and shown first, "From your file";
+  // everything else in the test version is sample data. Team and Live grow with use (simulated).
+  const fileKeys = new Set(project.data.fileTables.map((t) => t.key));
   const tables = useMemo(
-    () => appTables({ projectId: project.id, projectName: project.name, parts: items.map((i) => ({ key: i.key, title: i.title, grp: i.grp, status: i.status })), version }),
-    [project.id, project.name, items, version],
+    () => [
+      ...(version === "test" ? project.data.fileTables : []),
+      ...appTables({ projectId: project.id, projectName: project.name, parts: items.map((i) => ({ key: i.key, title: i.title, grp: i.grp, status: i.status })), version }),
+    ],
+    [project.id, project.name, project.data.fileTables, items, version],
   );
   const users = useMemo(() => appUsers({ projectId: project.id, version, method: project.data.signIn, domain: project.data.domain }), [project.id, project.data, version]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -90,6 +96,7 @@ export function DataView({ project, items }: { project: ProjectWorkspace; items:
   };
 
   if (!tables.length && !project.items.some((i) => ["built", "sample_data", "needs_connection"].includes(i.status))) {
+    // (A project with an uploaded data file has its table even before it's built.)
     return (
       <EmptyState icon="grid" title="No data yet">
         Once the app is built, its tables and the people who sign in show here, test version data first.
@@ -100,7 +107,7 @@ export function DataView({ project, items }: { project: ProjectWorkspace; items:
   return (
     <div className="flex min-h-0 flex-1 flex-col px-3 pb-3">
       <div className="flex flex-wrap items-center justify-end gap-2 pb-2">
-        <SimTag title="The app's data is simulated in this prototype, seeded from its parts." />
+        <SimTag title="Sample data is simulated, seeded from the app's parts. Data from your file is parsed from the file you uploaded." />
         <label className="sr-only" htmlFor="data-version">
           Which version&apos;s data
         </label>
@@ -126,7 +133,7 @@ export function DataView({ project, items }: { project: ProjectWorkspace; items:
           {tables.map((x) => (
             <button key={x.key} type="button" aria-current={key === x.key ? "true" : undefined} onClick={() => choose(x.key)} className={cn("flex flex-col rounded-tile px-2 py-1.5 text-left hover:bg-selected", key === x.key && "bg-selected")}>
               <span>{x.name}</span>
-              <span className="text-small text-ink-2">{x.sample ? "Sample data" : `${x.total} saved`}</span>
+              <span className="text-small text-ink-2">{fileKeys.has(x.key) ? `From your file · ${x.total} ${x.total === 1 ? "row" : "rows"}` : x.sample || version === "test" ? "Sample data" : `${x.total} saved`}</span>
             </button>
           ))}
           <h3 className="px-2 pt-3 pb-1 font-[650]">Sign-in</h3>
@@ -141,6 +148,7 @@ export function DataView({ project, items }: { project: ProjectWorkspace; items:
         <section aria-label={name} className="flex min-w-0 flex-1 flex-col">
           <div className="flex flex-wrap items-center gap-2 px-4 py-2.5">
             <h3 className="font-[650]">{name}</h3>
+            {!isUsers && <Tag>{fileKeys.has(key) ? "From your file" : version === "test" || t?.sample ? "Sample data" : "Saved data"}</Tag>}
             <Segmented
               label="Show"
               value={mode}

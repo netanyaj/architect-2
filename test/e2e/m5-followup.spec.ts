@@ -254,8 +254,8 @@ test.describe("M5 follow-up", () => {
 
   test("Files: a PDF becomes a knowledge base and a CSV a data analyst in the plan (simulated)", async ({ page }) => {
     await start(page);
-    await page.goto("/home");
-    await page.getByLabel("Add files: PDFs, CSVs or images").setInputFiles(["test/fixtures/files/q3-pricing-sheet.pdf", "test/fixtures/files/renewals-2026.csv"]);
+    await page.goto("/home", { waitUntil: "networkidle" });
+    await page.getByLabel("Add files: PDFs, CSV or Excel files, or images").setInputFiles(["test/fixtures/files/q3-pricing-sheet.pdf", "test/fixtures/files/renewals-2026.csv"]);
     await expect(page.getByText("q3-pricing-sheet.pdf")).toBeVisible();
     await page.getByLabel("Describe your app").fill("Every Monday, post to #ops which vendors renew this month, with their owner and cost.");
     await page.getByRole("button", { name: /^Write the plan/ }).click();

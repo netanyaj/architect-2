@@ -42,7 +42,7 @@ export function AddMenu({ onAddFiles, attached, onAttach, disabledReason }: { on
         <DropdownMenuContent align="start" className="w-72 rounded-card border border-line bg-surface p-1.5 shadow-pop">
           <DropdownMenuItem onSelect={onAddFiles} className="flex min-h-11 flex-col items-start gap-0 rounded-tile px-2.5 py-1.5">
             <span className="font-semibold">Add files</span>
-            <span className="text-small text-ink-2">PDFs become a knowledge base, CSVs a data analyst; images help the plan</span>
+            <span className="text-small text-ink-2">PDFs become a knowledge base; CSV and Excel files the test version&apos;s data</span>
           </DropdownMenuItem>
           <DropdownMenuItem
             disabled={Boolean(disabledReason) || full}

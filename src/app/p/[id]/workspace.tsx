@@ -619,7 +619,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
                   <PrStatus project={project} items={items} />
                 </span>
               )}
-              {planStage && !dev && view !== "files" && (
+              {planStage && !dev && (view === "app" || view === "agents") && (
                 <span className="ml-auto flex items-center gap-2 text-small text-ink-2">
                   {view === "app" ? "A mockup from the plan: nothing is built yet." : "The plan's agents and how they connect: nothing is built yet."}
                   <SimTag title="Before Build, the mockup and the workflow are drawn from the plan." />

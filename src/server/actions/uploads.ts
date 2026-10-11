@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { canBuild } from "@/lib/permissions";
+import { csvLine } from "@/lib/csv";
 import { UPLOAD_LIMITS } from "@/lib/uploads";
 import { createAdminDb } from "../db";
 import { getAppContext } from "../workspace";
@@ -16,6 +17,20 @@ async function pdfText(bytes: Uint8Array): Promise<string | null> {
     const { text } = await extractText(pdf, { mergePages: false });
     const joined = (text as string[]).slice(0, 20).join("\n\n").replace(/[ \t]+/g, " ").trim();
     return joined ? joined.slice(0, 40_000) : null;
+  } catch {
+    return null;
+  }
+}
+
+const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+/** An Excel workbook's first sheet as CSV text (up to 5,000 rows), or null if it can't be read. */
+async function xlsxText(bytes: Uint8Array): Promise<string | null> {
+  try {
+    const { readSheet } = await import("read-excel-file/node");
+    const rows = await readSheet(Buffer.from(bytes));
+    const text = rows.slice(0, 5001).map((r) => csvLine(r as unknown[])).join("\n");
+    return text.trim() ? text : null;
   } catch {
     return null;
   }
@@ -44,10 +59,13 @@ export async function finishUploads(input: { projectId: string; uploads: { name:
     if (error || !blob) continue;
     const bytes = new Uint8Array(await blob.arrayBuffer());
     const csv = /\.csv$/i.test(u.path);
-    const mime = csv ? "text/csv" : blob.type || (u.path.endsWith(".pdf") ? "application/pdf" : "application/octet-stream");
+    const xlsx = /\.xlsx$/i.test(u.path);
+    const mime = csv ? "text/csv" : xlsx ? XLSX_MIME : blob.type || (u.path.endsWith(".pdf") ? "application/pdf" : "application/octet-stream");
     const size = bytes.byteLength; // before reading: the PDF reader takes over the buffer it's given
-    // A CSV's first 40,000 characters go to the planner as text (its header and a sample of rows).
-    const text = mime === "application/pdf" ? await pdfText(bytes.slice()) : csv ? new TextDecoder().decode(bytes.slice(0, 40_000)) || null : null;
+    // A CSV is kept as text (up to 2 MB): the planner reads its start, and the Data tab parses it as the test
+    // version's data. An Excel workbook's first sheet is turned into the same CSV text.
+    const text = mime === "application/pdf" ? await pdfText(bytes.slice()) : csv ? new TextDecoder().decode(bytes.slice(0, 2_000_000)) || null : xlsx ? await xlsxText(bytes) : null;
+    if ((csv || xlsx) && !text) unreadable.push(u.name);
     if (mime === "application/pdf" && !text) unreadable.push(u.name);
     await admin.from("files").insert({
       project_id: project.id,

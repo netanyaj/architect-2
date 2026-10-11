@@ -1,6 +1,9 @@
 import "server-only";
 
 import type { WorkspacePlan } from "@/lib/plans";
+import type { DataTable } from "@/lib/app-data";
+import { tableFromCsv } from "@/lib/csv";
+import { DATA_FILE } from "@/lib/uploads";
 import type { Role } from "@/lib/db";
 import type { FlowPath } from "@/lib/egress";
 import type { KeyRow } from "@/lib/keys";
@@ -112,7 +115,8 @@ export type ProjectWorkspace = {
   /** The workspace's governance setting: on, a Builder's push to main or Go live asks an Owner or Admin. */
   governance: boolean;
   /** The Data tab (screen 13): which versions exist, how the app's users sign in, and the domain they're at. */
-  data: { envs: { staging: boolean; production: boolean }; signIn: "google" | "email" | "sso"; domain: string };
+  /** `fileTables`: uploaded CSV or Excel files, parsed: the Test version's data, "From your file" (M5.5). */
+  data: { envs: { staging: boolean; production: boolean }; signIn: "google" | "email" | "sso"; domain: string; fileTables: DataTable[] };
   /** Hand-off (F8): who may hand the project over, to whom, and any offer or new ownership to show. */
   handoff: Handoff;
   /** Coding agent tokens (F4): active ones let ?sim=byoagent play. */
@@ -477,6 +481,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
       envs: { staging: envLive("staging"), production: envLive("production") || p.status === "live" },
       signIn: ((p.launch_settings ?? {}) as LaunchSettings).signIn ?? "google",
       domain: ctx.user.email?.split("@")[1] ?? "acme.com",
+      fileTables: (files ?? []).filter((f) => DATA_FILE.test(f.name ?? f.path) && f.extracted_text).map((f) => tableFromCsv(f.name ?? f.path, f.extracted_text!)).filter((t): t is DataTable => t !== null),
     },
     handoff,
     tokens: { active: (tokenRows ?? []).filter((t) => t.status === "active").length, waiting: (tokenRows ?? []).filter((t) => t.status === "waiting").length },

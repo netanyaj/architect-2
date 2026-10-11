@@ -9,7 +9,7 @@ export type AttachedFile = { name: string; kind: "pdf" | "csv" };
 
 /** "agenda.pdf" → pdf, "leads.csv" → csv; images and anything else aren't parts. */
 export function attachedFileKind(name: string): AttachedFile["kind"] | null {
-  return /\.pdf$/i.test(name) ? "pdf" : /\.csv$/i.test(name) ? "csv" : null;
+  return /\.pdf$/i.test(name) ? "pdf" : /\.(csv|xlsx)$/i.test(name) ? "csv" : null;
 }
 
 /** The quote a file's part shows: "From your file: agenda.pdf". */
