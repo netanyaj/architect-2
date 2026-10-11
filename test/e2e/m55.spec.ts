@@ -155,6 +155,18 @@ test.describe("M5.5", () => {
     await devSwitch.click();
     await page.waitForURL((u) => !u.search.includes("dev=1"));
 
+    // ⋯ › View as role › Viewer (M5.8): the page as a Viewer sees it, with the banner; Stop goes back.
+    await page.getByRole("button", { name: "More for this project" }).click();
+    await page.getByRole("menuitem", { name: "View as role" }).click();
+    await page.getByRole("menuitem", { name: /^Viewer/ }).click();
+    await page.waitForURL(/as=viewer/);
+    await expect(page.getByRole("status").filter({ hasText: "Viewing as Viewer" })).toBeVisible();
+    await expect(page.getByRole("switch", { name: "Developer view" })).toHaveCount(0);
+    await expect(page.getByLabel("Message Architect")).toHaveAttribute("placeholder", "Ask about the plan, or suggest a change…");
+    await page.getByRole("status").filter({ hasText: "Viewing as Viewer" }).getByRole("button", { name: "Stop" }).click();
+    await page.waitForURL((u) => !u.search.includes("as="));
+    await expect(devSwitch).toBeVisible();
+
     // The personal setting: Always (after the page is interactive).
     await page.goto("/settings", { waitUntil: "networkidle" });
     const always = page.getByRole("group", { name: "Open projects in Developer view" }).getByRole("button", { name: "Always" });

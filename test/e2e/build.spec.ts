@@ -146,11 +146,16 @@ test.describe("M3: the simulated build", () => {
     // The chat says so as the replay ends; the server records it a moment later.
     await expect.poll(async () => (await db.from("items").select("status").eq("project_id", id).eq("key", "talking-points-generator").single()).data?.status, { timeout: 30_000 }).toBe("built");
 
-    // The dock: phone size, Point at something into chat, Test the app.
-    const dock = page.getByRole("toolbar", { name: "Preview tools" });
-    await dock.getByRole("button", { name: "Phone size" }).click();
+    // The sizes are in the header beside the tabs (M5.8); the dock has Point at something. Then Test the app.
+    const sizes = page.getByRole("banner").getByRole("group", { name: "Preview size" });
+    await sizes.getByRole("button", { name: "Phone size" }).click();
     await expect(page.locator('iframe[title="Field Notes, test version"]')).toHaveClass(/w-\[390px\]/);
-    await dock.getByRole("button", { name: "Desktop size" }).click();
+    await sizes.getByRole("button", { name: "Desktop size" }).click();
+    // The app's Light / Dark view: Field Notes has no dark theme, so the Dark view says so and offers Add to plan.
+    await page.getByRole("button", { name: "Dark view of the app" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "This app has no dark theme yet" })).toBeVisible();
+    await page.getByRole("button", { name: "Light view of the app" }).click();
+    const dock = page.getByRole("toolbar", { name: "Preview tools" });
     await dock.getByRole("button", { name: "Point at something" }).click();
     await app.locator('section[data-part="extra-1"]').click();
     await expect(page.getByLabel("Message Architect")).toHaveValue(/About “Search” in the app:/);

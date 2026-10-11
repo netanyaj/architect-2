@@ -19,7 +19,11 @@ This folder becomes the root of the new repo. Claude Code reads `CLAUDE.md` firs
 
 ## Invites
 
-Invites are shared by link: Settings › People › Create invite link, then send the link yourself. It only works for the email it was made for. There's no email service by decision; sending invites by email (Supabase Auth with custom SMTP, `INVITE_EMAILS=on`) and matching invites to a new sign-up automatically are **Next**.
+Invites are shared by link: Settings › People › Create invite link (or the account menu › Invite people), then send the link yourself. It only works for the email it was made for. There's no email service by decision; sending invites by email (Supabase Auth with custom SMTP, `INVITE_EMAILS=on`) and matching invites to a new sign-up automatically are **Next**.
+
+## Seeing each role without a second account
+
+In a project, ⋯ › **View as role** › Builder or Viewer shows the project as that role sees it, with "Viewing as Viewer · Stop" at the top. Only the page changes: every action is still checked against your real role on the server.
 
 ## Real vs Simulated
 Everything simulated carries the `Simulated` tag in the interface. Full list: `docs/BUILD-SPEC.md` section 1; deviations: `docs/DECISIONS.md`; every PRD Must, row by row: [`docs/COVERAGE.md`](docs/COVERAGE.md).
