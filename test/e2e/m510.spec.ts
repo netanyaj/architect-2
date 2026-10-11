@@ -102,7 +102,7 @@ test.describe("M5.10: fixes before M6", () => {
     const term = page.getByRole("log", { name: "Terminal" });
     await expect(term).toContainText("Architect terminal.");
     await expect(page.getByLabel(/Command/)).toBeVisible();
-    await expect(page.getByText("~/meeting-prep (main) $").first()).toBeVisible();
+    await expect(page.getByText("~/meeting-prep (architect/plan-v1) $").first()).toBeVisible();
     await page.getByLabel(/Command/).fill("ls");
     await page.getByLabel(/Command/).press("Enter");
     await expect(term).toContainText("agents/");

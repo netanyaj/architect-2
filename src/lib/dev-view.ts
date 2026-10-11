@@ -192,6 +192,13 @@ export function generatedTree(name: string, version: number, parts: DevPart[]): 
 
 export type TerminalLine = { kind: "cmd" | "ok" | "fail" | "info"; text: string };
 
+/** A built event's assertions: the simulator writes [passed, total]; older events have one number (all passed). */
+export function assertionCounts(raw: unknown): { passed: number; total: number } {
+  if (Array.isArray(raw) && raw.length === 2) return { passed: Number(raw[0]) || 0, total: Number(raw[1]) || 0 };
+  const n = Number(raw ?? 1);
+  return Number.isFinite(n) && n > 0 ? { passed: n, total: n } : { passed: 1, total: 1 };
+}
+
 /** The terminal: the run's commands and results, replayed from its events up to now. */
 export function terminalSession(input: { events: RunEvent[]; titles: Record<string, string>; branch: string; testCommand: string | null }): TerminalLine[] {
   const out: TerminalLine[] = [];
@@ -219,7 +226,7 @@ export function terminalSession(input: { events: RunEvent[]; titles: Record<stri
         out.push({ kind: "cmd", text: `${input.testCommand ?? "architect check"} "${t(e.itemKey)}"` }, { kind: "fail", text: `× ${p.reason ?? "check failed"}${p.measured ? ` (got ${p.measured})` : ""}` });
         break;
       case "item.built":
-        out.push({ kind: "cmd", text: `${input.testCommand ?? "architect check"} "${t(e.itemKey)}"` }, { kind: "ok", text: `✓ ${p.assertions ?? 1} of ${p.assertions ?? 1} assertions passed` });
+        out.push({ kind: "cmd", text: `${input.testCommand ?? "architect check"} "${t(e.itemKey)}"` }, { kind: "ok", text: `✓ ${assertionCounts(p.assertions).passed} of ${assertionCounts(p.assertions).total} assertions passed` });
         break;
       case "item.sample_data":
         out.push({ kind: "info", text: `${t(e.itemKey)}: works with sample data (no real source connected)` });
@@ -260,10 +267,10 @@ export function activityFeed(input: { events: RunEvent[]; titles: Record<string,
       if (last?.kind === "architect" && last.itemKey === e.itemKey) last.lines.push(line);
       else out.push({ id, atMs: e.atMs, who: e.actorLabel ?? "Architect agent", kind: "architect", itemKey: e.itemKey, lines: [line] });
     } else if (e.type === "item.built") {
-      const n = Number(p.assertions ?? 1);
-      out.push({ id, atMs: e.atMs, who: "Checker", kind: "checker", itemKey: e.itemKey, lines: [{ kind: "ok", text: `Passed ${n} of ${n}` }] });
+      const a = assertionCounts(p.assertions);
+      out.push({ id, atMs: e.atMs, who: "Checker", kind: "checker", itemKey: e.itemKey, lines: [{ kind: "ok", text: `Passed ${a.passed} of ${a.total}` }] });
       // A coding agent connected over MCP re-runs the part's tests (F4), and the part is committed to the branch.
-      out.push({ id: `${id}-mcp`, atMs: e.atMs, who: `${input.codingAgent} · via MCP`, kind: "coding_agent", itemKey: e.itemKey, lines: [{ kind: "info", text: `run_tests("${t(e.itemKey)}")` }, { kind: "ok", text: `Passed ${n} of ${n}` }] });
+      out.push({ id: `${id}-mcp`, atMs: e.atMs, who: `${input.codingAgent} · via MCP`, kind: "coding_agent", itemKey: e.itemKey, lines: [{ kind: "info", text: `run_tests("${t(e.itemKey)}")` }, { kind: "ok", text: `Passed ${a.passed} of ${a.total}` }] });
       out.push({ id: `${id}-git`, atMs: e.atMs, who: "GitHub", kind: "github", itemKey: e.itemKey, lines: [{ kind: "info", text: `${shortSha(`${e.id}${e.itemKey}`)} "Add ${t(e.itemKey)}" → ${input.branch}` }] });
     }
   }

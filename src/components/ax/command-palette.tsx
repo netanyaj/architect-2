@@ -94,7 +94,8 @@ export function CommandPalette() {
       <DialogContent showCloseButton={false} className="top-[18%] translate-y-0 gap-0 overflow-hidden rounded-pane border border-line bg-surface p-0 shadow-pop sm:max-w-[600px]">
         <DialogTitle className="sr-only">Search</DialogTitle>
         <DialogDescription className="sr-only">Search projects, agents, connections and pages, or run an action. Use the arrow keys and Enter.</DialogDescription>
-        <div className="flex items-center gap-2.5 border-b border-line px-4">
+        {/* The row shows focus (a focus-colour line), so the input's own outline isn't drawn inside it. */}
+        <div className="flex items-center gap-2.5 border-b border-line px-4 focus-within:shadow-[inset_0_-2px_0_var(--focus)]">
           <Icon name="search" size="sm" />
           <input
             autoFocus
@@ -121,7 +122,7 @@ export function CommandPalette() {
               }
             }}
             placeholder="Search projects, agents, connections and pages"
-            className="min-h-12 flex-1 bg-transparent text-body text-ink outline-none placeholder:text-ink-3"
+            className="min-h-12 flex-1 bg-transparent text-body text-ink outline-none! placeholder:text-ink-3"
           />
           <kbd className="rounded-[6px] border border-line px-1.5 font-sans text-small text-ink-2">Esc</kbd>
         </div>

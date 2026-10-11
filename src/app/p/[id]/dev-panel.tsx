@@ -186,7 +186,7 @@ function TerminalTab({ project, prompt }: { project: ProjectWorkspace; prompt: s
       </div>
       {!viewing && (
         <form
-          className="flex items-center gap-2 border-t border-line px-4 py-2"
+          className="flex items-center gap-2 border-t border-line px-4 py-2 focus-within:shadow-[inset_0_2px_0_var(--focus)]"
           onSubmit={(e) => {
             e.preventDefault();
             if (command.trim()) void run(command.trim());
@@ -210,7 +210,7 @@ function TerminalTab({ project, prompt }: { project: ProjectWorkspace; prompt: s
             autoComplete="off"
             spellCheck={false}
             placeholder={running ? "Running…" : ""}
-            className="min-h-8 min-w-0 flex-1 bg-transparent text-ink outline-none"
+            className="min-h-8 min-w-0 flex-1 bg-transparent text-ink outline-none!"
           />
         </form>
       )}
@@ -286,7 +286,14 @@ function ConsoleTab({ project, entries }: { project: ProjectWorkspace; entries: 
 function BuildTab({ project, items, live }: { project: ProjectWorkspace; items: WorkspaceItem[]; live: LiveRun }) {
   const titles = Object.fromEntries(items.map((i) => [i.key, i.title]));
   const logs = buildLogs({ events: played(project, live), titles, parts: parts(items) });
-  if (!logs.length) return <p className="px-4 py-3 text-ink-2">{project.run?.startedAt ? "No logs were recorded for this build." : "No build yet. Each part's log appears here when you click Build."}</p>;
+  if (!logs.length) {
+    const built = items.some((i) => i.status === "built" || i.status === "sample_data");
+    return (
+      <p className="px-4 py-3 text-ink-2">
+        {project.run?.startedAt ? "No logs were recorded for this build." : built ? "No build logs for this version: it was built before logs were kept here. The next build's appear here." : "No build yet. Each part's log appears here when you click Build."}
+      </p>
+    );
+  }
   return (
     <div className="min-h-0 flex-1 overflow-auto">
       {logs.map((l) => (
@@ -354,14 +361,17 @@ export function DevPanel({ project, items, live }: { project: ProjectWorkspace; 
     repo: project.repo,
     runStatus: project.run?.status ?? null,
     parts: items.map((i) => ({ key: i.key, title: i.title, description: i.description, provedWhen: i.provedWhen, grp: i.grp, status: i.status, provider: i.provider, position: i.position })),
-  }).base;
+    // The branch the terminal is on, the same one `git status` reports.
+  }).branch;
   const prompt = promptLine(project.name, branch);
   const entries = useMemo(() => consoleEntries(parts(items)), [items]);
   const errors = entries.filter((e) => e.level === "error").length;
   return (
     <div data-theme="dark" className="m-3 mt-0 flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-surface pt-2.5 font-mono text-[12.5px] text-ink">
-      <div className="flex flex-wrap items-center gap-2 px-3 pb-2.5 font-sans">
-        <Segmented
+      <div className="flex items-center gap-2 px-3 pb-2.5 font-sans">
+        {/* On a phone the tabs scroll sideways rather than wrapping. */}
+        <div className="min-w-0 overflow-x-auto">
+          <Segmented
           label="Developer panel"
           value={tab}
           onChange={setTab}
@@ -371,7 +381,8 @@ export function DevPanel({ project, items, live }: { project: ProjectWorkspace; 
             { value: "build", label: "Build logs" },
             { value: "live", label: "Live logs" },
           ]}
-        />
+          />
+        </div>
         <span className="flex-1" />
         <SimTag title="The terminal reads this project's files and re-runs its checks; the console, build logs and live logs come from the simulated build and deploys." />
       </div>

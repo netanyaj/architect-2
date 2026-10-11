@@ -47,8 +47,20 @@ describe("Developer panel", () => {
     expect(liveLogs({ projectId: "p1", env: "live", deployed: false, parts, now })).toEqual([]);
     const a = liveLogs({ projectId: "p1", env: "live", deployed: true, parts, now });
     expect(a).toHaveLength(14);
+    // Oldest first, all before now.
+    expect([...a].sort((x, y) => x.at.localeCompare(y.at))).toEqual(a);
+    expect(a.at(-1)!.at <= now.toISOString()).toBe(true);
     expect(liveLogs({ projectId: "p1", env: "live", deployed: true, parts, now })).toEqual(a);
     expect(a.some((l) => l.text.startsWith("GET /claims-list 200"))).toBe(true);
     expect(a.filter((l) => l.level === "warn").every((l) => l.text === "slack: not connected, served sample data")).toBe(true);
+  });
+});
+
+describe("assertion counts from the simulator", () => {
+  it("reads [passed, total] and the older single number", async () => {
+    const { assertionCounts } = await import("@/lib/dev-view");
+    expect(assertionCounts([3, 4])).toEqual({ passed: 3, total: 4 });
+    expect(assertionCounts(5)).toEqual({ passed: 5, total: 5 });
+    expect(assertionCounts(undefined)).toEqual({ passed: 1, total: 1 });
   });
 });

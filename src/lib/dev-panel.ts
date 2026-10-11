@@ -89,19 +89,23 @@ export function liveLogs(input: { projectId: string; env: LiveEnv; deployed: boo
   if (!works.length) return [];
   const lines: LiveLine[] = [];
   const count = input.env === "live" ? 14 : input.env === "team" ? 9 : 6;
+  // Gaps of 20–80 s between lines, oldest first, ending just before now.
+  const gaps = Array.from({ length: count }, (_, i) => 20_000 + (hash(`${input.projectId}:${input.env}:${i}:gap`) % 60_000));
+  let at = input.now.getTime() - gaps.reduce((a, b) => a + b, 0);
   for (let i = 0; i < count; i++) {
+    at += gaps[i];
     const p = works[hash(`${input.projectId}:${input.env}:${i}`) % works.length];
     const h = hash(`${input.projectId}:${input.env}:${i}:ms`);
-    const at = new Date(input.now.getTime() - (count - i) * (37_000 + (h % 50_000))).toISOString();
     const ms = 20 + (h % 380);
-    if (p.grp === "agents") lines.push({ at, level: "info", text: `agent ${slugOf(p.title)} ran · ${(ms * 9) / 1000}s · ok` });
+    const when = new Date(at).toISOString();
+    if (p.grp === "agents") lines.push({ at: when, level: "info", text: `agent ${slugOf(p.title)} ran · ${(ms * 9) / 1000}s · ok` });
     else if (p.grp === "integrations")
       lines.push(
         p.status === "sample_data"
-          ? { at, level: "warn", text: `${p.provider ?? "connection"}: not connected, served sample data` }
-          : { at, level: "info", text: `${p.provider ?? "connection"} · ${slugOf(p.title)} · 200 · ${ms}ms` },
+          ? { at: when, level: "warn", text: `${p.provider ?? "connection"}: not connected, served sample data` }
+          : { at: when, level: "info", text: `${p.provider ?? "connection"} · ${slugOf(p.title)} · 200 · ${ms}ms` },
       );
-    else lines.push({ at, level: "info", text: `GET /${slugOf(p.title)} 200 ${ms}ms` });
+    else lines.push({ at: when, level: "info", text: `GET /${slugOf(p.title)} 200 ${ms}ms` });
   }
   return lines;
 }

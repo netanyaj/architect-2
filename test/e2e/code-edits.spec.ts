@@ -46,7 +46,8 @@ test.describe("Code edits in Developer view", () => {
 
     // The card in Activity, and the change under its part.
     const card = page.getByRole("region", { name: "Code edit to agents/talking-points-generator.py" }).first();
-    await expect(card).toContainText("re-runs the check for Talking points generator", { timeout: 30_000 });
+    // "re-runs" while the check runs, "re-ran" once it settles: a fast run can already be done.
+    await expect(card).toContainText(/re-r(uns|an) the check for Talking points generator/, { timeout: 30_000 });
     await expect(card).toContainText("on PR #12");
     await expect(files(page).getByRole("region", { name: /^Talking points generator · .*edited$/ })).toBeVisible();
     // The check passes again (simulated, a few seconds), and only then does the part work.
