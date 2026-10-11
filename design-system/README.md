@@ -71,7 +71,7 @@ The status hues are never used for decoration, links, or "brand".
 
 **Status words (v4.1):** only the icon or dot carries the status colour. The word is ink-2 (ink for Blocked), so a list of rows isn't a column of colour.
 
-**Brand and art (v4): pictures only.** Eight more tokens, light and dark, for pictures and nothing else (rules in `docs/product/23-brand-layer-v4.md`):
+**Brand and art (v4): pictures only.** Eight more tokens, light and dark, for pictures and nothing else (rules in `docs/build/notes/23-brand-layer-v4.md`):
 
 | Token | Light | Dark | Where |
 |---|---|---|---|

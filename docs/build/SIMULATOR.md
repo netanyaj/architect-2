@@ -4,7 +4,7 @@ The prototype doesn't generate code. When the user clicks **Build**, the simulat
 
 ## How it works (serverless-friendly)
 1. **Build click** → server action `startRun(projectId, blueprintVersion)`:
-   - checks the Build gate (`docs/DATA-MODEL.md`, rule 1);
+   - checks the Build gate (`docs/build/DATA-MODEL.md`, rule 1);
    - creates a `runs` row;
    - **computes the whole timeline up front** from the scenario rules and the items;
    - inserts every event into `events` with `payload.at_ms` (its offset from `runs.started_at`).

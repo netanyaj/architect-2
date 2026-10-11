@@ -62,7 +62,7 @@ Clean, calm and consistent with Soft Tray. The v4 pictures work, especially the 
 - **Build:** reuse the AgentGlyph shape masks, with one `<span>` per dot and CSS transitions. No canvas or library.
 
 ## Prompt for Claude Code (M5.9, about 2 hours)
-> M5.9: dotted loader and a polish pass. **Change only tokens and shared components. No layout rewrites, no new screens, and don't remove any feature.** Read `docs/product/25-m57-review-and-polish.md`.
+> M5.9: dotted loader and a polish pass. **Change only tokens and shared components. No layout rewrites, no new screens, and don't remove any feature.** Read `docs/build/notes/25-m57-review-and-polish.md`.
 > 1. **BuildLoader:** replace the solid morphing shape with the dotted loader in doc 25: a 7×7 dot grid on a mist tile, morphing between the AgentGlyph shapes of the parts being built, one dot in the project's accent, the Geist Mono caption below, and a still ring under reduced motion. Reuse the AgentGlyph masks. Update `/kit`.
 > 2. **Status labels:** colour only the status icon or dot. The word becomes ink-2 (ink for Blocked). This applies everywhere StatusLabel is used. Check contrast in both themes.
 > 3. **Buttons:** secondary buttons become quiet (tray fill, no border, ink text; slightly darker fill on hover; a visible focus ring). One ink primary per screen stays. Pills only for segments and status. The Home composer chips become quiet icon-and-text buttons with no border.

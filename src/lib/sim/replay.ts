@@ -1,5 +1,5 @@
 /**
- * Replaying a run on the clock (docs/SIMULATOR.md step 2): from the run's stored events and the time now, what every
+ * Replaying a run on the clock (docs/build/SIMULATOR.md step 2): from the run's stored events and the time now, what every
  * viewer sees: each part's state, the progress line, the activity lines, what the preview shows and any pause.
  * Pure, so a reload or a second viewer computes exactly the same thing.
  */

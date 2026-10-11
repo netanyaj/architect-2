@@ -7,7 +7,7 @@ _Draft 3 · 2026-10-03. Built from PRD section 14 ("What the assignment prototyp
 **Approach:** Netanya builds solo, with Claude Code writing the code from a handoff pack. Every simulated part is labelled "Simulated" in the UI, so nothing pretends to be real.
 
 ## 1. Stack
-![Prototype stack](diagrams/P1-prototype-stack.png)
+![Prototype stack](../product/diagrams/P1-prototype-stack.png)
 
 | Layer | Choice | Why | Not chosen |
 |---|---|---|---|
@@ -38,7 +38,7 @@ Everything the PRD marks **Real** or **Sim** is built. Only items marked **Doc**
 **Demo prompt:** "Before each meeting on my calendar, send me a Slack brief with each attendee's last email thread, a summary of any attached agenda PDF, and three talking points." (the F2 flow, as drawn on the final screens).
 
 ## 3. Milestones
-![Milestones](diagrams/P2-milestones.png)
+![Milestones](../product/diagrams/P2-milestones.png)
 
 Each milestone ends with something that can be shown on the live URL.
 

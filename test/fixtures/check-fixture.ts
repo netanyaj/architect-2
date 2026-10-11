@@ -1,7 +1,7 @@
 import { expect } from "vitest";
 import { Blueprint, quoteInPrompt, validateBlueprint } from "@/lib/blueprint";
 
-/** The fixture assertions from docs/BLUEPRINT-GENERATION.md, shared by the offline and live tests. */
+/** The fixture assertions from docs/build/BLUEPRINT-GENERATION.md, shared by the offline and live tests. */
 export function checkFixture(raw: unknown, prompt: string, expectedBlocking: RegExp | null) {
   // 1. The schema is valid.
   const bp = Blueprint.parse(raw);

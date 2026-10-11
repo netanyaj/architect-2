@@ -8,7 +8,7 @@ import type { AdminDb } from "../db";
 import { blockedServices, budgetRefusal } from "../policy";
 import { openPullRequest } from "../pull-requests";
 
-/** `?sim=` on the workspace URL: a demo variant and/or a faster pace (docs/SIMULATOR.md). */
+/** `?sim=` on the workspace URL: a demo variant and/or a faster pace (docs/build/SIMULATOR.md). */
 export type SimOptions = { variant: Variant; speed: number };
 
 export function parseSim(raw: string | null | undefined): SimOptions {

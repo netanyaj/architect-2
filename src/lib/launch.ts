@@ -66,7 +66,7 @@ export const DomainName = z
   .toLowerCase()
   .regex(/^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/, "Use a web address like app.yourcompany.com, without https://.");
 
-/** The steps every deploy goes through (docs/SIMULATOR.md "Deploys"). `?sim=deployfail` fails the health check. */
+/** The steps every deploy goes through (docs/build/SIMULATOR.md "Deploys"). `?sim=deployfail` fails the health check. */
 export const DEPLOY_STEPS = ["Build", "Database changes", "Web address", "Health check"] as const;
 
 /** The CNAME every custom domain points at (simulated). */

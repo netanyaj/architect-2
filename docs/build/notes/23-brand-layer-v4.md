@@ -52,7 +52,7 @@ Picked by Netanya from the brand drafts page (artifact "Architect Brand Drafts",
 - Replaces spinners only on build screens; small inline spinners stay.
 
 ## Prompt for Claude Code (M5.7, about 2 to 3 hours)
-> Add the Soft Tray v4 brand layer. Read `docs/product/23-brand-layer-v4.md` (I'll add it) for the rules and tokens. Don't change fonts, layout, the left nav, components or status colours.
+> Add the Soft Tray v4 brand layer. Read `docs/build/notes/23-brand-layer-v4.md` (I'll add it) for the rules and tokens. Don't change fonts, layout, the left nav, components or status colours.
 > 1. Add the eight brand and art tokens (light and dark) to `tokens.json` and regenerate `src/app/tokens.css`. Add a lint-style comment: brand and art tokens are for pictures only.
 > 2. Build `src/components/ax/MosaicThumb.tsx` as server-rendered SVG: one column per plan part, cells moss / fern / mist by part status, deterministic heights from the part id, one accent cell chosen by hashing the project id into peony, tangerine, yolk or lilac. Use it on Home tiles, the Projects list, Templates and the header project tile (4-column crop). `aria-hidden`.
 > 3. Build `src/components/ax/AgentGlyph.tsx`: dotted shapes on a mist tile for planner, extractor, checker, notifier, router, writer, data analyst and custom; sizes 20, 34 and 52. Replace the current agent icons on the Agents graph, agent list and Try it. Map each existing agent to a role; anything unknown uses custom.

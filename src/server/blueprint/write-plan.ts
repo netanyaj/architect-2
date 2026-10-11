@@ -65,7 +65,7 @@ async function loadAttachments(admin: AdminDb, projectId: string): Promise<Attac
 }
 
 /**
- * Writes a plan for a project (docs/BLUEPRINT-GENERATION.md): creates the next version in "writing", saves each part
+ * Writes a plan for a project (docs/build/BLUEPRINT-GENERATION.md): creates the next version in "writing", saves each part
  * with its price as it arrives, then the questions, defaults, totals and a small Usage line. Never starts a build.
  * Refusals (wrong workspace, Viewer, model not allowed, already writing) throw PlanRefused before anything is saved.
  */

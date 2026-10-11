@@ -50,7 +50,7 @@ Screen numbers refer to the final canvas. Interface words follow the design-syst
 ### M1 · Foundation (Sun 4)
 - Scaffold:
   - Next.js, Tailwind v4 with `src/app/tokens.css`, Figtree and Geist Mono, shadcn base;
-  - the `ax` components listed in `docs/DESIGN.md`: Button, Pill, Stepper, Segmented, SideNav, PlanPanel, NeedsYouCard, StatusMark, PreviewDock, Composer, ChangeCard, Drawer, StageBanner, ListRow, TemplateCard, VersionCards, Toggle, DataTable, HelpPanel, EmptyState, SimTag (AgentGraph and CodeDiff land in M4).
+  - the `ax` components listed in `docs/build/DESIGN.md`: Button, Pill, Stepper, Segmented, SideNav, PlanPanel, NeedsYouCard, StatusMark, PreviewDock, Composer, ChangeCard, Drawer, StageBanner, ListRow, TemplateCard, VersionCards, Toggle, DataTable, HelpPanel, EmptyState, SimTag (AgentGraph and CodeDiff land in M4).
 - Supabase: migrations; Auth (Google, GitHub, email); workspace on first sign-in; roles Owner/Admin/Builder/Viewer; invites by email link (BL-1, BL-15).
 - Pages: Home (composer, recent projects, templates), Projects, Connections (list with statuses), Usage (ledger), Settings (members, invites, budgets).
 - An empty workspace shell for a project.
@@ -75,7 +75,7 @@ Screen numbers refer to the final canvas. Interface words follow the design-syst
   - the schema tests pass.
 
 ### M3 · Build to deploy, simulated (Tue 6)
-- The simulator (`docs/SIMULATOR.md`) plays the scenario over the real items and writes `events`; Realtime updates the item rows, header progress, activity lines and proof strip (BL-5, A-6, A-7).
+- The simulator (`docs/build/SIMULATOR.md`) plays the scenario over the real items and writes `events`; Realtime updates the item rows, header progress, activity lines and proof strip (BL-5, A-6, A-7).
 - **Fix loop:** up to 3 attempts, each a Usage line (A-9). After 3 failures the part is **Blocked**: screen 6, a drawer with the check, the 3 attempts, the suggested fix (primary), Edit this part, Try once more (cost), Set aside for now, Ask a person.
 - **Sample data** shown on the part ("using sample data") and in the Launch checklist (A-8); progress in the stepper and the Plan panel (A-10).
 - **Budgets:** the build pauses at the project budget (screen 7). Finished items are kept, and the user chooses what happens next (BL-14).
@@ -112,6 +112,6 @@ Screen numbers refer to the final canvas. Interface words follow the design-syst
 - **Status (11 Oct 2026): done and accepted on production.** F5, F6 and F9 pass on production, and so does the full browser suite (50 passed, 2 skipped by design). Every PRD Must, row by row: `docs/COVERAGE.md`. Details and deviations: DECISIONS.md "M5" and "M5 acceptance".
 
 ### M6 · QA and hand-in (Fri 9)
-- Work through `docs/QA-CHECKLIST.md`.
+- Work through `docs/build/QA-CHECKLIST.md`.
 - README with a Real vs Simulated table; architecture PDF; absolute image links in ARCHITECTURE.md; PRD links filled in.
 - Loom (3–5 min); hand-in form.

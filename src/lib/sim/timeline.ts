@@ -1,5 +1,5 @@
 /**
- * The build simulator's timeline (docs/SIMULATOR.md): a pure, seeded function from the plan's real parts and the
+ * The build simulator's timeline (docs/build/SIMULATOR.md): a pure, seeded function from the plan's real parts and the
  * scenario rules to every event of the run, each with its offset from the run's start. Computed once when the person
  * clicks Build (or Apply after a build); browsers replay it on the clock, so a reload or a second viewer sees the same
  * state. Nothing here touches the database.

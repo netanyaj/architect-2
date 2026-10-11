@@ -1,5 +1,5 @@
 /**
- * The estimator (A-4), prototype version (docs/BLUEPRINT-GENERATION.md). Prices never come from the model:
+ * The estimator (A-4), prototype version (docs/build/BLUEPRINT-GENERATION.md). Prices never come from the model:
  * every part is priced here from its class, size and the chosen model. In the product these medians come from
  * metered history; here they're a seeded table. Pure, so it runs in tests and on the server alike.
  */

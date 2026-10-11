@@ -754,7 +754,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
               if (launch) {
                 setActionError(undefined);
                 start(async () => {
-                  // ?sim=deployfail: the deploy fails at its health check (docs/SIMULATOR.md "Deploys").
+                  // ?sim=deployfail: the deploy fails at its health check (docs/build/SIMULATOR.md "Deploys").
                   const sim = params.get("sim") ?? undefined;
                   const r = launchAction!.kind === "share" ? await shareWithTeam({ projectId: project.id, sim }) : await goLive({ projectId: project.id, sim });
                   // A failed deploy shows as its own state on the page (what failed, what's still running), not here.
@@ -766,7 +766,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
               if (!planStage || !project.plan) return;
               setActionError(undefined);
               start(async () => {
-                // ?sim=paused, ?sim=budget, ?sim=fast: the demo variants (docs/SIMULATOR.md).
+                // ?sim=paused, ?sim=budget, ?sim=fast: the demo variants (docs/build/SIMULATOR.md).
                 const r = await buildPlan({ blueprintId: project.plan!.id, sim: params.get("sim") ?? undefined });
                 if (!r.ok) setActionError(r.message);
                 else router.refresh();

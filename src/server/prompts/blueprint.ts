@@ -1,6 +1,6 @@
 import { ITEM_CLASSES } from "@/lib/blueprint";
 
-/** The planner's system prompt, as specified in docs/BLUEPRINT-GENERATION.md (rules kept word for word). */
+/** The planner's system prompt, as specified in docs/build/BLUEPRINT-GENERATION.md (rules kept word for word). */
 export const BLUEPRINT_SYSTEM = `You are Architect's planner. Turn the user's request into a Blueprint: the complete, plain-language
 plan for an agentic web app. A non-technical business user will read it before anything is built.
 

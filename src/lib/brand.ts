@@ -1,5 +1,5 @@
 /**
- * Soft Tray v4 brand layer (docs/product/23-brand-layer-v4.md): the deterministic bits behind the pictures.
+ * Soft Tray v4 brand layer (docs/build/notes/23-brand-layer-v4.md): the deterministic bits behind the pictures.
  * Brand and art colours are for pictures only: never a button, badge, link, status or text next to a status.
  */
 

@@ -1,5 +1,5 @@
 /**
- * What the preview app shows (docs/SIMULATOR.md "Preview app"): the real parts are matched to the Meeting Prep
+ * What the preview app shows (docs/build/SIMULATOR.md "Preview app"): the real parts are matched to the Meeting Prep
  * app's sections by group, service and keywords, so any plan gets a sensible preview.
  */
 export type PreviewPart = { key: string; grp: string; title: string; provider: string | null; status: string; statusDetail: string | null };

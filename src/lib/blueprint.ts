@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * The Blueprint (the "plan" in the interface): the schema the model must fill (docs/BLUEPRINT-GENERATION.md).
+ * The Blueprint (the "plan" in the interface): the schema the model must fill (docs/build/BLUEPRINT-GENERATION.md).
  * Shared by the generator, the validator and the fixture tests. Prices are never part of it.
  */
 
