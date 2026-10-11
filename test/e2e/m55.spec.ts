@@ -83,7 +83,7 @@ test.describe("M5.5", () => {
     expect(audit!.map((a) => a.action).sort()).toEqual(["member.invite_cancelled", "member.invite_resent", "member.invited"]);
   });
 
-  test("Developer view entry: Code in the header for Builders and up; imported repos open in it; the personal setting; Delete for Owners only", async ({ page }) => {
+  test("Developer view entry: a switch in the header for Builders and up; the composer's Ask · Make changes; imported repos open in it; the personal setting; Delete for Owners only", async ({ page }) => {
     await start(page);
     const db = adminDb();
     const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
@@ -96,13 +96,24 @@ test.describe("M5.5", () => {
     await expect(page.getByRole("link", { name: "Vendor tracker" })).toHaveAttribute("href", `/p/${vt!.id}?dev=1`);
     await expect(page.getByRole("link", { name: "Meeting Prep" })).not.toHaveAttribute("href", /dev=1/);
 
-    // Code in the header switches it.
+    // The composer: Make changes by default; Ask never changes the plan.
+    await page.goto(`/p/${(await db.from("projects").select("id").eq("workspace_id", ws).eq("name", "Meeting Prep").single()).data!.id}`);
+    const mode = page.getByRole("radiogroup", { name: "Mode" });
+    await expect(mode.getByRole("radio", { name: "Make changes" })).toHaveAttribute("aria-checked", "true");
+    await mode.getByRole("radio", { name: "Ask" }).click();
+    await expect(mode.getByRole("radio", { name: "Ask" })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByLabel("Message Architect")).toHaveAttribute("placeholder", "Ask a question. Ask never changes the plan…");
+
+    // The header switch turns Developer view on and off.
     const { data: mp } = await db.from("projects").select("id").eq("workspace_id", ws).eq("name", "Meeting Prep").single();
     await page.goto(`/p/${mp!.id}`);
-    await page.getByRole("button", { name: "Developer view" }).click();
+    const devSwitch = page.getByRole("switch", { name: "Developer view" });
+    await expect(devSwitch).toHaveAttribute("aria-checked", "false");
+    await devSwitch.click();
     await page.waitForURL(/dev=1/);
-    await expect(page.getByText("Developer view", { exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Leave Developer view" }).click();
+    await expect(devSwitch).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByRole("heading", { level: 1 }).getByText("Developer view")).toBeVisible();
+    await devSwitch.click();
     await page.waitForURL((u) => !u.search.includes("dev=1"));
 
     // The personal setting: Always (after the page is interactive).
@@ -118,7 +129,11 @@ test.describe("M5.5", () => {
     try {
       await page.goto(`/p/${mp!.id}`);
       await expect(page.getByRole("navigation", { name: "Project stage" })).toBeVisible();
-      await expect(page.getByRole("button", { name: "Developer view" })).toHaveCount(0);
+      await expect(page.getByRole("switch", { name: "Developer view" })).toHaveCount(0);
+      // Viewers can Ask but not Make changes.
+      const mode = page.getByRole("radiogroup", { name: "Mode" });
+      await expect(mode.getByRole("radio", { name: "Ask" })).toHaveAttribute("aria-checked", "true");
+      await expect(mode.getByRole("radio", { name: "Make changes" })).toHaveAttribute("aria-disabled", "true");
       await page.getByRole("button", { name: "More for this project" }).click();
       await expect(page.getByRole("menuitem", { name: "Delete project…" })).toHaveCount(0);
       await page.keyboard.press("Escape");

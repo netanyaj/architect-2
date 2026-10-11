@@ -8,7 +8,8 @@ import { EmptyState } from "@/components/ax/empty-state";
 import { Icon } from "@/components/ax/icon";
 import { IconTile } from "@/components/ax/list-row";
 import { NeedsYouCard } from "@/components/ax/needs-you-card";
-import { Pill, SimTag } from "@/components/ax/pill";
+import { SimTag } from "@/components/ax/pill";
+import { cn } from "@/lib/utils";
 import { PlanGroup, PlanPanel, PlanRow } from "@/components/ax/plan-panel";
 import { Segmented } from "@/components/ax/segmented";
 import { Stepper } from "@/components/ax/stepper";
@@ -531,11 +532,21 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
         />
         <div className="flex items-center gap-2">
           <IconButton icon="help" label="Help with this project" onClick={() => openHelp(project.id)} />
-          {/* Developer view, one click away for anyone who can change code; Viewers don't see it. */}
+          {/* Developer view is a mode that stays on, so it's a switch (M5.5 review). Builders and up; Viewers don't see it. */}
           {canAct && (
-            <Pill pressed={dev} onClick={toggleDev} title={dev ? "Leave Developer view" : "Open Developer view: the code, files and terminal"} aria-label={dev ? "Leave Developer view" : "Developer view"}>
-              <span aria-hidden="true" className="font-mono text-small">&lt;/&gt;</span> Code
-            </Pill>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={dev}
+              onClick={toggleDev}
+              title="The code, files and terminal for this project"
+              className="inline-flex min-h-8 items-center gap-2 rounded-full px-2 text-small font-[600] text-ink hover:bg-selected max-sm:hidden"
+            >
+              Developer view
+              <span aria-hidden="true" className={cn("relative h-[18px] w-[30px] flex-none rounded-full", dev ? "bg-ink" : "bg-line-ctl")}>
+                <span className={cn("absolute top-[2px] size-[14px] rounded-full bg-surface transition-[left]", dev ? "left-[14px]" : "left-[2px]")} />
+              </span>
+            </button>
           )}
           <ShareMenu project={project} />
           <MoreMenu project={project} items={items} canAct={canAct} dev={dev} onToggleDev={toggleDev} onTransfer={() => setTransferOpen(true)} onDelete={() => setDeleteOpen(true)} />

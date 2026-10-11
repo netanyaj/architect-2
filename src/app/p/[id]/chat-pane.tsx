@@ -289,7 +289,7 @@ export function ChatPane({
           return (
             <Architect key={m.id}>
               <p className="whitespace-pre-wrap">{m.content}</p>
-              {m.mode === "plan" && <span className="text-small text-ink-3">Talk first: nothing in the plan changed.</span>}
+              {m.mode === "plan" && <span className="text-small text-ink-3">Ask: nothing in the plan changed.</span>}
               {card && <ChangeCardView card={card} canChange={canChange} onEdit={() => setDraft(userBefore(m.id))} />}
             </Architect>
           );
@@ -352,7 +352,8 @@ export function ChatPane({
           onSubmit={submit}
           talkFirst={talkFirst || !canChange}
           onTalkFirstChange={(on) => canChange && setTalkFirst(on)}
-          placeholder={talkFirst || !canChange ? "Ask a question. Talk first changes nothing…" : "Ask a question or describe a change…"}
+          askOnly={canChange ? undefined : "Viewers can ask, not change the plan."}
+          placeholder={talkFirst || !canChange ? "Ask a question. Ask never changes the plan…" : "Describe a change, or ask a question…"}
           label="Message Architect"
           modelPicker={
             <ModelPicker
@@ -366,7 +367,7 @@ export function ChatPane({
             />
           }
         />
-        {!canChange && <p className="mt-1.5 text-small text-ink-2">Viewers can talk the plan through. Talk first stays on, so nothing changes.</p>}
+        {!canChange && <p className="mt-1.5 text-small text-ink-2">Viewers can ask about the plan. Ask stays on, so nothing changes.</p>}
       </div>
     </aside>
   );

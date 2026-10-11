@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button, IconButton, TextLink } from "@/components/ax/button";
 import { ChangeCard } from "@/components/ax/change-card";
-import { AttachmentChip, Composer, QueueLine } from "@/components/ax/composer";
+import { AttachmentChip, Composer, ModeSwitch, QueueLine } from "@/components/ax/composer";
 import { DataTable } from "@/components/ax/data-table";
 import { Drawer } from "@/components/ax/drawer";
 import { EmptyState } from "@/components/ax/empty-state";
@@ -70,7 +70,7 @@ export function KitDemo() {
         <Section title="Pills, tags, status">
           <div className="flex flex-wrap items-center gap-2">
             <Pill icon="plus">Add files, agents or tools</Pill>
-            <Pill icon="talk" pressed={talk} onClick={() => setTalk(!talk)}>Talk first</Pill>
+            <ModeSwitch ask={talk} onChange={setTalk} />
             <Pill soft iconAfter="chevronDown">Gemini</Pill>
             <Tag>Template</Tag>
             <SimTag />

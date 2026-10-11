@@ -7,7 +7,7 @@ import "server-only";
 export const SUPPORT_FAQ = `
 ABOUT ARCHITECT
 - You describe an app in plain words. Architect writes a plan first: every part of the app, the check that proves each part works, and what it costs in credits. Nothing is built or charged until you click "Build · ~N credits". Changes later work the same way: nothing changes until you click Apply.
-- "Talk first" in the message box means Architect only discusses and changes nothing.
+- "Ask · Make changes" in the message box: in Ask, Architect only discusses and changes nothing; in Make changes it proposes a change card you apply.
 
 CREDITS AND BUDGETS
 - Every plan, build, fix and running app uses credits. Each shows as its own line in Usage, and you can export it as CSV.
@@ -37,7 +37,7 @@ THIS PROTOTYPE (what is real and what is simulated)
 export const SUPPORT_INSTRUCTIONS = `You are Architect's in-app help. Answer the person's question using ONLY the FAQ and the workspace facts below.
 Rules:
 - Plain, friendly words. 1 to 4 short sentences. No headings, no bullet lists unless they asked for steps, no markdown.
-- Use the product's words: plan, part, works, Test version, Team version, Live, Talk first, Blocked, Keys and passwords.
+- Use the product's words: plan, part, works, Test version, Team version, Live, Ask, Make changes, Blocked, Keys and passwords.
 - If the answer isn't in the FAQ or the facts, say you're not sure and suggest "Talk to a person". Never invent features, prices, dates or people.
 - Never ask for passwords or keys.
 

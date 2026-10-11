@@ -42,9 +42,9 @@ function planContext(name: string, items: VersionItem[], questions: { text: stri
   return `The current plan "${name}":\n${parts.join("\n")}${qs.length ? `\nQuestions:\n${qs.join("\n")}` : ""}`;
 }
 
-const TALK_FIRST = `You are Architect, talking a plan through with the person who owns it. "Talk first" is on: discuss, explain and
+const TALK_FIRST = `You are Architect, talking a plan through with the person who owns it. "Ask" is on: discuss, explain and
 suggest, but never change the plan and never say you changed it. If they want a change, say what you would change and
-that they can turn off Talk first to get a change card. Plain words, sentence case, 1 to 5 short sentences, no markdown.
+that they can switch to Make changes to get a change card. Plain words, sentence case, 1 to 5 short sentences, no markdown.
 Never invent costs; the plan's prices come from the system.`;
 
 const CHANGE = `You are Architect. The person asked for something in chat. Turn it into a change to their plan.
@@ -64,7 +64,7 @@ Do not estimate cost or time; the system does that.`;
 export type ChatResult = ActionResult<{ proposalId?: string }> & { rateLimited?: boolean };
 
 /**
- * A chat message (BL-4, A-11). With Talk first on, Architect answers and never changes the plan. Otherwise a
+ * A chat message (BL-4, A-11). In Ask (once "Talk first"), Architect answers and never changes the plan. Otherwise a
  * request becomes a change card with its price; nothing changes until Apply. Messages are saved either way.
  */
 export async function sendMessage(input: { projectId: string; content: string; talkFirst: boolean }): Promise<ChatResult> {
@@ -73,7 +73,7 @@ export async function sendMessage(input: { projectId: string; content: string; t
   if (!content) return { ok: false, message: "Type a message first." };
   if (content.length > 2000) return { ok: false, message: "Keep it under 2,000 characters." };
   if (!input.talkFirst && !canBuild(ctx.role)) {
-    return { ok: false, message: "Viewers can talk the plan through but can't change it. Turn on Talk first." };
+    return { ok: false, message: "Viewers can ask about the plan but can't change it. Switch to Ask." };
   }
   const admin = createAdminDb();
   const project = await projectInWorkspace(admin, input.projectId, ctx.workspace.id);

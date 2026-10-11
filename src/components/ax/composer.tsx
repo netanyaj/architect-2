@@ -3,13 +3,12 @@
 import { useId, useRef, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Icon } from "./icon";
-import { Pill } from "./pill";
 
 /**
  * The message box for Home and Chat.
  * - Home: context pills inside the box, voice stays, Send is the labelled primary "Write the plan ↑".
  * - Chat: Send is a 36px round icon button, no voice, so nothing clips at 344px.
- * "Talk first": when on, Architect discusses and changes nothing.
+ * Ask · Make changes: in Ask, Architect discusses and never changes the plan; Make changes proposes a change card.
  */
 export function Composer({
   variant,
@@ -18,6 +17,7 @@ export function Composer({
   onSubmit,
   talkFirst,
   onTalkFirstChange,
+  askOnly,
   modelPicker,
   contextPills,
   attachments,
@@ -35,6 +35,8 @@ export function Composer({
   onSubmit: (value: string) => void;
   talkFirst: boolean;
   onTalkFirstChange: (on: boolean) => void;
+  /** Why Make changes isn't available (Viewers): the switch stays on Ask. */
+  askOnly?: string;
   /** The model pill (a picker); rendered by the caller so it can own the model list. */
   modelPicker?: ReactNode;
   /** Home only: Add files, agents or tools · Import a repo · Templates and prompts · Help me decide */
@@ -101,9 +103,7 @@ export function Composer({
             <Icon name="plus" size="sm" />
           </button>
         )}
-        <Pill icon="talk" pressed={talkFirst} onClick={() => onTalkFirstChange(!talkFirst)} title="When on, Architect talks it through and changes nothing">
-          Talk first
-        </Pill>
+        <ModeSwitch ask={talkFirst} onChange={onTalkFirstChange} askOnly={askOnly} />
         {modelPicker}
         <span className="flex-1" />
         {home && (
@@ -176,5 +176,39 @@ export function AttachmentChip({ icon, children, onRemove }: { icon: "file" | "a
         </button>
       )}
     </span>
+  );
+}
+
+/**
+ * Ask · Make changes (replacing Talk first): Ask never changes the plan; Make changes proposes a change card, which
+ * still waits for Apply. A two-option switch, as in Cursor and Claude.
+ */
+export function ModeSwitch({ ask, onChange, askOnly }: { ask: boolean; onChange: (ask: boolean) => void; askOnly?: string }) {
+  const option = (value: boolean, label: string, title: string) => {
+    const on = ask === value;
+    const disabled = !value && Boolean(askOnly);
+    return (
+      <button
+        type="button"
+        role="radio"
+        aria-checked={on}
+        aria-disabled={disabled || undefined}
+        title={disabled ? askOnly : title}
+        onClick={() => !disabled && !on && onChange(value)}
+        className={cn(
+          "min-h-7 rounded-full px-2.5 text-small font-[600] whitespace-nowrap",
+          on ? "bg-ink text-surface" : "text-ink-2 hover:text-ink",
+          disabled && "cursor-not-allowed text-ink-3 hover:text-ink-3",
+        )}
+      >
+        {label}
+      </button>
+    );
+  };
+  return (
+    <div role="radiogroup" aria-label="Mode" className="inline-flex items-center gap-0.5 rounded-full border border-line-ctl bg-surface p-0.5">
+      {option(true, "Ask", "Ask: Architect answers and never changes the plan")}
+      {option(false, "Make changes", "Make changes: Architect proposes a change, with its cost, for you to apply")}
+    </div>
   );
 }

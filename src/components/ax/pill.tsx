@@ -4,7 +4,7 @@ import { Icon, type IconName } from "./icon";
 
 /**
  * A pressable option that sits inside the box it acts on.
- * - `pressed` makes it a toggle (Talk first).
+ * - `pressed` makes it a toggle.
  * - `soft` is a picker showing its current value (the model).
  */
 export function Pill({
