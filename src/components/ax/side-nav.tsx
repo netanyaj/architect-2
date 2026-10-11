@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { ROLE_INFO } from "@/lib/permissions";
 import { useUi } from "@/lib/ui-store";
 import { Icon, type IconName } from "./icon";
+import { ProfileMenu } from "./profile-menu";
 import { WorkspaceSwitcher, type WorkspaceOption } from "./workspace-switcher";
 
 type NavItem = { href: string; label: string; icon: IconName; count?: number };
@@ -16,6 +17,8 @@ export type SideNavProps = {
   currentWorkspaceId: string;
   workspaces: WorkspaceOption[];
   userName: string;
+  userEmail: string;
+  theme: "light" | "dark";
   isAdmin: boolean;
   projectCount?: number;
   approvalsWaiting?: number;
@@ -23,15 +26,6 @@ export type SideNavProps = {
   /** Shows "Online" next to Help when people are answering tickets. */
   peopleOnline?: boolean;
 };
-
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join("");
-}
 
 function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
@@ -167,19 +161,7 @@ export function SideNav(props: SideNavProps) {
           </span>
         )}
       </button>
-      <Link
-        href="/settings"
-        aria-current={isActive("/settings") ? "page" : undefined}
-        className="flex min-h-12 items-center gap-2.5 rounded-card px-3 py-1.5 no-underline hover:bg-selected"
-      >
-        <span className="grid size-[30px] flex-none place-items-center rounded-full bg-surface text-small font-bold" aria-hidden="true">
-          {initials(props.userName)}
-        </span>
-        <span className="flex min-w-0 flex-col leading-tight">
-          <span className="truncate font-semibold">{props.userName}</span>
-          <span className="text-small text-ink-2">Settings</span>
-        </span>
-      </Link>
+      <ProfileMenu name={props.userName} email={props.userEmail} theme={props.theme} current={props.currentWorkspaceId} workspaces={props.workspaces} />
       </div>
     </nav>
   );

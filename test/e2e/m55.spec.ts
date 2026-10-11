@@ -40,4 +40,24 @@ test.describe("M5.5", () => {
       { name: "Personal", kind: "personal", governance_enabled: false, plan: "free" },
     ]);
   });
+
+  test("profile menu: name and email, workspaces, Settings, Theme, Help, Log out", async ({ page }) => {
+    await start(page);
+    const nav = page.getByRole("navigation", { name: "Workspace" });
+    await nav.getByRole("button", { name: "Profile: Polish Tester" }).click();
+    const menu = page.getByRole("menu");
+    await expect(menu).toContainText(user.email);
+    await expect(menu.getByRole("menuitem").filter({ hasText: "Personal" })).toBeVisible();
+    await menu.getByRole("menuitem", { name: /^Theme/ }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await nav.getByRole("button", { name: "Profile: Polish Tester" }).click();
+    await page.getByRole("menuitem", { name: /^Theme/ }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await nav.getByRole("button", { name: "Profile: Polish Tester" }).click();
+    await page.getByRole("menuitem", { name: "Settings" }).click();
+    await page.waitForURL(/\/settings$/);
+    await nav.getByRole("button", { name: "Profile: Polish Tester" }).click();
+    await page.getByRole("menuitem", { name: "Log out" }).click();
+    await page.waitForURL(/\/login/);
+  });
 });
