@@ -17,6 +17,7 @@ import { ChatAddMenu, useAttachments } from "./chat-add-menu";
 import { ChatMoreMenu } from "./chat-more-menu";
 import { CodeEditCard } from "./code-edit-card";
 import { PrCard } from "./pr-card";
+import { QuestionCard } from "./question-card";
 
 type Choice = { decision: "keep" | "defer" | "drop"; reason?: string };
 
@@ -325,6 +326,10 @@ export function ChatPane({
             {project.repo ? <YouMessage>Plan from my repo {project.repo}, keeping its stack.</YouMessage> : project.prompt && <YouMessage>{project.prompt}</YouMessage>}
             <ArchitectMessage time={chatTime(introAt)}>
               <p>{planIntro(project, writing)}</p>
+              {/* The plan's open questions, one at a time (M5.8); the plan shows them too. */}
+              {project.plan?.generation === "ready" && !project.plan.agreedAt && !writing && (
+                <QuestionCard questions={project.plan.questions} editReason={canChange ? undefined : "Viewers can't answer the plan's questions."} />
+              )}
             </ArchitectMessage>
             {project.messages.map((m) => {
               if (m.role === "user") return <YouMessage key={m.id} time={chatTime(m.createdAt)}>{m.content}</YouMessage>;
