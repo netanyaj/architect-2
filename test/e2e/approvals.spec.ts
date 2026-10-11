@@ -6,7 +6,7 @@ import { adminDb, createTestUser, deleteTestUser, type TestUser } from "./helper
    approves it for that project with a reason and the part asks to connect; "allow everywhere" makes a rule shown in
    Rules; a rejection needs a reason; a Live deploy approval; the pages are for Owners and Admins with governance on. */
 
-const panel = (page: Page) => page.getByRole("complementary", { name: "Plan" });
+const panel = (page: Page) => page.getByRole("complementary", { name: "Parts" });
 const requests = (page: Page) => page.getByRole("region", { name: "Requests" });
 const detail = (page: Page) => page.getByRole("region", { name: "Request", exact: true });
 

@@ -568,7 +568,7 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
         {history.length === 0 ? (
           <p className="rounded-card border border-line bg-surface px-4 py-3 text-ink-2">
             Nothing shared yet. Every version you share or put live shows here, and you can go back to any of them in one click.
-            {project.versions.length > 1 && ` Your plan has ${project.versions.length} versions; compare them in Files.`}
+            {project.versions.length > 1 && ` Your plan has ${project.versions.length} versions; compare them in Plan.`}
           </p>
         ) : (
           <ul className="flex flex-col divide-y divide-line rounded-card border border-line bg-surface">

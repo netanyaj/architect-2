@@ -120,8 +120,8 @@ function StageBody({
   if (view === "files")
     return (
       <>
-        {project.status !== "draft" && <LookAndFeel project={project} />}
         {planDocument}
+        {project.status !== "draft" && <LookAndFeel project={project} />}
       </>
     );
   if (view === "agents") return <AgentsView project={project} items={items} />;
@@ -303,7 +303,8 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   const openPart = useUi((s) => s.openPart);
   const agentChanges = useUi((s) => s.agentChanges);
   const agentOpen = useUi((s) => s.agentKey !== null);
-  const raw = params.get("view");
+  // "Plan" is the tab's name; its old address (?view=files) still works.
+  const raw = params.get("view") === "plan" ? "files" : params.get("view");
   const planStage = project.status === "draft";
   const dev = params.get("dev") === "1";
   // No terminal for Viewers (M5.5): Developer view shows them the code and the files only.
@@ -496,7 +497,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
       )}
     </PlanPanel>
   ) : (
-    <Rail label="Plan" icon="panelLeft" onOpen={() => setPlanOpen(true)} />
+    <Rail label="Parts" icon="panelLeft" onOpen={() => setPlanOpen(true)} />
   );
 
   return (
@@ -609,15 +610,15 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
                     ? [{ value: "files" as const, label: "Plan" }]
                     : planStage
                     ? [
+                        { value: "app" as const, label: "App" },
                         { value: "files" as const, label: "Plan" },
-                        { value: "app" as const, label: "Mockup" },
-                        { value: "agents" as const, label: "Workflow" },
+                        { value: "agents" as const, label: "Agents" },
                       ]
                     : [
                         { value: "app" as const, label: "App" },
+                        { value: "files" as const, label: "Plan" },
                         { value: "agents" as const, label: "Agents" },
                         { value: "data" as const, label: "Data" },
-                        { value: "files" as const, label: "Files" },
                       ]),
                   ...(dev ? [{ value: "code" as const, label: "Code" }, ...(canAct ? [{ value: "terminal" as const, label: "Terminal" }] : [])] : []),
                 ]}

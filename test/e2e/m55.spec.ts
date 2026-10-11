@@ -208,12 +208,12 @@ test.describe("M5.5", () => {
     expect(files!.map((f) => f.name).sort()).toEqual(["accounts-q4.xlsx", "renewals-2026.csv"]);
   });
 
-  test("Look and feel: a theme preset in Files is applied to the preview", async ({ page }) => {
+  test("Look and feel: a theme preset in Plan › Design is applied to the preview", async ({ page }) => {
     await start(page);
     const db = adminDb();
     const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
     const { data: mp } = await db.from("projects").select("id").eq("workspace_id", m!.workspace_id).eq("name", "Meeting Prep").single();
-    await page.goto(`/p/${mp!.id}?view=files`);
+    await page.goto(`/p/${mp!.id}?view=plan`);
     const themes = page.getByRole("radiogroup", { name: "Theme" });
     await expect(themes.getByRole("radio", { name: /Soft Tray/ })).toHaveAttribute("aria-checked", "true");
     await themes.getByRole("radio", { name: /Graphite/ }).click();
@@ -237,7 +237,7 @@ test.describe("M5.5", () => {
       const { data: bp } = await adminDb().from("blueprints").select("id").eq("project_id", id).order("version", { ascending: false }).limit(1).single();
       const { data: items } = await adminDb().from("items").select("grp").eq("blueprint_id", bp!.id);
       const agents = items!.filter((i) => i.grp === "agents").length;
-      await page.getByRole("tablist", { name: "Stage view" }).getByRole("tab", { name: "Workflow" }).click();
+      await page.getByRole("tablist", { name: "Stage view" }).getByRole("tab", { name: "Agents" }).click();
       if (agents === 0) {
         await expect(page.getByRole("heading", { name: "No agents in this plan" })).toBeVisible({ timeout: 30_000 });
         await expect(page.getByRole("button", { name: "Ask for an agent" })).toBeVisible();

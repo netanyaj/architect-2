@@ -46,7 +46,7 @@ test.describe("M4: Agents", () => {
     const graph = page.getByRole("group", { name: "How the agents connect" });
     await expect(graph.getByRole("button", { name: "Urgency and team label: open its settings" })).toBeVisible();
     await expect(graph.getByText("Hands over urgency and team label")).toBeVisible();
-    await expect(page.getByRole("complementary", { name: "Plan" }).getByText("AI agents")).toBeVisible();
+    await expect(page.getByRole("complementary", { name: "Parts" }).getByText("AI agents")).toBeVisible();
 
     await graph.getByRole("button", { name: "Urgency and team label: open its settings" }).click();
     const settings = panel(page, "Urgency and team label");

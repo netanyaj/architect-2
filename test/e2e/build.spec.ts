@@ -4,7 +4,7 @@ import { adminDb, createTestUser, deleteTestUser, type TestUser } from "./helper
 
 /* The simulated build (M3) over a recorded Meeting Prep plan, at ?sim=fast so a run takes ~25 s. */
 
-const panel = (page: Page) => page.getByRole("complementary", { name: "Plan" });
+const panel = (page: Page) => page.getByRole("complementary", { name: "Parts" });
 
 test.describe("M3: the simulated build", () => {
   test.setTimeout(150_000);
@@ -26,7 +26,7 @@ test.describe("M3: the simulated build", () => {
     // While it plays: live progress in the stepper, a part building, then the fix.
     await expect(page.getByRole("navigation", { name: "Project stage" })).toContainText(/\d of 6 working/, { timeout: 20_000 });
     // The fix lasts ~1.5 s at ?sim=fast: watch the page itself rather than polling with backoff.
-    await page.waitForFunction(() => document.querySelector('aside[aria-label="Plan"]')?.textContent?.includes("A check failed (too long). Fixing it, try 1 of 3."), null, {
+    await page.waitForFunction(() => document.querySelector('aside[aria-label="Parts"]')?.textContent?.includes("A check failed (too long). Fixing it, try 1 of 3."), null, {
       polling: 100,
       timeout: 60_000,
     });

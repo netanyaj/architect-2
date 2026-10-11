@@ -60,10 +60,10 @@ test.describe("M4: Bring your own coding agent", () => {
     const session = page.getByRole("region", { name: "Coding agent session" });
     await expect(session).toContainText("Coding agent: Claude Code (you) · via MCP · updated ‘Brief writer’");
     await expect(session.getByRole("status")).toContainText("‘Brief writer’ is waiting for its check. Only the checker can mark it Works.");
-    await expect(page.getByRole("complementary", { name: "Plan" })).toContainText("Waiting for its check · changed by Claude Code (you)");
+    await expect(page.getByRole("complementary", { name: "Parts" })).toContainText("Waiting for its check · changed by Claude Code (you)");
     await expect(session).toContainText("tried to mark ‘Brief writer’ Works · refused: Only the checker can mark a part Works.");
     await expect(session).toContainText("Checker · Passed 3 of 3 · ‘Brief writer’ works", { timeout: 15_000 });
     await expect(session.getByRole("status")).toHaveCount(0);
-    await expect(page.getByRole("complementary", { name: "Plan" })).not.toContainText("Waiting for its check");
+    await expect(page.getByRole("complementary", { name: "Parts" })).not.toContainText("Waiting for its check");
   });
 });

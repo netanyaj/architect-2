@@ -513,7 +513,7 @@ function SettingsTab({ agent, draft, setDraft, project, readOnly, lyzrModel, mcp
             label="Add knowledge"
             disabledReason={reason ?? (draft.knowledge.length >= 12 ? "Up to 12 knowledge sources per agent." : undefined)}
             options={project.uploads.map((u) => u.name).filter((n) => !draft.knowledge.includes(n))}
-            emptyNote="Upload files in Files first; they show here."
+            emptyNote="Add files in Plan first; they show here."
             onPick={(k) => setDraft({ ...draft, knowledge: [...draft.knowledge, k] })}
           />
         </div>

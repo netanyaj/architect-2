@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 import { Icon } from "./icon";
 import { StatusMark, type Status, type StatusIcon } from "./status-mark";
 
-/** The project's spine, in a tray on the left. Collapses to a 56px rail. */
+/** The project's parts (Needs you, In progress, Works, Up next), in a tray on the left. Collapses to a 56px rail. */
 export function PlanPanel({
-  title = "Plan",
+  title = "Parts",
   version,
   intro,
   progress,
@@ -27,11 +27,11 @@ export function PlanPanel({
 }) {
   if (collapsed) {
     return (
-      <aside aria-label="Plan" className="flex w-14 flex-none flex-col items-center rounded-pane border border-line bg-tray py-3 shadow-pane">
+      <aside aria-label="Parts" className="flex w-14 flex-none flex-col items-center rounded-pane border border-line bg-tray py-3 shadow-pane">
         <button
           type="button"
           onClick={onToggleCollapsed}
-          aria-label="Open the plan panel"
+          aria-label="Open the parts panel"
           className="grid size-[38px] place-items-center rounded-full hover:bg-selected"
         >
           <Icon name="panelLeft" size="sm" />
@@ -41,7 +41,7 @@ export function PlanPanel({
   }
   return (
     <aside
-      aria-label="Plan"
+      aria-label="Parts"
       className="flex h-full min-h-0 flex-col overflow-hidden rounded-pane border border-line bg-tray shadow-pane md:w-[340px] md:flex-none"
     >
       <div className="flex flex-col gap-2 px-4 pt-3.5 pb-2.5">
@@ -53,7 +53,7 @@ export function PlanPanel({
             <button
               type="button"
               onClick={onToggleCollapsed}
-              aria-label="Collapse the plan panel"
+              aria-label="Collapse the parts panel"
               className="grid size-8 place-items-center rounded-full hover:bg-selected"
             >
               <Icon name="panelLeft" size="sm" />

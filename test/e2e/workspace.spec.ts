@@ -39,7 +39,7 @@ test.describe("pages and the project workspace", () => {
 
     await page.getByRole("button", { name: "Write the plan" }).click();
     await page.waitForURL(/\/p\/[0-9a-f-]{36}$/);
-    await expect(page.getByRole("complementary", { name: "Plan" })).toBeVisible();
+    await expect(page.getByRole("complementary", { name: "Parts" })).toBeVisible();
     await expect(page.getByRole("region", { name: "Stage" })).toBeVisible();
     await expect(page.getByRole("complementary", { name: "Chat" })).toBeVisible();
     await expect(page.getByRole("complementary", { name: "Chat" }).getByText(/Classify incoming Zendesk tickets/)).toBeVisible();

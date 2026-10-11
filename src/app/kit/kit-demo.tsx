@@ -95,7 +95,7 @@ export function KitDemo() {
           <Stepper current="build" progress="7 of 12 working · about 6 min" />
           <Stepper current="build" progress="paused at budget" paused />
           <div className="flex flex-wrap gap-3">
-            <Segmented label="Stage view" value={view} onChange={setView} options={[{ value: "app", label: "App" }, { value: "agents", label: "Agents" }, { value: "data", label: "Data" }, { value: "files", label: "Files" }]} />
+            <Segmented label="Stage view" value={view} onChange={setView} options={[{ value: "app", label: "App" }, { value: "files", label: "Plan" }, { value: "agents", label: "Agents" }, { value: "data", label: "Data" }]} />
             <Segmented mode="filter" label="Filter projects" value={filter} onChange={setFilter} options={[{ value: "all", label: "All", count: 4 }, { value: "needs", label: "Needs you", count: 2 }, { value: "live", label: "Live", count: 1 }, { value: "drafts", label: "Drafts", count: 1 }]} />
           </div>
         </Section>

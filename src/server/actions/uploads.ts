@@ -37,7 +37,7 @@ async function xlsxText(bytes: Uint8Array): Promise<string | null> {
 }
 
 /**
- * Registers uploaded files on the project: reads PDFs' text for the planner and lists each file in Files.
+ * Registers uploaded files on the project: reads PDFs' text for the planner and lists each file in the Plan tab.
  * Only paths inside this project's folder are accepted, and each is registered once.
  */
 export async function finishUploads(input: { projectId: string; uploads: { name: string; path: string }[] }): Promise<ActionResult<{ registered: number; unreadable: string[] }>> {

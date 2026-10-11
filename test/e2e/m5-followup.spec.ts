@@ -238,11 +238,11 @@ test.describe("M5 follow-up", () => {
     await page.waitForURL((u) => /\/p\/[0-9a-f-]{36}/.test(u.pathname) && !u.pathname.includes(vt!.id), { timeout: 30_000 });
     const views = page.getByRole("tablist", { name: "Stage view" });
     await expect(views.getByRole("tab", { name: "Plan" })).toHaveAttribute("aria-selected", "true");
-    await views.getByRole("tab", { name: "Mockup" }).click();
+    await views.getByRole("tab", { name: "App" }).click();
     await expect(page.getByText("A mockup from the plan: nothing is built yet.")).toBeVisible();
     await page.waitForTimeout(800);
     await page.screenshot({ path: "/private/tmp/claude-501/-Users-netanyajaison-Desktop-Lock-innn-projects-Lyzr-handoff/b1b50ffc-1030-4cbe-b3d4-3878084915ad/scratchpad/mockup.png" });
-    await views.getByRole("tab", { name: "Workflow" }).click();
+    await views.getByRole("tab", { name: "Agents" }).click();
     await expect(page.getByText("The plan's agents and how they connect: nothing is built yet.")).toBeVisible();
     await page.waitForTimeout(1500);
     await page.screenshot({ path: "/private/tmp/claude-501/-Users-netanyajaison-Desktop-Lock-innn-projects-Lyzr-handoff/b1b50ffc-1030-4cbe-b3d4-3878084915ad/scratchpad/workflow.png" });
