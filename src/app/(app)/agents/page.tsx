@@ -4,6 +4,9 @@ import { EmptyState } from "@/components/ax/empty-state";
 import { ListRow, Tray } from "@/components/ax/list-row";
 import { createServerDb } from "@/server/db";
 import { getAppContext } from "@/server/workspace";
+import { AgentGlyph } from "@/components/ax/AgentGlyph";
+import { EmptyMosaic } from "@/components/ax/MosaicThumb";
+import { agentRole } from "@/lib/brand";
 
 export const metadata: Metadata = { title: "Agents · Architect" };
 
@@ -15,7 +18,7 @@ export default async function AgentsPage() {
   const db = await createServerDb();
   const { data: agents } = await db
     .from("agents")
-    .select("id, name, framework, model, tools, project_id, projects(name)")
+    .select("id, name, description, framework, model, tools, project_id, projects(name)")
     .eq("workspace_id", ctx.workspace.id)
     .order("name");
 
@@ -31,6 +34,7 @@ export default async function AgentsPage() {
             <ListRow
               key={a.id}
               icon="agent"
+              picture={<AgentGlyph role={agentRole(a.name, a.description ?? "")} size={34} />}
               name={a.name}
               meta={`${FRAMEWORK[a.framework] ?? a.framework} · ${a.model}${a.projects?.name ? ` · in ${a.projects.name}` : ""}`}
               tools={a.tools}
@@ -39,7 +43,7 @@ export default async function AgentsPage() {
           ))}
         </Tray>
       ) : (
-        <EmptyState icon="agent" title="No agents yet" primary={<Button variant="primary" href="/home">Describe an app</Button>}>
+        <EmptyState icon="agent" picture={<EmptyMosaic seed="agents" />} title="No agents yet" primary={<Button variant="primary" href="/home">Describe an app</Button>}>
           Agents appear here when a plan includes one, like a brief writer or a ticket sorter. Nothing is built until you click Build.
         </EmptyState>
       )}

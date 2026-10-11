@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { LogoMark } from "./logo-mark";
 
 /** "10:02": a message's time, in the chat's quiet small type. */
 export function chatTime(iso: string | null | undefined): string | null {
@@ -25,9 +26,7 @@ export function ArchitectMessage({ children, time, tag, label = "Architect" }: {
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <Header time={time}>
-        <span className="grid size-[22px] flex-none place-items-center rounded-[7px] bg-primary text-small font-bold text-on-primary" aria-hidden="true">
-          A
-        </span>
+        <LogoMark size={22} />
         {label}
         {tag}
       </Header>

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Button, buttonClasses, IconButton, TextLink } from "@/components/ax/button";
+import { AgentGlyph } from "@/components/ax/AgentGlyph";
 import { EmptyState } from "@/components/ax/empty-state";
 import { Icon } from "@/components/ax/icon";
 import { ModelNotAllowed, ModelPicker } from "@/components/ax/model-picker";
@@ -15,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { agentGraph, changesBetween, CONVERT_CREDITS, GRAPH, layoutGraph, runtimeLine, studioUrl, type AgentDraft, type GraphEnd } from "@/lib/agents";
 import { MODEL_LABEL, type ModelChoice } from "@/lib/models";
+import { agentRole } from "@/lib/brand";
 import { canBuild } from "@/lib/permissions";
 import { PROVIDERS, providerName } from "@/lib/providers";
 import { relativeTime } from "@/lib/project-status";
@@ -203,9 +205,14 @@ function Graph({
                   )}
                   style={{ left: m.x, top: m.y, width: GRAPH.nodeW, minHeight: GRAPH.nodeH }}
                 >
-                  <span className="text-small font-semibold text-ink-3">AI agent · {origin}</span>
-                  <strong className="truncate font-[650]">{a.name}</strong>
-                  <AgentNodeStatus agent={a} item={byKey.get(a.key)} />
+                  <span className="flex min-w-0 items-start gap-2.5">
+                    <AgentGlyph role={agentRole(a.name, a.description)} size={34} />
+                    <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+                      <span className="text-small font-semibold text-ink-3">AI agent · {origin}</span>
+                      <strong className="truncate font-[650]">{a.name}</strong>
+                      <AgentNodeStatus agent={a} item={byKey.get(a.key)} />
+                    </span>
+                  </span>
                 </button>
               );
             })}
@@ -607,7 +614,8 @@ function TryTab({ agent, dirty, lyzr, readOnly, onRan }: { agent: AgentView; dir
   const reason = readOnly ? "Viewers can't run agents." : !message.trim() ? "Write a message first." : pending ? "Running…" : undefined;
   return (
     <div className="flex flex-col gap-3">
-      <label htmlFor={`try-${agent.id}`} className="text-small font-semibold text-ink-2">
+      <label htmlFor={`try-${agent.id}`} className="flex items-center gap-2 text-small font-semibold text-ink-2">
+        <AgentGlyph role={agentRole(agent.name, agent.description)} size={20} />
         Message to {agent.name}
       </label>
       <textarea
@@ -784,7 +792,8 @@ function AgentPanel({
     });
   return (
     <aside aria-label={`${agent.name} settings`} className="flex min-h-0 w-[380px] flex-none flex-col rounded-card border border-line bg-surface max-lg:w-full">
-      <div className="flex items-start gap-2 px-4 pt-3.5 pb-2">
+      <div className="flex items-start gap-3 px-4 pt-3.5 pb-2">
+        <AgentGlyph role={agentRole(agent.name, agent.description)} size={52} />
         <div className="flex min-w-0 flex-1 flex-col">
           <h2 className="text-sub font-semibold">{agent.name}</h2>
           <span className="text-small text-ink-2">{agent.description}</span>

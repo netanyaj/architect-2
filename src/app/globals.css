@@ -75,3 +75,25 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Build loader (Soft Tray v4): one shape morphing circle → half-circle → square → leaf → lens → rounded square,
+   through the brand and art colours in order, every 3.6s. Brand and art colours are for pictures only. */
+@keyframes ax-morph {
+  0%, 100% { border-radius: 50%; background: var(--brand-moss); transform: rotate(0deg); }
+  16.66% { border-radius: 28px 28px 4px 4px / 28px 28px 4px 4px; background: var(--brand-lime); transform: rotate(0deg); }
+  33.33% { border-radius: 6px; background: var(--art-peony); transform: rotate(90deg); }
+  50% { border-radius: 4px 50% 4px 50%; background: var(--brand-fern); transform: rotate(90deg); }
+  66.66% { border-radius: 50% 4px 50% 4px; background: var(--art-tangerine); transform: rotate(135deg); }
+  83.33% { border-radius: 16px; background: var(--art-lilac); transform: rotate(180deg); }
+}
+.ax-build-loader {
+  animation: ax-morph 3.6s ease-in-out infinite;
+}
+/* Reduced motion: a still moss circle. */
+@media (prefers-reduced-motion: reduce) {
+  .ax-build-loader {
+    animation: none !important;
+    border-radius: 50%;
+    background: var(--brand-moss);
+  }
+}

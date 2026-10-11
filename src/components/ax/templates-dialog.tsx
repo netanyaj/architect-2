@@ -8,6 +8,8 @@ import { Icon } from "./icon";
 import { ToolInitials } from "./list-row";
 import { Segmented } from "./segmented";
 import { TemplateCard } from "./template-card";
+import { MosaicThumb } from "./MosaicThumb";
+import { templateParts } from "@/lib/brand";
 
 type Tab = "Template" | "Agentlet" | "Prompt";
 const TEAMS = ["Sales", "Support", "Ops", "HR", "Finance"] as const;
@@ -93,6 +95,7 @@ export function TemplatesDialog({
               <TemplateCard
                 key={s.id}
                 icon={s.icon}
+                picture={<MosaicThumb seed={s.id} parts={templateParts(s.id, s.credits)} />}
                 name={s.name}
                 description={s.description}
                 footer={

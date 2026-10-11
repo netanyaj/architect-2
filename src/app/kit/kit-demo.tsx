@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { Button, IconButton, TextLink } from "@/components/ax/button";
+import { AgentGlyph } from "@/components/ax/AgentGlyph";
+import { BuildLoader } from "@/components/ax/BuildLoader";
 import { ChangeCard } from "@/components/ax/change-card";
+import { EmptyMosaic, MosaicThumb } from "@/components/ax/MosaicThumb";
+import { LogoMark } from "@/components/ax/logo-mark";
+import { AGENT_ROLES, templateParts } from "@/lib/brand";
 import { AttachmentChip, Composer, QueueLine } from "@/components/ax/composer";
 import { DataTable } from "@/components/ax/data-table";
 import { Drawer } from "@/components/ax/drawer";
@@ -153,6 +158,32 @@ export function KitDemo() {
           </StageBanner>
         </Section>
 
+        <Section title="Pictures (v4)">
+          <p className="text-small text-ink-2">Brand and art colours, for pictures only. Agent glyphs at 20, 34 and 52:</p>
+          <div className="flex flex-wrap gap-5">
+            {AGENT_ROLES.map((r) => (
+              <span key={r} className="flex flex-col items-center gap-1.5">
+                <span className="flex items-end gap-2">
+                  <AgentGlyph role={r} size={20} />
+                  <AgentGlyph role={r} size={34} />
+                  <AgentGlyph role={r} size={52} />
+                </span>
+                <span className="text-small text-ink-2">{r}</span>
+              </span>
+            ))}
+          </div>
+          <p className="text-small text-ink-2">Mosaics: a draft, mid-build, built (one accent each), a template, the header crop, an empty state:</p>
+          <div className="flex flex-wrap items-end gap-4">
+            <MosaicThumb seed="kit-draft" parts={["a", "b", "c", "d", "e"].map((id) => ({ id, status: "agreed" }))} />
+            <MosaicThumb seed="kit-mid" parts={[["a", "built"], ["b", "built"], ["c", "building"], ["d", "agreed"], ["e", "agreed"], ["f", "agreed"]].map(([id, status]) => ({ id, status }))} />
+            <MosaicThumb seed="kit-built" parts={["a", "b", "c", "d", "e", "f", "g"].map((id) => ({ id, status: "built" }))} />
+            <MosaicThumb seed="meeting-briefs" parts={templateParts("meeting-briefs", 160)} />
+            <MosaicThumb seed="kit-mid" crop={4} parts={[["a", "built"], ["b", "built"], ["c", "building"], ["d", "agreed"]].map(([id, status]) => ({ id, status }))} />
+            <EmptyMosaic seed="projects" />
+            <LogoMark />
+          </div>
+          <BuildLoader step="Build 4/6 · Writing the rate-card check" />
+        </Section>
         <Section title="Lists, templates, empty state">
           <Tray label="Projects">
             <ListRow icon="calendar" darkTile name="Meeting Prep" meta="Morgan · 2 h ago · 172 credits" tools={["Calendar", "Gmail", "Slack"]} status={<StatusWord status="attention">Needs you: connect Gmail</StatusWord>} trailing={<IconButton icon="more" label="More for Meeting Prep" quiet size={32} />} href="#" />

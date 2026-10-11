@@ -53,6 +53,7 @@ export function ToolInitials({ tools }: { tools: string[] }) {
  */
 export function ListRow({
   icon,
+  picture,
   darkTile,
   name,
   meta,
@@ -65,6 +66,8 @@ export function ListRow({
   className,
 }: {
   icon: IconName;
+  /** A 34px picture in place of the icon tile: a project's mosaic or an agent's glyph (Soft Tray v4). */
+  picture?: ReactNode;
   darkTile?: boolean;
   name: ReactNode;
   meta?: ReactNode;
@@ -87,7 +90,7 @@ export function ListRow({
       )}
     >
       <div className="flex items-center gap-3.5">
-      <IconTile icon={icon} dark={darkTile} />
+      {picture ?? <IconTile icon={icon} dark={darkTile} />}
       <div className="flex min-w-0 flex-1 flex-col">
         {href ? (
           <Link

@@ -21,6 +21,7 @@ import { relativeTime } from "@/lib/project-status";
 import { deleteProject, duplicateProject } from "@/server/actions/projects";
 import { useUi } from "@/lib/ui-store";
 import type { ProjectRow } from "@/server/queries";
+import { EmptyMosaic, MosaicThumb } from "@/components/ax/MosaicThumb";
 
 type Row = ProjectRow & { canDelete: boolean; href: string };
 type Filter = "all" | "needs" | "live" | "drafts";
@@ -112,6 +113,7 @@ export function ProjectsList({ projects, creditsUsed, canStart }: { projects: Ro
       <div className="flex flex-1 items-start justify-center pt-24">
         <EmptyState
           icon="newProject"
+          picture={<EmptyMosaic seed="projects" />}
           title="No projects yet"
           primary={
             <Button variant="primary" href="/home" disabledReason={canStart ? undefined : "Viewers can't start projects."}>
@@ -181,6 +183,7 @@ export function ProjectsList({ projects, creditsUsed, canStart }: { projects: Ro
             <ListRow
               key={p.id}
               icon={p.icon}
+              picture={<MosaicThumb seed={p.id} parts={p.parts} />}
               name={p.name}
               href={p.href}
               meta={

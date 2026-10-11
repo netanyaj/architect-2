@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { safeNext } from "@/lib/auth-paths";
 import { createServerDb } from "@/server/db";
 import { LoginForm } from "./login-form";
+import { LogoMark } from "@/components/ax/logo-mark";
 
 export const metadata: Metadata = { title: "Sign in · Architect" };
 
@@ -21,9 +22,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
     <main className="grid min-h-dvh place-items-center bg-canvas px-4 py-10">
       <div className="flex w-full max-w-[420px] flex-col gap-6 rounded-pane border border-line bg-surface p-8 shadow-pane max-sm:p-6">
         <div className="flex items-center gap-2.5 text-sub font-bold">
-          <span className="grid size-[30px] place-items-center rounded-[9px] bg-primary text-body font-bold text-on-primary" aria-hidden="true">
-            A
-          </span>
+          <LogoMark />
           Architect
         </div>
         <div className="flex flex-col gap-1.5">

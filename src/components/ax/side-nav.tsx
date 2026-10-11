@@ -9,6 +9,7 @@ import { AccountMenu } from "./account-menu";
 import { ResourcesMenu } from "./resources-menu";
 import type { WorkspaceOption } from "./workspace-switcher";
 import type { WorkspacePlan } from "@/lib/plans";
+import { LogoMark } from "./logo-mark";
 
 type NavItem = { href: string; label: string; icon: IconName; count?: number };
 
@@ -69,7 +70,8 @@ export function CreditsCard({ left, total, resetsOn }: SideNavProps["credits"]) 
         aria-valuemax={total}
         aria-valuenow={left}
       >
-        <i className="block h-full bg-ink" style={{ width: `${pct}%` }} />
+        {/* The fill is moss, a brand colour (Soft Tray v4); the numbers above carry the meaning. */}
+        <i className="block h-full" style={{ width: `${pct}%`, background: "var(--brand-moss)" }} />
       </div>
       <div className="flex items-center justify-between text-small text-ink-2">
         <span>Resets {resetsOn}</span>
@@ -112,9 +114,7 @@ export function SideNav(props: SideNavProps) {
       className="flex flex-col gap-0.5 rounded-pane border border-line bg-tray px-3 py-3.5 md:sticky md:top-2.5 md:h-[calc(100dvh-20px)] md:w-[248px] md:flex-none"
     >
       <div className="flex items-center gap-2.5 px-1.5 pt-0.5 pb-3 text-sub font-bold max-md:pb-0">
-        <span className="grid size-[30px] flex-none place-items-center rounded-[9px] bg-primary text-body font-bold text-on-primary" aria-hidden="true">
-          A
-        </span>
+        <LogoMark />
         <span className="flex min-w-0 flex-col leading-tight">
           <span className="flex items-center gap-1.5">
             Architect

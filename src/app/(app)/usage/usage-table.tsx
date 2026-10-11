@@ -5,6 +5,7 @@ import { Button } from "@/components/ax/button";
 import { DataTable } from "@/components/ax/data-table";
 import { EmptyState } from "@/components/ax/empty-state";
 import { Select } from "@/components/ax/select";
+import { EmptyMosaic } from "@/components/ax/MosaicThumb";
 
 export type LedgerRow = { id: string; at: string; project: string; kind: string; note: string; credits: number };
 
@@ -36,7 +37,7 @@ export function UsageTable({ rows }: { rows: LedgerRow[] }) {
 
   if (rows.length === 0) {
     return (
-      <EmptyState icon="usage" title="Nothing spent yet">
+      <EmptyState icon="usage" picture={<EmptyMosaic seed="usage" />} title="Nothing spent yet">
         Writing a plan, building and fixing each add a line here. Nothing is charged until you click Build.
       </EmptyState>
     );

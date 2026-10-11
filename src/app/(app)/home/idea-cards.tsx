@@ -4,6 +4,8 @@ import { ToolInitials } from "@/components/ax/list-row";
 import { TemplateCard } from "@/components/ax/template-card";
 import { useHomePrompt } from "@/lib/home-prompt";
 import { STARTERS } from "@/lib/templates";
+import { MosaicThumb } from "@/components/ax/MosaicThumb";
+import { templateParts } from "@/lib/brand";
 
 const FEATURED = ["support-triage", "account-research", "ask-your-documents"];
 
@@ -17,6 +19,7 @@ export function IdeaCards() {
         <TemplateCard
           key={s.id}
           icon={s.icon}
+          picture={<MosaicThumb seed={s.id} parts={templateParts(s.id, s.credits)} />}
           kind={s.kind === "Prompt" ? undefined : s.kind}
           name={s.name}
           description={s.description}

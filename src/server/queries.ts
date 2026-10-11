@@ -57,6 +57,8 @@ export type ProjectRow = {
   /** Service ids its current parts use ("hubspot", "clearbit"). */
   providers: string[];
   summary: ProjectSummary;
+  /** The current version's parts, in plan order: the project's mosaic picture (Soft Tray v4). */
+  parts: { id: string; status: string }[];
   prompt: string | null;
   budgetCredits: number | null;
   /** Built or live: Launch (Share) is open. */
@@ -74,7 +76,7 @@ export async function listProjects(ctx: AppContext): Promise<ProjectRow[]> {
   const [{ data: projects, error }, { data: owners }, { data: usage }] = await Promise.all([
     db
       .from("projects")
-      .select("id, name, icon, status, owner_id, owner_display_name, updated_at, budget_credits, prompt, legacy_repo, moved_to, repo_full_name, items(status, title, grp, blueprint_id, provider), blueprints(id, version), runs(status, started_at)")
+      .select("id, name, icon, status, owner_id, owner_display_name, updated_at, budget_credits, prompt, legacy_repo, moved_to, repo_full_name, items(id, status, title, grp, blueprint_id, provider, position), blueprints(id, version), runs(status, started_at)")
       .eq("workspace_id", ws)
       .order("updated_at", { ascending: false }),
     db.from("members").select("user_id, display_name").eq("workspace_id", ws).eq("status", "active"),
@@ -113,6 +115,7 @@ export async function listProjects(ctx: AppContext): Promise<ProjectRow[]> {
         prompt: p.prompt,
         legacy: p.legacy_repo ? { movedTo: (projects ?? []).find((x) => x.id === p.moved_to)?.name ?? null } : null,
       }),
+      parts: [...items].sort((a, b) => a.position - b.position).map((i) => ({ id: i.id, status: i.status })),
       prompt: p.prompt,
       budgetCredits: p.budget_credits === null ? null : Number(p.budget_credits),
       launchable: !p.legacy_repo && (p.status === "built" || p.status === "live"),

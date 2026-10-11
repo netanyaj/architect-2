@@ -134,7 +134,15 @@ export function HomeComposer({
   return (
     <>
       <div className="flex flex-col gap-2.5">
-        <span className="min-h-6 text-sub font-medium text-ink-2">{hello && (firstName ? `${hello}, ${firstName}` : hello)}</span>
+        <span className="min-h-6 text-sub font-medium text-ink-2">
+          {hello && (
+            <>
+              {firstName ? `${hello}, ${firstName}` : hello}
+              {/* The greeting's full stop is the one brand touch in the hero (Soft Tray v4). */}
+              <span style={{ color: "var(--brand-moss)" }}>.</span>
+            </>
+          )}
+        </span>
         <h1 className="text-display font-[650] tracking-[-0.03em] max-sm:text-title">What should we build?</h1>
         <p className="text-sub text-ink-2">Describe it once. You’ll see the full plan and what it costs before anything is built.</p>
       </div>

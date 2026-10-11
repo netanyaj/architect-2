@@ -11,6 +11,7 @@ import { blockedServices, loadPolicies } from "@/server/policy";
 import { listProjects } from "@/server/queries";
 import { getAppContext } from "@/server/workspace";
 import { AddApiKey, ConnectionsList, type ConnectionRow } from "./connections-list";
+import { EmptyMosaic } from "@/components/ax/MosaicThumb";
 
 export const metadata: Metadata = { title: "Connections · Architect" };
 
@@ -67,7 +68,7 @@ export default async function ConnectionsPage() {
       {rows.length ? (
         <ConnectionsList rows={rows} access={{ canConnect: canBuild(ctx.role), refusal: connectRefusal(policies.apps, policies.governance, isAdmin), isAdmin }} />
       ) : (
-        <EmptyState icon="connections" title="No apps connected yet">
+        <EmptyState icon="connections" picture={<EmptyMosaic seed="connections" />} title="No apps connected yet">
           When a plan needs an app, it shows up here with what it&apos;s used for. Nothing connects without your click.
         </EmptyState>
       )}

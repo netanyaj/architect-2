@@ -16,6 +16,8 @@ import { displayNameFor, getAppContext } from "@/server/workspace";
 import { HomeComposer } from "./home-composer";
 import { IdeaCards } from "./idea-cards";
 import { PersonalStart } from "./personal-start";
+import { LogoMark } from "@/components/ax/logo-mark";
+import { MosaicThumb } from "@/components/ax/MosaicThumb";
 
 export const metadata: Metadata = { title: "Home · Architect" };
 
@@ -33,9 +35,7 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
       <div className="flex min-h-dvh flex-col bg-canvas p-2.5">
         <div className="flex flex-1 flex-col rounded-pane border border-line bg-surface shadow-pane">
           <header className="flex items-center gap-2.5 px-6 pt-5 text-sub font-bold">
-            <span className="grid size-[30px] place-items-center rounded-[9px] bg-primary text-body font-bold text-on-primary" aria-hidden="true">
-              A
-            </span>
+            <LogoMark />
             Architect
             <span className="flex-1" />
             <Link href="/login" className={buttonClasses({})}>
@@ -84,6 +84,7 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
               <ListRow
                 key={p.id}
                 icon={p.icon}
+                picture={<MosaicThumb seed={p.id} parts={p.parts} />}
                 name={p.name}
                 meta={p.summary.meta}
                 href={projectHref(p.id, { repo: p.repo, pref, canBuild: canBuild(ctx.role) })}

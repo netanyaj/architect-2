@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, type FormEvent, type ReactNode } from "react"
 import { cn } from "@/lib/utils";
 import { Icon } from "./icon";
 import { SimTag } from "./pill";
+import { LogoMark } from "./logo-mark";
 
 export type HelpMessage = { role: "user" | "bot"; text: string };
 
@@ -78,9 +79,7 @@ export function HelpPanel({
       )}
     >
       <header className="flex items-center gap-2.5 px-4 pt-3.5 pb-2.5">
-        <span className="grid size-[22px] place-items-center rounded-[7px] bg-primary text-small font-bold text-on-primary" aria-hidden="true">
-          A
-        </span>
+        <LogoMark size={22} />
         <h2 id={titleId} className="text-sub font-semibold">
           Help with Architect
         </h2>

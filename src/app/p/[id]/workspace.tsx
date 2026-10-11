@@ -6,7 +6,8 @@ import { useEffect, useRef, useState, useTransition, type ReactNode } from "reac
 import { Button, IconButton, TextLink } from "@/components/ax/button";
 import { EmptyState } from "@/components/ax/empty-state";
 import { Icon } from "@/components/ax/icon";
-import { IconTile } from "@/components/ax/list-row";
+import { BuildLoader } from "@/components/ax/BuildLoader";
+import { MosaicThumb } from "@/components/ax/MosaicThumb";
 import { NeedsYouCard } from "@/components/ax/needs-you-card";
 import { SimTag } from "@/components/ax/pill";
 import { cn } from "@/lib/utils";
@@ -49,7 +50,7 @@ import { OrgBudgetBanner } from "@/components/ax/org-budget-banner";
 import { CodeView, DevActivity, downloadCode, PrStatus, TerminalView } from "./dev-view";
 import { HandoffBanner, TransferDialog } from "./handoff";
 import { SyncBanner } from "./pr-card";
-import { AppPreview, BudgetBanner, BuildActivity, BuildPanel, PreviewControls, TestTheApp } from "./build-stage";
+import { AppPreview, buildProgressLine, BudgetBanner, BuildActivity, BuildPanel, PreviewControls, TestTheApp } from "./build-stage";
 import { ChatPane } from "./chat-pane";
 import { ChangesPanel, currentChange } from "./changes-panel";
 import { ActionNeeded } from "./key-action";
@@ -143,7 +144,7 @@ function StageBody({
   if (view === "data") return <DataView project={project} items={items} />;
   if (project.runStatus === "queued") {
     return (
-      <EmptyState icon="window" title="Starting your build">
+      <EmptyState icon="window" picture={<BuildLoader step={buildProgressLine(live, items.filter((i) => i.status !== "dropped" && i.status !== "deferred").length)} />} title="Starting your build">
         The plan is agreed and saved as v{project.plan?.version ?? 1}. Architect is about to build it, part by part, with a check for each.
       </EmptyState>
     );
@@ -151,7 +152,7 @@ function StageBody({
   return (
     <>
       {budgetPaused && <BudgetBanner project={project} items={items} live={live} />}
-      <AppPreview project={project} items={items} />
+      <AppPreview project={project} items={items} live={live} />
     </>
   );
 }
@@ -669,7 +670,8 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
           <Link href="/projects" aria-label="Back to projects" className="grid size-[38px] flex-none place-items-center rounded-full hover:bg-selected">
             <Icon name="chevronLeft" size="sm" />
           </Link>
-          <IconTile icon={project.icon} dark />
+          {/* The project's mosaic, cropped to its first 4 parts (Soft Tray v4). */}
+          <MosaicThumb seed={project.id} parts={items} crop={4} />
           <div className="flex min-w-0 flex-col leading-tight">
             <h1 className="flex min-w-0 items-center gap-2 text-sub font-semibold">
               <span className="truncate">{project.name}</span>

@@ -23,6 +23,7 @@ import { raiseBudgetAndContinue, setWaitingAside, stopHere } from "@/server/acti
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 import { ConnectButton } from "./connect-button";
 import { KeyAction, partsNeedingKey } from "./key-action";
+import { BuildLoader } from "@/components/ax/BuildLoader";
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const time = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
@@ -276,7 +277,16 @@ export function PreviewControls({ projectId }: { projectId: string }) {
 }
 
 /** The app in its Test version, with the dock: sizes, Point at something, N problems (BL-6). */
-export function AppPreview({ project, items }: { project: ProjectWorkspace; items: WorkspaceItem[] }) {
+/** The loader's line under the shape: "Build 2/6 · Building Talking points generator" (Geist Mono). */
+export function buildProgressLine(live: Pick<LiveRun, "done" | "total" | "activity">, parts = 0): string {
+  const last = live.activity.at(-1);
+  const now = last ? `${last.verb} ${last.object}`.trim() : "Starting";
+  // Before the run's first event, its total isn't known yet: the plan's part count stands in.
+  const total = live.total || parts;
+  return total ? `Build ${Math.min(live.done + 1, total)}/${total} · ${now}` : now;
+}
+
+export function AppPreview({ project, items, live }: { project: ProjectWorkspace; items: WorkspaceItem[]; live?: LiveRun }) {
   const { partKey, openPart, sendToChat } = useUi();
   // The size and the Light / Dark view are switched in the project header (M5.8), beside the tabs.
   const size = useUi((s) => s.previewSize);
@@ -353,8 +363,15 @@ export function AppPreview({ project, items }: { project: ProjectWorkspace; item
         </>
       }
     >
-      {preview.kind === "meeting-prep" && preview.reveal.length === 0 ? (
-        <div className="grid h-full place-items-center p-8 text-center text-ink-2">
+      {live?.playing && preview.reveal.length === 0 ? (
+        // Nothing to show yet while the build runs: the brand loader and where the build is (Soft Tray v4).
+        <div className="grid h-full place-items-center bg-surface p-8">
+          <BuildLoader step={buildProgressLine(live, items.filter((i) => i.status !== "dropped" && i.status !== "deferred").length)}>
+            <p className="text-ink-2">The app appears here, section by section, as its parts start to work.</p>
+          </BuildLoader>
+        </div>
+      ) : preview.kind === "meeting-prep" && preview.reveal.length === 0 ? (
+        <div className="grid h-full place-items-center bg-surface p-8 text-center text-ink-2">
           <p>The app appears here, section by section, as its parts start to work.</p>
         </div>
       ) : (
