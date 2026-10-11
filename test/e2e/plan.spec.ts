@@ -75,15 +75,24 @@ test.describe("M2: plans and chat", () => {
     expect(plan!.agreed_at).not.toBeNull();
   });
 
-  test("a chat request returns a change card with a price; Apply makes a new version; a removal needs a decision", async ({ page }) => {
+  test("a question gets an answer; a chat request returns a change card with a price; Apply makes a new version; a removal needs a decision", async ({ page }) => {
     await signIn(page, user);
     const id = await writePlan(page, "Every Monday, send me a Slack message in #ops listing vendor renewals due this month.");
     await expect(page.getByText(/Here's the plan: \d+ parts/)).toBeVisible({ timeout: 60_000 });
 
     const chat = page.getByRole("complementary", { name: "Chat" });
+    // No mode switch (M5.8): a question gets an answer, with no card and no new version.
+    await expect(chat.getByRole("radiogroup", { name: "Mode" })).toHaveCount(0);
+    await chat.getByLabel("Message Architect").fill("Why does the plan check the Slack message?");
+    await chat.getByRole("button", { name: "Send" }).click();
+    await expect(chat.getByText(/Answered\. Nothing in the plan changed\.|The model is busy right now/).first()).toBeVisible({ timeout: 45_000 });
+    await expect(chat.getByRole("region", { name: "Change card" })).toHaveCount(0);
+    expect((await adminDb().from("blueprints").select("version").eq("project_id", id)).data!.map((b) => b.version)).toEqual([1]);
+
+    // A change request gets the change card.
     await chat.getByLabel("Message Architect").fill("Also send me a Friday recap of the renewals that were handled.");
     await chat.getByRole("button", { name: "Send" }).click();
-    const card = chat.locator("div.rounded-card").filter({ hasText: "Suggested change" });
+    const card = chat.getByRole("region", { name: "Change card" }).filter({ hasText: "Suggested change" });
     await expect(card).toBeVisible({ timeout: 45_000 });
     await expect(card).toContainText(/~\d+ credits|No extra cost/);
 

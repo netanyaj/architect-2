@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Button, TextLink } from "@/components/ax/button";
+import { ArchitectMessage, chatTime } from "@/components/ax/chat-message";
 import { NeedsYouCard } from "@/components/ax/needs-you-card";
 import { SimTag } from "@/components/ax/pill";
 import { PlanGroup, PlanRow } from "@/components/ax/plan-panel";
@@ -317,14 +318,7 @@ export function BuildActivity({ project, items, live }: { project: ProjectWorksp
   if (approval.length) sentences.push(`${providerName(approval[0].provider)} is waiting for IT, and nothing else is blocked by it.`);
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2 text-small font-semibold text-ink-2">
-        <span className="grid size-[22px] place-items-center rounded-[7px] bg-primary text-small font-bold text-on-primary" aria-hidden="true">
-          A
-        </span>
-        Architect
-        <SimTag title="The build is simulated in this prototype" />
-      </div>
+    <ArchitectMessage time={chatTime(run.startedAt)} tag={<SimTag title="The build is simulated in this prototype" />}>
       <p>{sentences.join(" ")}</p>
       {pause && (
         <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 rounded-card border border-line px-3.5 py-3 text-small tabular-nums">
@@ -355,6 +349,6 @@ export function BuildActivity({ project, items, live }: { project: ProjectWorksp
           )}
         </>
       )}
-    </div>
+    </ArchitectMessage>
   );
 }

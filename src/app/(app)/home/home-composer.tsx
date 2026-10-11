@@ -45,7 +45,6 @@ export function HomeComposer({
 }) {
   const router = useRouter();
   const { prompt, setPrompt, templatesOpen, setTemplatesOpen } = useHomePrompt();
-  const [talkFirst, setTalkFirst] = useState(false);
   const [model, setModel] = useState<ModelChoice>(models.find((m) => m.choice === defaultModel)?.choice ?? models[0]?.choice ?? DEFAULT_MODEL);
   const [hello, setHello] = useState<string | null>(null);
   const [error, setError] = useState<string>();
@@ -108,7 +107,7 @@ export function HomeComposer({
     }
     start(async () => {
       // Without files the action opens the new project itself; it only returns when something's wrong.
-      const r = await startProject({ prompt: text, talkFirst, model, agents, files: files.map((f) => ({ name: f.name, type: f.type, size: f.size })) });
+      const r = await startProject({ prompt: text, model, agents, files: files.map((f) => ({ name: f.name, type: f.type, size: f.size })) });
       if (!r) return;
       if (!r.ok) return setError(r.message);
       if (!r.projectId || !r.uploads) return;
@@ -141,8 +140,6 @@ export function HomeComposer({
           value={prompt}
           onChange={setPrompt}
           onSubmit={submit}
-          talkFirst={talkFirst}
-          onTalkFirstChange={setTalkFirst}
           pending={pending}
           placeholder="Describe the app you want. For example: before each meeting, send me a Slack brief with each attendee’s last email."
           label="Describe your app"

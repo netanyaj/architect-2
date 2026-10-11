@@ -6,7 +6,7 @@ import { editLine, type CodeEditView } from "@/lib/code-edits";
 /** A code edit from Developer view (simulated): which file, which part's check runs again, and how it went. */
 export function CodeEditCard({ edit }: { edit: CodeEditView }) {
   return (
-    <section aria-label={`Code edit to ${edit.path}`} className="flex flex-col gap-1.5 rounded-card border border-line bg-surface p-3.5">
+    <section aria-label={`Code edit to ${edit.path}`} className="flex w-full min-w-0 flex-col gap-1.5 rounded-card border border-line bg-surface px-3.5 py-3">
       <div className="flex flex-wrap items-center gap-2">
         <Icon name="code" size="sm" />
         <h3 className="flex-1 font-[650]">{editLine(edit)}</h3>

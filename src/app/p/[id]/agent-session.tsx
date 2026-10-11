@@ -57,7 +57,7 @@ export function AgentSessionLines({ project, state }: { project: ProjectWorkspac
   if (!state) return null;
   if ("blocked" in state) {
     return (
-      <section aria-label="Coding agent session" className="flex flex-col gap-1 rounded-card border border-line p-3 text-small">
+      <section aria-label="Coding agent session" className="flex w-full min-w-0 flex-col gap-1 rounded-card border border-line bg-surface px-3.5 py-3 text-small">
         <span className="flex items-center gap-2 font-semibold">
           Coding agent session <SimTag />
         </span>
@@ -71,7 +71,7 @@ export function AgentSessionLines({ project, state }: { project: ProjectWorkspac
     );
   }
   return (
-    <section aria-label="Coding agent session" className="flex flex-col gap-1.5 rounded-card border border-line p-3">
+    <section aria-label="Coding agent session" className="flex w-full min-w-0 flex-col gap-1.5 rounded-card border border-line bg-surface px-3.5 py-3">
       <span className="flex items-center gap-2 text-small font-semibold">
         Coding agent session <SimTag title="A scripted session (?sim=byoagent). No coding agent is connected in this prototype." />
       </span>

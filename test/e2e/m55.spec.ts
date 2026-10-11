@@ -125,7 +125,7 @@ test.describe("M5.5", () => {
     expect(audit!.map((a) => a.action).sort()).toEqual(["member.invite_cancelled", "member.invite_resent", "member.invited"]);
   });
 
-  test("Developer view entry: a switch in the header for Builders and up; the composer's Ask · Make changes; imported repos open in it; the personal setting; Delete for Owners only", async ({ page }) => {
+  test("Developer view entry: a switch in the header for Builders and up; the composer reads intent; imported repos open in it; the personal setting; Delete for Owners only", async ({ page }) => {
     await start(page);
     const db = adminDb();
     const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
@@ -138,13 +138,10 @@ test.describe("M5.5", () => {
     await expect(page.getByRole("link", { name: "Vendor tracker" })).toHaveAttribute("href", `/p/${vt!.id}?dev=1`);
     await expect(page.getByRole("link", { name: "Meeting Prep" })).not.toHaveAttribute("href", /dev=1/);
 
-    // The composer: Make changes by default; Ask never changes the plan.
+    // The composer: no mode switch (M5.8); each message is read as a question or a change.
     await page.goto(`/p/${(await db.from("projects").select("id").eq("workspace_id", ws).eq("name", "Meeting Prep").single()).data!.id}`);
-    const mode = page.getByRole("radiogroup", { name: "Mode" });
-    await expect(mode.getByRole("radio", { name: "Make changes" })).toHaveAttribute("aria-checked", "true");
-    await mode.getByRole("radio", { name: "Ask" }).click();
-    await expect(mode.getByRole("radio", { name: "Ask" })).toHaveAttribute("aria-checked", "true");
-    await expect(page.getByLabel("Message Architect")).toHaveAttribute("placeholder", "Ask a question. Ask never changes the plan…");
+    await expect(page.getByRole("radiogroup", { name: "Mode" })).toHaveCount(0);
+    await expect(page.getByLabel("Message Architect")).toHaveAttribute("placeholder", "Ask a question, or describe a change…");
 
     // The header switch turns Developer view on and off.
     const { data: mp } = await db.from("projects").select("id").eq("workspace_id", ws).eq("name", "Meeting Prep").single();
@@ -172,16 +169,23 @@ test.describe("M5.5", () => {
       await page.goto(`/p/${mp!.id}`);
       await expect(page.getByRole("navigation", { name: "Project stage" })).toBeVisible();
       await expect(page.getByRole("switch", { name: "Developer view" })).toHaveCount(0);
-      // Viewers can Ask but not Make changes.
-      const mode = page.getByRole("radiogroup", { name: "Mode" });
-      await expect(mode.getByRole("radio", { name: "Ask" })).toHaveAttribute("aria-checked", "true");
-      await expect(mode.getByRole("radio", { name: "Make changes" })).toHaveAttribute("aria-disabled", "true");
+      // Viewers ask, and their change requests become suggestions for a Builder.
+      await expect(page.getByLabel("Message Architect")).toHaveAttribute("placeholder", "Ask about the plan, or suggest a change…");
+      await page.getByLabel("Message Architect").fill("Add a Slack step that posts each brief to #sales");
+      await page.getByRole("button", { name: "Send" }).click();
+      const suggestion = page.getByRole("region", { name: "Suggestion" }).last();
+      await expect(suggestion).toContainText("Suggested by Polish Tester");
+      await expect(suggestion).toContainText("An Owner, Admin or Builder can turn it into a change.");
+      await expect(suggestion.getByRole("button", { name: "Turn into a change" })).toHaveCount(0);
       await page.getByRole("button", { name: "More for this project" }).click();
       await expect(page.getByRole("menuitem", { name: "Delete project…" })).toHaveCount(0);
       await page.keyboard.press("Escape");
     } finally {
       await db.from("members").update({ role: "owner" }).eq("workspace_id", ws).eq("user_id", user.id);
     }
+    // Back as the Owner: the suggestion offers "Turn into a change".
+    await page.goto(`/p/${mp!.id}`);
+    await expect(page.getByRole("region", { name: "Suggestion" }).last().getByRole("button", { name: "Turn into a change" })).toBeVisible();
 
     // An Owner deletes from the project's ⋯, after confirming.
     await page.goto(`/p/${vt!.id}`);

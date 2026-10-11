@@ -7,17 +7,15 @@ import { Icon } from "./icon";
 /**
  * The message box for Home and Chat.
  * - Home: context pills inside the box, voice stays, Send is the labelled primary "Write the plan ↑".
- * - Chat: Send is a 36px round icon button, no voice, so nothing clips at 344px.
- * Ask · Make changes: in Ask, Architect discusses and never changes the plan; Make changes proposes a change card.
+ * - Chat: Send is a 36px round icon button, no voice, so nothing clips at 344px. The + and ⋯ menus come in `tools`.
+ * There's no mode switch (M5.8): Architect reads each message as a question or a change request.
  */
 export function Composer({
   variant,
   value,
   onChange,
   onSubmit,
-  talkFirst,
-  onTalkFirstChange,
-  askOnly,
+  tools,
   modelPicker,
   contextPills,
   attachments,
@@ -33,10 +31,8 @@ export function Composer({
   onChange: (value: string) => void;
   /** Gets the text as the box holds it at submit (it can differ from `value` if typed before the page was ready). */
   onSubmit: (value: string) => void;
-  talkFirst: boolean;
-  onTalkFirstChange: (on: boolean) => void;
-  /** Why Make changes isn't available (Viewers): the switch stays on Ask. */
-  askOnly?: string;
+  /** Chat only: the + menu (files, building blocks, look) and the ⋯ menu, before the model pill. */
+  tools?: ReactNode;
   /** The model pill (a picker); rendered by the caller so it can own the model list. */
   modelPicker?: ReactNode;
   /** Home only: Add files, agents or tools · Import a repo · Templates and prompts · Help me decide */
@@ -94,16 +90,7 @@ export function Composer({
       />
       {home && contextPills && <div className="flex flex-wrap gap-2 border-b border-line pb-3">{contextPills}</div>}
       <div className="flex items-center gap-2">
-        {!home && (
-          <button
-            type="button"
-            aria-label="Add files, agents or tools"
-            className="grid size-8 flex-none place-items-center rounded-full border border-line-ctl bg-surface hover:bg-selected"
-          >
-            <Icon name="plus" size="sm" />
-          </button>
-        )}
-        <ModeSwitch ask={talkFirst} onChange={onTalkFirstChange} askOnly={askOnly} />
+        {!home && tools}
         {modelPicker}
         <span className="flex-1" />
         {home && (
@@ -152,7 +139,7 @@ export function Composer({
 /** A queued message, shown above the composer. */
 export function QueueLine({ children, onEdit }: { children: ReactNode; onEdit?: () => void }) {
   return (
-    <div className="mx-3 mb-2 flex items-center gap-2 rounded-card bg-selected px-3 py-2">
+    <div className="mx-4 mb-2 flex items-center gap-2 rounded-card bg-selected px-3 py-2">
       <Icon name="clock" size="sm" />
       <span className="min-w-0 flex-1 truncate">{children}</span>
       {onEdit && (
@@ -176,39 +163,5 @@ export function AttachmentChip({ icon, children, onRemove }: { icon: "file" | "a
         </button>
       )}
     </span>
-  );
-}
-
-/**
- * Ask · Make changes (replacing Talk first): Ask never changes the plan; Make changes proposes a change card, which
- * still waits for Apply. A two-option switch, as in Cursor and Claude.
- */
-export function ModeSwitch({ ask, onChange, askOnly }: { ask: boolean; onChange: (ask: boolean) => void; askOnly?: string }) {
-  const option = (value: boolean, label: string, title: string) => {
-    const on = ask === value;
-    const disabled = !value && Boolean(askOnly);
-    return (
-      <button
-        type="button"
-        role="radio"
-        aria-checked={on}
-        aria-disabled={disabled || undefined}
-        title={disabled ? askOnly : title}
-        onClick={() => !disabled && !on && onChange(value)}
-        className={cn(
-          "min-h-7 rounded-full px-2.5 text-small font-[600] whitespace-nowrap",
-          on ? "bg-ink text-surface" : "text-ink-2 hover:text-ink",
-          disabled && "cursor-not-allowed text-ink-3 hover:text-ink-3",
-        )}
-      >
-        {label}
-      </button>
-    );
-  };
-  return (
-    <div role="radiogroup" aria-label="Mode" className="inline-flex items-center gap-0.5 rounded-full border border-line-ctl bg-surface p-0.5">
-      {option(true, "Ask", "Ask: Architect answers and never changes the plan")}
-      {option(false, "Make changes", "Make changes: Architect proposes a change, with its cost, for you to apply")}
-    </div>
   );
 }

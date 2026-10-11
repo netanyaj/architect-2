@@ -46,7 +46,6 @@ const promptSchema = z
  */
 export async function startProject(input: {
   prompt: string;
-  talkFirst?: boolean;
   model?: string;
   /** Files to attach: the project is created and upload slots come back instead of a redirect. */
   files?: { name: string; type: string; size: number }[];

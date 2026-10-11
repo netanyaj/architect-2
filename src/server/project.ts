@@ -97,6 +97,12 @@ export type ChangeCardData = {
   conflicts: { key: string; title: string; kind: "remove" | "weaken"; reason: string; before?: string; after?: string }[];
   versionCreated: number | null;
   baseVersion: number | null;
+  /** Made from a message that could have been a question (M5.8): the card offers "Just answer instead". */
+  unclear: boolean;
+  /** Discarded by "Just answer instead": the card isn't shown, the answer is. */
+  answered: boolean;
+  /** A Viewer's change request, waiting for an Owner, Admin or Builder to turn it into a change (M5.8). */
+  suggestion: { text: string; by: string; turnedBy: string | null } | null;
 };
 
 export type PlanVersion = { id: string; version: number; status: string; generation: string; createdAt: string; totalLikely: number | null };
@@ -359,6 +365,10 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
       change?: { key: string; kind?: "modify" | "weaken"; title?: string; description?: string; proved_when?: string }[];
       remove?: { key: string; reason: string }[];
       base_version?: number;
+      unclear?: boolean;
+      answered?: boolean;
+      suggestion?: { text: string; by: string };
+      turned_by?: string;
     };
     const conflict = (c.conflict ?? null) as { items?: ChangeCardData["conflicts"] } | null;
     return {
@@ -380,6 +390,9 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
       conflicts: (conflict?.items ?? []).map((i) => ({ ...i, kind: i.kind ?? "remove" })),
       versionCreated: c.version_created,
       baseVersion: d.base_version ?? null,
+      unclear: Boolean(d.unclear),
+      answered: Boolean(d.answered),
+      suggestion: d.suggestion ? { text: d.suggestion.text, by: d.suggestion.by, turnedBy: d.turned_by ?? null } : null,
     };
   });
 

@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { Json } from "@/lib/database.types";
 import { askObject, GatewayRateLimited, GatewaySlow, ask } from "@/lib/gateway";
-import { toModelChoice } from "@/lib/models";
+import { intentByRules, type Intent } from "@/lib/intent";
+import { DEFAULT_MODEL, toModelChoice, type ModelChoice } from "@/lib/models";
 import { MODEL_NOT_ALLOWED } from "@/lib/policies";
 import { canBuild } from "@/lib/permissions";
 import { applyDiff, ChangeDraft, conflictsOf, isEmpty, normalizeChange, type Decision, type Diff, type VersionItem } from "@/lib/plan-diff";
@@ -42,10 +43,10 @@ function planContext(name: string, items: VersionItem[], questions: { text: stri
   return `The current plan "${name}":\n${parts.join("\n")}${qs.length ? `\nQuestions:\n${qs.join("\n")}` : ""}`;
 }
 
-const TALK_FIRST = `You are Architect, talking a plan through with the person who owns it. "Ask" is on: discuss, explain and
-suggest, but never change the plan and never say you changed it. If they want a change, say what you would change and
-that they can switch to Make changes to get a change card. Plain words, sentence case, 1 to 5 short sentences, no markdown.
-Never invent costs; the plan's prices come from the system.`;
+const ANSWER = `You are Architect, answering a question about a plan for the person who owns it. Discuss, explain and
+suggest, but never change the plan and never say you changed it. If they'd like a change, say what you would change and
+that they can ask for it in chat to get a change card with its cost. Plain words, sentence case, 1 to 5 short sentences,
+no markdown. Never invent costs; the plan's prices come from the system.`;
 
 const CHANGE = `You are Architect. The person asked for something in chat. Turn it into a change to their plan.
 - "reply": 1 or 2 plain sentences saying what you'd change (never claim it's done: they still click Apply).
@@ -61,20 +62,116 @@ const CHANGE = `You are Architect. The person asked for something in chat. Turn 
 - New parts in "add" are kind add; parts in "remove" are kind remove.
 Do not estimate cost or time; the system does that.`;
 
-export type ChatResult = ActionResult<{ proposalId?: string }> & { rateLimited?: boolean };
+const INTENT = `Classify one chat message sent to an app builder about the plan for their app.
+"question": they want an answer or an explanation, and nothing in the app to change.
+"change": they want the app or its plan to be different (add, remove, change, connect, send, schedule…).
+"sure" is false when it could reasonably be read either way.`;
+const IntentSchema = z.object({ intent: z.enum(["question", "change"]), sure: z.boolean() });
+
+export type ChatResult = ActionResult<{ proposalId?: string; intent?: Intent | "suggestion" }> & { rateLimited?: boolean };
+
+type ChatProject = NonNullable<Awaited<ReturnType<typeof projectInWorkspace>>>;
+type ChatPlan = NonNullable<Awaited<ReturnType<typeof latestPlan>>>;
+
+/** Rules first; only what they can't call costs one fast call on the default model (unclear stays unclear). */
+async function classify(admin: AdminDb, workspaceId: string, content: string, fallback: ModelChoice): Promise<{ intent: Intent; unclear: boolean }> {
+  const byRules = intentByRules(content);
+  if (byRules) return { intent: byRules, unclear: false };
+  const allowed = await allowedModels(admin, workspaceId);
+  const model = allowed.includes(DEFAULT_MODEL) ? DEFAULT_MODEL : fallback;
+  try {
+    const { object } = await askObject({ instructions: INTENT, prompt: content, schema: IntentSchema, model, fast: true });
+    return { intent: object.intent, unclear: !object.sure };
+  } catch {
+    // The classifier is a convenience: when it can't answer, a change card with "Just answer instead" is the safe
+    // default for someone who can build (nothing changes without Apply).
+    return { intent: "change", unclear: true };
+  }
+}
+
+/** The plan as a prompt: its parts and questions, the request and the last few messages. */
+async function chatPrompt(admin: AdminDb, project: ChatProject, plan: ChatPlan, content: string, skipLatest: number) {
+  const [{ data: items }, { data: questions }, { data: history }] = await Promise.all([
+    admin.from("items").select(ITEM_FIELDS).eq("blueprint_id", plan.id).order("position"),
+    admin.from("questions").select("text, answer, recommended").eq("blueprint_id", plan.id),
+    admin.from("messages").select("role, content").eq("project_id", project.id).order("created_at", { ascending: false }).limit(8 + skipLatest),
+  ]);
+  const current = (items ?? []) as VersionItem[];
+  const context = planContext(plan.name ?? project.name, current, questions ?? []);
+  const convo = (history ?? [])
+    .slice(skipLatest) // the message just saved
+    .reverse()
+    .map((m) => `${m.role === "user" ? "Person" : "Architect"}: ${m.content}`)
+    .join("\n");
+  return { current, prompt: `${context}\n\nOriginal request: ${plan.prompt}\n${convo ? `\nConversation so far:\n${convo}\n` : ""}\nPerson: ${content}` };
+}
+
+function busyMessage(err: unknown) {
+  return err instanceof GatewaySlow
+    ? "The free model took too long, so I stopped it. Your message is saved. Switch model, or try again."
+    : err instanceof GatewayRateLimited
+      ? "The model is busy right now (the free model's limit), so I couldn't answer. Your message is saved. Switch model, or try again in a minute."
+      : "I couldn't reach the model just now. Your message is saved. Try again in a moment.";
+}
+
+/** A change card from a request: the diff, its price and any conflicts. Nothing changes until Apply. */
+async function proposeChange(
+  admin: AdminDb,
+  project: ChatProject,
+  plan: ChatPlan,
+  content: string,
+  model: ModelChoice,
+  opts: { unclear: boolean; skipLatest: number; say: (text: string, mode: "plan" | "build") => Promise<string | null> },
+): Promise<{ proposalId?: string }> {
+  const { current, prompt } = await chatPrompt(admin, project, plan, content, opts.skipLatest);
+  const { object } = await askObject({ instructions: CHANGE, prompt, schema: ChangeDraft, model, fast: true });
+  const diff = normalizeChange(object, current);
+  if (isEmpty(diff)) {
+    await opts.say(object.reply || "Nothing in the plan needs to change for that.", "plan");
+    return {};
+  }
+  // Price the change: new parts, plus rebuilding changed parts that were already built.
+  const built = Boolean(plan.agreed_at);
+  const priced = [
+    ...diff.add.map((a) => estimate(a, model)),
+    ...diff.change
+      .map((c) => current.find((i) => i.key === c.key)!)
+      .filter((i) => built && i.item_class && i.size)
+      .map((i) => estimate({ item_class: i.item_class as never, size: i.size as never }, model)),
+  ];
+  const t = planTotals(priced);
+  const conflicts = conflictsOf(diff, current);
+  const messageId = await opts.say(object.reply || "Here's the change. Nothing changes until you apply it.", "build");
+  const { data: proposal } = await admin
+    .from("change_proposals")
+    .insert({
+      project_id: project.id,
+      message_id: messageId,
+      // An unclear message's card offers "Just answer instead" (M5.8); the request travels with it for that.
+      diff: { ...diff, base_version: plan.version, ...(opts.unclear ? { unclear: true, request: content } : {}) } as unknown as Json,
+      estimate_likely: priced.length ? t.likely : 0,
+      est_minutes: priced.length ? t.minutes : 0,
+      conflict: conflicts.length ? ({ items: conflicts } as unknown as Json) : null,
+      reply: object.reply,
+      status: "proposed",
+    })
+    .select("id")
+    .single();
+  return { proposalId: proposal?.id };
+}
 
 /**
- * A chat message (BL-4, A-11). In Ask (once "Talk first"), Architect answers and never changes the plan. Otherwise a
- * request becomes a change card with its price; nothing changes until Apply. Messages are saved either way.
+ * A chat message (BL-4, A-11, M5.8). There's no mode switch: each message is read as a question or a change request
+ * (rules first, then one fast call on the default model). A question gets an answer, with no card and no new version.
+ * A change request gets a change card with its price, and nothing changes until Apply; when the message was unclear
+ * the card offers "Just answer instead". A Viewer's change request becomes a suggestion an Owner, Admin or Builder can
+ * turn into a change. Messages are saved either way.
  */
-export async function sendMessage(input: { projectId: string; content: string; talkFirst: boolean }): Promise<ChatResult> {
+export async function sendMessage(input: { projectId: string; content: string }): Promise<ChatResult> {
   const ctx = await getAppContext();
   const content = input.content.trim();
   if (!content) return { ok: false, message: "Type a message first." };
   if (content.length > 2000) return { ok: false, message: "Keep it under 2,000 characters." };
-  if (!input.talkFirst && !canBuild(ctx.role)) {
-    return { ok: false, message: "Viewers can ask about the plan but can't change it. Switch to Ask." };
-  }
   const admin = createAdminDb();
   const project = await projectInWorkspace(admin, input.projectId, ctx.workspace.id);
   if (!project) return { ok: false, message: "That project isn't in this workspace." };
@@ -85,10 +182,9 @@ export async function sendMessage(input: { projectId: string; content: string; t
   }
   const plan = await latestPlan(admin, project.id);
 
-  await admin.from("messages").insert({ project_id: project.id, role: "user", mode: input.talkFirst ? "plan" : "build", content, model });
-
-  const say = async (text: string) => {
-    const { data } = await admin.from("messages").insert({ project_id: project.id, role: "architect", mode: input.talkFirst ? "plan" : "build", content: text, model }).select("id").single();
+  const { data: saved } = await admin.from("messages").insert({ project_id: project.id, role: "user", mode: "build", content, model }).select("id").single();
+  const say = async (text: string, mode: "plan" | "build") => {
+    const { data } = await admin.from("messages").insert({ project_id: project.id, role: "architect", mode, content: text, model }).select("id").single();
     return data?.id ?? null;
   };
 
@@ -97,80 +193,135 @@ export async function sendMessage(input: { projectId: string; content: string; t
       plan?.generation === "writing"
         ? "I'm still writing the plan. Once it's ready, tell me what to change and I'll show you a change card with its cost."
         : "There's no finished plan yet. Once there is, tell me what to change and I'll show you a change card with its cost.",
+      "plan",
     );
     revalidatePath(`/p/${project.id}`);
     return { ok: true };
   }
 
-  const [{ data: items }, { data: questions }, { data: history }] = await Promise.all([
-    admin.from("items").select(ITEM_FIELDS).eq("blueprint_id", plan.id).order("position"),
-    admin.from("questions").select("text, answer, recommended").eq("blueprint_id", plan.id),
-    admin.from("messages").select("role, content").eq("project_id", project.id).order("created_at", { ascending: false }).limit(9),
-  ]);
-  const current = (items ?? []) as VersionItem[];
-  const context = planContext(plan.name ?? project.name, current, questions ?? []);
-  const convo = (history ?? [])
-    .slice(1) // the message just saved
-    .reverse()
-    .map((m) => `${m.role === "user" ? "Person" : "Architect"}: ${m.content}`)
-    .join("\n");
-  const prompt = `${context}\n\nOriginal request: ${plan.prompt}\n${convo ? `\nConversation so far:\n${convo}\n` : ""}\nPerson: ${content}`;
-
   try {
-    if (input.talkFirst) {
-      const { text } = await ask({ instructions: TALK_FIRST, prompt, model, maxOutputTokens: 500, fast: true });
-      await say(text || "Could you say a bit more about what you'd like?");
+    const { intent, unclear } = await classify(admin, ctx.workspace.id, content, model);
+    // The user's message is a question: remember that, so the conversation reads right.
+    if (intent === "question" && saved) await admin.from("messages").update({ mode: "plan" }).eq("id", saved.id);
+
+    if (intent === "question") {
+      const { prompt } = await chatPrompt(admin, project, plan, content, 1);
+      const { text } = await ask({ instructions: ANSWER, prompt, model, maxOutputTokens: 500, fast: true });
+      await say(text || "Could you say a bit more about what you'd like?", "plan");
       revalidatePath(`/p/${project.id}`);
-      return { ok: true };
+      return { ok: true, intent };
     }
 
-    const { object } = await askObject({ instructions: CHANGE, prompt, schema: ChangeDraft, model, fast: true });
-    const diff = normalizeChange(object, current);
-    if (isEmpty(diff)) {
-      await say(object.reply || "Nothing in the plan needs to change for that.");
+    if (!canBuild(ctx.role)) {
+      // A Viewer can't change the plan: their request waits as a suggestion, with their name, for a Builder.
+      const messageId = await say("I've passed this on as a suggestion. An Owner, Admin or Builder can turn it into a change.", "plan");
+      const { data: proposal } = await admin
+        .from("change_proposals")
+        .insert({
+          project_id: project.id,
+          message_id: messageId,
+          diff: { add: [], change: [], remove: [], base_version: plan.version, suggestion: { text: content, by: ctx.name, by_id: ctx.user.id } } as unknown as Json,
+          estimate_likely: 0,
+          est_minutes: 0,
+          reply: content,
+          status: "proposed",
+        })
+        .select("id")
+        .single();
       revalidatePath(`/p/${project.id}`);
-      return { ok: true };
+      return { ok: true, intent: "suggestion", proposalId: proposal?.id };
     }
 
-    // Price the change: new parts, plus rebuilding changed parts that were already built.
-    const built = Boolean(plan.agreed_at);
-    const priced = [
-      ...diff.add.map((a) => estimate(a, model)),
-      ...diff.change
-        .map((c) => current.find((i) => i.key === c.key)!)
-        .filter((i) => built && i.item_class && i.size)
-        .map((i) => estimate({ item_class: i.item_class as never, size: i.size as never }, model)),
-    ];
-    const t = planTotals(priced);
-    const conflicts = conflictsOf(diff, current);
-    const messageId = await say(object.reply || "Here's the change. Nothing changes until you apply it.");
-    const { data: proposal } = await admin
-      .from("change_proposals")
-      .insert({
-        project_id: project.id,
-        message_id: messageId,
-        diff: { ...diff, base_version: plan.version } as unknown as Json,
-        estimate_likely: priced.length ? t.likely : 0,
-        est_minutes: priced.length ? t.minutes : 0,
-        conflict: conflicts.length ? ({ items: conflicts } as unknown as Json) : null,
-        reply: object.reply,
-        status: "proposed",
-      })
-      .select("id")
-      .single();
+    const r = await proposeChange(admin, project, plan, content, model, { unclear, skipLatest: 1, say });
     revalidatePath(`/p/${project.id}`);
-    return { ok: true, proposalId: proposal?.id };
+    return { ok: true, intent, ...r };
   } catch (err) {
     const busy = err instanceof GatewayRateLimited || err instanceof GatewaySlow;
-    await say(
-      err instanceof GatewaySlow
-        ? "The free model took too long, so I stopped it. Your message is saved. Switch model, or try again."
-        : busy
-          ? "The model is busy right now (the free model's limit), so I couldn't answer. Your message is saved. Switch model, or try again in a minute."
-          : "I couldn't reach the model just now. Your message is saved. Try again in a moment.",
-    );
+    await say(busyMessage(err), "plan");
     revalidatePath(`/p/${project.id}`);
     return { ok: false, rateLimited: busy, message: busy ? "The model is busy right now. Switch model, or try again in a minute." : "The model didn't answer. Try again." };
+  }
+}
+
+async function proposalInWorkspace(admin: AdminDb, proposalId: string, workspaceId: string) {
+  if (!z.string().uuid().safeParse(proposalId).success) return null;
+  const { data: proposal } = await admin.from("change_proposals").select("id, project_id, diff, status, message_id").eq("id", proposalId).maybeSingle();
+  if (!proposal) return null;
+  const project = await projectInWorkspace(admin, proposal.project_id, workspaceId);
+  return project ? { proposal, project } : null;
+}
+
+/**
+ * "Just answer instead" (M5.8), on a card made from an unclear message: the card is discarded and Architect answers
+ * the message as a question. No new version, nothing charged.
+ */
+export async function answerInstead(input: { proposalId: string }): Promise<ChatResult> {
+  const ctx = await getAppContext();
+  if (!canBuild(ctx.role)) return { ok: false, message: "Viewers can't change the plan." };
+  const admin = createAdminDb();
+  const found = await proposalInWorkspace(admin, input.proposalId, ctx.workspace.id);
+  if (!found) return { ok: false, message: "That change isn't in this project." };
+  const { proposal, project } = found;
+  const diff = (proposal.diff ?? {}) as { request?: string };
+  if (proposal.status !== "proposed" || !diff.request) return { ok: false, message: "This card can't be answered instead any more." };
+  const plan = await latestPlan(admin, project.id);
+  if (!plan) return { ok: false, message: "There's no plan to talk about yet." };
+  await admin
+    .from("change_proposals")
+    .update({ status: "discarded", decided_by: ctx.user.id, decided_at: new Date().toISOString(), diff: { ...(proposal.diff as object), answered: true } as unknown as Json })
+    .eq("id", proposal.id);
+  const model = toModelChoice(project.model);
+  try {
+    const { prompt } = await chatPrompt(admin, project, plan, diff.request, 0);
+    const { text } = await ask({ instructions: ANSWER, prompt, model, maxOutputTokens: 500, fast: true });
+    await admin.from("messages").insert({ project_id: project.id, role: "architect", mode: "plan", content: text || "Could you say a bit more about what you'd like to know?", model });
+    revalidatePath(`/p/${project.id}`);
+    return { ok: true, intent: "question" };
+  } catch (err) {
+    await admin.from("messages").insert({ project_id: project.id, role: "architect", mode: "plan", content: busyMessage(err), model });
+    revalidatePath(`/p/${project.id}`);
+    return { ok: false, message: "The model didn't answer. Try again." };
+  }
+}
+
+/**
+ * "Turn into a change" (M5.8), on a Viewer's suggestion: an Owner, Admin or Builder makes it a change card with its
+ * price, which still waits for Apply. The suggestion says who turned it into a change.
+ */
+export async function turnIntoChange(input: { proposalId: string }): Promise<ChatResult> {
+  const ctx = await getAppContext();
+  if (!canBuild(ctx.role)) return { ok: false, message: "Only an Owner, Admin or Builder can turn a suggestion into a change." };
+  const admin = createAdminDb();
+  const found = await proposalInWorkspace(admin, input.proposalId, ctx.workspace.id);
+  if (!found) return { ok: false, message: "That suggestion isn't in this project." };
+  const { proposal, project } = found;
+  const diff = (proposal.diff ?? {}) as { suggestion?: { text: string; by: string } };
+  if (!diff.suggestion) return { ok: false, message: "That isn't a suggestion." };
+  if (proposal.status !== "proposed") return { ok: false, message: "This suggestion is already a change." };
+  const plan = await latestPlan(admin, project.id);
+  if (!plan || plan.generation !== "ready") return { ok: false, message: "Wait for the plan to finish writing." };
+  const model = toModelChoice(project.model);
+  if (!(await allowedModels(admin, ctx.workspace.id)).includes(model)) {
+    return { ok: false, message: `${MODEL_NOT_ALLOWED} in this workspace. Switch model to carry on.` };
+  }
+  await admin
+    .from("change_proposals")
+    .update({ status: "discarded", decided_by: ctx.user.id, decided_at: new Date().toISOString(), diff: { ...(proposal.diff as object), turned_by: ctx.name } as unknown as Json })
+    .eq("id", proposal.id);
+  const say = async (text: string, mode: "plan" | "build") => {
+    const { data } = await admin.from("messages").insert({ project_id: project.id, role: "architect", mode, content: text, model }).select("id").single();
+    return data?.id ?? null;
+  };
+  try {
+    const r = await proposeChange(admin, project, plan, `${diff.suggestion.text} (suggested by ${diff.suggestion.by})`, model, { unclear: false, skipLatest: 0, say });
+    revalidatePath(`/p/${project.id}`);
+    return { ok: true, intent: "change", ...r };
+  } catch (err) {
+    // The suggestion stays open if the model couldn't make the card.
+    await admin.from("change_proposals").update({ status: "proposed", decided_by: null, decided_at: null, diff: proposal.diff }).eq("id", proposal.id);
+    await say(busyMessage(err), "plan");
+    revalidatePath(`/p/${project.id}`);
+    return { ok: false, message: "The model didn't answer. Try again." };
   }
 }
 

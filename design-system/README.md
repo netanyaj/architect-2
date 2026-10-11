@@ -31,7 +31,7 @@ Reference screens: the "Architect 2.0 – Modern direction" canvas, page "Final 
 | Part (of the plan) | Item, requirement | Small and concrete |
 | Works | Proven, passed, built | One word for "done and checked" |
 | Test version · Team version · Live | Preview · Staging · Production | Says who can see it |
-| Ask · Make changes | Talk first, Plan mode, Execute mode | The composer switch people know from Cursor and Claude. Ask never changes the plan |
+| Ask a question, or describe a change | Talk first, Plan mode, Execute mode, Ask · Make changes | No mode switch (M5.8): Architect reads each message as a question or a change. Changes come back as a card to apply; "Just answer instead" when it guessed wrong |
 | Build · ~160 credits | Run, Execute | "Build" is only ever the paid action |
 | Blocked | Needs you (for a stop), Paused | Honest; the reason goes on the next line |
 | Needs you | Action required | A group heading, never a status |

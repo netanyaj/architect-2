@@ -17,7 +17,7 @@ export function PrCard({ pr, project }: { pr: PullRequestView; project: ProjectW
   const openChanges = useUi((s) => s.openChanges);
   const step = reviewStep(pr, canMergeThemselves(project, pr));
   return (
-    <section aria-label={`Pull request #${pr.number}`} className="flex flex-col gap-2 rounded-card border border-line bg-surface p-3.5">
+    <section aria-label={`Pull request #${pr.number}`} className="flex w-full min-w-0 flex-col gap-2 rounded-card border border-line bg-surface px-3.5 py-3">
       <div className="flex flex-wrap items-center gap-2">
         <Icon name="branch" size="sm" />
         <h3 className="flex-1 font-[650]">

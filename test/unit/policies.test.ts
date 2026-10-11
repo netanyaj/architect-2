@@ -165,7 +165,7 @@ describe("policy actions", () => {
     db.tables.messages = [];
     db.tables.policies[1].config = { allowed: ["gemini"] };
     const { sendMessage } = await import("@/server/actions/chat");
-    expect(await sendMessage({ projectId: P, content: "Add a weekly summary", talkFirst: true })).toEqual({
+    expect(await sendMessage({ projectId: P, content: "Add a weekly summary" })).toEqual({
       ok: false,
       message: "This model is no longer allowed in this workspace. Switch model to carry on. Your message wasn't sent.",
     });

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button, IconButton, TextLink } from "@/components/ax/button";
 import { ChangeCard } from "@/components/ax/change-card";
-import { AttachmentChip, Composer, ModeSwitch, QueueLine } from "@/components/ax/composer";
+import { AttachmentChip, Composer, QueueLine } from "@/components/ax/composer";
 import { DataTable } from "@/components/ax/data-table";
 import { Drawer } from "@/components/ax/drawer";
 import { EmptyState } from "@/components/ax/empty-state";
@@ -35,7 +35,6 @@ export function KitDemo() {
   const [view, setView] = useState<"app" | "agents" | "data" | "files">("app");
   const [filter, setFilter] = useState<"all" | "needs" | "live" | "drafts">("all");
   const [prompt, setPrompt] = useState("");
-  const [talk, setTalk] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const [toggle, setToggle] = useState(true);
   const [size, setSize] = useState<"desktop" | "phone">("desktop");
@@ -70,7 +69,6 @@ export function KitDemo() {
         <Section title="Pills, tags, status">
           <div className="flex flex-wrap items-center gap-2">
             <Pill icon="plus">Add files, agents or tools</Pill>
-            <ModeSwitch ask={talk} onChange={setTalk} />
             <Pill soft iconAfter="chevronDown">Gemini</Pill>
             <Tag>Template</Tag>
             <SimTag />
@@ -106,8 +104,6 @@ export function KitDemo() {
             value={prompt}
             onChange={setPrompt}
             onSubmit={() => {}}
-            talkFirst={talk}
-            onTalkFirstChange={setTalk}
             placeholder="Describe the app you want…"
             attachments={<AttachmentChip icon="file" onRemove={() => {}}>agenda-template.pdf</AttachmentChip>}
             modelPicker={<Pill soft iconAfter="chevronDown">Gemini</Pill>}
@@ -115,7 +111,7 @@ export function KitDemo() {
           />
           <div className="w-[344px]">
             <QueueLine onEdit={() => {}}>Also send me a Friday recap</QueueLine>
-            <Composer variant="chat" value="" onChange={() => {}} onSubmit={() => {}} talkFirst={false} onTalkFirstChange={() => {}} placeholder="Change anything in plain words…" modelPicker={<Pill soft iconAfter="chevronDown">Sonnet</Pill>} />
+            <Composer variant="chat" value="" onChange={() => {}} onSubmit={() => {}} placeholder="Change anything in plain words…" modelPicker={<Pill soft iconAfter="chevronDown">Sonnet</Pill>} />
           </div>
         </Section>
 

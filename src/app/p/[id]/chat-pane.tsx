@@ -2,35 +2,18 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
-import { Button, IconButton } from "@/components/ax/button";
+import { Button, IconButton, TextLink } from "@/components/ax/button";
+import { ArchitectMessage, ChatCard, chatTime, YouMessage } from "@/components/ax/chat-message";
 import { Composer, QueueLine } from "@/components/ax/composer";
 import { ModelNotAllowed, ModelPicker } from "@/components/ax/model-picker";
 import { Option } from "@/components/ax/stage-banner";
 import type { ModelChoice } from "@/lib/models";
 import { canBuild } from "@/lib/permissions";
 import { useUi } from "@/lib/ui-store";
-import { applyChange, discardChange, sendMessage } from "@/server/actions/chat";
+import { answerInstead, applyChange, discardChange, sendMessage, turnIntoChange } from "@/server/actions/chat";
 import type { ChangeCardData, ProjectWorkspace } from "@/server/project";
 import { CodeEditCard } from "./code-edit-card";
 import { PrCard } from "./pr-card";
-
-function Architect({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2 text-small font-semibold text-ink-2">
-        <span className="grid size-[22px] place-items-center rounded-[7px] bg-primary text-small font-bold text-on-primary" aria-hidden="true">
-          A
-        </span>
-        Architect
-      </div>
-      <div className="flex flex-col gap-2">{children}</div>
-    </div>
-  );
-}
-
-function You({ children }: { children: React.ReactNode }) {
-  return <div className="max-w-[86%] self-end rounded-[16px_16px_4px_16px] bg-selected px-[13px] py-[9px] whitespace-pre-wrap">{children}</div>;
-}
 
 type Choice = { decision: "keep" | "defer" | "drop"; reason?: string };
 
@@ -64,7 +47,7 @@ function ChangeCardView({ card, canChange, onEdit }: { card: ChangeCardData; can
         : undefined;
 
   return (
-    <div className="flex flex-col gap-2 rounded-card border border-line bg-surface px-3.5 py-3">
+    <ChatCard label="Change card">
       <span className="text-small font-[650] text-ink-2">{card.status === "applied" ? `Applied as plan v${card.versionCreated}` : card.status === "discarded" ? "Discarded" : "Suggested change"}</span>
       <ul className="flex flex-col gap-1">
         {card.add.map((a) => (
@@ -162,12 +145,63 @@ function ChangeCardView({ card, canChange, onEdit }: { card: ChangeCardData; can
         </div>
       )}
       {applyReason && card.status === "proposed" && !pending && <span className="text-small text-ink-2">{applyReason}</span>}
+      {/* A card from a message that could have been a question (M5.8): one click turns it back into an answer. */}
+      {card.unclear && card.status === "proposed" && canChange && (
+        <p className="text-small text-ink-2">
+          Only asking?{" "}
+          <TextLink className="text-small" onClick={() => run(() => answerInstead({ proposalId: card.id }))}>
+            Just answer instead
+          </TextLink>
+        </p>
+      )}
       {error && (
         <p role="alert" className="text-small font-semibold text-failed">
           {error}
         </p>
       )}
-    </div>
+    </ChatCard>
+  );
+}
+
+/** A Viewer's change request (M5.8): "Suggested by Priya · Turn into a change", for an Owner, Admin or Builder. */
+function SuggestionCard({ card, canChange }: { card: ChangeCardData; canChange: boolean }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string>();
+  const s = card.suggestion!;
+  return (
+    <ChatCard label="Suggestion">
+      <span className="text-small font-[650] text-ink-2">Suggested by {s.by}</span>
+      <p>{s.text}</p>
+      {card.status === "proposed" ? (
+        canChange ? (
+          <Button
+            size="sm"
+            className="self-start"
+            disabledReason={pending ? "Making the change card…" : undefined}
+            onClick={() =>
+              start(async () => {
+                setError(undefined);
+                const r = await turnIntoChange({ proposalId: card.id });
+                if (!r.ok) setError(r.message);
+                router.refresh();
+              })
+            }
+          >
+            {pending ? "Making the change card…" : "Turn into a change"}
+          </Button>
+        ) : (
+          <span className="text-small text-ink-2">An Owner, Admin or Builder can turn it into a change.</span>
+        )
+      ) : (
+        <span className="text-small text-ink-2">{s.turnedBy ? `${s.turnedBy} turned it into a change.` : "Closed."}</span>
+      )}
+      {error && (
+        <p role="alert" className="text-small font-semibold text-failed">
+          {error}
+        </p>
+      )}
+    </ChatCard>
   );
 }
 
@@ -189,7 +223,11 @@ function planIntro(project: ProjectWorkspace, writing: boolean): string {
   ].join("");
 }
 
-/** Chat (344px): the request, the conversation and change cards, the queue and the composer (BL-4). */
+/**
+ * Chat (344px): the request, the conversation and change cards, the queue and the composer (BL-4). One left edge and a
+ * 16px gutter for everything in it (M5.8). Each message is read as a question or a change request: no mode switch.
+ * Under the composer, a footer row keeps the Help button's corner clear of Send.
+ */
 export function ChatPane({
   project,
   writing,
@@ -212,8 +250,7 @@ export function ChatPane({
   const router = useRouter();
   const canChange = canBuild(project.role);
   const [draft, setDraft] = useState("");
-  const [talkFirst, setTalkFirst] = useState(!canChange);
-  const [queue, setQueue] = useState<{ id: number; text: string; talkFirst: boolean }[]>([]);
+  const [queue, setQueue] = useState<{ id: number; text: string }[]>([]);
   const [sending, setSending] = useState<string | null>(null);
   const [error, setError] = useState<string>();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -239,7 +276,7 @@ export function ChatPane({
     setQueue(rest);
     setSending(head.text);
     void (async () => {
-      const r = await sendMessage({ projectId: project.id, content: head.text, talkFirst: head.talkFirst });
+      const r = await sendMessage({ projectId: project.id, content: head.text });
       if (!r.ok) setError(r.message);
       setSending(null);
       router.refresh();
@@ -252,7 +289,7 @@ export function ChatPane({
 
   const submit = (text: string) => {
     setError(undefined);
-    setQueue((q) => [...q, { id: nextId.current++, text, talkFirst: talkFirst || !canChange }]);
+    setQueue((q) => [...q, { id: nextId.current++, text }]);
     setDraft("");
   };
 
@@ -262,64 +299,72 @@ export function ChatPane({
     return [...project.messages.slice(0, idx)].reverse().find((m) => m.role === "user")?.content ?? "";
   };
 
+  // The intro is about the first plan: it carries that version's time.
+  const introAt = [...project.versions].sort((a, b) => a.version - b.version)[0]?.createdAt ?? null;
   return (
     <aside aria-label={title} className="flex min-h-0 flex-col overflow-hidden rounded-pane border border-line bg-surface shadow-pane lg:w-[344px] lg:flex-none">
       <div className="flex items-center gap-2 px-4 pt-3.5 pb-2.5">
         <h2 className="flex-1 text-sub font-semibold">{title}</h2>
         <IconButton icon="panelRight" label={`Collapse ${title.toLowerCase()}`} quiet size={32} onClick={onCollapse} />
       </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-auto px-4 pt-1.5 pb-3" aria-live="polite">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4 pt-1.5 pb-3" aria-live="polite">
         {body ?? (
           <>
-        {/* A plan from a repo is asked for with the whole analysis; the plan shows it on demand. */}
-        {project.repo ? <You>Plan from my repo {project.repo}, keeping its stack.</You> : project.prompt && <You>{project.prompt}</You>}
-        <Architect>
-          <p>{planIntro(project, writing)}</p>
-        </Architect>
-        {project.messages.map((m) => {
-          if (m.role === "user") return <You key={m.id}>{m.content}</You>;
-          if (m.role === "system") {
-            return (
-              <p key={m.id} className="text-center text-small text-ink-2">
-                {m.content}
-              </p>
-            );
-          }
-          const card = cardsByMessage.get(m.id);
-          return (
-            <Architect key={m.id}>
-              <p className="whitespace-pre-wrap">{m.content}</p>
-              {m.mode === "plan" && <span className="text-small text-ink-3">Ask: nothing in the plan changed.</span>}
-              {card && <ChangeCardView card={card} canChange={canChange} onEdit={() => setDraft(userBefore(m.id))} />}
-            </Architect>
-          );
-        })}
-        {/* Edits made in Developer view, oldest first: each re-runs its part's check. */}
-        {project.codeEdits.edits.map((e) => (
-          <Architect key={`edit-${e.id}`}>
-            <CodeEditCard edit={e} />
-          </Architect>
-        ))}
-        {/* A repo project's sessions as pull requests, oldest first (B-4). */}
-        {[...project.pullRequests].reverse().map((pr) => (
-          <Architect key={pr.id}>
-            <p>
-              I opened a pull request for this {pr.title.startsWith("Change") ? "change" : "build"}. Nothing goes to main until you merge it.
-            </p>
-            <PrCard pr={pr} project={project} governance={project.governance} />
-          </Architect>
-        ))}
-        {activity}
+            {/* A plan from a repo is asked for with the whole analysis; the plan shows it on demand. */}
+            {project.repo ? <YouMessage>Plan from my repo {project.repo}, keeping its stack.</YouMessage> : project.prompt && <YouMessage>{project.prompt}</YouMessage>}
+            <ArchitectMessage time={chatTime(introAt)}>
+              <p>{planIntro(project, writing)}</p>
+            </ArchitectMessage>
+            {project.messages.map((m) => {
+              if (m.role === "user") return <YouMessage key={m.id} time={chatTime(m.createdAt)}>{m.content}</YouMessage>;
+              if (m.role === "system") {
+                return (
+                  <p key={m.id} className="text-small text-ink-2">
+                    {m.content}
+                  </p>
+                );
+              }
+              const card = cardsByMessage.get(m.id);
+              return (
+                <ArchitectMessage key={m.id} time={chatTime(m.createdAt)}>
+                  <p className="whitespace-pre-wrap">{m.content}</p>
+                  {m.mode === "plan" && !card && <span className="text-small text-ink-3">Answered. Nothing in the plan changed.</span>}
+                  {card &&
+                    !card.answered &&
+                    (card.suggestion ? <SuggestionCard card={card} canChange={canChange} /> : <ChangeCardView card={card} canChange={canChange} onEdit={() => setDraft(userBefore(m.id))} />)}
+                  {card?.answered && <span className="text-small text-ink-3">Answered instead. The change card was set aside.</span>}
+                </ArchitectMessage>
+              );
+            })}
+            {/* Edits made in Developer view, oldest first: each re-runs its part's check. */}
+            {project.codeEdits.edits.map((e) => (
+              <ArchitectMessage key={`edit-${e.id}`}>
+                <CodeEditCard edit={e} />
+              </ArchitectMessage>
+            ))}
+            {/* A repo project's sessions as pull requests, oldest first (B-4). */}
+            {[...project.pullRequests].reverse().map((pr) => (
+              <ArchitectMessage key={pr.id}>
+                <p>
+                  I opened a pull request for this {pr.title.startsWith("Change") ? "change" : "build"}. Nothing goes to main until you merge it.
+                </p>
+                <PrCard pr={pr} project={project} governance={project.governance} />
+              </ArchitectMessage>
+            ))}
+            {activity}
           </>
         )}
-        {sending !== null && (body ? <p className="text-small text-ink-2">Sent to chat: “{sending}”</p> : (
-          <>
-            <You>{sending}</You>
-            <Architect>
-              <p className="text-ink-2">Thinking…</p>
-            </Architect>
-          </>
-        ))}
+        {sending !== null &&
+          (body ? (
+            <p className="text-small text-ink-2">Sent to chat: “{sending}”</p>
+          ) : (
+            <>
+              <YouMessage>{sending}</YouMessage>
+              <ArchitectMessage>
+                <p className="text-ink-2">Thinking…</p>
+              </ArchitectMessage>
+            </>
+          ))}
         {error && (
           <p role="alert" className="text-small font-semibold text-failed">
             {error}
@@ -338,22 +383,19 @@ export function ChatPane({
           Next: “{q.text}”
         </QueueLine>
       ))}
-      <div className="px-3 pb-3">
+      <div className="px-4">
         {!modelAllowed &&
           (canChange ? (
-            <ModelNotAllowed className="mb-1.5 px-1" onSwitch={() => setPickerOpen(true)} />
+            <ModelNotAllowed className="mb-1.5" onSwitch={() => setPickerOpen(true)} />
           ) : (
-            <p className="mb-1.5 px-1 text-small font-semibold text-attention">This model is no longer allowed. A Builder can switch it.</p>
+            <p className="mb-1.5 text-small font-semibold text-attention">This model is no longer allowed. A Builder can switch it.</p>
           ))}
         <Composer
           variant="chat"
           value={draft}
           onChange={setDraft}
           onSubmit={submit}
-          talkFirst={talkFirst || !canChange}
-          onTalkFirstChange={(on) => canChange && setTalkFirst(on)}
-          askOnly={canChange ? undefined : "Viewers can ask, not change the plan."}
-          placeholder={talkFirst || !canChange ? "Ask a question. Ask never changes the plan…" : "Describe a change, or ask a question…"}
+          placeholder={canChange ? "Ask a question, or describe a change…" : "Ask about the plan, or suggest a change…"}
           label="Message Architect"
           modelPicker={
             <ModelPicker
@@ -367,8 +409,11 @@ export function ChatPane({
             />
           }
         />
-        {!canChange && <p className="mt-1.5 text-small text-ink-2">Viewers can ask about the plan. Ask stays on, so nothing changes.</p>}
       </div>
+      {/* The footer row: what a message does, and room on the right for the Help button (it never covers Send). */}
+      <p className="flex min-h-12 items-center px-4 pr-16 text-small text-ink-3">
+        {canChange ? "Changes come back as a card to apply." : "Changes you ask for go to a Builder."}
+      </p>
     </aside>
   );
 }
