@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useState, useTransition } from "react";
+import { useId, useOptimistic, useState, useTransition } from "react";
 import { Button, TextLink } from "@/components/ax/button";
 import { relativeTime } from "@/lib/project-status";
 import { addPartComment } from "@/server/actions/comments";
@@ -19,16 +19,18 @@ export function PartComments({ projectId, itemKey, title, comments }: { projectI
   const [body, setBody] = useState("");
   const [pending, start] = useTransition();
   const [error, setError] = useState<string>();
+  // A comment shows as soon as it's sent; the saved one replaces it when the page refreshes.
+  const [shown, addShown] = useOptimistic(comments, (list: PartComment[], c: PartComment) => [...list, c]);
   return (
     <div className="flex flex-col gap-1.5">
       <TextLink onClick={() => setOpen((o) => !o)} aria-expanded={open} className="self-start text-small">
-        {comments.length ? `Comments (${comments.length})` : "Comment"}
+        {shown.length ? `Comments (${shown.length})` : "Comment"}
       </TextLink>
       {open && (
         <section aria-label={`Comments on ${title}`} className="flex flex-col gap-2 rounded-card bg-tray p-2.5">
-          {comments.length > 0 && (
+          {shown.length > 0 && (
             <ul className="flex flex-col gap-1.5">
-              {comments.map((c) => (
+              {shown.map((c) => (
                 <li key={c.id} className="text-small">
                   <span className="font-semibold">{c.author}</span> <span className="text-ink-2">· {relativeTime(c.at)}</span>
                   <p className="whitespace-pre-wrap">{c.body}</p>
@@ -40,11 +42,17 @@ export function PartComments({ projectId, itemKey, title, comments }: { projectI
             className="flex flex-col gap-1.5"
             onSubmit={(e) => {
               e.preventDefault();
+              const text = body.trim();
+              if (!text) return;
               start(async () => {
                 setError(undefined);
-                const r = await addPartComment({ projectId, itemKey, body });
-                if (!r.ok) return setError(r.message);
+                addShown({ id: "sending", body: text, author: "You", at: new Date().toISOString() });
                 setBody("");
+                const r = await addPartComment({ projectId, itemKey, body: text });
+                if (!r.ok) {
+                  setBody(text);
+                  return setError(r.message);
+                }
                 router.refresh();
               });
             }}

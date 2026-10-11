@@ -300,6 +300,11 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
     return () => clearTimeout(t);
   }, [recheckRunning, project.id, router]);
 
+  // Launch is the next screen once something is built: fetch it ahead, so the click paints at once.
+  useEffect(() => {
+    if (project.status === "built" || project.status === "live") router.prefetch(`/p/${project.id}/launch`);
+  }, [project.status, project.id, router]);
+
   // The build as it plays: the run's events replayed on the clock, laid over the saved parts.
   const live = useRun(project.id, project.run, project.serverNow);
   const running = project.run?.status === "running";

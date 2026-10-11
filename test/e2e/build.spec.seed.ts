@@ -16,6 +16,18 @@ export async function signIn(page: Page, user: TestUser) {
   await page.getByLabel("Password").fill(user.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.waitForURL(/\/home$/);
+  await chooseDemo(page, user);
+}
+
+/**
+ * Pins the session to the person's own demo (the switcher's cookie). Everyone also owns a Personal workspace (0021),
+ * so a test that makes them a Builder or Viewer in their demo would otherwise land in Personal on the next page.
+ */
+export async function chooseDemo(page: Page, user: TestUser) {
+  const { data: m } = await adminDb().from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
+  if (!m) return;
+  const { hostname } = new URL(page.url());
+  await page.context().addCookies([{ name: "ax_ws", value: m.workspace_id, domain: hostname, path: "/", httpOnly: true, sameSite: "Lax" }]);
 }
 
 /** A written, unagreed plan in the person's workspace, as if the model had just written it. */

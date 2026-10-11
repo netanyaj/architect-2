@@ -183,9 +183,9 @@ test.describe("M5 follow-up", () => {
     await expect(plans.getByRole("listitem").filter({ hasText: "Pro" })).toContainText("Your plan");
     await page.goto(`/p/${mp!.id}/launch`);
     await badge.click();
+    // The switch flips at once; the save follows.
     await expect(badge).toHaveAttribute("aria-checked", "false");
-    const { data: after } = await db.from("projects").select("launch_settings").eq("id", mp!.id).single();
-    expect((after!.launch_settings as { badge?: boolean }).badge).toBe(false);
+    await expect.poll(async () => ((await db.from("projects").select("launch_settings").eq("id", mp!.id).single()).data!.launch_settings as { badge?: boolean }).badge).toBe(false);
   });
 
   test("Drift 1: approving an app also allows its data host, ticked by default; Lead scorer's egress hold clears", async ({ page }) => {

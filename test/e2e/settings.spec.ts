@@ -22,7 +22,7 @@ test.describe("reset demo data", () => {
   test("the Owner resets demo data after confirming, and the seeded projects come back", async ({ page }) => {
     await signIn(page, owner, "/settings");
     const db = adminDb();
-    const { data: m } = await db.from("members").select("workspace_id").eq("user_id", owner.id).single();
+    const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", owner.id).eq("workspaces.kind", "demo").single();
     const ws = m!.workspace_id;
     // Change the demo: delete a project and add one.
     await db.from("projects").delete().eq("workspace_id", ws).eq("name", "Vendor tracker");

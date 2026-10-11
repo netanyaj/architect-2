@@ -11,7 +11,7 @@ import { setGovernance } from "@/server/actions/launch";
  */
 export function GovernanceSection({ on, canEdit }: { on: boolean; canEdit: boolean }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [, start] = useTransition();
   const [error, setError] = useState<string>();
   return (
     <section aria-labelledby="governance" className="flex flex-col gap-3">
@@ -22,12 +22,15 @@ export function GovernanceSection({ on, canEdit }: { on: boolean; canEdit: boole
         <Toggle
           checked={on}
           onCheckedChange={(next) =>
-            start(async () => {
-              setError(undefined);
-              const r = await setGovernance({ on: next });
-              if (!r.ok) setError(r.message);
-              router.refresh();
-            })
+            new Promise<void>((resolve) =>
+              start(async () => {
+                setError(undefined);
+                const r = await setGovernance({ on: next });
+                if (!r.ok) setError(r.message);
+                router.refresh();
+                resolve();
+              }),
+            )
           }
           label="Approvals and a team version before Live"
           consequence={
@@ -35,7 +38,7 @@ export function GovernanceSection({ on, canEdit }: { on: boolean; canEdit: boole
               ? "On: apps go Test → Team → Live, and a Builder's Go live waits for an Owner or Admin. Policies and the approval queue apply."
               : "Off: anyone who can build goes live straight from the test version; sharing a team version first is optional."
           }
-          disabledReason={!canEdit ? "Only Owners and Admins can change governance." : pending ? "Saving…" : undefined}
+          disabledReason={!canEdit ? "Only Owners and Admins can change governance." : undefined}
         />
         {error && (
           <p role="alert" className="text-small font-semibold text-failed">

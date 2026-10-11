@@ -6,7 +6,6 @@ import { adminDb, createTestUser, deleteTestUser, type TestUser } from "./helper
    Viewer (BL-15), Help me decide (BL-2: three questions, three ideas from the gateway), and Download code. */
 
 const INSTALLATION = Number(process.env.E2E_GITHUB_INSTALLATION ?? 167616247);
-const REPO = "netanyaj/ticket-triage";
 
 test.describe("Move to 2.0, comments, Help me decide and Download code", () => {
   test.describe.configure({ mode: "serial" });
@@ -68,6 +67,8 @@ test.describe("Move to 2.0, comments, Help me decide and Download code", () => {
       await part.getByRole("button", { name: "Comment", exact: true }).last().click();
       await expect(part.getByRole("region", { name: "Comments on Vendor list" })).toContainText("Can we add the contract owner?");
       await expect(part.getByRole("button", { name: "Comments (1)" })).toBeVisible();
+      // The comment shows at once; wait for it to be saved before the role changes back.
+      await expect.poll(async () => (await db.from("part_comments").select("id").eq("project_id", p!.id)).data?.length ?? 0).toBe(1);
     } finally {
       await db.from("members").update({ role: "owner" }).eq("workspace_id", workspace).eq("user_id", user.id);
     }
