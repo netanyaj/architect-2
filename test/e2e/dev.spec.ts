@@ -12,7 +12,7 @@ const files = (page: Page) => page.getByRole("complementary", { name: "Files" })
 const viewer = (page: Page) => page.getByRole("region", { name: "Viewer" });
 
 async function workspaceOf(user: TestUser) {
-  const { data } = await adminDb().from("members").select("workspace_id").eq("user_id", user.id).eq("role", "owner").single();
+  const { data } = await adminDb().from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
   return data!.workspace_id;
 }
 

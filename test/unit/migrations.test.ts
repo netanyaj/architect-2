@@ -52,7 +52,7 @@ describe("create_demo_workspace", () => {
   it("gives a new person their own seeded Acme Ops, as Owner", async () => {
     const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
     const w = await one<{ name: string; governance_enabled: boolean }>("select name, governance_enabled from workspaces where id = $1", [ws]);
-    expect(w).toEqual({ name: "Morgan's Acme Ops", governance_enabled: true });
+    expect(w).toEqual({ name: "Acme Ops (Enterprise)", governance_enabled: true });
     expect(await one("select role, status from members where workspace_id = $1 and user_id = $2", [ws, MORGAN])).toEqual({ role: "owner", status: "active" });
 
     const projects = await db.query<{ name: string; status: string; total: number; built: number }>(
@@ -94,30 +94,31 @@ describe("create_demo_workspace", () => {
     const a = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
     const b = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
     expect(a.ws).toBe(b.ws);
-    expect(await count("select count(*) as n from members where user_id = $1", [MORGAN])).toBe(1);
+    // The demo and a Personal workspace (0021), never more.
+    expect(await count("select count(*) as n from members where user_id = $1", [MORGAN])).toBe(2);
   });
 
   it("keeps reviewers apart: a second person gets a separate workspace", async () => {
     const m = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
     const r = await one<{ ws: string }>("select create_demo_workspace($1, 'reviewer@example.com', 'Reviewer') as ws", [REVIEWER]);
     expect(r.ws).not.toBe(m.ws);
-    expect(await count("select count(*) as n from workspaces")).toBe(3); // Morgan's, the reviewer's, and Jane's from before 0003
+    expect(await count("select count(*) as n from workspaces where kind = 'demo'")).toBe(3); // Morgan's, the reviewer's, and Jane's from before 0003
   });
 });
 
-describe("distinct workspace names (0003)", () => {
-  it("names each workspace after its owner, so two people's are never the same", async () => {
+describe("workspace names (0003, then 0021)", () => {
+  it("every demo is Acme Ops (Enterprise); the app shows whose it is when it isn't yours", async () => {
     const m = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
     const r = await one<{ ws: string }>("select create_demo_workspace($1, 'reviewer@example.com', '') as ws", [REVIEWER]);
     const name = async (ws: string) => (await one<{ name: string }>("select name from workspaces where id = $1", [ws])).name;
-    expect(await name(m.ws)).toBe("Morgan's Acme Ops");
-    expect(await name(r.ws)).toBe("Reviewer's Acme Ops"); // no name: from the email
+    expect(await name(m.ws)).toBe("Acme Ops (Enterprise)");
+    expect(await name(r.ws)).toBe("Acme Ops (Enterprise)");
   });
 
-  it("renamed the workspace that existed before, and its seeded log line", async () => {
-    const { ws } = await one<{ ws: string }>("select workspace_id as ws from members where user_id = $1 and role = 'owner'", [LEGACY]);
-    expect((await one<{ name: string }>("select name from workspaces where id = $1", [ws])).name).toBe("Jane's Acme Ops");
-    expect(await count("select count(*) as n from audit_log where workspace_id = $1 and action = 'workspace.seeded' and target = 'Jane''s Acme Ops'", [ws])).toBe(1);
+  it("the demo from before 0003 was renamed again by 0021, and its owner got a Personal workspace", async () => {
+    const { ws } = await one<{ ws: string }>("select m.workspace_id as ws from members m join workspaces w on w.id = m.workspace_id where m.user_id = $1 and m.role = 'owner' and w.kind = 'demo'", [LEGACY]);
+    expect((await one<{ name: string }>("select name from workspaces where id = $1", [ws])).name).toBe("Acme Ops (Enterprise)");
+    expect(await count("select count(*) as n from members m join workspaces w on w.id = m.workspace_id where m.user_id = $1 and w.kind = 'personal'", [LEGACY])).toBe(1);
   });
 
   it("the name rule handles empty and odd input", async () => {
@@ -469,7 +470,7 @@ describe("the Architect 1.0 app and part comments (0018)", () => {
   });
 
   it("workspaces from before 0018 got the app too", async () => {
-    const n = await count("select count(*) as n from workspaces w where not exists (select 1 from projects p where p.workspace_id = w.id and p.legacy_repo is not null) and exists (select 1 from members m where m.workspace_id = w.id and m.role = 'owner' and m.user_id is not null)");
+    const n = await count("select count(*) as n from workspaces w where w.kind = 'demo' and not exists (select 1 from projects p where p.workspace_id = w.id and p.legacy_repo is not null) and exists (select 1 from members m where m.workspace_id = w.id and m.role = 'owner' and m.user_id is not null)");
     expect(n).toBe(0);
   });
 });
@@ -503,5 +504,28 @@ describe("API keys, plans, external-call rules and the Lead scorer seed (0019, 0
     await expect(db.query("update workspaces set plan = 'gold' where id = $1", [ws])).rejects.toThrow(/check/);
     await db.query("insert into allow_rules (workspace_id, action, target, created_by_name) values ($1, 'external_call', 'clearbit', 'Jordan (IT)')", [ws]);
     await db.query("insert into approvals (workspace_id, kind, title) values ($1, 'external_call', 'Clearbit calls with a key')", [ws]);
+  });
+});
+
+describe("two workspaces per person, and how an imported agent runs (0021)", () => {
+  it("first sign-in makes Acme Ops (Enterprise) and Personal; signing in again makes nothing new; Personal can't be reset", async () => {
+    const U = "00000000-0000-4000-8000-0000000000aa";
+    await db.query("insert into auth.users (id, email) values ($1, 'two@example.com') on conflict do nothing", [U]);
+    const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'two@example.com', 'Tess') as ws", [U]);
+    expect(await one("select name, kind, governance_enabled, plan from workspaces where id = $1", [ws])).toEqual({ name: "Acme Ops (Enterprise)", kind: "demo", governance_enabled: true, plan: "enterprise" });
+    const owned = await db.query<{ name: string; kind: string; governance_enabled: boolean; plan: string }>("select w.name, w.kind, w.governance_enabled, w.plan from members m join workspaces w on w.id = m.workspace_id where m.user_id = $1 order by w.kind", [U]);
+    expect(owned.rows).toEqual([
+      { name: "Acme Ops (Enterprise)", kind: "demo", governance_enabled: true, plan: "enterprise" },
+      { name: "Personal", kind: "personal", governance_enabled: false, plan: "free" },
+    ]);
+    expect(await one<{ ws: string }>("select create_demo_workspace($1, 'two@example.com', 'Tess') as ws", [U])).toEqual({ ws });
+    expect(await count("select count(*) as n from members where user_id = $1", [U])).toBe(2);
+    const { id: personal } = await one<{ id: string }>("select w.id from members m join workspaces w on w.id = m.workspace_id where m.user_id = $1 and w.kind = 'personal'", [U]);
+    expect(await count("select count(*) as n from projects where workspace_id = $1", [personal])).toBe(0);
+    await expect(db.query("select reset_demo_workspace($1, $2)", [personal, U])).rejects.toThrow(/Personal workspaces/);
+  });
+
+  it("an agent runs natively, as a Studio agent, or as a tool", async () => {
+    await expect(db.query("insert into agents (workspace_id, project_id, item_key, name, run_as) select workspace_id, id, 'x-run', 'X', 'elsewhere' from projects limit 1")).rejects.toThrow(/check/);
   });
 });

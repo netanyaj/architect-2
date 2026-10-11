@@ -81,6 +81,7 @@ export type Database = {
           model: string
           name: string
           project_id: string | null
+          run_as: string
           schedule: string | null
           studio_synced_at: string | null
           temperature: number
@@ -101,6 +102,7 @@ export type Database = {
           model?: string
           name: string
           project_id?: string | null
+          run_as?: string
           schedule?: string | null
           studio_synced_at?: string | null
           temperature?: number
@@ -121,6 +123,7 @@ export type Database = {
           model?: string
           name?: string
           project_id?: string | null
+          run_as?: string
           schedule?: string | null
           studio_synced_at?: string | null
           temperature?: number
@@ -1733,6 +1736,7 @@ export type Database = {
           credits_total: number
           governance_enabled: boolean
           id: string
+          kind: string
           name: string
           plan: string
         }
@@ -1742,6 +1746,7 @@ export type Database = {
           credits_total?: number
           governance_enabled?: boolean
           id?: string
+          kind?: string
           name: string
           plan?: string
         }
@@ -1751,6 +1756,7 @@ export type Database = {
           credits_total?: number
           governance_enabled?: boolean
           id?: string
+          kind?: string
           name?: string
           plan?: string
         }

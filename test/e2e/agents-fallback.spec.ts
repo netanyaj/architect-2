@@ -21,7 +21,7 @@ test.describe("M4: Agents without Lyzr Studio (Simulated)", () => {
   test("Try it is answered by Gemini, tagged Simulated, saved as a gateway run; nothing is made on Studio", async ({ page }) => {
     await signIn(page, user);
     const db = adminDb();
-    const { data: m } = await db.from("members").select("workspace_id").eq("user_id", user.id).eq("role", "owner").single();
+    const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
     const { data: p } = await db.from("projects").select("id").eq("workspace_id", m!.workspace_id).eq("name", "ticket-triage").single();
     await page.goto(`/p/${p!.id}?view=agents`);
 

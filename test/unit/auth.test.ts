@@ -29,7 +29,7 @@ vi.mock("@/server/db", () => ({
 
 const { signInWithEmail, signInWithProvider, signOut, friendlyAuthError } = await import("@/server/actions/auth");
 const { GET: callback } = await import("@/app/auth/callback/route");
-const { displayNameFor, ensureWorkspace, pickWorkspace } = await import("@/server/workspace");
+const { displayNameFor, ensureWorkspace, pickWorkspace, workspaceLabel } = await import("@/server/workspace");
 
 function form(fields: Record<string, string>) {
   const f = new FormData();
@@ -117,6 +117,19 @@ describe("pickWorkspace", () => {
   it("otherwise defaults to the one they own", () => {
     expect(pickWorkspace(ms, undefined)?.workspaceId).toBe("own");
     expect(pickWorkspace(ms, "gone")?.workspaceId).toBe("own");
+  });
+  it("with a Personal workspace too, a new session lands on their demo", () => {
+    const two = [
+      { workspaceId: "personal", workspaceName: "Personal", role: "owner" as const, label: "Personal", kind: "personal" as const },
+      { workspaceId: "demo", workspaceName: "Acme Ops (Enterprise)", role: "owner" as const, label: "Acme Ops (Enterprise)", kind: "demo" as const },
+    ];
+    expect(pickWorkspace(two, undefined)?.workspaceId).toBe("demo");
+    expect(pickWorkspace(two, "personal")?.workspaceId).toBe("personal");
+  });
+  it("labels someone else's workspace with its owner, since names repeat", () => {
+    expect(workspaceLabel("Acme Ops (Enterprise)", "Morgan Lee", false)).toBe("Acme Ops (Enterprise) · Morgan's");
+    expect(workspaceLabel("Personal", "Morgan Lee", false)).toBe("Personal · Morgan's");
+    expect(workspaceLabel("Acme Ops (Enterprise)", "Morgan Lee", true)).toBe("Acme Ops (Enterprise)");
   });
 });
 

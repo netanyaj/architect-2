@@ -22,7 +22,7 @@ test.describe("Rules, budgets, keys and the audit log", () => {
   });
   async function signInAndFind(page: Page) {
     await signIn(page, user);
-    const { data: m } = await adminDb().from("members").select("workspace_id").eq("user_id", user.id).eq("role", "owner").single();
+    const { data: m } = await adminDb().from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
     workspace = m!.workspace_id;
   }
   const setRole = (role: "owner" | "builder") => adminDb().from("members").update({ role }).eq("workspace_id", workspace).eq("user_id", user.id);

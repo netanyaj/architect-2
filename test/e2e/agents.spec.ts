@@ -9,7 +9,7 @@ const LYZR = "https://agent-prod.studio.lyzr.ai";
 
 async function projectId(user: TestUser, name: string) {
   const db = adminDb();
-  const { data: m } = await db.from("members").select("workspace_id").eq("user_id", user.id).eq("role", "owner").single();
+  const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
   const { data: p } = await db.from("projects").select("id").eq("workspace_id", m!.workspace_id).eq("name", name).single();
   return p!.id;
 }

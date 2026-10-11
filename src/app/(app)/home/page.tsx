@@ -13,6 +13,7 @@ import { listProjects } from "@/server/queries";
 import { displayNameFor, getAppContext } from "@/server/workspace";
 import { HomeComposer } from "./home-composer";
 import { IdeaCards } from "./idea-cards";
+import { PersonalStart } from "./personal-start";
 
 export const metadata: Metadata = { title: "Home · Architect" };
 
@@ -62,6 +63,10 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
         models={models}
         defaultModel={architect}
       />
+
+      {ctx.workspace.kind === "personal" && projects.length === 0 && (
+        <PersonalStart demoId={ctx.memberships.find((m) => m.role === "owner" && m.kind === "demo")?.workspaceId ?? null} />
+      )}
 
       {recent.length > 0 && (
         <section aria-labelledby="continue" className="flex flex-col gap-3">

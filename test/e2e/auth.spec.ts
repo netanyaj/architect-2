@@ -49,9 +49,10 @@ test.describe("sign-in", () => {
     await expect(nav.getByRole("link", { name: /Approvals\s*3/ })).toBeVisible();
 
     const db = adminDb();
-    const { data: members } = await db.from("members").select("role, workspace_id").eq("user_id", user.id);
-    expect(members).toHaveLength(1);
-    expect(members![0].role).toBe("owner");
+    // Two workspaces, both theirs: the seeded demo they land on, and an empty Personal (0021).
+    const { data: all } = await db.from("members").select("role, workspace_id, workspaces!inner(kind)").eq("user_id", user.id);
+    expect(all!.map((m) => [m.role, m.workspaces.kind]).sort()).toEqual([["owner", "demo"], ["owner", "personal"]]);
+    const members = all!.filter((m) => m.workspaces.kind === "demo");
 
     // Credits left = allowance minus this period's usage (the period ends on the reset date).
     const ws = members![0].workspace_id;
@@ -72,10 +73,11 @@ test.describe("sign-in", () => {
     await page.getByLabel("Password").fill(user.password);
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
     await expect(page).toHaveURL(/\/settings$/);
-    await expect(page.getByText("Signin's Acme Ops · you're an Owner.", { exact: false })).toBeVisible();
+    await expect(page.getByText("Acme Ops (Enterprise) · you're an Owner.", { exact: false })).toBeVisible();
 
+    // Two workspaces: the seeded demo and an empty Personal (0021).
     const { count } = await adminDb().from("members").select("id", { count: "exact", head: true }).eq("user_id", user.id);
-    expect(count).toBe(1);
+    expect(count).toBe(2);
 
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/login$/);

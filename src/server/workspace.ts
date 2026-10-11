@@ -21,8 +21,9 @@ export function displayNameFor(user: Pick<User, "email" | "user_metadata">): str
 }
 
 /**
- * Every person gets their own seeded Acme Ops, named after them ("Netanya's Acme Ops"), on first sign-in. Idempotent in the database
- * (create_demo_workspace returns the workspace they already own), so it's safe to call on every sign-in.
+ * Every person gets two workspaces on first sign-in (0021): the seeded "Acme Ops (Enterprise)" and an empty "Personal".
+ * Idempotent in the database (create_demo_workspace returns the demo they already own and adds only what's missing),
+ * so it's safe to call on every sign-in.
  */
 export async function ensureWorkspace(admin: AdminDb, user: Pick<User, "id" | "email" | "user_metadata">): Promise<string> {
   const { data, error } = await admin.rpc("create_demo_workspace", {
@@ -38,14 +39,22 @@ export type Membership = {
   workspaceId: string;
   workspaceName: string;
   role: Role;
-  /** What the switcher shows: the workspace's name, which carries its owner's ("Netanya's Acme Ops"). */
+  /** What the switcher shows: the name, plus the owner's when it isn't yours ("Acme Ops (Enterprise) · Morgan's"). */
   label: string;
+  /** The seeded demo, or a Personal workspace (0021). */
+  kind?: "demo" | "personal";
 };
+
+/** "Acme Ops (Enterprise)" for your own; "Acme Ops (Enterprise) · Morgan's" for someone else's (names repeat). */
+export function workspaceLabel(name: string, ownerName: string | null, mine: boolean): string {
+  if (mine || !ownerName) return name;
+  return `${name} · ${ownerName.split(" ")[0]}'s`;
+}
 
 export type AppContext = {
   user: User;
   name: string;
-  workspace: { id: string; name: string; governanceEnabled: boolean; creditsTotal: number; creditsResetOn: string; plan: WorkspacePlan };
+  workspace: { id: string; name: string; governanceEnabled: boolean; creditsTotal: number; creditsResetOn: string; plan: WorkspacePlan; kind?: "demo" | "personal" };
   role: Role;
   memberships: Membership[];
 };
@@ -54,6 +63,8 @@ export type AppContext = {
 export function pickWorkspace(memberships: Membership[], chosen: string | undefined): Membership | undefined {
   return (
     memberships.find((m) => m.workspaceId === chosen) ??
+    // A new session lands on your own demo (Acme Ops (Enterprise)), then any workspace you own.
+    memberships.find((m) => m.role === "owner" && m.kind === "demo") ??
     memberships.find((m) => m.role === "owner") ??
     memberships[0]
   );
@@ -73,7 +84,7 @@ export const getAppContext = cache(async (): Promise<AppContext> => {
   const load = () =>
     db
       .from("members")
-      .select("role, workspace_id, workspaces!inner(id, name, governance_enabled, credits_total, credits_reset_on, plan)")
+      .select("role, workspace_id, workspaces!inner(id, name, kind, governance_enabled, credits_total, credits_reset_on, plan)")
       .eq("user_id", user.id)
       .eq("status", "active");
 
@@ -86,13 +97,21 @@ export const getAppContext = cache(async (): Promise<AppContext> => {
     if (error || !rows?.length) throw new Error(`Couldn't load your workspace: ${error?.message ?? "none found"}`);
   }
 
-  // Each workspace is named after its owner ("Netanya's Acme Ops"), so the name is the label.
-  const memberships: Membership[] = rows.map((r) => ({
-    workspaceId: r.workspace_id,
-    workspaceName: r.workspaces.name,
-    role: r.role as Role,
-    label: r.workspaces.name,
-  }));
+  // Everyone's demo is "Acme Ops (Enterprise)" and everyone has a "Personal", so someone else's shows its owner.
+  const others = rows.filter((r) => r.role !== "owner").map((r) => r.workspace_id);
+  const { data: owners } = others.length
+    ? await createAdminDb().from("members").select("workspace_id, display_name").in("workspace_id", others).eq("role", "owner").eq("status", "active")
+    : { data: [] as { workspace_id: string; display_name: string | null }[] };
+  const memberships: Membership[] = rows
+    .map((r) => ({
+      workspaceId: r.workspace_id,
+      workspaceName: r.workspaces.name,
+      role: r.role as Role,
+      kind: (r.workspaces.kind === "personal" ? "personal" : "demo") as Membership["kind"],
+      label: workspaceLabel(r.workspaces.name, owners?.find((o) => o.workspace_id === r.workspace_id)?.display_name ?? null, r.role === "owner"),
+    }))
+    // Your demo, your Personal, then the workspaces you were invited to.
+    .sort((a, b) => Number(b.role === "owner") - Number(a.role === "owner") || Number(a.kind === "personal") - Number(b.kind === "personal") || a.label.localeCompare(b.label));
   const chosen = (await cookies()).get(WORKSPACE_COOKIE)?.value;
   const current = pickWorkspace(memberships, chosen)!;
   const ws = rows.find((r) => r.workspace_id === current.workspaceId)!.workspaces;
@@ -107,6 +126,7 @@ export const getAppContext = cache(async (): Promise<AppContext> => {
       creditsTotal: Number(ws.credits_total),
       creditsResetOn: ws.credits_reset_on,
       plan: planOf(ws.plan),
+      kind: ws.kind === "personal" ? "personal" : "demo",
     },
     role: current.role,
     memberships,

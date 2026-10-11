@@ -7,6 +7,7 @@ import type { Role } from "@/lib/db";
 import { ROLE_INFO } from "@/lib/permissions";
 import { signOut } from "@/server/actions/auth";
 import { createAdminDb, createServerDb } from "@/server/db";
+import { workspaceLabel } from "@/server/workspace";
 import { AcceptButton } from "./accept-button";
 
 export const metadata: Metadata = { title: "Invite · Architect" };
@@ -65,7 +66,8 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
   }
 
   const role = ROLE_INFO[invite.role as Role];
-  const workspace = invite.workspaces.name;
+  // Everyone's demo has the same name, so an invite says whose it is ("Acme Ops (Enterprise) · Morgan's").
+  const workspace = workspaceLabel(invite.workspaces.name, inviter === "Someone" ? null : inviter, false);
   const db = await createServerDb();
   const {
     data: { user },

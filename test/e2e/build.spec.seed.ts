@@ -21,7 +21,7 @@ export async function signIn(page: Page, user: TestUser) {
 /** A written, unagreed plan in the person's workspace, as if the model had just written it. */
 export async function seedPlan(user: TestUser, name: string): Promise<string> {
   const db = adminDb();
-  const { data: m } = await db.from("members").select("workspace_id").eq("user_id", user.id).eq("role", "owner").single();
+  const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
   const { data: project } = await db
     .from("projects")
     .insert({ workspace_id: m!.workspace_id, name, owner_id: user.id, status: "draft", model: "gemini", prompt: "Meeting prep briefs", current_version: 1 })

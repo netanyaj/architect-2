@@ -31,7 +31,7 @@ test.describe("M4: Hand-off", () => {
     const link = await morganPage.getByRole("status").getByLabel("Invite link").inputValue();
 
     // ⋯ › Transfer ownership, to the invited teammate, with a note.
-    const { data: m } = await db.from("members").select("workspace_id").eq("user_id", morgan.id).eq("role", "owner").single();
+    const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", morgan.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
     const { data: p } = await db.from("projects").select("id").eq("workspace_id", m!.workspace_id).eq("name", "Meeting Prep").single();
     await morganPage.goto(`/p/${p!.id}`);
     await morganPage.getByRole("button", { name: "More for this project" }).click();

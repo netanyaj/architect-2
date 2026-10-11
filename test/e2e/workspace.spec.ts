@@ -11,7 +11,7 @@ async function signIn(page: Page, user: TestUser, next = "/home") {
 }
 
 async function workspaceOf(userId: string) {
-  const { data } = await adminDb().from("members").select("workspace_id").eq("user_id", userId).eq("role", "owner").single();
+  const { data } = await adminDb().from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", userId).eq("role", "owner").eq("workspaces.kind", "demo").single();
   return data!.workspace_id;
 }
 

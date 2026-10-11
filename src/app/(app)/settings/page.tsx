@@ -122,7 +122,7 @@ export default async function SettingsPage() {
         </div>
       </section>
 
-      {canResetDemo(ctx.role) && <DemoDataSection workspaceName={ctx.workspace.name} />}
+      {canResetDemo(ctx.role) && ctx.workspace.kind !== "personal" && <DemoDataSection workspaceName={ctx.workspace.name} />}
     </div>
   );
 }

@@ -29,7 +29,7 @@ test.describe("M4: Bring your own coding agent", () => {
   test("make a token, play ?sim=byoagent, see the activity and the part wait for its check", async ({ page }) => {
     await signIn(page, user);
     const db = adminDb();
-    const { data: m } = await db.from("members").select("workspace_id").eq("user_id", user.id).eq("role", "owner").single();
+    const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
     const { data: p } = await db.from("projects").select("id").eq("workspace_id", m!.workspace_id).eq("name", "Meeting Prep").single();
 
     // Without a token, the session says what's missing.

@@ -10,7 +10,7 @@ const INSTALLATION = Number(process.env.E2E_GITHUB_INSTALLATION ?? 167616247);
 const REPO = "netanyaj/ticket-triage";
 
 async function workspaceOf(user: TestUser) {
-  const { data } = await adminDb().from("members").select("workspace_id").eq("user_id", user.id).eq("role", "owner").single();
+  const { data } = await adminDb().from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
   return data!.workspace_id;
 }
 

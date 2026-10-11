@@ -19,7 +19,7 @@ test.describe("M4 acceptance: F3 import → plan from repo → build → PR", ()
   test("import ticket-triage, plan it, build it, and see its pull request", async ({ page }) => {
     await signIn(page, user);
     const db = adminDb();
-    const { data: m } = await db.from("members").select("workspace_id").eq("user_id", user.id).eq("role", "owner").single();
+    const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
     await db.from("github_installations").insert({ workspace_id: m!.workspace_id, installation_id: Number(process.env.E2E_GITHUB_INSTALLATION ?? 167616247), account_login: "netanyaj", account_type: "User", added_by: user.id });
 
     // Import: choose the repo, understand it.

@@ -91,7 +91,7 @@ test.describe("M4: Changes as pull requests", () => {
   test("Settings › GitHub: the installation and its repos from GitHub, Manage on GitHub, disconnect", async ({ page }) => {
     await signIn(page, user);
     const db = adminDb();
-    const { data: m } = await db.from("members").select("workspace_id").eq("user_id", user.id).eq("role", "owner").single();
+    const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
     await db.from("github_installations").upsert(
       { workspace_id: m!.workspace_id, installation_id: Number(process.env.E2E_GITHUB_INSTALLATION ?? 167616247), account_login: "netanyaj", account_type: "User", added_by: user.id },
       { onConflict: "workspace_id,installation_id" },

@@ -20,7 +20,7 @@ test.describe("Data and egress", () => {
   });
   async function signInAndFind(page: Page) {
     await signIn(page, user);
-    const { data: m } = await adminDb().from("members").select("workspace_id").eq("user_id", user.id).eq("role", "owner").single();
+    const { data: m } = await adminDb().from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
     workspace = m!.workspace_id;
   }
 
@@ -66,7 +66,7 @@ test.describe("Data and egress", () => {
     try {
       await signIn(page, other);
       const db = adminDb();
-      const { data: m } = await db.from("members").select("workspace_id").eq("user_id", other.id).eq("role", "owner").single();
+      const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", other.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
       const ws = m!.workspace_id;
       const id = await seedPlan(other, "Lead brief");
       await db.from("items").update({ provider: "hubspot", title: "HubSpot contact lookup" }).eq("project_id", id).eq("key", "slack-brief-delivery");

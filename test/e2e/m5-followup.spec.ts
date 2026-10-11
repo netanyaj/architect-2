@@ -18,7 +18,7 @@ test.describe("M5 follow-up", () => {
   });
   async function start(page: Page) {
     await signIn(page, user);
-    const { data: m } = await adminDb().from("members").select("workspace_id").eq("user_id", user.id).eq("role", "owner").single();
+    const { data: m } = await adminDb().from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
     workspace = m!.workspace_id;
   }
 

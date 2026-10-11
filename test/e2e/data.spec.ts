@@ -20,7 +20,7 @@ test.describe("M4: Data and sign-in", () => {
   test("switch versions, filter, export CSV, Live read-only, and change sign-in from Launch", async ({ page }) => {
     await signIn(page, user);
     const db = adminDb();
-    const { data: m } = await db.from("members").select("workspace_id").eq("user_id", user.id).eq("role", "owner").single();
+    const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
     const { data: p } = await db.from("projects").select("id").eq("workspace_id", m!.workspace_id).eq("name", "Meeting Prep").single();
     await page.goto(`/p/${p!.id}?view=data`);
 
