@@ -29,6 +29,9 @@ type UiState = {
   previewSize: "desktop" | "phone";
   setPreviewSize: (size: "desktop" | "phone") => void;
   /** One toast at a time, bottom-centre (e.g. "Moved to Trash · Undo · View Trash"). Survives client navigation. */
+  /** The ⌘K command palette (M5.10). */
+  paletteOpen: boolean;
+  openPalette: (open: boolean) => void;
   toast: Toast | null;
   showToast: (t: Omit<Toast, "n">) => void;
   dismissToast: () => void;
@@ -54,6 +57,8 @@ export const useUi = create<UiState>((set) => ({
   openChanges: (open) => set({ changesOpen: open }),
   previewSize: "desktop",
   setPreviewSize: (size) => set({ previewSize: size }),
+  paletteOpen: false,
+  openPalette: (open) => set({ paletteOpen: open }),
   toast: null,
   showToast: (t) => set((s) => ({ toast: { ...t, n: (s.toast?.n ?? 0) + 1 } })),
   dismissToast: () => set({ toast: null }),

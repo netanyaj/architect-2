@@ -8,6 +8,7 @@ import { getHelpContext, getNavData } from "@/server/queries";
 import { getAppContext } from "@/server/workspace";
 import { SwitchWorkspaceCard } from "../switch-workspace-card";
 import { Workspace } from "../workspace";
+import { CommandPalette } from "@/components/ax/command-palette";
 
 export const metadata: Metadata = { title: "Launch · Architect" };
 
@@ -29,6 +30,7 @@ export default async function LaunchPage({ params, searchParams }: PageProps<"/p
       <HelpHost context={help} />
       <HelpLauncher projectId={project.id} />
       <ToastHost />
+      <CommandPalette />
     </>
   );
 }

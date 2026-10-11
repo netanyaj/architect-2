@@ -9,6 +9,7 @@ import { orgBudget } from "@/server/policy";
 import { getHelpContext, getNavData } from "@/server/queries";
 import { userTheme } from "@/server/theme";
 import { getAppContext } from "@/server/workspace";
+import { CommandPalette } from "@/components/ax/command-palette";
 
 /** Pages outside a project: the tray side nav plus the white main surface. */
 export default async function AppLayout({ children }: LayoutProps<"/">) {
@@ -57,6 +58,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       <HelpHost context={help} />
       <HelpLauncher />
       <ToastHost />
+      <CommandPalette />
     </div>
   );
 }

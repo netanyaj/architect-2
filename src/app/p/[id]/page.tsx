@@ -13,6 +13,7 @@ import { getAppContext } from "@/server/workspace";
 import { LegacyProject } from "./legacy-project";
 import { SwitchWorkspaceCard } from "./switch-workspace-card";
 import { Workspace } from "./workspace";
+import { CommandPalette } from "@/components/ax/command-palette";
 
 const UUID = /^[0-9a-f-]{36}$/i;
 
@@ -50,6 +51,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
       <HelpHost context={help} />
       <HelpLauncher projectId={project.id} />
       <ToastHost />
+      <CommandPalette />
     </>
   );
 }

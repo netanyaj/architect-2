@@ -10,6 +10,7 @@ import { ResourcesMenu } from "./resources-menu";
 import type { WorkspaceOption } from "./workspace-switcher";
 import type { WorkspacePlan } from "@/lib/plans";
 import { LogoMark } from "./logo-mark";
+import { useUi } from "@/lib/ui-store";
 
 type NavItem = { href: string; label: string; icon: IconName; count?: number };
 
@@ -83,6 +84,23 @@ export function CreditsCard({ left, total, resetsOn }: SideNavProps["credits"]) 
   );
 }
 
+/** Search, at the top of the nav (Notion's pattern, M5.10): opens the ⌘K palette. */
+function SearchRow() {
+  const openPalette = useUi((s) => s.openPalette);
+  return (
+    <button
+      type="button"
+      onClick={() => openPalette(true)}
+      aria-keyshortcuts="Meta+K Control+K"
+      className="flex min-h-10 w-full items-center gap-[11px] rounded-card border border-transparent px-3 text-left text-body font-[550] text-ink-2 hover:bg-selected hover:text-ink"
+    >
+      <Icon name="search" />
+      Search
+      <kbd className="ml-auto rounded-[6px] border border-line bg-surface px-1.5 font-sans text-small leading-5 text-ink-2">⌘K</kbd>
+    </button>
+  );
+}
+
 /** The tray side nav for pages outside a project. */
 export function SideNav(props: SideNavProps) {
   const pathname = usePathname();
@@ -137,6 +155,7 @@ export function SideNav(props: SideNavProps) {
         </button>
       </div>
       <div id="side-nav-items" className={cn("flex flex-1 flex-col gap-0.5", !menuOpen && "max-md:hidden")}>
+      <SearchRow />
       {main.map((item) => (
         <NavLink key={item.href} item={item} active={isActive(item.href)} />
       ))}
