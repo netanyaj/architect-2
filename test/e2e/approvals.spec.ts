@@ -38,6 +38,8 @@ test.describe("Approvals", () => {
     await page.goto(`/p/${id}?sim=fast`);
     await page.getByRole("button", { name: /^Build · ~\d+ credits$/ }).click();
     await expect(page.getByText(/^(Build finished|The change is built)\./).first()).toBeVisible({ timeout: 90_000 });
+    // The chat says so as the replay ends; the run settles (and files the request) a moment later.
+    await expect.poll(async () => (await db.from("approvals").select("id").eq("project_id", id).eq("kind", "connector")).data?.length ?? 0, { timeout: 30_000 }).toBe(1);
     const { data: req } = await db.from("approvals").select("id, status, payload").eq("project_id", id).eq("kind", "connector").single();
     expect(req!.status).toBe("waiting");
     expect(req!.payload).toMatchObject({ provider: "hubspot", item_title: "HubSpot contact lookup" });

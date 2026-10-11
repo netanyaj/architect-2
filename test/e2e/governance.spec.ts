@@ -60,9 +60,13 @@ test.describe("Governance policies", () => {
     await policy(page).getByRole("button", { name: "Save models" }).click();
     await expect(policy(page).getByRole("status")).toContainText("Saved.");
 
-    // Home starts new projects on Architect's model, tagged Simulated (no request reaches a private endpoint).
+    // Home starts new projects on Auto (M5.8), which uses Architect's model; the private one is listed, Simulated.
     await page.goto("/home");
-    await expect(page.getByRole("button", { name: /^Model: Acme Llama 3\.1 \(simulated/ })).toBeVisible();
+    const homePicker = page.getByRole("button", { name: /^Model: Auto/ });
+    await expect(homePicker).toHaveAttribute("title", /every step uses Acme Llama 3\.1/);
+    await homePicker.click();
+    await expect(page.getByRole("menuitem", { name: /^Acme Llama 3\.1/ })).toContainText("Simulated");
+    await page.keyboard.press("Escape");
 
     // Meeting Prep was on Claude: chat says so and doesn't switch it; Switch opens the picker.
     const id = await project("Meeting Prep");
@@ -71,7 +75,9 @@ test.describe("Governance policies", () => {
     await expect(chat.getByText("This model is no longer allowed ·")).toBeVisible();
     expect((await adminDb().from("projects").select("model").eq("id", id).single()).data!.model).toMatch(/^claude/);
     await chat.getByRole("button", { name: "Switch" }).click();
-    await expect(page.getByRole("menuitem", { name: /Claude/ })).toHaveCount(0);
+    // Blocked models stay in the list, disabled, with the reason (M5.8).
+    await expect(page.getByRole("menuitem", { name: /Claude/ })).toHaveAttribute("aria-disabled", "true");
+    await expect(page.getByRole("menuitem", { name: /Claude/ })).toContainText("Blocked by your workspace");
     await page.getByRole("menuitem", { name: /^Gemini/ }).click();
     await page.getByRole("dialog", { name: "Switch this project to Gemini?" }).getByRole("button", { name: "Switch to Gemini" }).click();
     await expect.poll(async () => (await adminDb().from("projects").select("model").eq("id", id).single()).data!.model).toBe("gemini");
