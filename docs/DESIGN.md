@@ -46,8 +46,8 @@
 | `SimTag` | n/a | Badge | every simulated surface: a dashed outline pill with the word "Simulated" |
 
 ## Copy rules
-- Use the words in the design-system README: plan, part, works, Test version / Team version / Live, Talk first, Blocked, Keys and passwords, Point at something. "Blueprint" stays in code, the API and the docs only.
+- Use the words in the design-system README: plan, part, works, Test version / Team version / Live, Ask · Make changes, Blocked, Keys and passwords, Point at something. "Blueprint" stays in code, the API and the docs only.
 - Sentence case. Buttons say what happens; paid buttons show the cost.
-- Every disabled button shows why, in a `title` and in visible text nearby.
+- Every disabled action button shows why, in a `title` and in visible text nearby. Navigation is never disabled: a stage link such as **Launch · 1 to fix** always opens its page, and the page says what is left (M5.5 review).
 - Errors say what happened, what is kept and what to do next.
 - Use the copy on the final screens; never lorem ipsum.

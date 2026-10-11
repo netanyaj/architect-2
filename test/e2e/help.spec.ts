@@ -28,6 +28,7 @@ test.describe("Help", () => {
     await expect(help).toBeVisible();
     await expect(help.getByText(/Lead scorer.*is blocked at its budget/)).toBeVisible();
     await expect(help.getByText("Simulated").first()).toBeVisible(); // Talk to a person is labelled
+    await expect(help.getByRole("link", { name: "Docs" })).toHaveAttribute("href", "https://docs.lyzr.ai");
 
     // A real answer from Gemini, grounded in the workspace (mentions the budget).
     await help.getByRole("button", { name: "Why did Lead scorer stop?" }).click();
