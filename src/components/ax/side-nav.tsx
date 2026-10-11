@@ -4,11 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { ROLE_INFO } from "@/lib/permissions";
 import { useUi } from "@/lib/ui-store";
 import { Icon, type IconName } from "./icon";
 import { ProfileMenu } from "./profile-menu";
-import { WorkspaceSwitcher, type WorkspaceOption } from "./workspace-switcher";
+import { WorkspaceMenu, type WorkspaceOption } from "./workspace-switcher";
+import type { OpenInDev } from "@/lib/dev-preference";
 
 type NavItem = { href: string; label: string; icon: IconName; count?: number };
 
@@ -18,7 +18,10 @@ export type SideNavProps = {
   workspaces: WorkspaceOption[];
   userName: string;
   userEmail: string;
-  theme: "light" | "dark";
+  theme: "system" | "light" | "dark";
+  openInDev: OpenInDev;
+  canBuild: boolean;
+  governance: boolean;
   isAdmin: boolean;
   projectCount?: number;
   approvalsWaiting?: number;
@@ -82,7 +85,6 @@ export function CreditsCard({ left, total, resetsOn }: SideNavProps["credits"]) 
 export function SideNav(props: SideNavProps) {
   const pathname = usePathname();
   const openHelp = useUi((s) => s.openHelp);
-  const current = props.workspaces.find((w) => w.workspaceId === props.currentWorkspaceId);
   // On phones the nav folds into a bar with a Menu button, so the page starts on the first screen.
   const [menuOpen, setMenuOpen] = useState(false);
   const [lastPath, setLastPath] = useState(pathname);
@@ -115,8 +117,10 @@ export function SideNav(props: SideNavProps) {
           A
         </span>
         Architect
+        <span className="rounded-full border border-line-ctl px-1.5 text-small font-semibold leading-5 text-ink-2" title="Architect 2.0: the build you're in">
+          2.0
+        </span>
         <span className="flex-1" />
-        <WorkspaceSwitcher current={props.currentWorkspaceId} options={props.workspaces} />
         <button
           type="button"
           aria-expanded={menuOpen}
@@ -128,12 +132,7 @@ export function SideNav(props: SideNavProps) {
         </button>
       </div>
       <div id="side-nav-items" className={cn("flex flex-1 flex-col gap-0.5", !menuOpen && "max-md:hidden")}>
-      {current && (props.workspaces.length > 1 || current.role !== "owner") && (
-        <div className="mx-1.5 mb-2 flex items-center justify-between gap-2 rounded-tile bg-surface px-2.5 py-1.5 text-small">
-          <span className="truncate font-semibold">{current.label}</span>
-          <span className="flex-none text-ink-2">{ROLE_INFO[current.role].label}</span>
-        </div>
-      )}
+      <WorkspaceMenu current={props.currentWorkspaceId} options={props.workspaces} governance={props.governance} />
       {main.map((item) => (
         <NavLink key={item.href} item={item} active={isActive(item.href)} />
       ))}
@@ -161,7 +160,7 @@ export function SideNav(props: SideNavProps) {
           </span>
         )}
       </button>
-      <ProfileMenu name={props.userName} email={props.userEmail} theme={props.theme} current={props.currentWorkspaceId} workspaces={props.workspaces} />
+      <ProfileMenu name={props.userName} email={props.userEmail} theme={props.theme} openInDev={props.openInDev} canBuild={props.canBuild} />
       </div>
     </nav>
   );

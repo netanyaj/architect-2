@@ -22,10 +22,20 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  // The person's theme setting (Settings › Appearance), everywhere including Developer view. Light unless they chose dark.
+  // The person's theme setting, everywhere including Developer view: Light, Dark, or System (the device's, set before
+  // the first paint by the script below and kept in step if the device changes).
   const theme = await userTheme();
   return (
-    <html lang="en" data-theme={theme} className={`${figtree.variable} ${geistMono.variable} h-full`}>
+    <html lang="en" data-theme={theme === "system" ? "light" : theme} data-theme-choice={theme} className={`${figtree.variable} ${geistMono.variable} h-full`} suppressHydrationWarning>
+      <head>
+        {theme === "system" && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(){var m=window.matchMedia("(prefers-color-scheme: dark)");function s(){if(document.documentElement.dataset.themeChoice==="system")document.documentElement.dataset.theme=m.matches?"dark":"light"}s();m.addEventListener("change",s)})();`,
+            }}
+          />
+        )}
+      </head>
       <body className="min-h-full">
         <TooltipProvider>{children}</TooltipProvider>
       </body>

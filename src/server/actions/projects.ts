@@ -253,8 +253,8 @@ export async function setOpenInDev(value: string): Promise<ActionResult> {
   return { ok: true };
 }
 
-export async function setTheme(theme: "light" | "dark"): Promise<ActionResult> {
-  if (theme !== "light" && theme !== "dark") return { ok: false, message: "Pick Light or Dark." };
+export async function setTheme(theme: "system" | "light" | "dark"): Promise<ActionResult> {
+  if (theme !== "light" && theme !== "dark" && theme !== "system") return { ok: false, message: "Pick System, Light or Dark." };
   const db = await createServerDb();
   const { error } = await db.auth.updateUser({ data: { theme } });
   if (error) return { ok: false, message: "Your theme couldn't be saved. Try again." };

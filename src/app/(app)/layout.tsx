@@ -5,7 +5,7 @@ import { canBuild } from "@/lib/permissions";
 import { createAdminDb, createServerDb } from "@/server/db";
 import { orgBudget } from "@/server/policy";
 import { getHelpContext, getNavData } from "@/server/queries";
-import { userTheme } from "@/server/theme";
+import { userOpenInDev, userTheme } from "@/server/theme";
 import { getAppContext } from "@/server/workspace";
 
 /** Pages outside a project: the tray side nav plus the white main surface. */
@@ -33,6 +33,9 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         userName={ctx.name}
         userEmail={ctx.user.email ?? ""}
         theme={await userTheme()}
+        openInDev={await userOpenInDev()}
+        canBuild={canBuild(ctx.role)}
+        governance={ctx.workspace.governanceEnabled}
         isAdmin={isAdmin && ctx.workspace.governanceEnabled}
         projectCount={nav.projectCount}
         approvalsWaiting={nav.approvalsWaiting}

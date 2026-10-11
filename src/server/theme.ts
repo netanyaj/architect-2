@@ -1,20 +1,24 @@
 import "server-only";
 
-import { openInDevOf, type OpenInDev } from "@/lib/dev-preference";
 import { cookies } from "next/headers";
+import { openInDevOf, type OpenInDev } from "@/lib/dev-preference";
 import { createServerDb } from "./db";
 
+export type ThemeChoice = "system" | "light" | "dark";
+
 /**
- * The person's theme (Settings › Appearance), a user setting. The cookie set when they choose it is read first, so
- * pages render without a round trip; a browser without it falls back to the account's saved setting (read from the
- * session, no network call). Light unless they chose dark.
+ * The person's theme (account menu, Settings › Appearance): System, Light or Dark. The cookie set when they choose it
+ * is read first, so pages render without a round trip; a browser without it falls back to the account's saved setting
+ * (read from the session, no network call). Light unless they chose otherwise.
  */
-export async function userTheme(): Promise<"light" | "dark"> {
+export async function userTheme(): Promise<ThemeChoice> {
+  const ok = (v: unknown): v is ThemeChoice => v === "dark" || v === "light" || v === "system";
   const cookie = (await cookies()).get("ax_theme")?.value;
-  if (cookie === "dark" || cookie === "light") return cookie;
+  if (ok(cookie)) return cookie;
   const db = await createServerDb();
   const { data } = await db.auth.getSession();
-  return data.session?.user.user_metadata?.theme === "dark" ? "dark" : "light";
+  const saved = data.session?.user.user_metadata?.theme;
+  return ok(saved) ? saved : "light";
 }
 
 /** "Open projects in Developer view" (M5.5): from the person's account; imported repos only by default. */

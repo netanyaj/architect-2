@@ -5,9 +5,10 @@ import { useTransition } from "react";
 import { Segmented } from "@/components/ax/segmented";
 import { OPEN_IN_DEV, type OpenInDev } from "@/lib/dev-preference";
 import { setOpenInDev, setTheme } from "@/server/actions/projects";
+import { applyTheme } from "@/lib/theme-choice";
 
 /** Light or dark: saved to the person's account, and used everywhere, Developer view included. */
-export function AppearanceSection({ theme, openInDev, canBuild }: { theme: "light" | "dark"; openInDev: OpenInDev; canBuild: boolean }) {
+export function AppearanceSection({ theme, openInDev, canBuild }: { theme: "system" | "light" | "dark"; openInDev: OpenInDev; canBuild: boolean }) {
   const router = useRouter();
   const [, start] = useTransition();
   return (
@@ -23,12 +24,13 @@ export function AppearanceSection({ theme, openInDev, canBuild }: { theme: "ligh
           value={theme}
           onChange={(t) =>
             start(async () => {
-              document.documentElement.setAttribute("data-theme", t);
+              applyTheme(t);
               await setTheme(t);
               router.refresh();
             })
           }
           options={[
+            { value: "system", label: "System" },
             { value: "light", label: "Light" },
             { value: "dark", label: "Dark" },
           ]}

@@ -249,3 +249,15 @@ describe("Changes: the review states", () => {
     expect(reviewStep({ status: "merged", checks: "passing", pushRequested: false }, true)).toBe("Merged");
   });
 });
+
+describe("New workspace (the workspace menu)", () => {
+  it("an empty workspace you own: governance off, Free; named; up to 10 of your own", async () => {
+    db = new FakeDb({ workspaces: [], members: [], audit_log: [] });
+    const { createWorkspace } = await import("@/server/actions/members");
+    expect(await createWorkspace({ name: " x " })).toEqual({ ok: false, message: "Name it in 2 to 40 characters." });
+    const r = await createWorkspace({ name: "  Marketing   team " });
+    expect(r.ok).toBe(true);
+    expect(db.tables.workspaces[0]).toMatchObject({ name: "Marketing team", kind: "personal", governance_enabled: false, plan: "free" });
+    expect(db.tables.members[0]).toMatchObject({ user_id: "me", role: "owner", status: "active" });
+  });
+});

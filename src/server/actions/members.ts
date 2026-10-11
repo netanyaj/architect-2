@@ -239,3 +239,23 @@ export async function resetDemoData(): Promise<ActionResult> {
   revalidatePath("/", "layout");
   return { ok: true };
 }
+
+/**
+ * New workspace (the workspace menu): an empty workspace you own, governance off, on the Free plan, like Personal.
+ * It's a place to start projects that aren't the demo's; the new workspace becomes the current one.
+ */
+export async function createWorkspace(input: { name: string }): Promise<ActionResult<{ workspaceId: string }>> {
+  const ctx = await getAppContext();
+  const name = (input.name ?? "").trim().replace(/\s+/g, " ");
+  if (name.length < 2 || name.length > 40) return { ok: false, message: "Name it in 2 to 40 characters." };
+  const owned = ctx.memberships.filter((m) => m.role === "owner").length;
+  if (owned >= 10) return { ok: false, message: "Up to 10 workspaces of your own." };
+  const admin = createAdminDb();
+  const { data: ws, error } = await admin.from("workspaces").insert({ name, kind: "personal", governance_enabled: false, plan: "free" }).select("id").single();
+  if (error || !ws) return { ok: false, message: "The workspace couldn't be made. Try again." };
+  await admin.from("members").insert({ workspace_id: ws.id, user_id: ctx.user.id, email: ctx.user.email ?? null, display_name: ctx.name, role: "owner", status: "active", accepted_at: new Date().toISOString() });
+  await audit(ws.id, ctx.name, "workspace.created", name);
+  (await cookies()).set(WORKSPACE_COOKIE, ws.id, { path: "/", sameSite: "lax", httpOnly: true, maxAge: 60 * 60 * 24 * 365 });
+  revalidatePath("/", "layout");
+  return { ok: true, workspaceId: ws.id };
+}

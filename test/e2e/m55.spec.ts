@@ -23,7 +23,7 @@ test.describe("M5.5", () => {
     await start(page);
     const nav = page.getByRole("navigation", { name: "Workspace" });
     await expect(nav.getByText("Acme Ops (Enterprise)", { exact: true })).toBeVisible();
-    await nav.getByRole("button", { name: /Switch workspace/ }).click();
+    await nav.getByRole("button", { name: /^Workspace: / }).click();
     await page.getByRole("menuitem").filter({ hasText: "Personal" }).click();
     await page.waitForURL(/\/home$/);
     await expect(nav.getByText("Personal", { exact: true })).toBeVisible();
@@ -41,22 +41,38 @@ test.describe("M5.5", () => {
     ]);
   });
 
-  test("profile menu: name and email, workspaces, Settings, Theme, Help, Log out", async ({ page }) => {
+  test("menus: the workspace menu under the logo, the account menu from the avatar, and Architect 2.0", async ({ page }) => {
     await start(page);
     const nav = page.getByRole("navigation", { name: "Workspace" });
-    await nav.getByRole("button", { name: "Profile: Polish Tester" }).click();
-    const menu = page.getByRole("menu");
-    await expect(menu).toContainText(user.email);
-    await expect(menu.getByRole("menuitem").filter({ hasText: "Personal" })).toBeVisible();
-    await menu.getByRole("menuitem", { name: /^Theme/ }).click();
+    await expect(nav.getByText("2.0", { exact: true })).toBeVisible();
+
+    // Workspace menu: workspaces with a check, Settings, Members, Governance (admins), New workspace.
+    await nav.getByRole("button", { name: /^Workspace: Acme Ops \(Enterprise\)/ }).click();
+    const wmenu = page.getByRole("menu");
+    for (const name of ["Settings", "Members", "Governance", "New workspace"]) await expect(wmenu.getByRole("menuitem", { name })).toBeVisible();
+    await wmenu.getByRole("menuitem", { name: "New workspace" }).click();
+    await page.getByRole("dialog", { name: "New workspace" }).getByLabel("Name").fill("Marketing");
+    await page.getByRole("dialog", { name: "New workspace" }).getByRole("button", { name: "Make the workspace" }).click();
+    await expect(nav.getByRole("button", { name: /^Workspace: Marketing/ })).toBeVisible();
+
+    // Account menu: who, Theme inline, Help and resources, Log out.
+    const account = nav.getByRole("button", { name: "Account: Polish Tester" });
+    await account.click();
+    const amenu = page.getByRole("menu");
+    await expect(amenu).toContainText(user.email);
+    const theme = amenu.getByRole("radiogroup", { name: "Theme" });
+    await theme.getByRole("radio", { name: "Dark" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-    await nav.getByRole("button", { name: "Profile: Polish Tester" }).click();
-    await page.getByRole("menuitem", { name: /^Theme/ }).click();
+    await theme.getByRole("radio", { name: "System" }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme-choice", "system");
+    await theme.getByRole("radio", { name: "Light" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-    await nav.getByRole("button", { name: "Profile: Polish Tester" }).click();
-    await page.getByRole("menuitem", { name: "Settings" }).click();
-    await page.waitForURL(/\/settings$/);
-    await nav.getByRole("button", { name: "Profile: Polish Tester" }).click();
+    await amenu.getByRole("menuitem", { name: "Help and resources" }).click();
+    for (const name of [/^Docs/, /^Join Discord/, "What's new", "Contact support", "Keyboard shortcuts"]) await expect(page.getByRole("menuitem", { name })).toBeVisible();
+    await page.getByRole("menuitem", { name: "Keyboard shortcuts" }).click();
+    await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await account.click();
     await page.getByRole("menuitem", { name: "Log out" }).click();
     await page.waitForURL(/\/login/);
   });

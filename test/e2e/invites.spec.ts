@@ -69,7 +69,7 @@ test.describe("roles and invites", () => {
     await expect(viewerPage.getByRole("button", { name: "Create invite link" })).toHaveCount(0);
     await expect(viewerPage.getByRole("button", { name: "Reset demo data" })).toHaveCount(0);
 
-    await nav.getByRole("button", { name: /Switch workspace/ }).click();
+    await nav.getByRole("button", { name: /^Workspace: / }).click();
     await viewerPage.getByRole("menuitem").filter({ hasText: "Acme Ops (Enterprise)" }).filter({ hasNotText: "·" }).click();
     await viewerPage.waitForURL(/\/home$/);
     await expect(nav.getByText("Acme Ops (Enterprise)", { exact: true })).toBeVisible();
