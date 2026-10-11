@@ -808,14 +808,16 @@ function AgentPanel({
           <h2 className="text-sub font-semibold">{agent.name}</h2>
           <span className="text-small text-ink-2">{agent.description}</span>
         </div>
-        {/* One label for the panel (M5.9): what's real here depends on where the agent runs. */}
-        <PanelSimTag agent={agent} lyzr={data.lyzr} />
         <IconButton icon="close" label="Close settings" quiet size={32} onClick={onClose} />
       </div>
       <div className="flex flex-wrap items-center gap-2 px-4 pb-1">
         <SyncLine agent={agent} lyzr={data.lyzr} />
       </div>
-      <p className="px-4 pb-2.5 text-small text-ink-2">Runtime: {runtimeLine(agent.framework).text}</p>
+      {/* One label for the panel (M5.9): what's real here depends on where the agent runs. */}
+      <p className="flex flex-wrap items-center gap-2 px-4 pb-2.5 text-small text-ink-2">
+        Runtime: {runtimeLine(agent.framework).text}
+        <PanelSimTag agent={agent} lyzr={data.lyzr} />
+      </p>
       <Segmented
         label="Agent"
         value={tab}
