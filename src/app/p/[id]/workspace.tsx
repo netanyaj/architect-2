@@ -544,7 +544,6 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
           }}
         />
         <div className="flex items-center gap-2">
-          <IconButton icon="help" label="Help with this project" onClick={() => openHelp(project.id)} />
           {/* Developer view is a mode that stays on, so it's a switch (M5.5 review). Builders and up; Viewers don't see it. */}
           {canAct && (
             <button
@@ -605,6 +604,8 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
           >
             {state.action.label}
           </Button>
+          {/* Help, last in the header (no floating launcher in a project: the composer is bottom-right). */}
+          <IconButton icon="help" label="Help with this project" onClick={() => openHelp(project.id)} />
         </div>
       </header>
       {actionError && (

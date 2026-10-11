@@ -1,4 +1,5 @@
 import { HelpHost } from "@/components/ax/help-host";
+import { HelpLauncher } from "@/components/ax/help-launcher";
 import { SideNav } from "@/components/ax/side-nav";
 import { OrgBudgetBanner } from "@/components/ax/org-budget-banner";
 import { canBuild } from "@/lib/permissions";
@@ -50,6 +51,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         {children}
       </main>
       <HelpHost context={help} />
+      <HelpLauncher />
     </div>
   );
 }

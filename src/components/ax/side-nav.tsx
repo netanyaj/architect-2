@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { useUi } from "@/lib/ui-store";
 import { Icon, type IconName } from "./icon";
 import { ProfileMenu } from "./profile-menu";
 import { WorkspaceMenu, type WorkspaceOption } from "./workspace-switcher";
@@ -26,8 +25,6 @@ export type SideNavProps = {
   projectCount?: number;
   approvalsWaiting?: number;
   credits: { left: number; total: number; resetsOn: string };
-  /** Shows "Online" next to Help when people are answering tickets. */
-  peopleOnline?: boolean;
 };
 
 function NavLink({ item, active }: { item: NavItem; active: boolean }) {
@@ -84,7 +81,6 @@ export function CreditsCard({ left, total, resetsOn }: SideNavProps["credits"]) 
 /** The tray side nav for pages outside a project. */
 export function SideNav(props: SideNavProps) {
   const pathname = usePathname();
-  const openHelp = useUi((s) => s.openHelp);
   // On phones the nav folds into a bar with a Menu button, so the page starts on the first screen.
   const [menuOpen, setMenuOpen] = useState(false);
   const [lastPath, setLastPath] = useState(pathname);
@@ -146,20 +142,6 @@ export function SideNav(props: SideNavProps) {
       )}
       <div className="flex-1" />
       <CreditsCard {...props.credits} />
-      <button
-        type="button"
-        onClick={() => openHelp()}
-        className="mt-2 flex min-h-10 w-full items-center gap-[11px] rounded-card px-3 text-left font-[550] text-ink-2 hover:bg-selected hover:text-ink"
-      >
-        <Icon name="help" />
-        Help
-        {props.peopleOnline && (
-          <span className="ml-auto inline-flex items-center gap-1.5 text-small font-[650] text-works">
-            <i className="block size-2 rounded-full bg-current" aria-hidden="true" />
-            Online
-          </span>
-        )}
-      </button>
       <ProfileMenu name={props.userName} email={props.userEmail} theme={props.theme} openInDev={props.openInDev} canBuild={props.canBuild} />
       </div>
     </nav>

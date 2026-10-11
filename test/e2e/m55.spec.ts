@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { signIn } from "./build.spec.seed";
+import { chooseDemo, signIn } from "./build.spec.seed";
 import { adminDb, createTestUser, deleteTestUser, type TestUser } from "./helpers";
 
 /* M5.5 polish: two workspaces per person, and the rest of the polish list. */
@@ -72,6 +72,17 @@ test.describe("M5.5", () => {
     await page.getByRole("menuitem", { name: "Keyboard shortcuts" }).click();
     await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible();
     await page.keyboard.press("Escape");
+
+    // Help: a launcher outside projects; in a project, only the header "?", last.
+    await expect(page.getByRole("button", { name: "Help", exact: true })).toBeVisible();
+    const { data: mp } = await adminDb().from("projects").select("id, workspace_id").eq("name", "Meeting Prep").in("workspace_id", (await adminDb().from("members").select("workspace_id").eq("user_id", user.id)).data!.map((m) => m.workspace_id)).single();
+    await chooseDemo(page, user);
+    await page.goto(`/p/${mp!.id}`);
+    await expect(page.getByRole("navigation", { name: "Project stage" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Help", exact: true })).toHaveCount(0);
+    const header = page.getByRole("banner");
+    await expect(header.getByRole("button").last()).toHaveAccessibleName("Help with this project");
+    await page.goto("/home");
     await account.click();
     await page.getByRole("menuitem", { name: "Log out" }).click();
     await page.waitForURL(/\/login/);

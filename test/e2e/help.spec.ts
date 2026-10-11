@@ -22,7 +22,8 @@ test.describe("Help", () => {
     await page.waitForURL(/\/home$/);
     await page.waitForLoadState("networkidle");
 
-    await page.getByRole("navigation", { name: "Workspace" }).getByRole("button", { name: "Help", exact: true }).click();
+    // Outside projects, Help is the launcher at the bottom-right (M5.5 review).
+    await page.getByRole("button", { name: "Help", exact: true }).click();
     const help = page.getByRole("dialog", { name: "Help with Architect" });
     await expect(help).toBeVisible();
     await expect(help.getByText(/Lead scorer.*is blocked at its budget/)).toBeVisible();
