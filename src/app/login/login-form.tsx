@@ -6,13 +6,22 @@ import { buttonClasses } from "@/components/ax/button";
 import { StageBanner } from "@/components/ax/stage-banner";
 import { PENDING_PROMPT_KEY } from "@/lib/auth-paths";
 import { cn } from "@/lib/utils";
-import { signInWithEmail, signInWithProvider, type EmailAuthState } from "@/server/actions/auth";
+import { signInWithEmail, signInWithProvider, startDemo, type EmailAuthState } from "@/server/actions/auth";
 
 function ProviderButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
     <button type="submit" aria-disabled={pending || undefined} className={buttonClasses({ className: "w-full" })}>
       {pending ? "Opening…" : label}
+    </button>
+  );
+}
+
+function DemoLink() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" aria-disabled={pending || undefined} className="min-h-6 font-semibold text-ink underline decoration-line-ctl underline-offset-[3px]">
+      {pending ? "Opening the demo…" : "Try the demo"}
     </button>
   );
 }
@@ -137,6 +146,9 @@ export function LoginForm({ next, error }: { next: string; error?: string }) {
           {mode === "sign_in" ? "Create an account" : "Sign in instead"}
         </button>
       </p>
+      <form action={startDemo} className="text-center text-small text-ink-2">
+        Just looking? <DemoLink />
+      </form>
     </div>
   );
 }

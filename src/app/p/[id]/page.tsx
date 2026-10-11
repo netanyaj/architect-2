@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
 import { HelpHost } from "@/components/ax/help-host";
 import { HelpLauncher } from "@/components/ax/help-launcher";
 import { ToastHost } from "@/components/ax/toast";
 import { canBuild } from "@/lib/permissions";
 import { createServerDb } from "@/server/db";
 import { getHelpContext, getNavData } from "@/server/queries";
+import { track } from "@/server/analytics";
 import { getProjectWorkspace, viewingAs } from "@/server/project";
 import { getAppContext } from "@/server/workspace";
 import { LegacyProject } from "./legacy-project";
@@ -40,9 +42,11 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   const project = await getProjectWorkspace(id, ctx, nav.credits.left, { catchUp: true });
   if (!project) notFound();
   if (project.otherWorkspace) return <SwitchWorkspaceCard name={project.name} workspace={project.otherWorkspace} />;
+  const shown = viewingAs(project, as);
+  if (shown.viewingAs) after(() => track("view_as_role", { user: ctx.user, workspaceId: ctx.workspace.id, projectId: project.id, detail: shown.viewingAs!.role }));
   return (
     <>
-      <Workspace project={viewingAs(project, as)} />
+      <Workspace project={shown} />
       <HelpHost context={help} />
       <HelpLauncher projectId={project.id} />
       <ToastHost />

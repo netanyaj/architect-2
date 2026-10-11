@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import { Figtree, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -38,6 +39,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full">
         <TooltipProvider>{children}</TooltipProvider>
+        {/* Page views only, no cookies (M5.10). Product events go to our own analytics_events table. */}
+        <Analytics />
       </body>
     </html>
   );

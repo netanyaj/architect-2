@@ -1,11 +1,13 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { safeNext } from "@/lib/auth-paths";
 import { createAdminDb, createServerDb } from "../db";
 import { origin } from "../origin";
-import { ensureWorkspace } from "../workspace";
+import { track } from "../analytics";
+import { ensureWorkspace, WORKSPACE_COOKIE } from "../workspace";
 
 export type EmailAuthState =
   | { status: "idle" }
@@ -29,6 +31,8 @@ export async function friendlyAuthError(message: string, code?: string): Promise
   if (m.includes("email not confirmed")) return "Confirm your email first. The link is in your inbox.";
   if (code === "over_request_rate_limit" || m.includes("rate limit") || m.includes("too many"))
     return "Too many tries in a row. Wait a minute, then try again.";
+  if (m.includes("anonymous sign-ins are disabled"))
+    return "The demo isn't switched on right now. Continue with Google, GitHub or email instead.";
   if (m.includes("provider is not enabled") || m.includes("unsupported provider"))
     return "That sign-in option isn't turned on yet. Use another one, or ask your admin.";
   if (m.includes("password") && (m.includes("at least") || m.includes("weak")))
@@ -106,4 +110,19 @@ export async function signOut() {
   const db = await createServerDb();
   await db.auth.signOut();
   redirect("/login");
+}
+
+/**
+ * Try the demo (M5.10): an anonymous Supabase session with its own seeded Acme Ops workspace, signed in as Priya.
+ * The sign-in page links here now; M6's landing page reuses it. Demo visitors write up to 5 plans a day, and the
+ * daily cron deletes them and their workspaces after 7 days.
+ */
+export async function startDemo() {
+  const db = await createServerDb();
+  const { data, error } = await db.auth.signInAnonymously({ options: { data: { full_name: "Priya Shah" } } });
+  if (error || !data.user) redirect(`/login?error=${encodeURIComponent(await friendlyAuthError(error?.message ?? "", error?.code))}`);
+  const workspaceId = await ensureWorkspace(createAdminDb(), data.user);
+  (await cookies()).set(WORKSPACE_COOKIE, workspaceId, { path: "/", sameSite: "lax", httpOnly: true, maxAge: 60 * 60 * 24 * 7 });
+  await track("demo_started", { user: data.user, workspaceId });
+  redirect("/home");
 }

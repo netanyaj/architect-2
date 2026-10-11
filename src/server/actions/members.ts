@@ -13,6 +13,7 @@ import { completeOnInvite } from "../handoff";
 import { origin } from "../origin";
 import { removeProjectFiles } from "../uploads";
 import { displayNameFor, getAppContext, WORKSPACE_COOKIE } from "../workspace";
+import { track } from "../analytics";
 
 export type ActionResult<T = object> = ({ ok: true } & T) | { ok: false; message: string };
 
@@ -236,6 +237,7 @@ export async function resetDemoData(): Promise<ActionResult> {
   const { error } = await admin.rpc("reset_demo_workspace", { p_workspace: ctx.workspace.id, p_owner: ctx.user.id });
   if (error) return { ok: false, message: "Demo data couldn't be reset. Nothing was changed. Try again." };
   for (const p of before ?? []) await removeProjectFiles(admin, ctx.workspace.id, p.id);
+  await track("demo_reset", { user: ctx.user, workspaceId: ctx.workspace.id });
   revalidatePath("/", "layout");
   return { ok: true };
 }

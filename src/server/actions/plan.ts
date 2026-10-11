@@ -11,6 +11,7 @@ import { createAdminDb, createServerDb, type AdminDb } from "../db";
 import { budgetRefusal } from "../policy";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
+import { track } from "../analytics";
 
 const uuid = z.string().uuid();
 
@@ -183,6 +184,7 @@ export async function buildPlan(input: { blueprintId: string; sim?: string }): P
     return { ok: false, message: code ? BUILD_REFUSALS[code] : "Build couldn't start. Nothing was charged. Try again." };
   }
   await startRun(admin, runId, parseSim(input.sim));
+  await track("build_started", { user: ctx.user, workspaceId: ctx.workspace.id, projectId: bp.project_id });
   revalidatePath(`/p/${bp.project_id}`);
   revalidatePath("/projects");
   return { ok: true, runId };

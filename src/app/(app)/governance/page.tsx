@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
+import { track } from "@/server/analytics";
+import { tourDone } from "@/server/tour";
 import { modelAvailability } from "@/lib/gateway";
 import { canManageMembers } from "@/lib/permissions";
 import { auditEntries, type AuditRow } from "@/lib/audit";
@@ -35,6 +38,10 @@ export default async function GovernancePage({ searchParams }: PageProps<"/gover
   // Every project's data flow (C-4), for the Data and egress section.
   const flows = await Promise.all((projects ?? []).map(async (p) => ({ id: p.id, name: p.name, paths: await projectFlows(admin, p.id, policies) })));
   const section = SECTIONS.includes(sp.section as Section) ? (sp.section as Section) : "location";
+  // The tour's last step (M5.10) is done once Governance has been seen.
+  after(async () => {
+    if (!(await tourDone(admin, ctx.user.id)).includes("governance")) await track("tour_step", { user: ctx.user, workspaceId: ctx.workspace.id, detail: "governance_seen" });
+  });
   return (
     <GovernanceView
       workspaceName={ctx.workspace.name}

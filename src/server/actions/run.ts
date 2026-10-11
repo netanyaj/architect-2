@@ -14,6 +14,7 @@ import { getAppContext } from "../workspace";
 import { isSignInService, providerName, WAITING_FOR_KEY } from "@/lib/providers";
 import { setApiKey } from "./connections";
 import type { ActionResult } from "./members";
+import { track } from "../analytics";
 
 const uuid = z.string().uuid();
 const BUILDERS_ONLY = "Viewers can't change the build. Ask an Owner, Admin or Builder.";
@@ -110,6 +111,7 @@ export async function connectPart(input: { itemId: string }): Promise<ActionResu
     await logEvent(admin, part.project_id, w.id, "item.built", { item_key: w.key, connected: part.provider, at_ms: 0 });
   }
   await audit(admin, ctx.workspace.id, ctx.name, "connection.connected", part.provider, { project: part.projects.name, simulated: true });
+  await track("blocker_resolved", { user: ctx.user, workspaceId: ctx.workspace.id, projectId: part.project_id, detail: "connect" });
   await refreshStatus(admin, part.project_id);
   revalidatePath(`/p/${part.project_id}`);
   revalidatePath("/connections");
@@ -131,6 +133,7 @@ export async function addPartKey(input: { itemId: string; value: string }): Prom
   if (!r.ok) return r;
   const { data: waiting } = await admin.from("items").select("id, key").eq("blueprint_id", part.blueprint_id).eq("provider", part.provider).eq("status", "built");
   for (const w of waiting ?? []) await logEvent(admin, part.project_id, w.id, "item.built", { item_key: w.key, connected: part.provider, at_ms: 0 });
+  await track("blocker_resolved", { user: ctx.user, workspaceId: ctx.workspace.id, projectId: part.project_id, detail: "key" });
   await refreshStatus(admin, part.project_id);
   revalidatePath(`/p/${part.project_id}`);
   return { ok: true };

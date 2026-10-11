@@ -15,6 +15,7 @@ import { goOffline } from "../offline";
 import { allowRuleFor, externalCallHolds, liveDecisions, loadPolicies, projectFlows } from "../policy";
 import { getAppContext, type AppContext } from "../workspace";
 import type { ActionResult } from "./members";
+import { track } from "../analytics";
 
 /* Launch (screen 4, reviews/deploy-flow-review-2026-10-05.md): Test → (Team) → Live, simulated (BUILD-SPEC §1).
    Each step is a deployment row; going back deploys an earlier version again. The checklist and the workspace's
@@ -122,6 +123,7 @@ export async function shareWithTeam(input: { projectId: string; sim?: string }):
   if (s.building) return { ok: false, message: "A build is running. Share when it finishes." };
   if (s.state.share.disabledReason) return { ok: false, message: s.state.share.disabledReason };
   const ok = await deploy(admin, ctx, s.project, "staging", s.version, { fail: input.sim === "deployfail" });
+  if (ok) await track("launch", { user: ctx.user, workspaceId: ctx.workspace.id, projectId: s.project.id, detail: "team" });
   revalidatePath(`/p/${s.project.id}/launch`);
   revalidatePath(`/p/${s.project.id}`);
   return ok ? { ok: true } : failed("staging");
@@ -150,12 +152,14 @@ export async function goLive(input: { projectId: string; sim?: string }): Promis
       requested_by: ctx.user.id,
       payload: { environment: "production", version: s.version, requested_by_name: ctx.name } as Json,
     });
+    await track("launch", { user: ctx.user, workspaceId: ctx.workspace.id, projectId: s.project.id, detail: "live_requested" });
     revalidatePath(`/p/${s.project.id}/launch`);
     return { ok: true, requested: true };
   }
   const ok = await deploy(admin, ctx, s.project, "production", s.version, { fail: input.sim === "deployfail" });
   revalidatePath(`/p/${s.project.id}/launch`);
   if (!ok) return failed("production");
+  await track("launch", { user: ctx.user, workspaceId: ctx.workspace.id, projectId: s.project.id, detail: "live" });
   await admin.from("projects").update({ status: "live", updated_at: new Date().toISOString() }).eq("id", s.project.id);
   revalidatePath(`/p/${s.project.id}`);
   revalidatePath("/projects");

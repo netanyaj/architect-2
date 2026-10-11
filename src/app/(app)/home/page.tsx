@@ -7,23 +7,27 @@ import { StatusLine } from "@/components/ax/status-mark";
 import { projectHref } from "@/lib/dev-preference";
 import { buildBlockedReason, canBuild } from "@/lib/permissions";
 import { STARTERS } from "@/lib/templates";
+import { TOUR_PROMPT } from "@/lib/tour";
 import { modelAvailability } from "@/lib/gateway";
 import { modelSetupFor } from "@/server/project";
-import { createServerDb } from "@/server/db";
+import { createAdminDb, createServerDb } from "@/server/db";
+import { tourFor } from "@/server/tour";
 import { listProjects } from "@/server/queries";
 import { userOpenInDev } from "@/server/theme";
 import { displayNameFor, getAppContext } from "@/server/workspace";
 import { HomeComposer } from "./home-composer";
 import { IdeaCards } from "./idea-cards";
 import { PersonalStart } from "./personal-start";
+import { TourCard } from "./tour-card";
 import { LogoMark } from "@/components/ax/logo-mark";
 import { MosaicThumb } from "@/components/ax/MosaicThumb";
 
 export const metadata: Metadata = { title: "Home · Architect" };
 
 export default async function HomePage({ searchParams }: PageProps<"/home">) {
-  const { starter } = await searchParams;
-  const starterPrompt = STARTERS.find((s) => s.id === starter)?.prompt;
+  const { starter, tour: tourParam } = await searchParams;
+  // The tour's first step (M5.10) opens Home with its prompt filled in.
+  const starterPrompt = tourParam === "plan" ? TOUR_PROMPT : STARTERS.find((s) => s.id === starter)?.prompt;
   const db = await createServerDb();
   const {
     data: { user },
@@ -51,7 +55,7 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
   }
 
   const ctx = await getAppContext();
-  const [projects, { options: models, architect, blocked }, pref] = await Promise.all([listProjects(ctx), modelSetupFor(ctx.workspace.id), userOpenInDev()]);
+  const [projects, { options: models, architect, blocked }, pref, tour] = await Promise.all([listProjects(ctx), modelSetupFor(ctx.workspace.id), userOpenInDev(), tourFor(createAdminDb(), ctx)]);
   // Things that need the person first, then the most recently changed.
   const recent = [...projects].sort((a, b) => Number(b.summary.needsYou) - Number(a.summary.needsYou)).slice(0, 3);
 
@@ -66,6 +70,8 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
         blockedModels={blocked}
         defaultModel={architect}
       />
+
+      {tour && <TourCard tour={tour} />}
 
       {ctx.workspace.kind === "personal" && projects.length === 0 && (
         <PersonalStart demoId={ctx.memberships.find((m) => m.role === "owner" && m.kind === "demo")?.workspaceId ?? null} />
