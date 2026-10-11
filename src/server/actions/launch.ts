@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { BADGE_FREE, canHideBadge, PLANS } from "@/lib/plans";
+import { THEMES } from "@/lib/themes";
 import type { Json } from "@/lib/database.types";
 import { missingForLive } from "@/lib/keys";
 import { DEPLOY_STEPS, DOMAIN_CHECK_MS, DomainName, launchState, Listing, type Access, type Deployment, type DomainState, type LaunchSettings } from "@/lib/launch";
@@ -230,6 +231,18 @@ export async function setAnalytics(input: { projectId: string; on: boolean }): P
   const project = await editableProject(admin, input.projectId, ctx);
   if (!project) return { ok: false, message: "Viewers can't change analytics." };
   await saveSettings(admin, ctx, project, { analytics: Boolean(input.on) }, "launch.analytics");
+  return { ok: true };
+}
+
+/** Look and feel (Files, screen 5): the app's theme preset, applied to its preview. */
+export async function setLook(input: { projectId: string; theme: string }): Promise<ActionResult> {
+  const ctx = await getAppContext();
+  const admin = createAdminDb();
+  const project = await editableProject(admin, input.projectId, ctx);
+  if (!project) return { ok: false, message: "Viewers can't change the look." };
+  if (!THEMES.some((t) => t.id === input.theme)) return { ok: false, message: "Pick one of the themes shown." };
+  await saveSettings(admin, ctx, project, { look: input.theme }, "launch.look");
+  revalidatePath(`/p/${project.id}`);
   return { ok: true };
 }
 

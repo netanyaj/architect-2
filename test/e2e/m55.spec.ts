@@ -207,4 +207,21 @@ test.describe("M5.5", () => {
     const { data: files } = await adminDb().from("files").select("name, mime").eq("project_id", id);
     expect(files!.map((f) => f.name).sort()).toEqual(["accounts-q4.xlsx", "renewals-2026.csv"]);
   });
+
+  test("Look and feel: a theme preset in Files is applied to the preview", async ({ page }) => {
+    await start(page);
+    const db = adminDb();
+    const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
+    const { data: mp } = await db.from("projects").select("id").eq("workspace_id", m!.workspace_id).eq("name", "Meeting Prep").single();
+    await page.goto(`/p/${mp!.id}?view=files`);
+    const themes = page.getByRole("radiogroup", { name: "Theme" });
+    await expect(themes.getByRole("radio", { name: /Soft Tray/ })).toHaveAttribute("aria-checked", "true");
+    await themes.getByRole("radio", { name: /Graphite/ }).click();
+    await expect(themes.getByRole("radio", { name: /Graphite/ })).toHaveAttribute("aria-checked", "true");
+    await expect.poll(async () => ((await db.from("projects").select("launch_settings").eq("id", mp!.id).single()).data!.launch_settings as { look?: string }).look).toBe("graphite");
+    await page.getByRole("tablist", { name: "Stage view" }).getByRole("tab", { name: "App" }).click();
+    const frame = page.frameLocator("iframe[title='Meeting Prep, test version']");
+    await expect(frame.locator("html")).toHaveAttribute("data-theme", "graphite", { timeout: 15_000 });
+    expect(await frame.locator("body").evaluate((b) => getComputedStyle(b).backgroundColor)).toBe("rgb(21, 23, 27)");
+  });
 });

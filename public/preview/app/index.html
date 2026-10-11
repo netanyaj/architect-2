@@ -7,18 +7,18 @@
 <style>
   :root { --ink: #16181d; --ink2: #5b616e; --ink3: #8a909c; --line: #e4e6ea; --sel: #eef0f3; --blue: #1f4fd1; --amber: #8a5a00; --amber-bg: #fff4dc; --green: #1d6b3a; }
   * { box-sizing: border-box; }
-  body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: #fff; }
+  body { margin: 0; font: 15px/1.45 var(--font, system-ui, -apple-system, "Segoe UI", sans-serif); color: var(--ink); background: var(--bg, #fff); }
   .app { display: grid; grid-template-columns: 196px 1fr; min-height: 100vh; }
   nav { border-right: 1px solid var(--line); padding: 18px 10px; display: flex; flex-direction: column; gap: 2px; }
   nav h1 { font-size: 15px; margin: 0 8px 4px; }
   nav .sim { margin: 0 8px 14px; display: inline-block; align-self: flex-start; border: 1px dashed #b9bec8; border-radius: 99px; padding: 0 8px; font-size: 12px; color: var(--ink2); }
   nav a { padding: 8px 10px; border-radius: 8px; color: var(--ink2); text-decoration: none; }
-  nav a[aria-current="page"] { background: var(--sel); color: var(--ink); font-weight: 600; }
+  nav a[aria-current="page"] { background: var(--sel); color: var(--accent, var(--ink)); font-weight: 600; }
   main { padding: 22px 26px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
   h2 { font-size: 18px; margin: 0; }
   .group { display: flex; flex-direction: column; gap: 10px; }
   .group > h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink3); margin: 0; }
-  section { position: relative; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  section { position: relative; border: 1px solid var(--line); border-radius: var(--radius, 12px); padding: 14px 16px; }
   section h4 { margin: 0 0 6px; font-size: 15px; }
   .lines span { display: block; height: 9px; border-radius: 5px; background: var(--sel); margin: 7px 0; }
   .lines span:nth-child(2) { width: 82%; } .lines span:nth-child(3) { width: 64%; }
@@ -98,6 +98,16 @@
     e.preventDefault();
     parent.postMessage({ type: "select", selector: s.dataset.part ? '[data-part="' + s.dataset.part + '"]' : "h2", text: (s.dataset.name || s.textContent || "").trim().slice(0, 120) }, location.origin);
   }, true);
+</script>
+<script>
+  // Look and feel (Files): Architect sends the chosen theme as CSS variables.
+  window.addEventListener("message", (e) => {
+    if (e.origin !== location.origin || !e.data || e.data.type !== "theme") return;
+    const v = e.data.vars || {};
+    const r = document.documentElement.style;
+    for (const [k, val] of Object.entries({ "--bg": v.bg, "--ink": v.ink, "--ink2": v.ink2, "--line": v.line, "--sel": v.sel, "--accent": v.accent, "--font": v.font, "--radius": v.radius })) if (val) r.setProperty(k, val);
+    document.documentElement.dataset.theme = e.data.id || "";
+  });
 </script>
 </body>
 </html>

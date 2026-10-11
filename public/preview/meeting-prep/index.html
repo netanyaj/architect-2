@@ -7,12 +7,12 @@
 <style>
   :root { --ink: #16181d; --ink2: #5b616e; --line: #e4e6ea; --sel: #eef0f3; --blue: #1f4fd1; --amber: #8a5a00; --amber-bg: #fff4dc; }
   * { box-sizing: border-box; }
-  body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: #fff; }
+  body { margin: 0; font: 15px/1.45 var(--font, system-ui, -apple-system, "Segoe UI", sans-serif); color: var(--ink); background: var(--bg, #fff); }
   .app { display: grid; grid-template-columns: 176px 1fr; min-height: 100vh; }
   nav { border-right: 1px solid var(--line); padding: 18px 10px; display: flex; flex-direction: column; gap: 2px; }
   nav h1 { font-size: 15px; margin: 0 8px 14px; }
   nav a { padding: 8px 10px; border-radius: 8px; color: var(--ink2); text-decoration: none; }
-  nav a[aria-current="page"] { background: var(--sel); color: var(--ink); font-weight: 600; }
+  nav a[aria-current="page"] { background: var(--sel); color: var(--accent, var(--ink)); font-weight: 600; }
   main { display: grid; grid-template-columns: 230px 1fr; min-width: 0; }
   .list { border-right: 1px solid var(--line); padding: 14px 10px; display: flex; flex-direction: column; gap: 6px; }
   .meet { padding: 9px 11px; border-radius: 8px; }
@@ -142,6 +142,16 @@
     const text = (el.querySelector("h3")?.textContent || el.textContent || "").trim().replace(/\s+/g, " ").slice(0, 120);
     parent.postMessage({ type: "select", selector: el.dataset.part ? '[data-part="' + el.dataset.part + '"]' : el.tagName.toLowerCase(), text }, location.origin);
   }, true);
+</script>
+<script>
+  // Look and feel (Files): Architect sends the chosen theme as CSS variables.
+  window.addEventListener("message", (e) => {
+    if (e.origin !== location.origin || !e.data || e.data.type !== "theme") return;
+    const v = e.data.vars || {};
+    const r = document.documentElement.style;
+    for (const [k, val] of Object.entries({ "--bg": v.bg, "--ink": v.ink, "--ink2": v.ink2, "--line": v.line, "--sel": v.sel, "--accent": v.accent, "--font": v.font, "--radius": v.radius })) if (val) r.setProperty(k, val);
+    document.documentElement.dataset.theme = e.data.id || "";
+  });
 </script>
 </body>
 </html>

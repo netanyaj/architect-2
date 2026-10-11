@@ -13,6 +13,7 @@ import { canBuild, canManageMembers } from "@/lib/permissions";
 import { providerName } from "@/lib/providers";
 import { previewState } from "@/lib/sim/preview";
 import type { LiveRun } from "@/lib/sim/replay";
+import { themeOf } from "@/lib/themes";
 import { useUi } from "@/lib/ui-store";
 import { raiseBudgetAndContinue, setWaitingAside, stopHere } from "@/server/actions/run";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
@@ -221,6 +222,9 @@ export function AppPreview({ project, items }: { project: ProjectWorkspace; item
     post({ type: "highlight", part: section, label });
   }, [section, label]);
   useEffect(() => post({ type: "point", on: pointing }), [pointing]);
+  // Look and feel (Files): the chosen theme, sent to the preview as CSS variables.
+  const theme = themeOf(project.look);
+  useEffect(() => post({ type: "theme", id: theme.id, vars: theme.vars }), [theme]);
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
       if (e.origin !== window.location.origin || e.data?.type !== "select") return;
@@ -277,6 +281,7 @@ export function AppPreview({ project, items }: { project: ProjectWorkspace; item
           title={`${project.name}, test version`}
           src={preview.src}
           onLoad={() => {
+            post({ type: "theme", id: theme.id, vars: theme.vars });
             post({ type: "point", on: pointing });
             if (selected) post({ type: "highlight", part: preview.highlight(selected), label: selected.title });
           }}

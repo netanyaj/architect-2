@@ -40,6 +40,7 @@ import { HandoffBanner, TransferDialog } from "./handoff";
 import { SyncBanner } from "./pr-card";
 import { AppPreview, BudgetBanner, BuildActivity, BuildPanel, TestTheApp } from "./build-stage";
 import { ChatPane } from "./chat-pane";
+import { LookAndFeel } from "./look-and-feel";
 import { PartDrawer } from "./part-drawer";
 import { LaunchView } from "./launch-view";
 import { useRun } from "./use-run";
@@ -116,7 +117,13 @@ function StageBody({
   live: LiveRun;
   budgetPaused: boolean;
 }) {
-  if (view === "files") return planDocument;
+  if (view === "files")
+    return (
+      <>
+        {project.status !== "draft" && <LookAndFeel project={project} />}
+        {planDocument}
+      </>
+    );
   if (view === "agents") return <AgentsView project={project} items={items} />;
   if (view === "code") return <CodeView project={project} items={items} live={live} />;
   if (view === "terminal") return <TerminalView project={project} items={items} live={live} />;

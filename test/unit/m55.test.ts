@@ -165,3 +165,20 @@ describe("uploaded data: CSV parsed for real", () => {
     expect(csvLine(["a,b", 3, null, new Date("2026-01-02T00:00:00Z")])).toBe('"a,b",3,,2026-01-02');
   });
 });
+
+describe("Look and feel: theme presets", () => {
+  const P = "33333333-3333-4333-8333-333333333333";
+  it("six presets; the choice is saved on the project; unknown ones and Viewers are refused", async () => {
+    const { THEMES, themeOf } = await import("@/lib/themes");
+    expect(THEMES).toHaveLength(6);
+    expect(themeOf("nope").id).toBe("soft");
+    db = new FakeDb({ projects: [{ id: P, name: "Meeting Prep", workspace_id: "ws-1", launch_settings: { analytics: true } }], audit_log: [] });
+    const { setLook } = await import("@/server/actions/launch");
+    role = "builder";
+    expect(await setLook({ projectId: P, theme: "graphite" })).toEqual({ ok: true });
+    expect(db.tables.projects[0].launch_settings).toEqual({ analytics: true, look: "graphite" });
+    expect(await setLook({ projectId: P, theme: "neon" })).toEqual({ ok: false, message: "Pick one of the themes shown." });
+    role = "viewer";
+    expect((await setLook({ projectId: P, theme: "soft" })).ok).toBe(false);
+  });
+});

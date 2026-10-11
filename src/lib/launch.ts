@@ -51,6 +51,8 @@ export type LaunchSettings = {
   signIn?: "google" | "email" | "sso";
   /** The "Built with Architect" badge on the live app. Shown unless a paid plan turns it off. */
   badge?: boolean;
+  /** Look and feel (Files): the app's theme preset. */
+  look?: string;
 };
 
 /** "meeting-prep.acme.com", "app.example.co.uk": a host name with at least one dot, no scheme or path. */
