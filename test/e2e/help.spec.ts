@@ -22,13 +22,14 @@ test.describe("Help", () => {
     await page.waitForURL(/\/home$/);
     await page.waitForLoadState("networkidle");
 
-    // Outside projects, Help is the launcher at the bottom-right (M5.5 review).
+    // Help is the 36px button at the bottom-right, on every screen (M5.8).
     await page.getByRole("button", { name: "Help", exact: true }).click();
     const help = page.getByRole("dialog", { name: "Help with Architect" });
     await expect(help).toBeVisible();
     await expect(help.getByText(/Lead scorer.*is blocked at its budget/)).toBeVisible();
     await expect(help.getByText("Simulated").first()).toBeVisible(); // Talk to a person is labelled
-    await expect(help.getByRole("link", { name: "Docs" })).toHaveAttribute("href", "https://docs.lyzr.ai");
+    // Help is for getting help; links (docs, Discord, What's new) live in Resources (M5.8).
+    await expect(help.getByRole("link")).toHaveCount(0);
 
     // A real answer from Gemini, grounded in the workspace (mentions the budget).
     await help.getByRole("button", { name: "Why did Lead scorer stop?" }).click();

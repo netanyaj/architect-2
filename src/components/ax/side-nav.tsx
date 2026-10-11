@@ -5,9 +5,10 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Icon, type IconName } from "./icon";
-import { ProfileMenu } from "./profile-menu";
-import { WorkspaceMenu, type WorkspaceOption } from "./workspace-switcher";
-import type { OpenInDev } from "@/lib/dev-preference";
+import { AccountMenu } from "./account-menu";
+import { ResourcesMenu } from "./resources-menu";
+import type { WorkspaceOption } from "./workspace-switcher";
+import type { WorkspacePlan } from "@/lib/plans";
 
 type NavItem = { href: string; label: string; icon: IconName; count?: number };
 
@@ -18,8 +19,10 @@ export type SideNavProps = {
   userName: string;
   userEmail: string;
   theme: "system" | "light" | "dark";
-  openInDev: OpenInDev;
   canBuild: boolean;
+  plan: WorkspacePlan;
+  memberCount: number;
+  trashCount: number;
   governance: boolean;
   isAdmin: boolean;
   projectCount?: number;
@@ -112,9 +115,15 @@ export function SideNav(props: SideNavProps) {
         <span className="grid size-[30px] flex-none place-items-center rounded-[9px] bg-primary text-body font-bold text-on-primary" aria-hidden="true">
           A
         </span>
-        Architect
-        <span className="rounded-full border border-line-ctl px-1.5 text-small font-semibold leading-5 text-ink-2" title="Architect 2.0: the build you're in">
-          2.0
+        <span className="flex min-w-0 flex-col leading-tight">
+          <span className="flex items-center gap-1.5">
+            Architect
+            <span className="rounded-full border border-line-ctl px-1.5 text-small font-semibold leading-5 text-ink-2" title="Architect 2.0: the build you're in">
+              2.0
+            </span>
+          </span>
+          {/* The workspace's name, as plain text: switching and managing it is the account chip's job. */}
+          <span className="truncate text-small font-[550] text-ink-2">{props.workspaceName}</span>
         </span>
         <span className="flex-1" />
         <button
@@ -128,7 +137,6 @@ export function SideNav(props: SideNavProps) {
         </button>
       </div>
       <div id="side-nav-items" className={cn("flex flex-1 flex-col gap-0.5", !menuOpen && "max-md:hidden")}>
-      <WorkspaceMenu current={props.currentWorkspaceId} options={props.workspaces} governance={props.governance} />
       {main.map((item) => (
         <NavLink key={item.href} item={item} active={isActive(item.href)} />
       ))}
@@ -142,7 +150,19 @@ export function SideNav(props: SideNavProps) {
       )}
       <div className="flex-1" />
       <CreditsCard {...props.credits} />
-      <ProfileMenu name={props.userName} email={props.userEmail} theme={props.theme} openInDev={props.openInDev} canBuild={props.canBuild} />
+      {/* Two controls side by side (Notion's pattern): the account chip, and Resources. */}
+      <div className="flex items-center gap-1 pt-1">
+        <AccountMenu
+          name={props.userName}
+          email={props.userEmail}
+          current={props.currentWorkspaceId}
+          options={props.workspaces}
+          plan={props.plan}
+          memberCount={props.memberCount}
+          governance={props.governance}
+        />
+        <ResourcesMenu theme={props.theme} trashCount={props.trashCount} canSeeTrash={props.canBuild} />
+      </div>
       </div>
     </nav>
   );

@@ -4,13 +4,13 @@ import { useEffect, useId, useRef, type FormEvent, type ReactNode } from "react"
 import { cn } from "@/lib/utils";
 import { Icon } from "./icon";
 import { SimTag } from "./pill";
-import { RESOURCES } from "./profile-menu";
 
 export type HelpMessage = { role: "user" | "bot"; text: string };
 
 /**
- * Help with Architect: a greeting that names what's stuck, a Docs link, 3 suggested questions, "Talk to a person"
- * (a ticket, reply within one working day) and an ask field. Esc closes it.
+ * Help with Architect: a greeting that names what's stuck, 3 suggested questions, "Talk to a person" (a ticket, reply
+ * within one working day) and an ask field. It opens upwards from the Help button. Esc closes it. No links: those are
+ * in Resources.
  */
 export function HelpPanel({
   open,
@@ -73,7 +73,7 @@ export function HelpPanel({
       role="dialog"
       aria-labelledby={titleId}
       className={cn(
-        "fixed bottom-2.5 left-2.5 z-40 flex max-h-[min(640px,calc(100dvh-20px))] w-[min(380px,calc(100vw-20px))] flex-col overflow-hidden rounded-pane border border-line bg-surface shadow-pop",
+        "fixed right-4 bottom-[60px] z-40 flex max-h-[min(640px,calc(100dvh-76px))] w-[min(380px,calc(100vw-32px))] flex-col overflow-hidden rounded-pane border border-line bg-surface shadow-pop",
         className,
       )}
     >
@@ -91,14 +91,6 @@ export function HelpPanel({
             People online
           </span>
         )}
-        <a
-          href={RESOURCES.docs}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex min-h-8 items-center rounded-full px-2.5 text-small font-semibold text-ink-2 hover:bg-selected hover:text-ink"
-        >
-          Docs
-        </a>
         <button type="button" onClick={onClose} aria-label="Close help" className="grid size-8 place-items-center rounded-full hover:bg-selected">
           <Icon name="close" size="sm" />
         </button>

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { HelpHost } from "@/components/ax/help-host";
+import { HelpLauncher } from "@/components/ax/help-launcher";
 import { createServerDb } from "@/server/db";
+import { getHelpContext } from "@/server/queries";
 import { importPageData } from "@/server/import";
 import { getAppContext } from "@/server/workspace";
 import { ImportFlow, type MoveFrom } from "./import-flow";
@@ -32,5 +35,11 @@ export default async function ImportPage({ searchParams }: PageProps<"/import">)
     const { data: legacy } = await db.from("projects").select("id, name, legacy_repo, moved_to, workspace_id").eq("id", from).maybeSingle();
     if (legacy?.legacy_repo && !legacy.moved_to && legacy.workspace_id === ctx.workspace.id) move = { projectId: legacy.id, name: legacy.name, repo: legacy.legacy_repo };
   }
-  return <ImportFlow data={data} notice={notice} move={move} />;
+  return (
+    <>
+      <ImportFlow data={data} notice={notice} move={move} />
+      <HelpHost context={await getHelpContext(ctx)} />
+      <HelpLauncher />
+    </>
+  );
 }

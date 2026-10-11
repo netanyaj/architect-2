@@ -21,7 +21,6 @@ export default async function ProjectsPage() {
       }))}
       creditsUsed={used}
       canStart={canBuild(ctx.role)}
-      canSeeDeleted={canBuild(ctx.role)}
     />
   );
 }

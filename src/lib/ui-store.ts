@@ -25,7 +25,13 @@ type UiState = {
   /** The Changes review panel (repo projects, M5.5 review). */
   changesOpen: boolean;
   openChanges: (open: boolean) => void;
+  /** One toast at a time, bottom-centre (e.g. "Moved to Trash · Undo · View Trash"). Survives client navigation. */
+  toast: Toast | null;
+  showToast: (t: Omit<Toast, "n">) => void;
+  dismissToast: () => void;
 };
+
+export type Toast = { n: number; text: string; undo?: { label: string; projectId: string }; link?: { label: string; href: string } };
 
 export const useUi = create<UiState>((set) => ({
   helpOpen: false,
@@ -43,4 +49,7 @@ export const useUi = create<UiState>((set) => ({
   setAgentChanges: (n) => set({ agentChanges: n }),
   changesOpen: false,
   openChanges: (open) => set({ changesOpen: open }),
+  toast: null,
+  showToast: (t) => set((s) => ({ toast: { ...t, n: (s.toast?.n ?? 0) + 1 } })),
+  dismissToast: () => set({ toast: null }),
 }));

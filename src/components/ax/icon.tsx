@@ -56,6 +56,21 @@ const paths = {
   fit: <path d="M4 8V4h4M16 8V4h-4M4 12v4h4M16 12v4h-4" />,
   person: <><circle cx="10" cy="7" r="3" /><path d="M4 17c1-3 3.5-4.5 6-4.5s5 1.5 6 4.5" /></>,
   newProject: <><rect x="3" y="4" width="14" height="12" rx="2.5" /><path d="M3 8h14M10 10.5v3.5M8.2 12.2h3.6" /></>,
+  trash: <><path d="M4 6h12M8 6V4.5h4V6M5.5 6l.8 10.5h7.4L14.5 6" /><path d="M8.5 9v4.5M11.5 9v4.5" /></>,
+  book: <><path d="M4 4.5h4.5A1.5 1.5 0 0 1 10 6v10a1.5 1.5 0 0 0-1.5-1.5H4z" /><path d="M16 4.5h-4.5A1.5 1.5 0 0 0 10 6v10a1.5 1.5 0 0 1 1.5-1.5H16z" /></>,
+  keyboard: <><rect x="2.5" y="5" width="15" height="10" rx="2" /><path d="M5.5 8h.1M8.5 8h.1M11.5 8h.1M14.5 8h.1M6.5 12h7" /></>,
+  sun: <><circle cx="10" cy="10" r="3" /><path d="M10 2.5v1.5M10 16v1.5M2.5 10H4M16 10h1.5M4.7 4.7l1 1M14.3 14.3l1 1M4.7 15.3l1-1M14.3 5.7l1-1" /></>,
+  moon: <path d="M15.5 12.5A6.5 6.5 0 0 1 7.5 4.5a6.5 6.5 0 1 0 8 8z" />,
+  system: <><rect x="3" y="4" width="14" height="10" rx="1.5" /><path d="M7.5 17h5M10 14v3" /></>,
+  settings: <><path d="M3.5 6h8M15 6h1.5M3.5 14h1.5M8.5 14h8" /><circle cx="13" cy="6" r="1.8" /><circle cx="6.8" cy="14" r="1.8" /></>,
+  invite: <><circle cx="8" cy="7" r="3" /><path d="M2.5 16.5c.8-2.8 3-4 5.5-4s4.2.9 5 2.5M15 8v5M12.5 10.5h5" /></>,
+  logout: <><path d="M8 4H4.5v12H8" /><path d="M12 6.5 15.5 10 12 13.5M15.5 10H8" /></>,
+  discord: <><path d="M5 5.5c1.5-.8 3-1 3-1l.5 1h3l.5-1s1.5.2 3 1c1 2 1.8 4.5 1.5 8-1.3 1-2.6 1.5-3.5 1.5l-.8-1.3M5 5.5c-1 2-1.8 4.5-1.5 8 1.3 1 2.6 1.5 3.5 1.5l.8-1.3" /><path d="M6.5 12.5c2.3 1 4.7 1 7 0" /><circle cx="8" cy="10" r=".8" /><circle cx="12" cy="10" r=".8" /></>,
+  attach: <path d="M14.5 9.5 9.6 14.4a3.2 3.2 0 0 1-4.5-4.5l5.6-5.6a2.1 2.1 0 0 1 3 3L8.2 12.8a1.1 1.1 0 0 1-1.5-1.5l4.9-4.9" />,
+  drive: <><path d="M7.5 3.5h5l5 8.5-2.5 4.5h-10L2.5 12z" /><path d="M7.5 3.5 12.5 12h5M2.5 12h10l-2.5 4.5" /></>,
+  palette: <><path d="M10 3a7 7 0 1 0 0 14c1 0 1.5-.7 1.5-1.5 0-1.2-1-1.5-1-2.5 0-.8.7-1.5 1.5-1.5H14a3 3 0 0 0 3-3C17 5.6 13.9 3 10 3z" /><circle cx="6.5" cy="9" r=".9" /><circle cx="9" cy="6" r=".9" /><circle cx="12.5" cy="6.5" r=".9" /></>,
+  template: <><rect x="3.5" y="3.5" width="13" height="13" rx="2" /><path d="M3.5 8h13M8 8v8.5" /></>,
+  undo: <><path d="M7 5 4 8l3 3" /><path d="M4 8h7.5a4 4 0 0 1 0 8H8" /></>,
 } satisfies Record<string, ReactNode>;
 
 export type IconName = keyof typeof paths;

@@ -22,18 +22,18 @@ test.describe("M5.5", () => {
   test("two workspaces: the demo first, and an empty Personal with governance off and its starting points", async ({ page }) => {
     await start(page);
     const nav = page.getByRole("navigation", { name: "Workspace" });
-    await expect(nav.getByText("Acme Ops (Enterprise)", { exact: true })).toBeVisible();
-    await nav.getByRole("button", { name: /^Workspace: / }).click();
+    await expect(nav.getByText("Acme Ops (Enterprise)", { exact: true }).first()).toBeVisible();
+    await nav.getByRole("button", { name: /^Account and workspace: / }).click();
     await page.getByRole("menuitem").filter({ hasText: "Personal" }).click();
     await page.waitForURL(/\/home$/);
-    await expect(nav.getByText("Personal", { exact: true })).toBeVisible();
+    await expect(nav.getByText("Personal", { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "Personal workspace · governance off · go live in one step" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Help me decide" }).last()).toBeVisible();
     await page.goto("/settings");
     await expect(page.getByRole("button", { name: "Reset demo data" })).toHaveCount(0);
     await page.goto("/home");
     await page.getByRole("button", { name: "See a team workspace → Acme Ops (Enterprise)" }).click();
-    await expect(nav.getByText("Acme Ops (Enterprise)", { exact: true })).toBeVisible();
+    await expect(nav.getByText("Acme Ops (Enterprise)", { exact: true }).first()).toBeVisible();
     const { data } = await adminDb().from("members").select("workspaces!inner(name, kind, governance_enabled, plan)").eq("user_id", user.id);
     expect(data!.map((m) => m.workspaces).sort((a, b) => a.kind.localeCompare(b.kind))).toEqual([
       { name: "Acme Ops (Enterprise)", kind: "demo", governance_enabled: true, plan: "enterprise" },
@@ -46,44 +46,58 @@ test.describe("M5.5", () => {
     const nav = page.getByRole("navigation", { name: "Workspace" });
     await expect(nav.getByText("2.0", { exact: true })).toBeVisible();
 
-    // Workspace menu: workspaces with a check, Settings, Members, Governance (admins), New workspace.
-    await nav.getByRole("button", { name: /^Workspace: Acme Ops \(Enterprise\)/ }).click();
-    const wmenu = page.getByRole("menu");
-    for (const name of ["Settings", "Members", "Governance", "New workspace"]) await expect(wmenu.getByRole("menuitem", { name })).toBeVisible();
-    await wmenu.getByRole("menuitem", { name: "New workspace" }).click();
+    // M5.8: the workspace's name under the logo is plain text; the account chip and Resources sit at the foot.
+    await expect(nav.getByRole("button", { name: /^Workspace: / })).toHaveCount(0);
+    const chip = nav.getByRole("button", { name: "Account and workspace: Acme Ops (Enterprise)", exact: true });
+    await chip.click();
+    const amenu = page.getByRole("menu");
+    await expect(amenu).toContainText(/Enterprise · \d+ members?/);
+    await expect(amenu).toContainText(user.email);
+    for (const name of ["Settings", "Invite people", "Governance", "New workspace", "Log out"]) await expect(amenu.getByRole("menuitem", { name })).toBeVisible();
+    await expect(amenu.getByRole("menuitem").filter({ hasText: "Acme Ops (Enterprise)" }).getByLabel("Current")).toBeVisible();
+    // No inline switches in the menu any more: Theme and the Developer view default are in Settings › Preferences.
+    await expect(amenu.getByRole("radiogroup")).toHaveCount(0);
+    await amenu.getByRole("menuitem", { name: "Invite people" }).click();
+    const invite = page.getByRole("dialog", { name: /^Invite people to/ });
+    await invite.getByLabel("Email").fill(`chip-${Date.now()}@example.com`);
+    await invite.getByRole("button", { name: "Copy invite link" }).click();
+    await expect(invite.getByLabel("Invite link")).toHaveValue(/\/invite\//);
+    await invite.getByRole("button", { name: "Done" }).click();
+    await chip.click();
+    await page.getByRole("menuitem", { name: "New workspace" }).click();
     await page.getByRole("dialog", { name: "New workspace" }).getByLabel("Name").fill("Marketing");
     await page.getByRole("dialog", { name: "New workspace" }).getByRole("button", { name: "Make the workspace" }).click();
-    await expect(nav.getByRole("button", { name: /^Workspace: Marketing/ })).toBeVisible();
+    await expect(nav.getByRole("button", { name: "Account and workspace: Marketing" })).toBeVisible();
 
-    // Account menu: who, Theme inline, Help and resources, Log out.
-    const account = nav.getByRole("button", { name: "Account: Polish Tester" });
-    await account.click();
-    const amenu = page.getByRole("menu");
-    await expect(amenu).toContainText(user.email);
-    const theme = amenu.getByRole("radiogroup", { name: "Theme" });
-    await theme.getByRole("radio", { name: "Dark" }).click();
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-    await theme.getByRole("radio", { name: "System" }).click();
-    await expect(page.locator("html")).toHaveAttribute("data-theme-choice", "system");
-    await theme.getByRole("radio", { name: "Light" }).click();
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-    await amenu.getByRole("menuitem", { name: "Help and resources" }).click();
-    for (const name of [/^Docs/, /^Join Discord/, "What's new", "Contact support", "Keyboard shortcuts"]) await expect(page.getByRole("menuitem", { name })).toBeVisible();
-    await page.getByRole("menuitem", { name: "Keyboard shortcuts" }).click();
+    // Resources: Documentation, Join Discord, Keyboard shortcuts, Trash, What's new (3 + View all), Theme cycling.
+    await nav.getByRole("button", { name: "Resources" }).click();
+    const rmenu = page.getByRole("menu");
+    for (const name of [/^Documentation/, /^Join Discord/, "Keyboard shortcuts", /^Trash/, /^View all/]) await expect(rmenu.getByRole("menuitem", { name })).toBeVisible();
+    const theme = rmenu.getByRole("menuitem", { name: /^Theme: / });
+    await expect(theme).toHaveAttribute("title", /^Theme: /);
+    const before = await page.locator("html").getAttribute("data-theme-choice");
+    await theme.click();
+    await expect(page.locator("html")).not.toHaveAttribute("data-theme-choice", before ?? "");
+    await rmenu.getByRole("menuitem", { name: "Keyboard shortcuts" }).click();
     await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible();
     await page.keyboard.press("Escape");
 
-    // Help: a launcher outside projects; in a project, only the header "?", last.
+    // Help: one 36px button at the bottom-right, outside projects and inside them; no header "?" in a project.
     await expect(page.getByRole("button", { name: "Help", exact: true })).toBeVisible();
     const { data: mp } = await adminDb().from("projects").select("id, workspace_id").eq("name", "Meeting Prep").in("workspace_id", (await adminDb().from("members").select("workspace_id").eq("user_id", user.id)).data!.map((m) => m.workspace_id)).single();
     await chooseDemo(page, user);
     await page.goto(`/p/${mp!.id}`);
     await expect(page.getByRole("navigation", { name: "Project stage" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Help", exact: true })).toHaveCount(0);
-    const header = page.getByRole("banner");
-    await expect(header.getByRole("button").last()).toHaveAccessibleName("Help with this project");
+    const helpButton = page.getByRole("button", { name: "Help", exact: true });
+    await expect(helpButton).toBeVisible();
+    expect((await helpButton.boundingBox())!.width).toBe(36);
+    await expect(page.getByRole("banner").getByRole("button", { name: "Help with this project" })).toHaveCount(0);
+    // The send button is never under it.
+    const send = (await page.getByRole("button", { name: "Send" }).boundingBox())!;
+    const help = (await helpButton.boundingBox())!;
+    expect(send.y + send.height <= help.y || send.x + send.width <= help.x).toBe(true);
     await page.goto("/home");
-    await account.click();
+    await nav.getByRole("button", { name: /^Account and workspace: / }).click();
     await page.getByRole("menuitem", { name: "Log out" }).click();
     await page.waitForURL(/\/login/);
   });
@@ -342,7 +356,7 @@ test.describe("M5.5", () => {
     if (agent!.lyzr_agent_id && process.env.LYZR_API_KEY) await fetch(`${process.env.LYZR_BASE_URL ?? "https://agent-prod.studio.lyzr.ai"}/v3/agents/${agent!.lyzr_agent_id}`, { method: "DELETE", headers: { "x-api-key": process.env.LYZR_API_KEY } }).catch(() => {});
   });
 
-  test("Recently deleted: a deleted project can be restored for 30 days; deleting permanently is the Owner's", async ({ page }) => {
+  test("Trash: a deleted project can be restored for 30 days; deleting permanently is the Owner's", async ({ page }) => {
     await start(page);
     const db = adminDb();
     const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
@@ -351,17 +365,28 @@ test.describe("M5.5", () => {
     for (const name of ["Lead scorer", "ticket-triage"]) {
       await page.getByRole("button", { name: `Actions for ${name}` }).click();
       await page.getByRole("menuitem", { name: "Delete" }).click();
-      await expect(page.getByRole("dialog")).toContainText("Recently deleted");
+      await expect(page.getByRole("dialog")).toContainText("You can restore it from Trash for 30 days");
       await page.getByRole("dialog").getByRole("button", { name: "Delete project" }).click();
       await expect(page.getByRole("link", { name, exact: true })).toHaveCount(0);
+      // The toast: Moved to Trash · Undo · View Trash.
+      await expect(page.getByRole("status").filter({ hasText: "Moved to Trash" })).toContainText("Undo");
     }
-    await page.getByRole("button", { name: "Recently deleted" }).click();
-    const trash = page.getByRole("list", { name: "Recently deleted projects" });
+    // No "Recently deleted" link under Projects any more: Trash is its own page, from Resources.
+    await expect(page.getByRole("button", { name: "Recently deleted" })).toHaveCount(0);
+    await page.getByRole("link", { name: "View Trash" }).click();
+    await page.waitForURL(/\/trash$/);
+    await expect(page.getByRole("heading", { name: "Trash" })).toBeVisible();
+    await expect(page.getByText("Projects stay here for 30 days, then they're deleted for good.")).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Workspace" }).getByRole("button", { name: "Resources" })).toBeVisible();
+    const trash = page.getByRole("list", { name: "Deleted projects" });
     const lead = trash.getByRole("listitem").filter({ hasText: "Lead scorer" });
-    await expect(lead).toContainText("30 days left to restore");
+    await expect(lead).toContainText("30 days left");
+    await expect(lead).toContainText("by Polish Tester");
     await lead.getByRole("button", { name: "Restore" }).click();
-    await expect(page.getByRole("region", { name: "Recently deleted" }).getByRole("alert")).toHaveCount(0);
+    await expect(lead).toHaveCount(0);
+    await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Projects" }).click();
     await expect(page.getByRole("link", { name: "Lead scorer", exact: true })).toBeVisible();
+    await page.goto("/trash");
     const tt = trash.getByRole("listitem").filter({ hasText: "ticket-triage" });
     await tt.getByRole("button", { name: "Delete permanently…" }).click();
     await tt.getByRole("button", { name: "Delete permanently" }).click();

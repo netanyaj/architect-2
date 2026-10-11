@@ -1,12 +1,13 @@
 import { HelpHost } from "@/components/ax/help-host";
 import { HelpLauncher } from "@/components/ax/help-launcher";
+import { ToastHost } from "@/components/ax/toast";
 import { SideNav } from "@/components/ax/side-nav";
 import { OrgBudgetBanner } from "@/components/ax/org-budget-banner";
 import { canBuild } from "@/lib/permissions";
 import { createAdminDb, createServerDb } from "@/server/db";
 import { orgBudget } from "@/server/policy";
 import { getHelpContext, getNavData } from "@/server/queries";
-import { userOpenInDev, userTheme } from "@/server/theme";
+import { userTheme } from "@/server/theme";
 import { getAppContext } from "@/server/workspace";
 
 /** Pages outside a project: the tray side nav plus the white main surface. */
@@ -25,7 +26,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const { data: raise } = budget.level === "stopped" ? await admin.from("approvals").select("id").eq("workspace_id", ctx.workspace.id).eq("kind", "budget").eq("status", "waiting").limit(1) : { data: [] };
   const isAdmin = ctx.role === "owner" || ctx.role === "admin";
 
-  // The bottom strip (pb-[64px]) is where the Help launcher sits, so it never covers a page's own buttons.
+  // The bottom strip (pb-[64px]) keeps the Help button's corner clear, so it never covers a page's own buttons.
   return (
     <div className="flex min-h-dvh gap-2.5 bg-canvas p-2.5 pb-[64px] max-md:flex-col">
       <SideNav
@@ -35,8 +36,10 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         userName={ctx.name}
         userEmail={ctx.user.email ?? ""}
         theme={await userTheme()}
-        openInDev={await userOpenInDev()}
         canBuild={canBuild(ctx.role)}
+        plan={ctx.workspace.plan}
+        memberCount={nav.memberCount}
+        trashCount={nav.trashCount}
         governance={ctx.workspace.governanceEnabled}
         isAdmin={isAdmin && ctx.workspace.governanceEnabled}
         projectCount={nav.projectCount}
@@ -53,6 +56,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       </main>
       <HelpHost context={help} />
       <HelpLauncher />
+      <ToastHost />
     </div>
   );
 }

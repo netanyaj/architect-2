@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { HelpHost } from "@/components/ax/help-host";
+import { HelpLauncher } from "@/components/ax/help-launcher";
+import { ToastHost } from "@/components/ax/toast";
 import { canBuild } from "@/lib/permissions";
 import { createServerDb } from "@/server/db";
 import { getHelpContext, getNavData } from "@/server/queries";
@@ -41,6 +43,8 @@ export default async function ProjectPage({ params }: PageProps<"/p/[id]">) {
     <>
       <Workspace project={project} />
       <HelpHost context={help} />
+      <HelpLauncher projectId={project.id} />
+      <ToastHost />
     </>
   );
 }

@@ -316,7 +316,7 @@ export function ImportFlow({ data, notice, move }: { data: ImportPageData; notic
         };
 
   return (
-    <div className="flex min-h-dvh flex-col bg-canvas px-2.5 pb-2.5">
+    <div className="flex min-h-dvh flex-col bg-canvas px-2.5 pb-[64px]">
       <header className="flex min-h-[66px] flex-wrap items-center gap-3 px-1 py-2">
         <Link href="/projects" aria-label="Back to projects" className="grid size-[38px] place-items-center rounded-full hover:bg-selected">
           <Icon name="chevronLeft" size="sm" />

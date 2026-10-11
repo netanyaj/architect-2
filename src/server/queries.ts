@@ -2,6 +2,7 @@ import "server-only";
 
 import type { IconName } from "@/components/ax/icon";
 import { detectTools, projectIcon, summarizeProject, type ProjectInput, type ProjectSummary } from "@/lib/project-status";
+import { canBuild } from "@/lib/permissions";
 import { createServerDb } from "./db";
 import type { AppContext } from "./workspace";
 
@@ -22,15 +23,20 @@ export function formatResetDate(resetOn: string): string {
 export async function getNavData(ctx: AppContext) {
   const db = await createServerDb();
   const ws = ctx.workspace.id;
-  const [projects, approvals, usage] = await Promise.all([
+  const [projects, approvals, usage, members, trash] = await Promise.all([
     db.from("projects").select("id", { count: "exact", head: true }).eq("workspace_id", ws),
     db.from("approvals").select("id", { count: "exact", head: true }).eq("workspace_id", ws).eq("status", "waiting"),
     db.from("usage_ledger").select("credits").eq("workspace_id", ws).gte("created_at", periodStart(ctx.workspace.creditsResetOn)),
+    db.from("members").select("id", { count: "exact", head: true }).eq("workspace_id", ws).eq("status", "active"),
+    // Trash (M5.8): what this person may restore. Viewers never delete, so they have none.
+    canBuild(ctx.role) ? db.rpc("list_deleted_projects", { p_workspace: ws }) : Promise.resolve({ data: [] as unknown[] }),
   ]);
   const used = (usage.data ?? []).reduce((sum, r) => sum + Number(r.credits), 0);
   return {
     projectCount: projects.count ?? 0,
     approvalsWaiting: approvals.count ?? 0,
+    memberCount: members.count ?? 1,
+    trashCount: (trash.data ?? []).length,
     credits: {
       left: Math.max(0, Math.round(ctx.workspace.creditsTotal - used)),
       total: ctx.workspace.creditsTotal,

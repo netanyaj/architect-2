@@ -7,17 +7,22 @@ import { OPEN_IN_DEV, type OpenInDev } from "@/lib/dev-preference";
 import { setOpenInDev, setTheme } from "@/server/actions/projects";
 import { applyTheme } from "@/lib/theme-choice";
 
-/** Light or dark: saved to the person's account, and used everywhere, Developer view included. */
+/**
+ * Settings › Preferences (M5.8): Theme and where projects open, both moved here from the account menu. Theme is also
+ * the one-click cycle in Resources. Saved to the person's account.
+ */
 export function AppearanceSection({ theme, openInDev, canBuild }: { theme: "system" | "light" | "dark"; openInDev: OpenInDev; canBuild: boolean }) {
   const router = useRouter();
   const [, start] = useTransition();
   return (
-    <section aria-labelledby="appearance" className="flex flex-col gap-3">
-      <h2 id="appearance" className="text-heading font-[650]">
-        Appearance
+    <section id="preferences" aria-labelledby="preferences-title" className="flex scroll-mt-6 flex-col gap-3">
+      <h2 id="preferences-title" className="text-heading font-[650]">
+        Preferences
       </h2>
       <div className="flex flex-wrap items-center gap-4 rounded-card border border-line p-4">
-        <p className="min-w-[220px] flex-1 text-ink-2">Your theme, saved to your account. Developer view uses it too.</p>
+        <p className="min-w-[220px] flex-1 text-ink-2">
+          <b className="text-ink">Theme.</b> Saved to your account. Developer view uses it too.
+        </p>
         <Segmented
           mode="filter"
           label="Theme"
@@ -39,7 +44,7 @@ export function AppearanceSection({ theme, openInDev, canBuild }: { theme: "syst
       {canBuild && (
         <div className="flex flex-wrap items-center gap-4 rounded-card border border-line p-4">
           <p className="min-w-[220px] flex-1 text-ink-2">
-            <b className="text-ink">Open projects in Developer view.</b> Where a project opens from Home and Projects. You can switch any time with Code in the project.
+            <b className="text-ink">Open projects in Developer view.</b> Where a project opens from Home and Projects. You can switch any time with the Developer view switch in the project header.
           </p>
           <Segmented
             mode="filter"

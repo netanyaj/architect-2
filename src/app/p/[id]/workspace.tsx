@@ -229,6 +229,7 @@ function ChangesButton({ project }: { project: ProjectWorkspace }) {
 /** Delete project (Owners and Admins), after a confirmation; then back to Projects. */
 function DeleteProjectDialog({ project, open, onOpenChange }: { project: ProjectWorkspace; open: boolean; onOpenChange: (o: boolean) => void }) {
   const router = useRouter();
+  const showToast = useUi((s) => s.showToast);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string>();
   return (
@@ -236,7 +237,7 @@ function DeleteProjectDialog({ project, open, onOpenChange }: { project: Project
       <DialogContent className="rounded-pane border border-line bg-surface p-6 shadow-pop sm:max-w-[440px]" showCloseButton={false}>
         <DialogTitle className="text-sub font-semibold">Delete {project.name}?</DialogTitle>
         <DialogDescription className="text-ink-2">
-          It moves to Recently deleted in Projects for 30 days, where it can be restored{project.status === "live" ? ". Live goes offline first" : ""}. After that it&apos;s gone for good.
+          You can restore it from Trash for 30 days{project.status === "live" ? ". Live goes offline first" : ""}. After that it&apos;s gone for good.
         </DialogDescription>
         {error && (
           <p role="alert" className="text-small font-semibold text-failed">
@@ -255,6 +256,7 @@ function DeleteProjectDialog({ project, open, onOpenChange }: { project: Project
                 setError(undefined);
                 const r = await deleteProject({ projectId: project.id });
                 if (!r.ok) return setError(r.message);
+                showToast({ text: "Moved to Trash", undo: { label: "Undo", projectId: project.id }, link: { label: "View Trash", href: "/trash" } });
                 router.push("/projects");
               })
             }
@@ -311,7 +313,6 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const openHelp = useUi((s) => s.openHelp);
   const sendToChat = useUi((s) => s.sendToChat);
   const agentChanges = useUi((s) => s.agentChanges);
   const agentOpen = useUi((s) => s.agentKey !== null);
@@ -604,8 +605,6 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
           >
             {state.action.label}
           </Button>
-          {/* Help, last in the header (no floating launcher in a project: the composer is bottom-right). */}
-          <IconButton icon="help" label="Help with this project" onClick={() => openHelp(project.id)} />
         </div>
       </header>
       {actionError && (

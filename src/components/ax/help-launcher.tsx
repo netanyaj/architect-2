@@ -4,21 +4,22 @@ import { useUi } from "@/lib/ui-store";
 import { Icon } from "./icon";
 
 /**
- * Help outside projects (M5.5 review): a launcher at the bottom-right, the convention, in a strip the layout keeps
- * clear below the page, so it never covers the page's buttons. Inside a project there's none
- * (the chat composer sits there); Help is the "?" at the end of the project header.
+ * Help (M5.8): one 36px button, 16px from the bottom-right corner, on every screen, projects included. It opens the
+ * Help panel upwards (ask about Architect, Talk to a person). Links (docs, Discord, What's new) live in Resources.
+ * Layouts keep that corner clear: a strip below the page outside projects, a footer row under the chat composer in one.
  */
-export function HelpLauncher() {
-  const { openHelp, helpOpen } = useUi();
-  if (helpOpen) return null;
+export function HelpLauncher({ projectId = null }: { projectId?: string | null }) {
+  const { openHelp, closeHelp, helpOpen } = useUi();
   return (
     <button
       type="button"
-      onClick={() => openHelp()}
-      className="fixed right-4 bottom-2.5 z-40 inline-flex min-h-11 items-center gap-2 rounded-full border border-line-ctl bg-surface px-4 font-semibold shadow-pop hover:bg-selected"
+      aria-label="Help"
+      title="Help"
+      aria-expanded={helpOpen}
+      onClick={() => (helpOpen ? closeHelp() : openHelp(projectId))}
+      className="fixed right-4 bottom-4 z-40 grid size-9 place-items-center rounded-full border border-line-ctl bg-surface shadow-pop hover:bg-selected"
     >
-      <Icon name="help" size="sm" />
-      Help
+      <Icon name={helpOpen ? "close" : "help"} size="sm" />
     </button>
   );
 }

@@ -60,8 +60,12 @@ test.describe("roles and invites", () => {
     // They're now in the Owner's workspace, as Viewer, and can switch back to their own.
     const nav = viewerPage.getByRole("navigation", { name: "Workspace" });
     // Everyone's demo has the same name, so someone else's shows its owner (0021).
-    await expect(nav.getByText("Acme Ops (Enterprise) · Owner's")).toBeVisible();
-    await expect(nav.getByText("Viewer", { exact: true })).toBeVisible();
+    // The account chip names it; its menu tags the role where you aren't the Owner (M5.8).
+    const chip = nav.getByRole("button", { name: "Account and workspace: Acme Ops (Enterprise) · Owner's" });
+    await expect(chip).toBeVisible();
+    await chip.click();
+    await expect(viewerPage.getByRole("menuitem").filter({ hasText: "· Owner's" })).toContainText("Viewer");
+    await viewerPage.keyboard.press("Escape");
     await expect(nav.getByRole("link", { name: "Approvals" })).toHaveCount(0); // admin-only section hidden
 
     await viewerPage.goto("/settings");
@@ -69,11 +73,12 @@ test.describe("roles and invites", () => {
     await expect(viewerPage.getByRole("button", { name: "Create invite link" })).toHaveCount(0);
     await expect(viewerPage.getByRole("button", { name: "Reset demo data" })).toHaveCount(0);
 
-    await nav.getByRole("button", { name: /^Workspace: / }).click();
+    await nav.getByRole("button", { name: /^Account and workspace: / }).click();
     await viewerPage.getByRole("menuitem").filter({ hasText: "Acme Ops (Enterprise)" }).filter({ hasNotText: "·" }).click();
     await viewerPage.waitForURL(/\/home$/);
-    await expect(nav.getByText("Acme Ops (Enterprise)", { exact: true })).toBeVisible();
-    await expect(nav.getByText("Owner", { exact: true })).toBeVisible();
+    // Their own: no role tag on the chip's name, and Approvals is back (they're its Owner).
+    await expect(nav.getByRole("button", { name: "Account and workspace: Acme Ops (Enterprise)", exact: true })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Approvals" })).toBeVisible();
 
     // The database agrees, and the join was audited.
     const db = adminDb();

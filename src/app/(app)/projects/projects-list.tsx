@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { Button, TextLink } from "@/components/ax/button";
 import { EmptyState } from "@/components/ax/empty-state";
 import { Icon } from "@/components/ax/icon";
@@ -18,7 +18,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { relativeTime } from "@/lib/project-status";
-import { deleteProject, deleteProjectForever, duplicateProject, recentlyDeleted, restoreProject } from "@/server/actions/projects";
+import { deleteProject, duplicateProject } from "@/server/actions/projects";
+import { useUi } from "@/lib/ui-store";
 import type { ProjectRow } from "@/server/queries";
 
 type Row = ProjectRow & { canDelete: boolean; href: string };
@@ -81,7 +82,8 @@ function RowMenu({ p, canStart, onDelete, onError }: { p: Row; canStart: boolean
   );
 }
 
-export function ProjectsList({ projects, creditsUsed, canStart, canSeeDeleted }: { projects: Row[]; creditsUsed: number; canStart: boolean; canSeeDeleted: boolean }) {
+export function ProjectsList({ projects, creditsUsed, canStart }: { projects: Row[]; creditsUsed: number; canStart: boolean }) {
+  const showToast = useUi((s) => s.showToast);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [deleting, setDeleting] = useState<Row | null>(null);
@@ -214,13 +216,11 @@ export function ProjectsList({ projects, creditsUsed, canStart, canSeeDeleted }:
         </p>
       )}
 
-      {canSeeDeleted && <RecentlyDeleted count={projects.length} />}
-
       <Dialog open={Boolean(deleting)} onOpenChange={(o) => !o && setDeleting(null)}>
         <DialogContent className="rounded-pane border border-line bg-surface p-6 shadow-pop sm:max-w-[440px]" showCloseButton={false}>
           <DialogTitle className="text-sub font-semibold">Delete {deleting?.name}?</DialogTitle>
           <DialogDescription className="text-ink-2">
-            It moves to Recently deleted, below, for 30 days, where it can be restored{deleting?.summary.filter === "live" ? ". Live goes offline first" : ""}. After that it&apos;s gone for good.
+            You can restore it from Trash for 30 days{deleting?.summary.filter === "live" ? ". Live goes offline first" : ""}. After that it&apos;s gone for good.
           </DialogDescription>
           <DialogFooter className="mt-2 gap-2">
             <Button variant="quiet" onClick={() => setDeleting(null)}>
@@ -231,8 +231,10 @@ export function ProjectsList({ projects, creditsUsed, canStart, canSeeDeleted }:
               disabledReason={pending ? "Deleting…" : undefined}
               onClick={() =>
                 start(async () => {
-                  const r = await deleteProject({ projectId: deleting!.id });
+                  const id = deleting!.id;
+                  const r = await deleteProject({ projectId: id });
                   if (!r.ok) setError(r.message);
+                  else showToast({ text: "Moved to Trash", undo: { label: "Undo", projectId: id }, link: { label: "View Trash", href: "/trash" } });
                   setDeleting(null);
                 })
               }
@@ -243,105 +245,5 @@ export function ProjectsList({ projects, creditsUsed, canStart, canSeeDeleted }:
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-/** Recently deleted (M5.5 review): 30 days to restore; deleting permanently is the Owner's. Opening it purges what's older. */
-function RecentlyDeleted({ count }: { count: number }) {
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-  // When the project list changes (one deleted from it, or restored), an open list reloads.
-  const [seen, setSeen] = useState(count);
-  const [rows, setRows] = useState<{ id: string; name: string; deletedAt: string; deletedBy: string | null; canDeleteForever: boolean }[] | null>(null);
-  const [loadedAt, setLoadedAt] = useState(0);
-  const [confirm, setConfirm] = useState<string | null>(null);
-  const [error, setError] = useState<string>();
-  const [pending, start] = useTransition();
-  const load = () =>
-    start(async () => {
-      const r = await recentlyDeleted();
-      if (!r.ok) return setError(r.message);
-      setLoadedAt(Date.now());
-      setRows(r.projects);
-    });
-  const act = (fn: () => Promise<{ ok: boolean; message?: string }>) =>
-    start(async () => {
-      setError(undefined);
-      const r = await fn();
-      if (!r.ok) return setError(r.message);
-      setConfirm(null);
-      const again = await recentlyDeleted();
-      if (again.ok) {
-        setLoadedAt(Date.now());
-        setRows(again.projects);
-      }
-      router.refresh();
-    });
-  if (seen !== count) {
-    setSeen(count);
-    if (open) setRows(null);
-  }
-  // Reloads after the list changed under it (rows cleared above).
-  useEffect(() => {
-    if (open && rows === null) load();
-  }, [open, rows]);
-  const daysLeft = (iso: string, now: number) => Math.max(0, 30 - Math.floor((now - new Date(iso).getTime()) / 86_400_000));
-  return (
-    <section aria-label="Recently deleted" className="flex flex-col gap-2">
-      <TextLink
-        className="self-start"
-        aria-expanded={open}
-        onClick={() => {
-          setOpen(!open);
-          setRows(null);
-        }}
-      >
-        {open ? "Hide recently deleted" : "Recently deleted"}
-      </TextLink>
-      {open &&
-        (rows === null ? (
-          <p className="text-small text-ink-2">Loading…</p>
-        ) : rows.length === 0 ? (
-          <p className="text-small text-ink-2">Nothing deleted in the last 30 days.</p>
-        ) : (
-          <ul aria-label="Recently deleted projects" className="flex flex-col gap-1.5 rounded-pane border border-line bg-tray p-1.5">
-            {rows.map((r) => (
-              <li key={r.id} className="flex flex-wrap items-center gap-3 rounded-card border border-line bg-surface px-4 py-3">
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate font-semibold">{r.name}</span>
-                  <span className="text-small text-ink-2">
-                    Deleted {relativeTime(r.deletedAt)}
-                    {r.deletedBy ? ` by ${r.deletedBy}` : ""} · {daysLeft(r.deletedAt, loadedAt)} days left to restore
-                  </span>
-                </span>
-                <Button size="sm" disabledReason={pending ? "Working…" : undefined} onClick={() => act(() => restoreProject({ projectId: r.id }))}>
-                  Restore
-                </Button>
-                {r.canDeleteForever &&
-                  (confirm === r.id ? (
-                    <span className="flex items-center gap-2">
-                      <span className="text-small">Delete for good? It can&apos;t be undone.</span>
-                      <Button size="sm" variant="quiet" onClick={() => setConfirm(null)}>
-                        Keep it
-                      </Button>
-                      <Button size="sm" disabledReason={pending ? "Deleting…" : undefined} onClick={() => act(() => deleteProjectForever({ projectId: r.id }))}>
-                        Delete permanently
-                      </Button>
-                    </span>
-                  ) : (
-                    <Button size="sm" variant="quiet" onClick={() => setConfirm(r.id)}>
-                      Delete permanently…
-                    </Button>
-                  ))}
-              </li>
-            ))}
-          </ul>
-        ))}
-      {error && (
-        <p role="alert" className="text-small font-semibold text-failed">
-          {error}
-        </p>
-      )}
-    </section>
   );
 }
