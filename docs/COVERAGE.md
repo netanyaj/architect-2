@@ -83,9 +83,9 @@ Where the prototype differs from the spec, `docs/DECISIONS.md` says what and why
 | Agentlets marketplace | Simulated (listing) | `/marketplace`: each card says "Use as a starting point" and opens Home with its prompt | Publishing your own is simulated |
 | Prompt library | Done | Templates and prompts › Prompts (screen 15) | |
 | Plan-stage app mockup and workflow | Simulated | Before Build: Plan · Mockup · Workflow | Mockup is the preview shell from the plan; Workflow is the Agents graph. Nothing is built |
-| Theme engine and presets | **Not built** | — | The workspace has Light and Dark for Architect itself; presets for the app's own look (screen 5) aren't built |
-| PDF into a knowledge base; CSV into a data agent | Simulated | Home › Add files; the plan; Agents | A PDF adds "Knowledge base from <file>", a CSV "Data analyst for <file>", when the plan doesn't already use the file. Excel: export as CSV |
-| Duplicate an app | Done | ⋯ › Duplicate, in the project and on Projects (`workspace.spec`) | Built in M1 |
+| Theme engine and presets | Simulated | Files › Look and feel | Six presets, applied to the preview at once (M5.5) |
+| PDF into a knowledge base; CSV or Excel into a data agent | Done (parsing) · Simulated (agents) | Home › Add files; the plan; Agents; Data | A PDF adds "Knowledge base from <file>", a CSV or Excel file "Data analyst for <file>", when the plan doesn't already use the file. CSV and Excel files are parsed for real and become the Test version's data, "From your file" (M5.5) |
+| Duplicate and Delete an app | Done | ⋯ › Duplicate and Delete project…, in the project and on Projects (`workspace.spec`, `m55.spec`) | Duplicate since M1. Delete is for Owners and Admins only, after a confirmation (M5.5) |
 | Plans and billing; badge removal | Simulated | Settings › Plan; Launch › Show "Built with Architect" | Free, Starter, Pro, Enterprise; no payment. Paid plans can hide the badge. The seeded demo is on Enterprise |
 | Credits per app and last used | Done | Projects: "Owner · edited when · N credits" on each row | |
 | App analytics | Partly | Launch › Built-in analytics (a setting) | The setting is saved; there's no visitors view yet |
@@ -93,3 +93,19 @@ Where the prototype differs from the spec, `docs/DECISIONS.md` says what and why
 | Demo: an egress block | Simulated | Seeded Lead scorer, held on api.hubapi.com | |
 | Demo: a key missing for Live | Done | Import netanyaj/ticket-triage, build, Launch: ZENDESK_WEBHOOK_SECRET (`f3-import-to-pr.spec`) | From the repo's real `.env.example` |
 | Demo: the coding-agent audit filter | Simulated | `?sim=byoagent`, then Governance › Audit log › Coding agent | |
+
+## M5.5 polish (11 Oct)
+
+| Item | Status | Where |
+|---|---|---|
+| Speed: functions next to the database, skeletons, prefetch, immediate updates | Done | `vercel.json` (bom1); `pnpm perf`; numbers in DECISIONS |
+| Profile menu | Done | The foot of the nav |
+| Settings › People: Members and Pending invites (Resend link, Revoke) | Done · email optional | Settings; invite emails with `INVITE_EMAILS=on` once SMTP is set up |
+| `</> Code` and "Open projects in Developer view" | Done | Project header; Settings › Appearance |
+| Developer view: Open PR; terminal | Simulated (PR) · Done (terminal reads, check re-runs recorded) | Developer view |
+| Uploaded data | Done | Data › Test version: "From your file" |
+| Theme presets | Simulated | Files › Look and feel |
+| Plans without agents | Done | Agents › No agents in this plan |
+| Two workspaces per person | Done | Acme Ops (Enterprise), Personal |
+| Daily plan limit | Done | 20 a day per person (`PLAN_DAILY_LIMIT`) |
+| How an imported agent runs | Done (Convert) · Simulated (Keep, Wrap) | Agents › an imported agent's settings |
