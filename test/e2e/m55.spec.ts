@@ -224,4 +224,27 @@ test.describe("M5.5", () => {
     await expect(frame.locator("html")).toHaveAttribute("data-theme", "graphite", { timeout: 15_000 });
     expect(await frame.locator("body").evaluate((b) => getComputedStyle(b).backgroundColor)).toBe("rgb(21, 23, 27)");
   });
+
+  for (const prompt of ["An invoice generator for a shipping company", "An internal sales dashboard"]) {
+    test(`plans without agents: the Agents tab says so, or shows the agents ("${prompt}")`, async ({ page }) => {
+      await start(page);
+      await page.goto("/home", { waitUntil: "networkidle" });
+      await page.getByLabel("Describe your app").fill(prompt);
+      await page.getByRole("button", { name: /^Write the plan/ }).click();
+      await page.waitForURL(/\/p\/[0-9a-f-]{36}/, { timeout: 90_000 });
+      await expect(page.getByRole("button", { name: /^Build · ~\d+ credits$/ })).toBeVisible({ timeout: 120_000 });
+      const id = page.url().split("/p/")[1].split("?")[0];
+      const { data: bp } = await adminDb().from("blueprints").select("id").eq("project_id", id).order("version", { ascending: false }).limit(1).single();
+      const { data: items } = await adminDb().from("items").select("grp").eq("blueprint_id", bp!.id);
+      const agents = items!.filter((i) => i.grp === "agents").length;
+      await page.getByRole("tablist", { name: "Stage view" }).getByRole("tab", { name: "Workflow" }).click();
+      if (agents === 0) {
+        await expect(page.getByRole("heading", { name: "No agents in this plan" })).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByRole("button", { name: "Ask for an agent" })).toBeVisible();
+      } else {
+        await expect(page.getByText(/AI agent · new/).first()).toBeVisible({ timeout: 30_000 });
+      }
+      console.log(`"${prompt}": ${items!.length} parts, ${agents} agents`);
+    });
+  }
 });

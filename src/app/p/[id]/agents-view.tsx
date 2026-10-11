@@ -759,7 +759,7 @@ function AgentPanel({
 
 /** The Agents view (screen 9): the graph by default, and the selected agent's settings on the right. */
 export function AgentsView({ project, items }: { project: ProjectWorkspace; items: WorkspaceItem[] }) {
-  const { agentKey, openAgent, setAgentChanges } = useUi();
+  const { agentKey, openAgent, setAgentChanges, sendToChat } = useUi();
   const [data, setData] = useState<AgentsData | null>(null);
   const [error, setError] = useState<string>();
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
@@ -789,8 +789,18 @@ export function AgentsView({ project, items }: { project: ProjectWorkspace; item
   if (!data) return <p role="status" className="p-6 text-ink-2">Loading the agents…</p>;
   if (!data.agents.length) {
     return (
-      <EmptyState icon="agent" title="No agents in this plan">
-        This app works without AI agents. To add one, ask in chat, for example &ldquo;Add an agent that summarises each ticket&rdquo;.
+      <EmptyState
+        icon="agent"
+        title="No agents in this plan"
+        primary={
+          canBuild(project.role) ? (
+            <Button icon="plus" onClick={() => sendToChat("Add an agent that ")}>
+              Ask for an agent
+            </Button>
+          ) : undefined
+        }
+      >
+        This app works without AI agents: its parts are screens, data and the apps it connects to. To add one, ask in chat, for example &ldquo;Add an agent that drafts the invoice email&rdquo;. It shows here with its cost before anything is built.
       </EmptyState>
     );
   }
