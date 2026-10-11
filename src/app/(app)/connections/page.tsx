@@ -12,17 +12,20 @@ import { listProjects } from "@/server/queries";
 import { getAppContext } from "@/server/workspace";
 import { AddApiKey, ConnectionsList, type ConnectionRow } from "./connections-list";
 import { EmptyMosaic } from "@/components/ax/MosaicThumb";
+import { lyzrKeyStatus } from "@/server/lyzr-key";
+import { LyzrCard } from "./lyzr-card";
 
 export const metadata: Metadata = { title: "Connections · Architect" };
 
 export default async function ConnectionsPage() {
   const ctx = await getAppContext();
   const db = await createServerDb();
-  const [{ data: connections }, policies, { data: approvals }, projects] = await Promise.all([
+  const [{ data: connections }, policies, { data: approvals }, projects, lyzr] = await Promise.all([
     db.from("connections").select("id, provider, status, scopes, kind, set_by_name, set_at").eq("workspace_id", ctx.workspace.id).order("created_at"),
     loadPolicies(createAdminDb(), ctx.workspace.id),
     db.from("approvals").select("payload, status").eq("workspace_id", ctx.workspace.id).eq("kind", "connector").eq("status", "waiting"),
     listProjects(ctx),
+    lyzrKeyStatus(createAdminDb(), ctx.workspace.id),
   ]);
   // With governance on, apps not on the allowed list, or allowed everywhere by a rule, need an admin (C-3).
   const held = new Set(await blockedServices(createAdminDb(), ctx.workspace.id, null, (connections ?? []).map((c) => c.provider), policies));
@@ -60,10 +63,11 @@ export default async function ConnectionsPage() {
       <div className="flex flex-col gap-1">
         <h1 className="text-title font-[650]">Connections</h1>
         <p className="flex flex-wrap items-center gap-2 text-ink-2">
-          Apps your projects can use, by signing in or with an API key. Connecting is simulated in this prototype: no real account is linked, and a key you add is checked and thrown away.
-          <SimTag />
+          Apps your projects can use, by signing in or with an API key. Connecting apps is simulated in this prototype: no real account is linked, and a key you add for an app is checked and thrown away. Lyzr Studio is real.
+          <SimTag title="Apps connect for real in the product; here only Lyzr Studio does." />
         </p>
       </div>
+      <LyzrCard status={lyzr} isAdmin={isAdmin} />
       {canBuild(ctx.role) && <AddApiKey refusal={connectRefusal(policies.apps, policies.governance, isAdmin)} />}
       {rows.length ? (
         <ConnectionsList rows={rows} access={{ canConnect: canBuild(ctx.role), refusal: connectRefusal(policies.apps, policies.governance, isAdmin), isAdmin }} />

@@ -102,6 +102,29 @@ export function resolveModel(choice: ModelChoice = "gemini"): ResolvedModel {
   }
 }
 
+/** "gemini-3.5-flash-lite" → "Gemini 3.5 Flash Lite"; "nvidia/nemotron-3-super-120b-a12b:free" → "Nemotron 3 Super 120B A12B". */
+export function prettyModelId(id: string): string {
+  const base = id.split("/").pop()!.replace(/:free$/, "").replace(/^models\//, "");
+  return base
+    .split("-")
+    .filter(Boolean)
+    .map((w) => (/^gpt$/i.test(w) ? "GPT" : /^[a-z]?\d+b$/i.test(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join(" ");
+}
+
+/**
+ * The model that actually answers for a choice (M5.10), by name: "Gemini 3.5 Flash Lite", or OpenRouter's free model.
+ * A simulated choice (Claude or GPT without a key) is answered by Gemini, so it's Gemini's name.
+ */
+export function modelName(choice: ModelChoice): string {
+  const resolved = resolveModel(choice);
+  if (resolved.simulated || resolved.choice === "gemini") return prettyModelId(serverEnv.google().model);
+  if (choice === "openrouter") return `${prettyModelId(serverEnv.openrouter()!.model)} on OpenRouter`;
+  if (choice === "claude") return prettyModelId(serverEnv.anthropic()!.model ?? "claude");
+  if (choice === "gpt") return prettyModelId(serverEnv.openai()!.model ?? "gpt");
+  return resolved.label;
+}
+
 /** Which models the picker can show, and whether each is real here. (No keys are sent to the client.) */
 export function modelAvailability(): { choice: ModelChoice; label: string; simulated: boolean }[] {
   return MODEL_CHOICES.map((c) => {
@@ -139,7 +162,35 @@ export async function ask(input: {
   temperature?: number;
   /** Quick answers (Help): Gemini thinks at "low" (about 3.5 s instead of ~19 s on gemini-3.x flash). */
   fast?: boolean;
-}): Promise<{ text: string; label: string; simulated: boolean }> {
+  /** The model to fall back to when Gemini refuses on quota (M5.10): the caller passes it only if the policy allows it. */
+  fallback?: ModelChoice | null;
+}): Promise<{ text: string; label: string; simulated: boolean; fallbackNote?: string }> {
+  try {
+    return await askOnce(input);
+  } catch (err) {
+    const to = fallbackFor(err, input.model, input.fallback);
+    if (!to) throw err;
+    return { ...(await askOnce({ ...input, model: to })), fallbackNote: fallbackNote(to) };
+  }
+}
+
+/**
+ * When Gemini (or a simulated model it answers for) refuses on quota or its rate limit, after the SDK's retries: the
+ * fallback model, if one was offered and it's real here. Null otherwise: the error stands (the paused banner).
+ */
+function fallbackFor(err: unknown, choice: ModelChoice | undefined, fallback: ModelChoice | null | undefined): ModelChoice | null {
+  if (!(err instanceof GatewayRateLimited) || !fallback) return null;
+  const from = resolveModel(choice);
+  if (from.choice !== "gemini" && !from.simulated) return null;
+  return resolveModel(fallback).simulated ? null : fallback;
+}
+
+/** The one line that says it (M5.10): never fail over silently. */
+export function fallbackNote(to: ModelChoice): string {
+  return `${modelName("gemini")} is busy right now (its free limit), so ${modelName(to)} answered instead.`;
+}
+
+async function askOnce(input: Parameters<typeof ask>[0]): Promise<{ text: string; label: string; simulated: boolean }> {
   const resolved = resolveModel(input.model);
   const limit = timeLimit(resolved.choice);
   try {
@@ -172,7 +223,19 @@ export async function askObject<T>(input: {
   schema: import("zod").ZodType<T>;
   model?: ModelChoice;
   fast?: boolean;
-}): Promise<{ object: T; label: string; simulated: boolean; tokens: number }> {
+  /** As for ask(): the fallback when Gemini refuses on quota (M5.10). */
+  fallback?: ModelChoice | null;
+}): Promise<{ object: T; label: string; simulated: boolean; tokens: number; fallbackNote?: string }> {
+  try {
+    return await askObjectOnce(input);
+  } catch (err) {
+    const to = fallbackFor(err, input.model, input.fallback);
+    if (!to) throw err;
+    return { ...(await askObjectOnce({ ...input, model: to })), fallbackNote: fallbackNote(to) };
+  }
+}
+
+async function askObjectOnce<T>(input: { instructions: string; prompt: string; schema: import("zod").ZodType<T>; model?: ModelChoice; fast?: boolean }): Promise<{ object: T; label: string; simulated: boolean; tokens: number }> {
   const resolved = resolveModel(input.model);
   const limit = timeLimit(resolved.choice);
   try {
@@ -196,7 +259,7 @@ export async function askObject<T>(input: {
   }
 }
 
-/** Where an app agent ran: its own Lyzr Studio agent, the shared Studio agent, or the gateway (Simulated). */
+/** Where an app agent ran: its own Studio agent (the workspace's key), the shared demo agent, or the gateway (Simulated). */
 export type AgentRuntime = "lyzr_agent" | "lyzr_shared" | "gateway";
 
 export type AgentRunInput = {
@@ -207,8 +270,12 @@ export type AgentRunInput = {
   output: string;
   temperature: number;
   maxTokens: number;
-  /** The Studio agent already made for this node, if any. */
+  /** The Studio agent already made for this node in the workspace's own Studio, if any. */
   lyzrAgentId: string | null;
+  /** The workspace's own Lyzr key (M5.10); null without one. */
+  apiKey: string | null;
+  /** The seeded Research agent: the shared demo agent on the platform's key, Try it only. */
+  demo?: boolean;
   userId: string;
   sessionId: string;
   message: string;
@@ -221,15 +288,14 @@ export type AgentRunResult = {
   runtime: AgentRuntime;
   /** Set when a Studio agent was made for this node during the call (save it on the node). */
   createdAgentId: string | null;
-  /** The Studio agent that answered (its own or the shared one). */
+  /** The Studio agent that answered. */
   lyzrAgentId: string | null;
   modelLabel: string;
   simulated: boolean;
-  /** Why the node's own Studio agent couldn't be made, when the shared agent answered instead. */
   note: string | null;
 };
 
-/** The message for the shared Studio agent: it has no instructions of its own, so they lead every message. */
+/** The message for the shared demo agent: it has no instructions of its own, so they lead every message. */
 export function sharedAgentMessage(input: Pick<AgentRunInput, "name" | "description" | "instructions" | "output" | "message">): string {
   return [
     `Your role: ${input.name}. ${input.description}`.trim(),
@@ -241,16 +307,19 @@ export function sharedAgentMessage(input: Pick<AgentRunInput, "name" | "descript
 }
 
 /**
- * Runs an app agent (Agents › Try it). Lyzr Studio is the runtime:
- * 1. With a Lyzr key, the node's own Studio agent answers; it's made on the first run and reused after.
- * 2. If Studio won't make one, the shared Studio agent answers, with the node's role and instructions in the
- *    message. The run says so ("Shared Studio agent").
- * 3. Without a Lyzr key, Gemini answers through the gateway and the run is Simulated.
- * A Studio failure while answering is thrown (LyzrError), never swapped for another runtime silently.
+ * Runs an app agent (Agents › Try it). Whose Lyzr account answers (M5.10):
+ * 1. The demo agent: the platform's shared Studio agent, with the node's role and instructions in the message.
+ * 2. With the workspace's own key: the node's own Studio agent in that workspace's Studio, made on first use.
+ * 3. Otherwise Gemini answers through the gateway, and the run is Simulated.
+ * Never another account's agent, and a Studio failure is thrown (LyzrError), never swapped for another runtime.
  */
 export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
-  const configured = lyzr.lyzrConfigured();
-  if (!configured.perAgent || input.simulate) {
+  const demo = input.demo ? lyzr.demoLyzr() : null;
+  if (demo && !input.simulate) {
+    const text = await lyzr.chatLyzr(demo.apiKey, { agentId: demo.agentId, userId: input.userId, sessionId: input.sessionId, message: sharedAgentMessage(input) });
+    return { text, runtime: "lyzr_shared", createdAgentId: null, lyzrAgentId: demo.agentId, modelLabel: lyzr.LYZR_MODEL.label, simulated: false, note: null };
+  }
+  if (!input.apiKey || input.simulate || input.demo) {
     const r = await ask({
       instructions: `You are ${input.name}, an agent in an app built with Architect. ${input.description}\n\n${input.instructions}\n\nOutput format: ${input.output}`,
       prompt: input.message,
@@ -265,18 +334,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
   const spec = { name: `${input.name} · Architect`, description: input.description, role: input.name, instructions: input.instructions, output: input.output, temperature: input.temperature, maxTokens: input.maxTokens };
   let agentId = input.lyzrAgentId;
   let createdAgentId: string | null = null;
-  let note: string | null = null;
-  if (!agentId) {
-    try {
-      agentId = createdAgentId = await lyzr.createLyzrAgent(spec);
-    } catch (err) {
-      const shared = lyzr.sharedAgentId();
-      if (!shared) throw err;
-      note = err instanceof Error ? err.message : String(err);
-      const text = await lyzr.chatLyzr({ agentId: shared, userId: input.userId, sessionId: input.sessionId, message: sharedAgentMessage(input) });
-      return { text, runtime: "lyzr_shared", createdAgentId: null, lyzrAgentId: shared, modelLabel: lyzr.LYZR_MODEL.label, simulated: false, note };
-    }
-  }
-  const text = await lyzr.chatLyzr({ agentId, userId: input.userId, sessionId: input.sessionId, message: input.message });
-  return { text, runtime: "lyzr_agent", createdAgentId, lyzrAgentId: agentId, modelLabel: lyzr.LYZR_MODEL.label, simulated: false, note };
+  if (!agentId) agentId = createdAgentId = await lyzr.createLyzrAgent(input.apiKey, spec);
+  const text = await lyzr.chatLyzr(input.apiKey, { agentId, userId: input.userId, sessionId: input.sessionId, message: input.message });
+  return { text, runtime: "lyzr_agent", createdAgentId, lyzrAgentId: agentId, modelLabel: lyzr.LYZR_MODEL.label, simulated: false, note: null };
 }

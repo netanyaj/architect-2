@@ -12,8 +12,8 @@ import { cn } from "@/lib/utils";
 import { setProjectKey } from "@/server/actions/keys";
 
 /**
- * Keys and passwords (C-10), simulated: per version, what's provided by Architect, set (by whom, when), waiting for an
- * admin or missing. Setting one takes the value, checks it's there and throws it away; nothing can be read back.
+ * Keys and passwords (C-10): per version, what's provided by Architect, set (by whom, when), waiting for an admin or
+ * missing. Since M5.10 a value is stored encrypted at rest and never shown again; the apps that use it are simulated.
  */
 export function KeysDialog({
   projectId,
@@ -38,11 +38,12 @@ export function KeysDialog({
       <DialogContent className="max-h-[90dvh] overflow-auto rounded-pane border border-line bg-surface p-6 shadow-pop sm:max-w-[720px]">
         <div className="flex items-center gap-2">
           <DialogTitle className="flex-1 text-sub font-semibold">Keys and passwords</DialogTitle>
-          <SimTag title="Keys are simulated: a value you type is checked and thrown away, and only that it's set is recorded." />
+          <SimTag title="Values are stored encrypted. The apps that would use them are simulated in this prototype." />
         </div>
         <DialogDescription className="text-ink-2">
-          Saved per version, never in the code. Architect records that a key is set, by whom and when; the value itself is never stored or shown.
+          Saved per version, never in the code, and stored encrypted. Once saved, a value is never shown again: you see that it&apos;s set, by whom and when.
         </DialogDescription>
+        <p className="text-small font-semibold text-ink">Demo environment: use test values, not real secrets.</p>
         {notice && (
           <p role="status" className="rounded-card border-[1.5px] border-line px-4 py-2.5 font-semibold">
             {notice}
@@ -135,7 +136,7 @@ function SetForm({ projectId, name, env, waits, onDone, onCancel }: { projectId:
         Value of {name} for {forEnv(env)}
       </label>
       <input id={id} type="password" autoComplete="off" value={value} onChange={(e) => setValue(e.target.value)} className="min-h-[38px] rounded-[12px] border border-line-ctl bg-surface px-3 font-mono text-small" />
-      <p className="text-small text-ink-2">{waits ? "Your organisation's rule: a key for Live waits for an Owner or Admin. " : ""}The value is checked and thrown away; only that it&apos;s set is kept.</p>
+      <p className="text-small text-ink-2">{waits ? "Your organisation's rule: a key for Live waits for an Owner or Admin. " : ""}The value is stored encrypted and never shown again.</p>
       {error && (
         <p role="alert" className="text-small font-semibold text-failed">
           {error}

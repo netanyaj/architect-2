@@ -1,7 +1,9 @@
 import "server-only";
+import { after } from "next/server";
 
 import type { Json } from "@/lib/database.types";
 import { buildTimeline, SCENARIO, type SimItem, type Variant } from "@/lib/sim/timeline";
+import { syncBuiltAgents } from "../agents-core";
 import type { AdminDb } from "../db";
 import { blockedServices, budgetRefusal } from "../policy";
 import { openPullRequest } from "../pull-requests";
@@ -112,7 +114,17 @@ export async function dbNow(admin: AdminDb): Promise<string> {
 /** Settles a run whose timeline is over (idempotent: the database function does it once, in one transaction). */
 export async function settleRun(admin: AdminDb, runId: string): Promise<string | null> {
   const { data, error } = await admin.rpc("settle_run", { p_run: runId });
-  return error ? null : data;
+  if (error) return null;
+  // Agent parts that now work are made in the workspace's own Lyzr Studio (M5.10), after the response is sent.
+  try {
+    after(async () => {
+      const { data: run } = await admin.from("runs").select("project_id").eq("id", runId).maybeSingle();
+      if (run) await syncBuiltAgents(admin, run.project_id);
+    });
+  } catch {
+    // Outside a request (scripts, tests): nothing to sync into.
+  }
+  return data;
 }
 
 const FOLLOWUP_REFUSALS: Record<string, string> = {

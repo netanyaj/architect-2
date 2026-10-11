@@ -17,9 +17,9 @@ const input = z.object({
 });
 
 /**
- * Set a key for one version (Keys and passwords, C-10), simulated. The value is checked to be there and then thrown
- * away: only "set, by whom, when" is recorded, and nothing is logged. Under governance, with the rule on Live keys, a
- * Builder's key for Live waits for an Owner or Admin (an approval request).
+ * Set a key for one version (Keys and passwords, C-10). Since M5.10 the value is kept, encrypted at rest in Vault,
+ * and never read back or shown again: the page only knows it's set, by whom and when. Nothing is logged. Under
+ * governance, with the rule on Live keys, a Builder's key for Live waits for an Owner or Admin (an approval request).
  */
 export async function setProjectKey(raw: z.input<typeof input>): Promise<ActionResult<{ waiting: boolean }>> {
   const ctx = await getAppContext();
@@ -56,14 +56,21 @@ export async function setProjectKey(raw: z.input<typeof input>): Promise<ActionR
     approvalId = approval?.id ?? null;
   }
   const row = { project_id: projectId, name, environment, status: waiting ? "waiting" : "set", set_by: ctx.user.id, set_by_name: ctx.name, set_at: now, approval_id: approvalId };
-  const { error } = existing ? await admin.from("project_keys").update(row).eq("id", existing.id) : await admin.from("project_keys").insert(row);
-  if (error) return { ok: false, message: "The key couldn't be saved. Nothing was stored. Try again." };
+  const saved = existing ? await admin.from("project_keys").update(row).eq("id", existing.id).select("id").single() : await admin.from("project_keys").insert(row).select("id").single();
+  if (saved.error || !saved.data) return { ok: false, message: "The key couldn't be saved. Nothing was stored. Try again." };
+  const { error: vaultError } = await admin.rpc("set_project_key_value", { p_key: saved.data.id, p_value: parsed.data.value });
+  if (vaultError) {
+    // Never "set" without its value: undo the row (or put the old one back) and say so.
+    if (existing) await admin.from("project_keys").update({ status: existing.status }).eq("id", existing.id);
+    else await admin.from("project_keys").delete().eq("id", saved.data.id);
+    return { ok: false, message: "The key couldn't be stored safely. Nothing was saved. Try again." };
+  }
   await admin.from("audit_log").insert({
     workspace_id: ctx.workspace.id,
     actor: ctx.name,
     action: waiting ? "key.requested" : "key.set",
     target: `${project.name}: ${name} (${KEY_ENV_LABEL[environment as KeyEnv]})`,
-    details: { environment, simulated: true },
+    details: { environment, encrypted: true },
   });
   revalidatePath(`/p/${projectId}/launch`);
   return { ok: true, waiting };

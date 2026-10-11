@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Button, buttonClasses, IconButton, TextLink } from "@/components/ax/button";
@@ -22,7 +23,7 @@ import { PROVIDERS, providerName } from "@/lib/providers";
 import { relativeTime } from "@/lib/project-status";
 import { useUi } from "@/lib/ui-store";
 import { cn } from "@/lib/utils";
-import { loadAgents, saveAgent, setAgentRun, tryAgent, type AgentRunView, type AgentsData, type AgentView } from "@/server/actions/agents";
+import { loadAgents, retryStudio, saveAgent, setAgentRun, tryAgent, type AgentRunView, type AgentsData, type AgentView } from "@/server/actions/agents";
 import { loadPart, type PartDetail } from "@/server/actions/run";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 import { rowFor } from "./build-stage";
@@ -71,7 +72,8 @@ export function AgentsPlanPanel({ project, items }: { project: ProjectWorkspace;
               const item = byKey.get(a.key);
               const row = item ? rowFor(item) : { status: "todo" as const };
               const selected = agentKey === a.key;
-              const detail = selected && agentChanges ? `${a.origin === "studio" ? "Your Studio agent" : "New"} · ${plural(agentChanges, "unsaved change")}` : a.origin === "studio" ? "Your Studio agent, reused" : "New";
+              // The only agent from Studio is the seeded Research agent: the shared demo agent (M5.10).
+              const detail = selected && agentChanges ? `${a.origin === "studio" ? "Demo agent" : "New"} · ${plural(agentChanges, "unsaved change")}` : a.origin === "studio" ? "Demo agent · try it for real" : "New";
               return <PlanRow key={a.key} status={row.status} icon={"icon" in row ? row.icon : undefined} title={a.name} detail={detail} selected={selected} onClick={() => openAgent(a.key)} />;
             })
           : [<p key="none" className="px-2 pb-1 text-small text-ink-2">No agents in this plan yet.</p>]}
@@ -191,7 +193,7 @@ function Graph({
               if (m.kind === "delivery") return <EndNode key={m.id} end={data.delivery} x={m.x} y={m.y} />;
               const a = agents[m.agentIndex!];
               const on = selected === a.key;
-              const origin = a.origin === "studio" ? "from Lyzr Studio" : a.origin === "crewai" ? "CrewAI" : a.origin === "langgraph" ? "LangGraph" : "new";
+              const origin = a.origin === "studio" ? "demo agent" : a.origin === "crewai" ? "CrewAI" : a.origin === "langgraph" ? "LangGraph" : "new";
               return (
                 <button
                   key={m.id}
@@ -409,20 +411,29 @@ function SettingsTab({ agent, draft, setDraft, project, readOnly, lyzrModel, mcp
   const [more, setMore] = useState(false);
   const [compare, setCompare] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const reason = readOnly ? "Viewers can't change agents." : undefined;
+  const reason = agent.demo ? "The demo agent is shared and read-only." : readOnly ? "Viewers can't change agents." : undefined;
   const modelAllowed = project.models.some((m) => m.choice === draft.model);
   return (
     <div className="flex flex-col gap-3.5">
       <div className="flex flex-col gap-1.5">
         <span className="text-small font-semibold text-ink-2">Model</span>
-        <div className="flex items-center gap-2">
-          <ModelPicker value={draft.model} options={project.models} onChange={(m) => setDraft({ ...draft, model: m })} disabledReason={reason} open={pickerOpen} onOpenChange={setPickerOpen} />
+        <div className="flex flex-wrap items-center gap-2">
+          {/* flex-none: the picker shows its full name ("Claude Sonnet"), never "C…" (M5.10). */}
+          <div className="flex-none">
+            <ModelPicker value={draft.model} options={project.models} onChange={(m) => setDraft({ ...draft, model: m })} disabledReason={reason} open={pickerOpen} onOpenChange={setPickerOpen} />
+          </div>
           <Button size="sm" onClick={() => setCompare(true)}>
             Compare
           </Button>
-          {/* Studio agents run on Lyzr's own model whatever is picked here (M4 decision): say which, next to the picker. */}
-          {agent.framework === "lyzr" && <span className="text-small text-ink-2">Model used on Studio: {lyzrModel}</span>}
         </div>
+        {/* Studio agents run on Lyzr's built-in model whatever is picked here (M4 decision): say so, and why they differ. */}
+        {agent.framework === "lyzr" && (
+          <p className="text-small text-ink-2">
+            {draft.model === "gemini"
+              ? `In Lyzr Studio it runs on ${lyzrModel}, Lyzr's built-in model.`
+              : `In Lyzr Studio it runs on ${lyzrModel}, Lyzr's built-in model, so test runs are free. ${MODEL_LABEL[draft.model]} is what the built app uses.`}
+          </p>
+        )}
         {!modelAllowed && !readOnly && <ModelNotAllowed onSwitch={() => setPickerOpen(true)} />}
       </div>
       <div className="flex flex-col gap-1.5">
@@ -602,7 +613,7 @@ function TryTab({ agent, dirty, lyzr, readOnly, onRan }: { agent: AgentView; dir
   const [pending, start] = useTransition();
   const [error, setError] = useState<string>();
   const [last, setLast] = useState<AgentRunView | null>(null);
-  const onStudio = lyzr.configured && agent.framework === "lyzr";
+  const onStudio = agent.framework === "lyzr" && (agent.demo ? lyzr.demoReady : lyzr.connected);
   const run = () =>
     start(async () => {
       setError(undefined);
@@ -627,9 +638,13 @@ function TryTab({ agent, dirty, lyzr, readOnly, onRan }: { agent: AgentView; dir
         className="min-h-24 resize-y rounded-[12px] border border-line-ctl bg-surface px-3 py-2.5 text-body leading-normal text-ink"
       />
       <p className="text-small text-ink-2">
-        {onStudio ? (
+        {agent.demo && onStudio ? (
           <>
-            Runs on Lyzr Studio as its own Studio agent, on {lyzr.model}. Test runs don&apos;t use credits.
+            The demo agent runs for real on Lyzr Studio, in Architect&apos;s own account, on {lyzr.model}. Up to 10 runs a day.
+          </>
+        ) : onStudio ? (
+          <>
+            Runs in your workspace&apos;s Lyzr Studio as its own agent, on {lyzr.model}. Test runs don&apos;t use credits.
           </>
         ) : agent.framework !== "lyzr" ? (
           <>
@@ -637,7 +652,7 @@ function TryTab({ agent, dirty, lyzr, readOnly, onRan }: { agent: AgentView; dir
           </>
         ) : (
           <>
-            Lyzr Studio isn&apos;t set up here, so Gemini answers through Architect&apos;s gateway.
+            Gemini answers in its place until this workspace connects its Lyzr key.
           </>
         )}
         {dirty && " It uses the saved settings: save first to try your changes."}
@@ -718,47 +733,110 @@ function ChecksTab({ agent, item }: { agent: AgentView; item: WorkspaceItem | un
   );
 }
 
-/** The agent panel's one Simulated label. Try it is real on Lyzr Studio; tools, knowledge and checks never are. */
+/**
+ * The agent panel's one Simulated label. Try it is real on Lyzr Studio (the workspace's own, or the demo agent);
+ * tools, knowledge and checks never are. Without the workspace's key, the label says how to make it real (M5.10).
+ */
 function PanelSimTag({ agent, lyzr }: { agent: AgentView; lyzr: AgentsData["lyzr"] }) {
-  const realRuns = lyzr.configured && agent.framework === "lyzr";
-  return realRuns ? (
-    <SimTag title="Try it runs for real on Lyzr Studio. Tools, knowledge, checks and the build are simulated in this prototype.">Partly simulated</SimTag>
-  ) : (
-    <SimTag title="Gemini answers Try it in this agent's place; tools, knowledge, checks and the build are simulated in this prototype." />
+  if (agent.framework === "lyzr" && (agent.demo ? lyzr.demoReady : lyzr.connected)) {
+    return <SimTag title="Try it runs for real on Lyzr Studio. Tools, knowledge, checks and the build are simulated in this prototype.">Partly simulated</SimTag>;
+  }
+  if (agent.framework === "lyzr") {
+    return <SimTag title="Gemini answers Try it in this agent's place, and nothing is made in Lyzr Studio.">Simulated · connect your Lyzr key to make this real</SimTag>;
+  }
+  return <SimTag title="Gemini answers Try it in this agent's place; tools, knowledge, checks and the build are simulated in this prototype." />;
+}
+
+/** Open in Studio, enabled only for an agent with a Studio id; otherwise disabled with its reason (M5.10). */
+function OpenInStudio({ id, reason }: { id: string | null; reason?: string }) {
+  if (id && !reason) {
+    return (
+      <a href={studioUrl(id)} target="_blank" rel="noreferrer" className={buttonClasses({ size: "sm" })}>
+        Open in Studio
+        <Icon name="external" size="sm" />
+      </a>
+    );
+  }
+  return (
+    <Button size="sm" iconAfter="external" disabledReason={reason ?? "It isn't in Lyzr Studio yet."}>
+      Open in Studio
+    </Button>
   );
 }
 
-function SyncLine({ agent, lyzr }: { agent: AgentView; lyzr: AgentsData["lyzr"] }) {
+/** Where the agent lives in Lyzr Studio (M5.10): the demo agent, not connected, waiting for its build, not there yet, or synced. */
+function SyncLine({ agent, lyzr, canAct, onStudio }: { agent: AgentView; lyzr: AgentsData["lyzr"]; canAct: boolean; onStudio: (fields: Partial<AgentView>) => void }) {
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string>();
   if (agent.framework !== "lyzr") {
-    const rt = runtimeLine(agent.framework);
+    return <span className="flex flex-1 flex-wrap items-center gap-2 text-small text-ink-2">{runtimeLine(agent.framework).text}</span>;
+  }
+  if (agent.demo) {
     return (
-      <span className="flex flex-1 flex-wrap items-center gap-2 text-small text-ink-2">
-        {rt.text}
-      </span>
+      <>
+        <span className="flex-1 text-small text-ink-2">Demo agent · shared and read-only</span>
+        <OpenInStudio id={null} reason="The demo agent lives in Architect's own Studio account. Connect your Lyzr key to make agents of your own." />
+      </>
+    );
+  }
+  if (!lyzr.connected) {
+    return (
+      <>
+        <span className="flex-1 text-small text-ink-2">
+          Not in Lyzr Studio ·{" "}
+          <Link href="/connections#lyzr" className="font-semibold text-ink underline decoration-line-ctl underline-offset-[3px]">
+            Connect your Lyzr key
+          </Link>
+        </span>
+        <OpenInStudio id={null} reason="Connect your Lyzr key" />
+      </>
     );
   }
   if (agent.lyzrAgentId) {
     return (
       <>
         <span className="flex-1 text-small text-ink-2">Synced with Lyzr Studio · {agent.syncedAt ? relativeTime(agent.syncedAt) : "just now"}</span>
-        <a href={studioUrl(agent.lyzrAgentId)} target="_blank" rel="noreferrer" className={buttonClasses({ size: "sm" })}>
-          Open in Studio
-          <Icon name="external" size="sm" />
-        </a>
+        <OpenInStudio id={agent.lyzrAgentId} />
       </>
     );
   }
+  if (!WORKS_STATUSES.includes(agent.status)) {
+    return (
+      <>
+        <span className="flex-1 text-small text-ink-2">Created in Lyzr Studio when this part is built</span>
+        <OpenInStudio id={null} reason="Created in Lyzr Studio when this part is built" />
+      </>
+    );
+  }
+  const retry = () =>
+    start(async () => {
+      setError(undefined);
+      const r = await retryStudio({ agentId: agent.id });
+      if (!r.ok) return setError(r.message);
+      onStudio({ lyzrAgentId: r.lyzrAgentId, syncedAt: r.syncedAt, studioError: null });
+    });
   return (
     <>
-      <span className="flex flex-1 flex-wrap items-center gap-2 text-small text-ink-2">
-        Synced with Lyzr Studio · just now
+      <span className="flex-1 text-small text-ink-2" title={agent.studioError ?? undefined}>
+        Not in Studio yet
       </span>
-      <Button size="sm" iconAfter="external" disabledReason={lyzr.configured ? "It's made on Lyzr Studio on its first Try it or Save." : "Lyzr Studio isn't set up here."}>
-        Open in Studio
-      </Button>
+      {canAct && (
+        <Button size="sm" disabledReason={pending ? "Retrying…" : undefined} onClick={retry}>
+          {pending ? "Retrying…" : "Retry"}
+        </Button>
+      )}
+      <OpenInStudio id={null} reason="Not in Studio yet: retry first." />
+      {(error ?? agent.studioError) && (
+        <p role={error ? "alert" : undefined} className="w-full text-small text-ink-2">
+          {error ?? `Lyzr Studio said: ${agent.studioError}`}
+        </p>
+      )}
     </>
   );
 }
+
+/** A part's agent is made in Studio once the part works. */
+const WORKS_STATUSES = ["built", "sample_data"];
 
 function AgentPanel({
   agent,
@@ -790,7 +868,7 @@ function AgentPanel({
   const [tab, setTab] = useState<Tab>("settings");
   const [pending, start] = useTransition();
   const [notice, setNotice] = useState<{ kind: "error" | "warning"; text: string }>();
-  const readOnly = !canBuild(project.role);
+  const readOnly = !canBuild(project.role) || agent.demo;
   const changes = changesBetween(saved, draft);
   const save = () =>
     start(async () => {
@@ -811,7 +889,7 @@ function AgentPanel({
         <IconButton icon="close" label="Close settings" quiet size={32} onClick={onClose} />
       </div>
       <div className="flex flex-wrap items-center gap-2 px-4 pb-1">
-        <SyncLine agent={agent} lyzr={data.lyzr} />
+        <SyncLine agent={agent} lyzr={data.lyzr} canAct={canBuild(project.role)} onStudio={onRunChanged} />
       </div>
       {/* One label for the panel (M5.9): what's real here depends on where the agent runs. */}
       <p className="flex flex-wrap items-center gap-2 px-4 pb-2.5 text-small text-ink-2">
@@ -842,7 +920,7 @@ function AgentPanel({
           ) : (
             <p className="text-ink-2">No runs yet. Use Try it to run the agent, or build the plan to run its check.</p>
           ))}
-        {tab === "try" && <TryTab key={agent.id} agent={agent} dirty={changes > 0} lyzr={data.lyzr} readOnly={readOnly} onRan={onRan} />}
+        {tab === "try" && <TryTab key={agent.id} agent={agent} dirty={changes > 0} lyzr={data.lyzr} readOnly={!canBuild(project.role)} onRan={onRan} />}
         {tab === "checks" && <ChecksTab agent={agent} item={item} />}
       </div>
       {notice && (

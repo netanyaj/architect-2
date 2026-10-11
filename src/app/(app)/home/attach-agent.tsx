@@ -1,9 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
-import { Button } from "@/components/ax/button";
+import { Button, buttonClasses } from "@/components/ax/button";
 import { Icon } from "@/components/ax/icon";
-import { SimTag } from "@/components/ax/pill";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,7 @@ type Listed = { id: string; name: string; description: string };
 
 /**
  * "Add files, agents or tools" on Home: add files, or attach an existing Lyzr Studio agent (BL-2) for the plan to use
- * as a part instead of building a new one. The list is Studio's own (real) when a Lyzr key is set.
+ * as a part instead of building a new one. The list is the workspace's own Studio's, with its own Lyzr key.
  */
 export function AddMenu({ onAddFiles, attached, onAttach, disabledReason }: { onAddFiles: () => void; attached: AttachedAgent[]; onAttach: (a: AttachedAgent) => void; disabledReason?: string }) {
   const [open, setOpen] = useState(false);
@@ -49,12 +49,13 @@ export function AddMenu({ onAddFiles, attached, onAttach, disabledReason }: { on
 }
 
 /**
- * Attach a Lyzr Studio agent (BL-2): Studio's own list (real) when a Lyzr key is set, else a sample list marked
- * Simulated. Used by Home's add menu and chat's + menu (M5.8). Up to 3.
+ * Attach a Lyzr Studio agent (BL-2): the workspace's own Studio agents, listed with its own Lyzr key (M5.10). Without a
+ * key there's no list, only the prompt to connect one: nobody ever sees another account's agents. Used by Home's add
+ * menu and chat's + menu (M5.8). Up to 3.
  */
 export function StudioAgentDialog({ open, onOpenChange, attached, onAttach }: { open: boolean; onOpenChange: (o: boolean) => void; attached: AttachedAgent[]; onAttach: (a: AttachedAgent) => void }) {
   const setOpen = onOpenChange;
-  const [list, setList] = useState<{ agents: Listed[]; simulated: boolean; note?: string } | null>(null);
+  const [list, setList] = useState<{ agents: Listed[]; needsKey: boolean; note?: string } | null>(null);
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();
   // Loads Studio's list the first time the dialog opens.
@@ -64,7 +65,7 @@ export function StudioAgentDialog({ open, onOpenChange, attached, onAttach }: { 
       setError(undefined);
       const r = await studioAgents();
       if (!r.ok) return setError(r.message);
-      setList({ agents: r.agents, simulated: r.simulated, note: r.note });
+      setList({ agents: r.agents, needsKey: r.needsKey, note: r.note });
     });
   }, [open, list]);
   const full = attached.length >= 3;
@@ -73,12 +74,11 @@ export function StudioAgentDialog({ open, onOpenChange, attached, onAttach }: { 
         <DialogContent className="max-h-[85dvh] overflow-auto rounded-pane border border-line bg-surface p-6 shadow-pop sm:max-w-[560px]">
           <div className="flex items-center gap-2">
             <DialogTitle className="flex-1 text-sub font-semibold">Attach a Lyzr Studio agent</DialogTitle>
-            {list?.simulated && <SimTag title={list.note} />}
           </div>
           <DialogDescription className="text-ink-2">
-            {list?.simulated
-              ? list.note
-              : "Agents in Lyzr Studio (this prototype's shared Studio account). The plan uses the one you pick as a part instead of building a new agent for that job."}
+            {list?.needsKey
+              ? "Connect this workspace's Lyzr API key to see its Studio agents. Each workspace uses its own Lyzr account."
+              : (list?.note ?? "Agents in your workspace's Lyzr Studio. The plan uses the one you pick as a part instead of building a new agent for that job.")}
           </DialogDescription>
           {pending && !list && <p className="text-ink-2">Loading your Studio agents…</p>}
           {error && (
@@ -86,7 +86,12 @@ export function StudioAgentDialog({ open, onOpenChange, attached, onAttach }: { 
               {error}
             </p>
           )}
-          {list && (list.agents.length ? (
+          {list?.needsKey && (
+            <Link href="/connections#lyzr" className={buttonClasses({ className: "self-start" })} onClick={() => setOpen(false)}>
+              Connect your Lyzr key
+            </Link>
+          )}
+          {list && !list.needsKey && !list.note && (list.agents.length ? (
             <ul aria-label="Studio agents" className="flex flex-col divide-y divide-line rounded-card border border-line">
               {list.agents.map((a) => {
                 const on = attached.some((x) => x.id === a.id);

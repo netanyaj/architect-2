@@ -19,8 +19,9 @@ vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 vi.mock("@/server/db", () => ({ createAdminDb: () => db, createServerDb: async () => db }));
 vi.mock("@/server/actions/launch", async (orig) => ({ ...(await orig<typeof import("@/server/actions/launch")>()), goLive: async () => ({ ok: true }) }));
 vi.mock("@/server/actions/pull-requests", () => ({ mergePullRequest: async () => ({ ok: true }) }));
-const lyzr = { configured: true, list: vi.fn() };
-vi.mock("@/server/lyzr", () => ({ lyzrConfigured: () => ({ perAgent: lyzr.configured, shared: false }), listLyzrAgents: () => lyzr.list() }));
+const lyzr = { key: "ws-own-key" as string | null, list: vi.fn() };
+vi.mock("@/server/lyzr", () => ({ listLyzrAgents: (key: string) => lyzr.list(key) }));
+vi.mock("@/server/lyzr-key", () => ({ workspaceLyzrKey: async () => lyzr.key }));
 vi.mock("@/server/workspace", () => ({
   getAppContext: async () => ({ user: { id: "me" }, name: "Rita", role, workspace: { id: "ws-1", name: "Acme", governanceEnabled: governance, plan }, memberships: [] }),
 }));
@@ -268,16 +269,19 @@ describe("the external-calls rule (C-10)", () => {
 });
 
 describe("Attach agent: Lyzr Studio's agent list (BL-2)", () => {
-  it("real when a Lyzr key is set; sample agents, marked simulated, without one or when Studio doesn't answer", async () => {
+  it("lists the workspace's own Studio agents with its own key; without one, no list at all, only the connect prompt (M5.10)", async () => {
     role = "builder";
     const { studioAgents } = await import("@/server/actions/studio-agents");
-    lyzr.configured = true;
+    lyzr.key = "ws-own-key";
     lyzr.list.mockResolvedValue([{ id: "68ab", name: "Research agent · Architect", description: "" }]);
-    expect(await studioAgents()).toEqual({ ok: true, agents: [{ id: "68ab", name: "Research agent · Architect", description: "" }], simulated: false });
+    expect(await studioAgents()).toEqual({ ok: true, agents: [{ id: "68ab", name: "Research agent · Architect", description: "" }], needsKey: false });
+    expect(lyzr.list).toHaveBeenLastCalledWith("ws-own-key");
     lyzr.list.mockRejectedValue(new Error("down"));
-    expect(await studioAgents()).toMatchObject({ ok: true, simulated: true, note: "Lyzr Studio didn't answer, so these are sample agents. Try again later for yours." });
-    lyzr.configured = false;
-    expect(await studioAgents()).toMatchObject({ ok: true, simulated: true });
+    expect(await studioAgents()).toEqual({ ok: true, agents: [], needsKey: false, note: "Lyzr Studio didn't answer. Try again in a minute." });
+    lyzr.key = null;
+    lyzr.list.mockClear();
+    expect(await studioAgents()).toEqual({ ok: true, agents: [], needsKey: true });
+    expect(lyzr.list).not.toHaveBeenCalled();
     role = "viewer";
     expect((await studioAgents()).ok).toBe(false);
   });

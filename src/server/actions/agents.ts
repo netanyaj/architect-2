@@ -3,15 +3,18 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { agentGraph, CONVERT_CREDITS, type AgentOrigin, type GraphEnd } from "@/lib/agents";
+import { CONVERT_CREDITS, type AgentOrigin, type GraphEnd } from "@/lib/agents";
+import { startOfDayUtc } from "@/lib/plan-limit";
 import type { Json } from "@/lib/database.types";
 import { GatewayRateLimited, GatewaySlow, GatewayUnavailable, runAgent, type AgentRuntime } from "@/lib/gateway";
 import { MODEL_CHOICES, MODEL_LABEL, toModelChoice, type ModelChoice } from "@/lib/models";
 import { MODEL_NOT_ALLOWED } from "@/lib/policies";
 import { canBuild } from "@/lib/permissions";
 import { allowedModels } from "../blueprint/write-plan";
-import { createAdminDb, createServerDb, type AdminDb } from "../db";
-import { createLyzrAgent, LYZR_MODEL, lyzrConfigured, LyzrError, updateLyzrAgent } from "../lyzr";
+import { createAdminDb, createServerDb } from "../db";
+import { createLyzrAgent, demoLyzr, LYZR_MODEL, LyzrError, updateLyzrAgent } from "../lyzr";
+import { lyzrKeyStatus, workspaceLyzrKey } from "../lyzr-key";
+import { agentInWorkspace, agentRowsFor, isDemoAgent, lyzrSpec, makeInStudio, partWorks, type AgentRow, type ItemRow } from "../agents-core";
 import { RECHECK_MS } from "../code-edits";
 import { budgetRefusal, loadPolicies } from "../policy";
 import { getAppContext } from "../workspace";
@@ -19,8 +22,11 @@ import type { ActionResult } from "./members";
 
 const uuid = z.string().uuid();
 const BUILDERS_ONLY = "Viewers can't change or run agents. Ask an Owner, Admin or Builder.";
-/** Try it calls Lyzr Studio on the prototype's account: a cap per person keeps a reviewer's loop from running it dry. */
+/** A cap per person on Try it, so one loop can't run a workspace's Studio (or the gateway) dry. */
 const TRY_IT_PER_HOUR = 20;
+/** The shared demo agent runs on the platform's Lyzr account (M5.10): 10 runs per person per day. */
+const DEMO_RUNS_PER_DAY = 10;
+const DEMO_READ_ONLY = "The demo agent is shared and read-only: you can try it, not change it. Connect your own Lyzr key to build agents of your own.";
 const MESSAGE_LIMIT = 4000;
 
 export type AgentRunView = {
@@ -62,6 +68,10 @@ export type AgentView = {
   runAs: "native" | "studio" | "tool";
   lyzrAgentId: string | null;
   syncedAt: string | null;
+  /** Why its Studio agent couldn't be made last time ("Not in Studio yet · Retry"). */
+  studioError: string | null;
+  /** The seeded Research agent (M5.10): the shared, read-only demo agent on the platform's Lyzr account. */
+  demo: boolean;
   handoff: string;
   sample: string;
 };
@@ -72,34 +82,15 @@ export type AgentsData = {
   toolProviders: Record<string, string>;
   agents: AgentView[];
   runs: Record<string, AgentRunView[]>;
-  /** Whether Try it runs on Lyzr Studio here (a key is set), and on which model. */
-  lyzr: { configured: boolean; model: string };
+  /**
+   * Lyzr Studio here (M5.10): whether the workspace has connected its own key (and its last 4 characters), whether
+   * the shared demo agent can run, and the model Studio agents run on.
+   */
+  lyzr: { connected: boolean; last4: string | null; demoReady: boolean; model: string };
   /** MCP servers the policy allows agents to use (C-3); null with governance off (any MCP server). */
   mcpServers: string[] | null;
   /** Meeting Prep's sample agents (screen 9) rather than agents derived from the plan. */
   sampleProject: boolean;
-};
-
-const AGENT_COLUMNS =
-  "id, workspace_id, project_id, item_key, name, description, framework, model, instructions, tools, knowledge, temperature, max_tokens, lyzr_agent_id, studio_synced_at, run_as" as const;
-
-type AgentRow = {
-  id: string;
-  workspace_id: string;
-  project_id: string | null;
-  item_key: string | null;
-  name: string;
-  description: string | null;
-  framework: string;
-  model: string;
-  instructions: string | null;
-  tools: string[];
-  knowledge: string[];
-  temperature: number;
-  max_tokens: number;
-  lyzr_agent_id: string | null;
-  studio_synced_at: string | null;
-  run_as: string;
 };
 
 /** Scripted runs for Meeting Prep's sample agents (Simulated). */
@@ -134,24 +125,6 @@ function meetingPrepRuns(name: string, at: string): AgentRunView[] {
         "Renewal check-in, 14:00 · Dana Ortiz, Sam Lee (Acme). Dana asked for a usage report on 2 Oct and raised two slow tickets. Agenda: usage, year-two pricing, open tickets. Talking points: 1. Share the usage report. 2. Give a date for both tickets. 3. Ask who signs off year two.",
     },
   ];
-}
-
-async function agentInWorkspace(admin: AdminDb, agentId: string, workspaceId: string): Promise<AgentRow | null> {
-  if (!uuid.safeParse(agentId).success) return null;
-  const { data } = await admin.from("agents").select(AGENT_COLUMNS).eq("id", agentId).eq("workspace_id", workspaceId).maybeSingle();
-  return (data as AgentRow | null) ?? null;
-}
-
-function lyzrSpec(row: AgentRow) {
-  return {
-    name: `${row.name} · Architect`,
-    description: row.description ?? row.name,
-    role: row.name,
-    instructions: row.instructions ?? row.name,
-    output: "Plain text, as the instructions say.",
-    temperature: Number(row.temperature),
-    maxTokens: Number(row.max_tokens),
-  };
 }
 
 function runView(r: {
@@ -194,48 +167,13 @@ export async function loadAgents(input: { projectId: string }): Promise<ActionRe
   const [{ data: items }, { data: files }] = await Promise.all([
     latest
       ? db.from("items").select("id, key, title, description, proved_when, grp, status, provider, position, framework").eq("blueprint_id", latest.id)
-      : Promise.resolve({
-          data: [] as { id: string; key: string; title: string; description: string | null; proved_when: string; grp: string; status: string; provider: string | null; position: number; framework: string | null }[],
-        }),
+      : Promise.resolve({ data: [] as ItemRow[] }),
     db.from("files").select("name, path").eq("project_id", p.id).eq("kind", "upload"),
   ]);
-  const parts = (items ?? []).map((i) => ({ key: i.key, title: i.title, description: i.description, provedWhen: i.proved_when, grp: i.grp, status: i.status, provider: i.provider, position: i.position }));
-  const spec = agentGraph({ projectName: p.name, prompt: p.prompt, parts, uploads: (files ?? []).map((f) => f.name ?? f.path) });
-
   // The person's read above proved membership; settings rows are written with the service role.
   const admin = createAdminDb();
-  const { data: existing } = await admin.from("agents").select(AGENT_COLUMNS).eq("project_id", p.id);
-  const rows = (existing ?? []) as AgentRow[];
-  const projectModel = toModelChoice(p.model);
-  // New agents start on the policy's default for app agents (C-2); with governance off, on the project's model.
+  const { spec, rows } = await agentRowsFor(admin, p, items ?? [], files ?? []);
   const policies = await loadPolicies(admin, p.workspace_id);
-  const agentDefault = policies.governance ? policies.models.agentDefault : projectModel;
-  const missing = spec.agents.filter((a) => !rows.some((r) => r.item_key === a.key));
-  // Agents found in an imported repo keep their framework (B-6); every other agent runs on Lyzr Studio.
-  const frameworkOf = (key: string) => {
-    const f = (items ?? []).find((i) => i.key === key)?.framework;
-    return f === "crewai" || f === "langgraph" ? f : "lyzr";
-  };
-  if (missing.length) {
-    const { data: added } = await admin
-      .from("agents")
-      .insert(
-        missing.map((a) => ({
-          workspace_id: p.workspace_id,
-          project_id: p.id,
-          item_key: a.key,
-          name: a.name,
-          description: a.description,
-          instructions: a.instructions,
-          tools: a.tools,
-          knowledge: a.knowledge,
-          framework: frameworkOf(a.key),
-          model: spec.sample ? "claude" : agentDefault,
-        })),
-      )
-      .select(AGENT_COLUMNS);
-    rows.push(...((added ?? []) as AgentRow[]));
-  }
 
   const ids = rows.map((r) => r.id);
   const itemByKey = new Map((items ?? []).map((i) => [i.key, i]));
@@ -277,6 +215,8 @@ export async function loadAgents(input: { projectId: string }): Promise<ActionRe
       runAs: row.run_as === "studio" || row.run_as === "tool" ? row.run_as : "native",
       lyzrAgentId: row.lyzr_agent_id,
       syncedAt: row.studio_synced_at,
+      studioError: row.studio_error,
+      demo: spec.sample && a.origin === "studio",
       handoff: a.handoff,
       sample: a.sample,
     });
@@ -310,7 +250,10 @@ export async function loadAgents(input: { projectId: string }): Promise<ActionRe
       toolProviders: spec.toolProviders,
       agents,
       runs: runsByAgent,
-      lyzr: { configured: lyzrConfigured().perAgent, model: LYZR_MODEL.label },
+      lyzr: await (async () => {
+        const key = await lyzrKeyStatus(admin, p.workspace_id);
+        return { connected: key.connected, last4: key.connected ? key.last4 : null, demoReady: Boolean(demoLyzr()), model: LYZR_MODEL.label };
+      })(),
       mcpServers: policies.governance ? policies.apps.mcp.map((m) => m.name) : null,
       sampleProject: spec.sample,
     },
@@ -340,6 +283,7 @@ export async function saveAgent(input: z.input<typeof settings>): Promise<Action
   const admin = createAdminDb();
   const row = await agentInWorkspace(admin, parsed.data.agentId, ctx.workspace.id);
   if (!row) return { ok: false, message: "That agent isn't in this workspace." };
+  if (await isDemoAgent(admin, row)) return { ok: false, message: DEMO_READ_ONLY };
 
   const s = parsed.data;
   // Only models the policy allows (C-2). An agent on a model that was disallowed later has to switch first.
@@ -362,17 +306,42 @@ export async function saveAgent(input: z.input<typeof settings>): Promise<Action
   if (error) return { ok: false, message: "The settings couldn't be saved. Try again." };
   await admin.from("audit_log").insert({ workspace_id: ctx.workspace.id, actor: ctx.name, action: "agent.saved", target: row.name, details: { agent_id: row.id } });
 
-  if (framework !== "lyzr" || !lyzrConfigured().perAgent) return { ok: true, syncedAt: row.studio_synced_at, lyzrAgentId: row.lyzr_agent_id };
+  // Saved edits sync to the workspace's own Studio (M5.10): an agent already there is updated; one whose part works
+  // but isn't in Studio yet is made now. Without the workspace's key, nothing leaves Architect.
+  if (framework !== "lyzr") return { ok: true, syncedAt: row.studio_synced_at, lyzrAgentId: row.lyzr_agent_id };
+  const apiKey = await workspaceLyzrKey(admin, ctx.workspace.id);
+  if (!apiKey) return { ok: true, syncedAt: row.studio_synced_at, lyzrAgentId: row.lyzr_agent_id };
+  if (!row.lyzr_agent_id && !(await partWorks(admin, row))) return { ok: true, syncedAt: null, lyzrAgentId: null };
   try {
     let lyzrAgentId = row.lyzr_agent_id;
-    if (lyzrAgentId) await updateLyzrAgent(lyzrAgentId, lyzrSpec(next));
-    else lyzrAgentId = await createLyzrAgent(lyzrSpec(next));
-    await admin.from("agents").update({ lyzr_agent_id: lyzrAgentId, studio_synced_at: now }).eq("id", row.id);
+    if (lyzrAgentId) await updateLyzrAgent(apiKey, lyzrAgentId, lyzrSpec(next));
+    else lyzrAgentId = await createLyzrAgent(apiKey, lyzrSpec(next));
+    await admin.from("agents").update({ lyzr_agent_id: lyzrAgentId, studio_synced_at: now, studio_error: null }).eq("id", row.id);
     return { ok: true, syncedAt: now, lyzrAgentId };
   } catch (err) {
     const why = err instanceof LyzrError ? err.message : "Lyzr Studio couldn't be reached.";
+    if (!row.lyzr_agent_id) await admin.from("agents").update({ studio_error: why }).eq("id", row.id);
     return { ok: true, syncedAt: row.studio_synced_at, lyzrAgentId: row.lyzr_agent_id, warning: `Saved here. Lyzr Studio wasn't updated: ${why}` };
   }
+}
+
+/** Not in Studio yet · Retry (M5.10): makes the agent in the workspace's own Studio now. */
+export async function retryStudio(input: { agentId: string }): Promise<ActionResult<{ lyzrAgentId: string; syncedAt: string }>> {
+  const ctx = await getAppContext();
+  if (!canBuild(ctx.role)) return { ok: false, message: BUILDERS_ONLY };
+  const admin = createAdminDb();
+  const row = await agentInWorkspace(admin, input.agentId, ctx.workspace.id);
+  if (!row) return { ok: false, message: "That agent isn't in this workspace." };
+  if (await isDemoAgent(admin, row)) return { ok: false, message: DEMO_READ_ONLY };
+  if (row.lyzr_agent_id) return { ok: true, lyzrAgentId: row.lyzr_agent_id, syncedAt: row.studio_synced_at ?? new Date().toISOString() };
+  const apiKey = await workspaceLyzrKey(admin, ctx.workspace.id);
+  if (!apiKey) return { ok: false, message: "Connect your Lyzr key first, in Connections › Lyzr Studio." };
+  if (!(await partWorks(admin, row))) return { ok: false, message: "It's made in Lyzr Studio when its part is built." };
+  const r = await makeInStudio(admin, apiKey, row);
+  if ("error" in r) return { ok: false, message: `Still not in Studio: ${r.error}` };
+  await admin.from("audit_log").insert({ workspace_id: ctx.workspace.id, actor: ctx.name, action: "agent.studio_created", target: row.name, details: { agent_id: row.id, lyzr_agent_id: r.id } });
+  if (row.project_id) revalidatePath(`/p/${row.project_id}`);
+  return { ok: true, lyzrAgentId: r.id, syncedAt: new Date().toISOString() };
 }
 
 /**
@@ -393,6 +362,12 @@ export async function tryAgent(input: { agentId: string; message: string }): Pro
   if (!(await allowedModels(admin, ctx.workspace.id)).includes(toModelChoice(row.model))) {
     return { ok: false, message: `${MODEL_NOT_ALLOWED} for this agent. Switch it in Settings and save, then try it.` };
   }
+  const demo = await isDemoAgent(admin, row);
+  if (demo) {
+    // The demo agent runs on the platform's Lyzr account: a daily cap per person.
+    const { count } = await admin.from("agent_runs").select("id", { count: "exact", head: true }).eq("agent_id", row.id).eq("created_by", ctx.user.id).gte("created_at", startOfDayUtc(new Date()).toISOString());
+    if ((count ?? 0) >= DEMO_RUNS_PER_DAY) return { ok: false, message: `You've run the demo agent ${DEMO_RUNS_PER_DAY} times today, the most for one person. Try again after midnight UTC, or connect your own Lyzr key.` };
+  }
   const { data: recent } = await admin.from("agent_runs").select("created_at").eq("created_by", ctx.user.id).order("created_at", { ascending: false }).limit(TRY_IT_PER_HOUR);
   const hourAgo = Date.now() - 3600_000;
   if ((recent ?? []).filter((r) => new Date(r.created_at).getTime() > hourAgo).length >= TRY_IT_PER_HOUR) {
@@ -411,6 +386,8 @@ export async function tryAgent(input: { agentId: string; message: string }): Pro
       temperature: spec.temperature,
       maxTokens: spec.maxTokens,
       lyzrAgentId: row.lyzr_agent_id,
+      apiKey: demo ? null : await workspaceLyzrKey(admin, ctx.workspace.id),
+      demo,
       userId: `architect-${ctx.workspace.id}`,
       sessionId: `architect-${row.id}-${randomUUID()}`,
       message,
@@ -440,7 +417,7 @@ export async function tryAgent(input: { agentId: string; message: string }): Pro
   }
   const durationMs = Date.now() - started;
   const now = new Date().toISOString();
-  if (result.createdAgentId) await admin.from("agents").update({ lyzr_agent_id: result.createdAgentId, studio_synced_at: now }).eq("id", row.id);
+  if (result.createdAgentId) await admin.from("agents").update({ lyzr_agent_id: result.createdAgentId, studio_synced_at: now, studio_error: null }).eq("id", row.id);
 
   const { data: saved } = await admin
     .from("agent_runs")
@@ -499,13 +476,14 @@ export async function setAgentRun(raw: z.input<typeof runInput>): Promise<Action
   if (runAs === "studio") {
     const stopped = await budgetRefusal(admin, ctx.workspace.id);
     if (stopped) return { ok: false, message: stopped };
-    if (lyzrConfigured().perAgent) {
+    const apiKey = await workspaceLyzrKey(admin, ctx.workspace.id);
+    if (apiKey) {
       try {
-        lyzrAgentId = lyzrAgentId ?? (await createLyzrAgent(lyzrSpec(row)));
+        lyzrAgentId = lyzrAgentId ?? (await createLyzrAgent(apiKey, lyzrSpec(row)));
       } catch (err) {
         return { ok: false, message: `Lyzr Studio didn't make the agent: ${err instanceof LyzrError ? err.message : "it didn't answer"}. Nothing changed; try again.` };
       }
-    } else warning = "Lyzr Studio isn't connected here, so the Studio agent is simulated.";
+    } else warning = "Simulated · connect your Lyzr key to make this real. The Studio agent is made when you do.";
     await admin.from("agents").update({ run_as: "studio", framework: "lyzr", lyzr_agent_id: lyzrAgentId, studio_synced_at: lyzrAgentId ? now.toISOString() : null, updated_at: now.toISOString() }).eq("id", row.id);
     await admin.from("usage_ledger").insert({ workspace_id: ctx.workspace.id, project_id: row.project_id, item_id: item!.id, kind: "change", credits: CONVERT_CREDITS, note: `Converted to Lyzr Studio · ${item!.title}` });
     // The part's check runs again on the Studio agent (simulated), as after a code edit.

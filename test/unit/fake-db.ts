@@ -8,8 +8,11 @@ type Result = { data: unknown; error: null | { message: string } };
 export class FakeDb {
   tables: Record<string, Row[]> = {};
   rpcCalls: { fn: string; args: Row }[] = [];
+  /** Vault stand-in (0023): "workspace:name" → value, read by workspace_secret(). */
+  secrets: Record<string, string> = {};
   rpc = async (fn: string, args: Row): Promise<Result> => {
     this.rpcCalls.push({ fn, args });
+    if (fn === "workspace_secret") return { data: this.secrets[`${args.p_workspace}:${args.p_name}`] ?? null, error: null };
     return { data: null, error: null };
   };
 

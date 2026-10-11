@@ -3,7 +3,8 @@ import type { Role } from "@/lib/db";
 import { FakeDb } from "./fake-db";
 
 /* Agents (screen 9): settings rows made on first open, Save syncing to Lyzr Studio, and Try it on its three
-   runtimes: the node's own Studio agent, the shared Studio agent, and the gateway (Simulated, no Lyzr key). */
+   runtimes (M5.10): the node's own agent in the workspace's own Studio (its own Lyzr key), the shared demo agent on
+   the platform's key (the seeded Research agent only), and the gateway (Simulated, no workspace key). */
 
 let db: FakeDb;
 let role: Role;
@@ -51,6 +52,7 @@ const agentRow = {
   max_tokens: 800,
   lyzr_agent_id: null as string | null,
   studio_synced_at: null as string | null,
+  studio_error: null as string | null,
 };
 
 async function actions() {
@@ -70,6 +72,7 @@ beforeEach(() => {
   role = "builder";
   db = new FakeDb({
     projects: [{ id: P, workspace_id: "ws-1", name: "ticket-triage", prompt: "Classify Zendesk tickets", model: "gemini", blueprints: [{ id: "bp", version: 1 }] }],
+    blueprints: [{ id: "bp", project_id: P, version: 1 }],
     items: [
       { id: "i1", blueprint_id: "bp", key: "new-tickets-read", title: "New tickets read", description: null, proved_when: "Reads new tickets", grp: "integrations", status: "built", provider: "zendesk", position: 1 },
       { id: "i2", blueprint_id: "bp", key: "urgency", title: "Urgency and team label", description: "Labels each ticket", proved_when: "Every ticket gets one urgency", grp: "agents", status: "built", provider: null, position: 2 },
@@ -80,8 +83,16 @@ beforeEach(() => {
     agent_runs: [],
     proofs: [{ id: "pr1", item_id: "i2", attempt: 0, result: "pass", summary: "3 of 3 assertions passed", created_at: "2026-10-08T10:00:00Z" }],
     audit_log: [],
+    workspace_secrets: [{ workspace_id: "ws-1", name: "lyzr_api_key", last4: "-key", set_by_name: "Morgan Lee", set_at: "2026-10-12T09:00:00Z" }],
   });
+  db.secrets["ws-1:lyzr_api_key"] = "ws-own-key";
 });
+
+/** No workspace key: nothing goes to any Lyzr account. */
+function noWorkspaceKey() {
+  delete db.secrets["ws-1:lyzr_api_key"];
+  db.tables.workspace_secrets = [];
+}
 
 describe("loadAgents", () => {
   it("makes a settings row per agent part the first time, with instructions from the part, and lists build check runs", async () => {
@@ -94,7 +105,8 @@ describe("loadAgents", () => {
     ]);
     expect(db.tables.agents[0].instructions).toContain("Your answer must pass this check: every ticket gets one urgency.");
     expect(r.data.trigger.title).toBe("Zendesk");
-    expect(r.data.lyzr.configured).toBe(true);
+    expect(r.data.lyzr).toMatchObject({ connected: true, last4: "-key", demoReady: true });
+    expect(r.data.agents.every((a) => !a.demo)).toBe(true);
     const first = r.data.agents[0];
     expect(r.data.runs[first.id]).toEqual([expect.objectContaining({ runtime: "sample", status: "passed", output: "3 of 3 assertions passed", note: "Check run during the build" })]);
     // Opening it again doesn't make more rows.
@@ -118,7 +130,8 @@ describe("tryAgent", () => {
     const r = await tryAgent({ agentId: A, message: "Ticket: the export failed again." });
     if (!r.ok) throw new Error(r.message);
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["POST /v3/agents/", "POST /v3/inference/chat/"]);
-    expect(calls[0].key).toBe("test-lyzr");
+    // The workspace's own key, never the platform's.
+    expect(calls.every((c) => c.key === "ws-own-key")).toBe(true);
     expect(calls[0].body).toMatchObject({ name: "Urgency and team label · Architect", agent_role: "Urgency and team label", agent_instructions: "Label each ticket by urgency and team.", temperature: 0.3, model: "gemini/gemini-3.1-flash-lite" });
     expect(calls[1].body).toMatchObject({ agent_id: "studio-new-1", message: "Ticket: the export failed again.", user_id: "architect-ws-1" });
     expect(r.run).toMatchObject({ runtime: "lyzr_agent", output: "Urgent · Billing team.", status: "passed", studioAgentId: "studio-new-1" });
@@ -131,21 +144,18 @@ describe("tryAgent", () => {
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["POST /v3/inference/chat/"]);
   });
 
-  it("if Studio won't make an agent, the shared Studio agent answers with the node's role and instructions, and says so", async () => {
+  it("if the workspace's Studio won't make the agent, the run fails and says so: no other account's agent answers", async () => {
     studio.createStatus = 403;
     const { tryAgent } = await actions();
     const r = await tryAgent({ agentId: A, message: "Ticket: refund please" });
-    if (!r.ok) throw new Error(r.message);
-    expect(r.run).toMatchObject({ runtime: "lyzr_shared", studioAgentId: "shared-agent-9" });
-    expect(r.run.note).toMatch(/Lyzr Studio said 403/);
-    const chat = calls.find((c) => c.path === "/v3/inference/chat/")!;
-    expect(chat.body?.agent_id).toBe("shared-agent-9");
-    expect(String(chat.body?.message)).toMatch(/^Your role: Urgency and team label\. Labels each ticket\.\nYour task: Label each ticket by urgency and team\.\nOutput format: .+\n\nMessage: Ticket: refund please$/);
+    expect(r).toEqual({ ok: false, message: expect.stringMatching(/^Lyzr Studio didn't answer\. Lyzr Studio said 403/) });
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["POST /v3/agents/"]);
+    expect(calls.some((c) => c.key === "test-lyzr" || c.body?.agent_id === "shared-agent-9")).toBe(false);
     expect(db.tables.agents[0].lyzr_agent_id).toBeNull();
   });
 
-  it("without a Lyzr key, Gemini answers through the gateway and the run is Simulated; Studio is never called", async () => {
-    vi.stubEnv("LYZR_API_KEY", "");
+  it("without the workspace's Lyzr key, Gemini answers and the run is Simulated; no Lyzr account is called, not even the platform's", async () => {
+    noWorkspaceKey();
     const { tryAgent } = await actions();
     const r = await tryAgent({ agentId: A, message: "Ticket" });
     if (!r.ok) throw new Error(r.message);
@@ -215,8 +225,15 @@ describe("saveAgent", () => {
     expect(db.tables.agents[0].instructions).toBe("Label by urgency. Escalate VIPs.");
   });
 
-  it("without a Lyzr key it saves here only", async () => {
-    vi.stubEnv("LYZR_API_KEY", "");
+  it("an agent whose part isn't built yet is saved here only: it's made in Studio when its part works", async () => {
+    db.tables.agents[0].item_key = "draft";
+    const { saveAgent } = await actions();
+    expect(await saveAgent(settings)).toEqual({ ok: true, syncedAt: null, lyzrAgentId: null });
+    expect(calls).toEqual([]);
+  });
+
+  it("without the workspace's Lyzr key it saves here only", async () => {
+    noWorkspaceKey();
     const { saveAgent } = await actions();
     expect(await saveAgent(settings)).toEqual({ ok: true, syncedAt: null, lyzrAgentId: null });
     expect(calls).toEqual([]);
@@ -229,5 +246,77 @@ describe("saveAgent", () => {
     role = "viewer";
     expect(await saveAgent(settings)).toMatchObject({ ok: false, message: expect.stringMatching(/^Viewers can't/) });
     expect(db.tables.agents[0].instructions).toBe(agentRow.instructions);
+  });
+});
+
+describe("the shared demo agent (M5.10)", () => {
+  const R = "44444444-4444-4444-8444-444444444444";
+  beforeEach(() => {
+    db.tables.projects.push({ id: "mp", workspace_id: "ws-1", name: "Meeting Prep", prompt: "Brief me before meetings", model: "gemini", blueprints: [] });
+    db.tables.agents.push({ ...agentRow, id: R, project_id: "mp", item_key: "research", name: "Research agent" });
+  });
+
+  it("runs on the platform's shared agent, with its role in the message, even without a workspace key", async () => {
+    noWorkspaceKey();
+    const { tryAgent } = await actions();
+    const r = await tryAgent({ agentId: R, message: "Dana Ortiz, Acme" });
+    if (!r.ok) throw new Error(r.message);
+    expect(r.run).toMatchObject({ runtime: "lyzr_shared", studioAgentId: "shared-agent-9" });
+    expect(calls.map((c) => `${c.method} ${c.path} ${c.key}`)).toEqual(["POST /v3/inference/chat/ test-lyzr"]);
+    expect(String(calls[0].body?.message)).toMatch(/^Your role: Research agent\./);
+  });
+
+  it("is read-only: no saves, no Studio agent of its own", async () => {
+    const { saveAgent, retryStudio } = await actions();
+    const r = await saveAgent({ agentId: R, model: "gemini", temperature: 0.3, maxTokens: 800, instructions: "x", tools: [], knowledge: [] });
+    expect(r).toMatchObject({ ok: false, message: expect.stringMatching(/^The demo agent is shared and read-only/) });
+    expect(await retryStudio({ agentId: R })).toMatchObject({ ok: false });
+    expect(calls).toEqual([]);
+  });
+
+  it("is capped at 10 runs per person per day", async () => {
+    const today = new Date().toISOString();
+    for (let i = 0; i < 10; i++) db.tables.agent_runs.push({ id: `d${i}`, agent_id: R, created_by: "me", created_at: today });
+    const { tryAgent } = await actions();
+    expect(await tryAgent({ agentId: R, message: "hi" })).toMatchObject({ ok: false, message: expect.stringMatching(/^You've run the demo agent 10 times today/) });
+    expect(calls).toEqual([]);
+  });
+});
+
+describe("Not in Studio yet · Retry, and agents made when their part works (M5.10)", () => {
+  beforeEach(() => {
+    db.tables.agents.push({ ...agentRow, studio_error: "Lyzr Studio said 500" });
+  });
+
+  it("Retry makes the agent in the workspace's own Studio and clears the error", async () => {
+    const { retryStudio } = await actions();
+    expect(await retryStudio({ agentId: A })).toMatchObject({ ok: true, lyzrAgentId: "studio-new-1" });
+    expect(db.tables.agents[0]).toMatchObject({ lyzr_agent_id: "studio-new-1", studio_error: null });
+    expect(calls.map((c) => c.key)).toEqual(["ws-own-key"]);
+  });
+
+  it("Retry asks for the key without one, and waits for the build when the part isn't built", async () => {
+    const { retryStudio } = await actions();
+    noWorkspaceKey();
+    expect(await retryStudio({ agentId: A })).toEqual({ ok: false, message: "Connect your Lyzr key first, in Connections › Lyzr Studio." });
+    db.secrets["ws-1:lyzr_api_key"] = "ws-own-key";
+    db.tables.agents[0].item_key = "draft";
+    expect(await retryStudio({ agentId: A })).toEqual({ ok: false, message: "It's made in Lyzr Studio when its part is built." });
+    expect(calls).toEqual([]);
+  });
+
+  it("after a build, each agent whose part works is made in Studio; a failure is kept for Retry, the part still works", async () => {
+    db.tables.agents[0].studio_error = null;
+    const { syncBuiltAgents } = await import("@/server/agents-core");
+    expect(await syncBuiltAgents(db as never, P)).toBe(1);
+    // Only the built part ("urgency"); "draft" isn't built yet.
+    expect(db.tables.agents.find((a) => a.item_key === "urgency")).toMatchObject({ lyzr_agent_id: "studio-new-1" });
+    expect(db.tables.agents.find((a) => a.item_key === "draft")?.lyzr_agent_id ?? null).toBeNull();
+
+    studio.createStatus = 500;
+    db.tables.agents.find((a) => a.item_key === "urgency")!.lyzr_agent_id = null;
+    expect(await syncBuiltAgents(db as never, P)).toBe(0);
+    expect(db.tables.agents.find((a) => a.item_key === "urgency")!.studio_error).toMatch(/Lyzr Studio said 500/);
+    expect(db.tables.items.find((i) => i.key === "urgency")!.status).toBe("built");
   });
 });

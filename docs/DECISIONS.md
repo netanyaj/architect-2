@@ -273,6 +273,24 @@ From `docs/product/24-m58-fixes-and-parity.md`. No migration: everything new is 
 | View as role | Not in the app before; Netanya: add a small one, Builder and Viewer | ⋯ › View as role › Builder or Viewer (when your role is higher): `?as=viewer`; "Viewing as Viewer · Stop" at the top. Only the page changes; every server action checks the real role. In the README as the way to see each role without a second account | Netanya, 11 Oct |
 | Look and feel | Presets as a row of swatches; Apply to plan is the only action | Swatches select; **Apply to plan** saves (`launch_settings.look`, audited as before) | |
 
+## M5.10: fixes before M6 (12 Oct 2026, doc 26)
+
+**The build is simulated; agents are real in the workspace's own Lyzr Studio when a key is connected; no user's data goes to another account.**
+
+| Area | Before | We did | Why |
+|---|---|---|---|
+| Whose Lyzr account | Every user action ran on the platform's `LYZR_API_KEY`: agents from every workspace landed in one Studio account, and Attach Studio agent listed that account's agents to everyone | Each workspace connects its own key (Connections › Lyzr Studio, Owners and Admins). It's checked with Lyzr, kept encrypted in Supabase Vault (migration 0023) and never sent back; the page shows its last 4 characters. Creating, syncing, Try it and the Attach list use only that key | Nobody's agents or data land in, or are read from, another account |
+| Without a key | Gemini answered, tagged Simulated | Same, labelled "Simulated · connect your Lyzr key to make this real". Attach Studio agent shows no list, only the connect prompt | Never show another account's agents |
+| When agents are made | On the first Try it or Save | When an agent's part reaches Works in a build (after the run settles, off the request), in the workspace's own Studio; saved edits sync. A failure leaves the part working and shows "Not in Studio yet · Retry" (`agents.studio_error`) | The real product makes every plan agent in Studio when it's built |
+| Open in Studio | Disabled without a reason | Enabled with a Studio id; otherwise disabled with "Connect your Lyzr key" or "Created in Lyzr Studio when this part is built" | U6 |
+| Old Studio ids | Agents pointed at the platform account | Migration 0023 clears every `lyzr_agent_id`; a new or removed key clears that workspace's | They belonged to the platform account, not the workspace |
+| The demo agent | Research agent was "your Studio agent, reused" | The one shared, read-only demo agent on the platform key (`LYZR_AGENT_ID`): Try it only, labelled "Demo agent", 10 runs per person per day | Reviewers see a real Lyzr call without a key |
+| Model on Studio | "Model used on Studio: …" next to a truncated picker | The picker shows its full name; the line under it says Studio runs Gemini 3.1 Flash Lite (Lyzr's built-in model, free for test runs) and that the picked model is what the built app uses | Doc 26 suggested "this changes it on Save", but Studio agents stay on Lyzr's built-in credential (no provider key of ours goes to Studio), so Save doesn't change Studio's model; saying it would be false |
+| Project keys | Value checked and thrown away | Stored encrypted in Vault, never read back or shown; "Demo environment: use test values, not real secrets." | Doc 26 step 1 |
+| Demo access | Sign up first | `startDemo()`: a Supabase anonymous sign-in with its own seeded Acme Ops, as Priya. Linked from the sign-in page ("Just looking? Try the demo"); M6's landing page reuses it. 5 plans a day; deleted with their workspaces after 7 days by the daily cron | Reviewers start in one click |
+| Tour | None | A card on Home in the demo workspace: write a plan (prefilled with a Gmail prompt, so step 3 has a blocker), build, connect the app, approve the waiting Live deploy as an Admin, then Governance and the audit log. A step is done when you do it (read from your own product events); dismissing is saved per person | U2 |
+| Analytics | None | Vercel Analytics (page views) plus `analytics_events` in our own database: plan written, build started, blocker resolved, launch, view as role, tour step, demo reset, and demo started (added: did reviewers use the demo link?). Insert-only from the server, unreadable through the API; `docs/analytics.sql` reads it | For us only; no in-app card |
+
 ## Numbers we set, and how we picked them
 
 | Number | Value | How we picked it |

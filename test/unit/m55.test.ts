@@ -12,7 +12,9 @@ vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ set: () => {}, get: () => undefined }) }));
 vi.mock("@/server/origin", () => ({ origin: async () => "https://architect.test" }));
 const createLyzrAgent = vi.fn();
-vi.mock("@/server/lyzr", async (orig) => ({ ...(await orig<typeof import("@/server/lyzr")>()), lyzrConfigured: () => ({ perAgent: true, shared: false }), createLyzrAgent: (...a: unknown[]) => createLyzrAgent(...a) }));
+vi.mock("@/server/lyzr", async (orig) => ({ ...(await orig<typeof import("@/server/lyzr")>()), createLyzrAgent: (...a: unknown[]) => createLyzrAgent(...a) }));
+// The workspace has connected its own Lyzr key (M5.10).
+vi.mock("@/server/lyzr-key", () => ({ workspaceLyzrKey: async () => "ws-own-key", lyzrKeyStatus: async () => ({ connected: true, last4: "-key", setBy: "Morgan", setAt: "" }) }));
 vi.mock("@/server/db", () => ({
   createAdminDb: () => Object.assign(db, { auth: { admin: { inviteUserByEmail: (...a: unknown[]) => inviteUserByEmail(...a) } } }),
   createServerDb: async () => db,
@@ -208,7 +210,7 @@ describe("How should this agent run? (an imported CrewAI or LangGraph agent)", (
   it("Convert makes a real Studio agent from its role and instructions, charges the estimate and re-runs its check", async () => {
     const { setAgentRun } = await import("@/server/actions/agents");
     expect(await setAgentRun({ agentId: A, runAs: "studio" })).toEqual({ ok: true, lyzrAgentId: "studio-agent-1", warning: undefined });
-    expect(createLyzrAgent).toHaveBeenCalledWith(expect.objectContaining({ name: "Urgency and team label · Architect", role: "Urgency and team label", instructions: "Label each ticket." }));
+    expect(createLyzrAgent).toHaveBeenCalledWith("ws-own-key", expect.objectContaining({ name: "Urgency and team label · Architect", role: "Urgency and team label", instructions: "Label each ticket." }));
     expect(db.tables.agents[0]).toMatchObject({ run_as: "studio", framework: "lyzr", lyzr_agent_id: "studio-agent-1" });
     expect(db.tables.usage_ledger[0]).toMatchObject({ kind: "change", credits: 3, note: "Converted to Lyzr Studio · Urgency and team label" });
     expect(db.tables.items[0]).toMatchObject({ status: "building" });
