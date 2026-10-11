@@ -23,11 +23,12 @@ export function LookAndFeel({ project }: { project: ProjectWorkspace }) {
   const chosen = themeOf(picked);
   const applied = picked === project.look;
   return (
-    <section aria-labelledby="design" className="mx-auto flex w-full max-w-[860px] flex-col gap-2.5 px-6 pt-2 pb-10 max-sm:px-4">
-      <h2 id="design" className="text-title font-[650]">
+    // The plan document's column (M5.10): same max width, left edge and spacing as the sections above it.
+    <section aria-labelledby="design" className="mx-auto flex w-full max-w-[720px] flex-col gap-2.5 px-8 pb-9 max-sm:px-4">
+      <h2 id="design" className="text-sub font-[650]">
         Design
       </h2>
-      <h3 id="look" className="flex items-center gap-2 text-sub font-semibold">
+      <h3 id="look" className="flex items-center gap-2 font-semibold">
         Look and feel <SimTag title="Themes style the preview; the generated app's styles are simulated in this prototype." />
       </h3>
       <p className="text-small text-ink-2">A theme for the app. Pick one, then apply it to the plan; the preview (App) shows it.</p>

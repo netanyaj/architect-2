@@ -61,6 +61,7 @@ import { LaunchView } from "./launch-view";
 import { useRun } from "./use-run";
 import { fromStreamed, GROUP_LABEL, GROUP_ORDER, PlanDocument } from "./plan-document";
 import { usePlanWriter } from "./use-plan-writer";
+import { savePane } from "@/server/actions/preferences";
 
 type View = "app" | "agents" | "data" | "files" | "code" | "terminal";
 const VIEWS: View[] = ["app", "agents", "data", "files"];
@@ -433,8 +434,18 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   // Before Build the plan is the default; Mockup (the preview shell) and Workflow (the agents graph) are a click away.
   const view: View = allowed.includes(raw as View) ? (raw as View) : dev ? "code" : planStage ? "files" : "app";
   const fullWidth = onLaunch || (!planStage && view !== "app");
-  const [planOpen, setPlanOpen] = useState<boolean | null>(null);
-  const [chatOpen, setChatOpen] = useState<boolean | null>(null);
+  // The person's own choice wins (M5.10), saved per person: null until they touch a pane, then the per-tab default
+  // (full-width tabs fold the panes) no longer applies to it, on any tab or project, after reloads too.
+  const [planOpen, setPlanOpenState] = useState<boolean | null>(project.panes.parts ?? null);
+  const [chatOpen, setChatOpenState] = useState<boolean | null>(project.panes.chat ?? null);
+  const setPlanOpen = (open: boolean) => {
+    setPlanOpenState(open);
+    void savePane({ pane: "parts", open });
+  };
+  const setChatOpen = (open: boolean) => {
+    setChatOpenState(open);
+    void savePane({ pane: "chat", open });
+  };
   // Launch keeps the plan open and folds chat to a rail (screen 4).
   // Agents keeps the plan open too, listing the agents and the apps they connect to (screen 9).
   const showPlan = planOpen ?? (onLaunch || !fullWidth || (!planStage && view === "agents") || dev);
@@ -593,8 +604,6 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
     // The default view needs no parameter: the app after Build, the plan before it.
     if (!dev && v === (planStage ? "files" : "app")) next.delete("view");
     else next.set("view", v);
-    setPlanOpen(null);
-    setChatOpen(null);
     router.replace(`${pathname}${next.size ? `?${next}` : ""}`, { scroll: false });
   };
 
@@ -613,10 +622,11 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
     </div>
   );
 
-  const versionLabel = writing ? "writing" : failed ? "unfinished" : project.plan ? (project.plan.agreedAt ? "agreed" : "draft") : undefined;
+  // "Plan v1" once agreed (M5.10: "agreed" was jargon); a draft, a plan being written or an unfinished one says so.
+  const versionLabel = writing ? "writing" : failed ? "unfinished" : project.plan && !project.plan.agreedAt ? "draft" : undefined;
   const planPanel: ReactNode = showPlan ? (
     <PlanPanel
-      version={project.plan || writing ? `v${project.plan?.version ?? 1}${versionLabel ? ` · ${versionLabel}` : ""}` : undefined}
+      version={project.plan || writing ? `Plan v${project.plan?.version ?? 1}${versionLabel ? ` · ${versionLabel}` : ""}` : undefined}
       intro={planStage && !writing && !failed ? "Read it, change anything in plain words, then click Build. Nothing is built or charged before that." : undefined}
       progress={
         !planStage && counted.length

@@ -12,7 +12,7 @@ import type { Deployment, LaunchSettings, LiveDecision } from "@/lib/launch";
 import { connectRefusal, knownApps, locationLabel, scopeOf, type PermissionRules, type Scope } from "@/lib/policies";
 import type { PullRequestView } from "@/lib/pull-requests";
 import type { RunEvent, RunInfo } from "@/lib/sim/replay";
-import { modelAvailability } from "@/lib/gateway";
+import { modelAvailability, modelName } from "@/lib/gateway";
 import { MODEL_LABEL, resolvePick, toModelChoice, toModelPick, type ModelChoice, type ModelOption, type ModelPick } from "@/lib/models";
 import { detectTools, projectIcon, summarizeProject, type ProjectInput } from "@/lib/project-status";
 import { createAdminDb, createServerDb } from "./db";
@@ -73,6 +73,8 @@ export type PlanDetails = {
   totals: { low: number | null; likely: number | null; high: number | null; minutes: number | null };
   model: ModelChoice;
   modelLabel: string;
+  /** The model that actually wrote it, by name ("Gemini 3.5 Flash Lite"): plans are real model calls (M5.10). */
+  writtenBy: string;
   simulatedModel: boolean;
   notInThisVersion: { title: string; reason: string }[];
   questions: PlanQuestion[];
@@ -134,6 +136,8 @@ export type ProjectWorkspace = {
   people: { name: string; role: Role; you: boolean }[];
   /** View as role (M5.8): set when the page shows the project as a Builder or Viewer sees it. The server still checks the real role. */
   viewingAs?: { role: "builder" | "viewer"; real: Role };
+  /** The Parts and Chat panes as this person last left them (M5.10); absent until they've touched that pane. */
+  panes: { parts?: boolean; chat?: boolean };
   /** Coding agent tokens (F4): active ones let ?sim=byoagent play. */
   tokens: { active: number; waiting: number };
   ownerName: string;
@@ -520,8 +524,13 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
   // Comments on plan parts (BL-15), by part.
   const comments: Record<string, { id: string; body: string; author: string; at: string }[]> = {};
   for (const c of commentRows ?? []) (comments[c.item_key] ??= []).push({ id: c.id, body: c.body, author: c.author_name, at: c.created_at });
+  // How this person last left the panes (M5.10): read with their own access (RLS: their row only).
+  const { data: prefs } = await db.from("user_preferences").select("panes").eq("user_id", ctx.user.id).maybeSingle();
+  const paneRaw = (prefs?.panes ?? {}) as { parts?: string; chat?: string };
+  const paneOf = (v?: string) => (v === "open" ? true : v === "closed" ? false : undefined);
 
   return {
+    panes: { parts: paneOf(paneRaw.parts), chat: paneOf(paneRaw.chat) },
     id: p.id,
     name: p.name,
     icon: projectIcon(p.icon),
@@ -557,6 +566,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
           totals: { low: num(bp.total_low), likely: num(bp.total_likely), high: num(bp.total_high), minutes: bp.est_minutes },
           model: toModelChoice(bp.model),
           modelLabel: MODEL_LABEL[toModelChoice(bp.model)],
+          writtenBy: modelName(toModelChoice(bp.model)),
           simulatedModel: bp.simulated_model,
           notInThisVersion: (bp.not_in_this_version as PlanDetails["notInThisVersion"]) ?? [],
           questions: (questions ?? []).map((q) => ({

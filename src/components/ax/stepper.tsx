@@ -52,10 +52,13 @@ export function Stepper<T extends string = Stage>({
             <button
               type="button"
               aria-current={on ? "step" : undefined}
+              // A done step is the way back (M5.10): it looks pressable, with a tooltip, a hover fill and the focus ring.
+              title={done && onSelect ? `Go to ${s.label}` : undefined}
               onClick={() => onSelect?.(s.id)}
               className={cn(
-                "flex items-center gap-2 rounded-full border-0 py-1.5 pr-3.5 pl-2 text-body font-[550] text-ink-2",
+                "flex items-center gap-2 rounded-full border-0 py-1.5 pr-3.5 pl-2 text-body font-[550] text-ink-2 transition-colors",
                 on && "bg-primary text-on-primary",
+                done && onSelect && "cursor-pointer hover:bg-selected hover:text-ink",
                 !on && "max-[900px]:hidden",
               )}
             >

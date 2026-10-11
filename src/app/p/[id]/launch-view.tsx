@@ -238,6 +238,10 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
           <h1 className="text-title font-[650]">Launch {project.name}</h1>
           <SimTag title="Deploys are simulated in this prototype" />
         </div>
+        {/* The way back (M5.10): one quiet line under the title. */}
+        <p className="text-small text-ink-2">
+          Need a change? <TextLink className="text-small" href={`/p/${project.id}`}>Go back to Build</TextLink>
+        </p>
         <p className="text-ink-2">
           {state.fast
             ? "Go live straight from your test version. Sharing a team version first is optional. You can go back in one click."
