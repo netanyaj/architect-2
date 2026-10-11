@@ -14,6 +14,34 @@ export const MODEL_LABEL: Record<ModelChoice, string> = {
 /** A short note under a model in the picker. */
 export const MODEL_NOTE: Partial<Record<ModelChoice, string>> = { openrouter: "Free · can be slow", private: "Registered by your admin" };
 
+/** Relative cost in words (M5.8, never numbers in the picker), from the estimator's price factors. */
+export const MODEL_COST_WORDS: Record<ModelChoice, string> = {
+  openrouter: "Uses the fewest credits · can be slow",
+  gemini: "Uses fewer credits",
+  private: "Uses fewer credits · registered by your admin",
+  claude: "Uses more credits",
+  gpt: "Uses more credits",
+};
+
+/**
+ * Auto (M5.8), first in the picker and the default for new projects: "Picks a model for each step". In this prototype
+ * every step goes to the workspace's Architect model (Gemini unless the policy picks another allowed one).
+ */
+export const AUTO = "auto" as const;
+export type ModelPick = ModelChoice | typeof AUTO;
+export const AUTO_LABEL = "Auto";
+export const AUTO_NOTE = "Picks a model for each step";
+
+export function toModelPick(value: string | null | undefined): ModelPick {
+  return value === AUTO ? AUTO : toModelChoice(value);
+}
+
+/** The model a step runs on: Auto resolves to the preferred model if it's allowed, else the first allowed one. */
+export function resolvePick(value: string | null | undefined, allowed: readonly ModelChoice[], preferred: ModelChoice = DEFAULT_MODEL): ModelChoice {
+  if (value !== AUTO) return toModelChoice(value);
+  return allowed.includes(preferred) ? preferred : allowed.includes(DEFAULT_MODEL) ? DEFAULT_MODEL : (allowed[0] ?? DEFAULT_MODEL);
+}
+
 /** Gemini is the default everywhere a model isn't chosen yet. */
 export const DEFAULT_MODEL: ModelChoice = "gemini";
 

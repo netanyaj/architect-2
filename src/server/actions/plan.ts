@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { MODEL_CHOICES, MODEL_LABEL } from "@/lib/models";
+import { AUTO, MODEL_CHOICES, MODEL_LABEL } from "@/lib/models";
 import { canBuild } from "@/lib/permissions";
 import { allowedModels } from "../blueprint/write-plan";
 import { weakensCheck, type VersionItem } from "@/lib/plan-diff";
@@ -135,10 +135,11 @@ export async function editItem(input: {
 export async function setProjectModel(input: { projectId: string; model: string }): Promise<ActionResult> {
   const { ctx, refused } = await guard();
   if (refused) return { ok: false, message: refused };
-  const model = z.enum(MODEL_CHOICES).safeParse(input.model);
+  // Auto (M5.8) is always allowed: it resolves to an allowed model at each step.
+  const model = z.enum([...MODEL_CHOICES, AUTO]).safeParse(input.model);
   if (!model.success || !uuid.safeParse(input.projectId).success) return { ok: false, message: "Pick one of the models shown." };
   const admin = createAdminDb();
-  if (!(await allowedModels(admin, ctx.workspace.id)).includes(model.data)) {
+  if (model.data !== AUTO && !(await allowedModels(admin, ctx.workspace.id)).includes(model.data)) {
     return { ok: false, message: `${MODEL_LABEL[model.data]} isn't allowed in this workspace.` };
   }
   const { data, error } = await admin.from("projects").update({ model: model.data }).eq("id", input.projectId).eq("workspace_id", ctx.workspace.id).select("id");

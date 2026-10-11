@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } f
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { missingForLive } from "@/lib/keys";
 import { BUDGET_STOPPED } from "@/lib/policies";
-import { MODEL_LABEL, type ModelChoice } from "@/lib/models";
+import { AUTO, AUTO_LABEL, AUTO_NOTE, MODEL_LABEL, type ModelPick } from "@/lib/models";
 import { canBuild, canManageMembers } from "@/lib/permissions";
 import { relativeTime } from "@/lib/project-status";
 import { etaWords, withLive, type LiveRun } from "@/lib/sim/replay";
@@ -348,22 +348,23 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
     void write();
   }, [planStage, project.plan, project.prompt, canAct, writer.phase, write]);
 
-  const [modelAsk, setModelAsk] = useState<ModelChoice | null>(null);
+  const [modelAsk, setModelAsk] = useState<ModelPick | null>(null);
   const [transferOpen, setTransferOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [pending, start] = useTransition();
   const [actionError, setActionError] = useState<string>();
 
-  const switchModel = (m: ModelChoice, thenWrite: boolean) =>
+  const switchModel = (m: ModelPick, thenWrite: boolean) =>
     start(async () => {
       const r = await setProjectModel({ projectId: project.id, model: m });
       if (!r.ok) return setActionError(r.message);
       router.refresh();
-      if (thenWrite) void write({ model: m });
+      // Auto resolves on the server; a picked model is passed straight to the writer.
+      if (thenWrite) void write(m === AUTO ? {} : { model: m });
     });
 
   // The picker's label (a registered private model goes by its own name).
-  const modelName = (m: ModelChoice) => project.models.find((o) => o.choice === m)?.label ?? MODEL_LABEL[m];
+  const modelName = (m: ModelPick) => (m === AUTO ? AUTO_LABEL : (project.models.find((o) => o.choice === m)?.label ?? MODEL_LABEL[m]));
 
   // A code edit's re-run check (simulated) finishes after a few seconds: settle it then, without a reload.
   // An edited check (A-7) re-runs the same way.
@@ -745,10 +746,11 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
             Chat answers and new plan versions use {modelAsk ? modelName(modelAsk) : ""} from now on. The plan you have stays as it is, and its prices
             change only when a new version is written.
             {modelAsk && project.models.find((m) => m.choice === modelAsk)?.simulated && " In this prototype it's answered by Gemini."}
+            {modelAsk === AUTO && ` ${AUTO_NOTE}; in this prototype every step uses ${modelName(project.model)}.`}
           </DialogDescription>
           <DialogFooter className="mt-2 gap-2">
             <Button variant="quiet" onClick={() => setModelAsk(null)}>
-              Keep {modelName(project.model)}
+              Keep {modelName(project.modelPick)}
             </Button>
             <Button
               variant="primary"

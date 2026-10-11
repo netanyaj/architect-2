@@ -5,7 +5,7 @@ import "server-only";
 import type { Item as ItemT } from "@/lib/blueprint";
 import { GatewayRateLimited, GatewaySlow, GatewayUnavailable, resolveModel } from "@/lib/gateway";
 import { canBuild } from "@/lib/permissions";
-import { MODEL_LABEL, toModelChoice, type ModelChoice } from "@/lib/models";
+import { MODEL_LABEL, resolvePick, type ModelChoice } from "@/lib/models";
 import type { AdminDb } from "../db";
 import { budgetRefusal, loadPolicies } from "../policy";
 import { draftingCredits, estimate, totals as planTotals } from "../estimate";
@@ -40,6 +40,12 @@ export class PlanRefused extends Error {
 /** Models the workspace's policy allows (BL-3, C-2); every model with governance off. */
 export async function allowedModels(admin: AdminDb, workspaceId: string): Promise<ModelChoice[]> {
   return (await loadPolicies(admin, workspaceId)).models.allowed;
+}
+
+/** The model a project's step runs on: Auto (M5.8) resolves to the workspace's Architect model, if it's allowed. */
+export async function stepModel(admin: AdminDb, workspaceId: string, raw: string | null): Promise<ModelChoice> {
+  const { models } = await loadPolicies(admin, workspaceId);
+  return resolvePick(raw, models.allowed, models.architect);
 }
 
 /** The project's uploads for the planner: PDF text, and images passed to the model as images. */
@@ -81,7 +87,8 @@ export async function writePlan(
   if (!prompt) throw new PlanRefused("Describe what you want first.", 400);
   if (prompt.length > 4000) throw new PlanRefused("Keep the request under 4,000 characters.", 400);
 
-  const model = input.model ?? toModelChoice(project.model);
+  // Auto (M5.8) resolves to an allowed model for this step.
+  const model = input.model ?? (await stepModel(admin, ctx.workspace.id, project.model));
   if (!(await allowedModels(admin, ctx.workspace.id)).includes(model)) {
     throw new PlanRefused(`${MODEL_LABEL[model]} isn't allowed in this workspace. Pick another model.`, 403);
   }

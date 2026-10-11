@@ -5,11 +5,11 @@ import { z } from "zod";
 import type { Json } from "@/lib/database.types";
 import { askObject, GatewayRateLimited, GatewaySlow, ask } from "@/lib/gateway";
 import { intentByRules, type Intent } from "@/lib/intent";
-import { DEFAULT_MODEL, toModelChoice, type ModelChoice } from "@/lib/models";
+import { DEFAULT_MODEL, type ModelChoice } from "@/lib/models";
 import { MODEL_NOT_ALLOWED } from "@/lib/policies";
 import { canBuild } from "@/lib/permissions";
 import { applyDiff, ChangeDraft, conflictsOf, isEmpty, normalizeChange, type Decision, type Diff, type VersionItem } from "@/lib/plan-diff";
-import { allowedModels } from "../blueprint/write-plan";
+import { allowedModels, stepModel } from "../blueprint/write-plan";
 import { createAdminDb, type AdminDb } from "../db";
 import { estimate, totals as planTotals } from "../estimate";
 import { startRun } from "../sim/run";
@@ -176,7 +176,7 @@ export async function sendMessage(input: { projectId: string; content: string })
   const admin = createAdminDb();
   const project = await projectInWorkspace(admin, input.projectId, ctx.workspace.id);
   if (!project) return { ok: false, message: "That project isn't in this workspace." };
-  const model = toModelChoice(project.model);
+  const model = await stepModel(admin, ctx.workspace.id, project.model);
   // Never answer on a model the policy no longer allows, and never switch it silently (C-2).
   if (!(await allowedModels(admin, ctx.workspace.id)).includes(model)) {
     return { ok: false, message: `${MODEL_NOT_ALLOWED} in this workspace. Switch model to carry on. Your message wasn't sent.` };
@@ -271,7 +271,7 @@ export async function answerInstead(input: { proposalId: string }): Promise<Chat
     .from("change_proposals")
     .update({ status: "discarded", decided_by: ctx.user.id, decided_at: new Date().toISOString(), diff: { ...(proposal.diff as object), answered: true } as unknown as Json })
     .eq("id", proposal.id);
-  const model = toModelChoice(project.model);
+  const model = await stepModel(admin, ctx.workspace.id, project.model);
   try {
     const { prompt } = await chatPrompt(admin, project, plan, diff.request, 0);
     const { text } = await ask({ instructions: ANSWER, prompt, model, maxOutputTokens: 500, fast: true });
@@ -301,7 +301,7 @@ export async function turnIntoChange(input: { proposalId: string }): Promise<Cha
   if (proposal.status !== "proposed") return { ok: false, message: "This suggestion is already a change." };
   const plan = await latestPlan(admin, project.id);
   if (!plan || plan.generation !== "ready") return { ok: false, message: "Wait for the plan to finish writing." };
-  const model = toModelChoice(project.model);
+  const model = await stepModel(admin, ctx.workspace.id, project.model);
   if (!(await allowedModels(admin, ctx.workspace.id)).includes(model)) {
     return { ok: false, message: `${MODEL_NOT_ALLOWED} in this workspace. Switch model to carry on.` };
   }
@@ -367,7 +367,7 @@ export async function applyChange(input: { proposalId: string; decisions?: Recor
     return { ok: false, message: e instanceof Error ? e.message : "Decide what happens to each part first." };
   }
 
-  const model = toModelChoice(project.model);
+  const model = await stepModel(admin, ctx.workspace.id, project.model);
   const version = plan.version + 1;
   const priced = new Map(current.map((i) => [i.key, i]));
   const rows = next.map((i) => {
@@ -488,7 +488,7 @@ export async function proposeDarkTheme(input: { projectId: string }): Promise<Ch
 
   const { data: items } = await admin.from("items").select("key").eq("blueprint_id", plan.id);
   if ((items ?? []).some((i) => i.key === DARK_THEME_PART.key)) return { ok: false, message: "The plan already has a dark theme." };
-  const model = toModelChoice(project.model);
+  const model = await stepModel(admin, ctx.workspace.id, project.model);
   const part = { ...DARK_THEME_PART, grp: "features", source_quote: "Add a dark theme (from the preview's Dark view)", item_class: "screen.detail", size: "s" };
   const price = estimate({ item_class: "screen.detail", size: "s" }, model);
   const t = planTotals([price]);

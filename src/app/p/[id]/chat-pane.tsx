@@ -7,7 +7,7 @@ import { ArchitectMessage, ChatCard, chatTime, YouMessage } from "@/components/a
 import { Composer, QueueLine } from "@/components/ax/composer";
 import { ModelNotAllowed, ModelPicker } from "@/components/ax/model-picker";
 import { Option } from "@/components/ax/stage-banner";
-import type { ModelChoice } from "@/lib/models";
+import type { ModelPick } from "@/lib/models";
 import { canBuild } from "@/lib/permissions";
 import { useUi } from "@/lib/ui-store";
 import { answerInstead, applyChange, discardChange, sendMessage, turnIntoChange } from "@/server/actions/chat";
@@ -245,7 +245,7 @@ export function ChatPane({
   title?: string;
   body?: React.ReactNode;
   onCollapse: () => void;
-  onPickModel: (m: ModelChoice) => void;
+  onPickModel: (m: ModelPick) => void;
 }) {
   const router = useRouter();
   const canChange = canBuild(project.role);
@@ -255,7 +255,7 @@ export function ChatPane({
   const [error, setError] = useState<string>();
   const [pickerOpen, setPickerOpen] = useState(false);
   // The project's model was disallowed after it was picked (C-2): say so here, never switch it silently.
-  const modelAllowed = project.models.some((m) => m.choice === project.model);
+  const modelAllowed = project.modelPick === "auto" || project.models.some((m) => m.choice === project.model);
   const endRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
 
@@ -398,9 +398,12 @@ export function ChatPane({
           placeholder={canChange ? "Ask a question, or describe a change…" : "Ask about the plan, or suggest a change…"}
           label="Message Architect"
           modelPicker={
-            <ModelPicker
-              value={project.model}
+            <ModelPicker<ModelPick>
+              value={project.modelPick}
               options={project.models}
+              blocked={project.blockedModels}
+              auto
+              autoResolves={project.models.find((m) => m.choice === project.model)?.label}
               onChange={onPickModel}
               open={pickerOpen}
               onOpenChange={setPickerOpen}

@@ -10,7 +10,7 @@ vi.mock("@/server/db", () => ({ createAdminDb: () => db, createServerDb: async (
 vi.mock("@/server/workspace", () => ({
   getAppContext: async () => ({ user: { id: "me" }, name: role === "viewer" ? "Priya" : "Morgan", role, workspace: { id: "ws-1", name: "Acme" }, memberships: [] }),
 }));
-vi.mock("@/server/blueprint/write-plan", () => ({ allowedModels: async () => ["gemini", "claude"] }));
+vi.mock("@/server/blueprint/write-plan", () => ({ allowedModels: async () => ["gemini", "claude"], stepModel: async (_a: unknown, _w: string, raw: string | null) => (raw === "auto" ? "gemini" : (raw ?? "gemini")) }));
 const ask = vi.fn();
 const askObject = vi.fn();
 vi.mock("@/lib/gateway", async (orig) => ({ ...(await orig<object>()), ask: (...a: unknown[]) => ask(...a), askObject: (...a: unknown[]) => askObject(...a) }));

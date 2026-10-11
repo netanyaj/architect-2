@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { OPEN_IN_DEV } from "@/lib/dev-preference";
 import type { Json } from "@/lib/database.types";
-import { DEFAULT_MODEL, MODEL_CHOICES, MODEL_LABEL } from "@/lib/models";
+import { AUTO, MODEL_CHOICES, MODEL_LABEL } from "@/lib/models";
 import { canBuild, canManageMembers } from "@/lib/permissions";
 import { allowedModels } from "../blueprint/write-plan";
 import { prepareUploads, removeProjectFiles, type UploadSlot } from "../uploads";
@@ -57,8 +57,9 @@ export async function startProject(input: {
   const prompt = promptSchema.safeParse(input.prompt);
   if (!prompt.success) return { ok: false, message: prompt.error.issues[0].message };
   const admin = createAdminDb();
-  const model = z.enum(MODEL_CHOICES).catch(DEFAULT_MODEL).parse(input.model ?? DEFAULT_MODEL);
-  if (!(await allowedModels(admin, ctx.workspace.id)).includes(model)) {
+  // Auto (M5.8) is the default and always allowed: each step resolves it to an allowed model.
+  const model = z.enum([...MODEL_CHOICES, AUTO]).catch(AUTO).parse(input.model ?? AUTO);
+  if (model !== AUTO && !(await allowedModels(admin, ctx.workspace.id)).includes(model)) {
     return { ok: false, message: `${MODEL_LABEL[model]} isn't allowed in this workspace. Pick another model.` };
   }
 

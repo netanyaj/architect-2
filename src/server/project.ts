@@ -13,7 +13,7 @@ import { connectRefusal, knownApps, locationLabel, scopeOf, type PermissionRules
 import type { PullRequestView } from "@/lib/pull-requests";
 import type { RunEvent, RunInfo } from "@/lib/sim/replay";
 import { modelAvailability } from "@/lib/gateway";
-import { MODEL_LABEL, toModelChoice, type ModelChoice, type ModelOption } from "@/lib/models";
+import { MODEL_LABEL, resolvePick, toModelChoice, toModelPick, type ModelChoice, type ModelOption, type ModelPick } from "@/lib/models";
 import { detectTools, projectIcon, summarizeProject, type ProjectInput } from "@/lib/project-status";
 import { createAdminDb, createServerDb } from "./db";
 import { allowRuleFor, blockedServices, externalCallHolds, liveDecisions, loadPolicies, orgBudget, projectFlows, type ExternalCall, type Policies } from "./policy";
@@ -166,8 +166,12 @@ export type ProjectWorkspace = {
   otherWorkspace: { id: string; label: string } | null;
   creditsLeft: number;
   model: ModelChoice;
+  /** What the person picked: a model, or Auto (M5.8), which `model` resolves. */
+  modelPick: ModelPick;
   /** The models this workspace allows, and whether each is real here (BL-3). */
   models: ModelOption[];
+  /** Models the workspace's policy blocks: shown in the picker, disabled (M5.8). Empty with governance off. */
+  blockedModels: ModelOption[];
   messages: ChatMessage[];
   changes: ChangeCardData[];
   uploads: { id: string; name: string; mime: string | null; size: number | null; read: boolean }[];
@@ -284,12 +288,19 @@ async function loadLaunch(
  * The models a person may pick in this workspace (C-2): allowed by policy, marked simulated when there's no key, the
  * private model under its registered name. `architect` is the policy's model for new projects.
  */
-export async function modelSetupFor(workspaceId: string, loaded?: Policies): Promise<{ options: ModelOption[]; architect: ModelChoice }> {
-  const { models } = loaded ?? (await loadPolicies(createAdminDb(), workspaceId));
+export async function modelSetupFor(workspaceId: string, loaded?: Policies): Promise<{ options: ModelOption[]; architect: ModelChoice; blocked: ModelOption[] }> {
+  const policies = loaded ?? (await loadPolicies(createAdminDb(), workspaceId));
+  const { models } = policies;
   const options = modelAvailability()
     .filter((m) => models.allowed.includes(m.choice))
     .map((m) => (m.choice === "private" && models.private ? { ...m, label: models.private.name } : m));
-  return { options, architect: models.architect };
+  return { options, architect: models.architect, blocked: blockedModelsFor(policies) };
+}
+
+/** The models a policy blocks (C-2), for the picker to show disabled. The private model only once it's registered. */
+export function blockedModelsFor(policies: Policies): ModelOption[] {
+  if (!policies.governance) return [];
+  return modelAvailability().filter((m) => !policies.models.allowed.includes(m.choice) && (m.choice !== "private" || Boolean(policies.models.private)));
 }
 
 export async function modelOptionsFor(workspaceId: string, loaded?: Policies): Promise<ModelOption[]> {
@@ -428,7 +439,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     position: i.position,
     edited: Boolean(i.edited_at),
   }));
-  const projectModel = toModelChoice(p.model);
+  const projectModel = resolvePick(p.model, policies.models.allowed, policies.models.architect);
   let launch: LaunchData | null = null;
   const peopleNames = async () => {
     const { data: people } = await db.from("members").select("user_id, display_name").eq("workspace_id", p.workspace_id);
@@ -571,7 +582,9 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     otherWorkspace: p.workspace_id === ctx.workspace.id || !membership ? null : { id: membership.workspaceId, label: membership.label },
     creditsLeft,
     model: projectModel,
+    modelPick: toModelPick(p.model),
     models: await modelOptionsFor(p.workspace_id, policies),
+    blockedModels: blockedModelsFor(policies),
     messages: (msgs ?? []).map((m) => ({ id: m.id, role: m.role as ChatMessage["role"], mode: m.mode as ChatMessage["mode"], content: m.content, createdAt: m.created_at })),
     changes,
     launch,

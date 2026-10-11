@@ -10,7 +10,7 @@ import { loginUrl, PENDING_PROMPT_KEY } from "@/lib/auth-paths";
 import { createBrowserDb } from "@/lib/db";
 import { useHomePrompt } from "@/lib/home-prompt";
 import { formatBytes, UPLOAD_LIMITS } from "@/lib/uploads";
-import { DEFAULT_MODEL, type ModelChoice, type ModelOption } from "@/lib/models";
+import { AUTO, DEFAULT_MODEL, type ModelChoice, type ModelOption, type ModelPick } from "@/lib/models";
 import { startProject } from "@/server/actions/projects";
 import { finishUploads } from "@/server/actions/uploads";
 import { AddMenu, type AttachedAgent } from "./attach-agent";
@@ -31,6 +31,7 @@ export function HomeComposer({
   initialPrompt,
   models,
   defaultModel = DEFAULT_MODEL,
+  blockedModels = [],
 }: {
   signedIn: boolean;
   firstName?: string;
@@ -40,12 +41,15 @@ export function HomeComposer({
   initialPrompt?: string;
   /** The models this workspace allows (all of them when signed out). */
   models: ModelOption[];
-  /** The model new projects start on: the policy's Architect model (C-2), else Gemini. */
+  /** Blocked by the workspace's policy: listed in the picker, disabled (M5.8). */
+  blockedModels?: ModelOption[];
+  /** The model Auto uses (M5.8): the policy's Architect model (C-2), else Gemini. */
   defaultModel?: ModelChoice;
 }) {
   const router = useRouter();
   const { prompt, setPrompt, templatesOpen, setTemplatesOpen } = useHomePrompt();
-  const [model, setModel] = useState<ModelChoice>(models.find((m) => m.choice === defaultModel)?.choice ?? models[0]?.choice ?? DEFAULT_MODEL);
+  // Auto first and by default (M5.8): it picks a model for each step.
+  const [model, setModel] = useState<ModelPick>(AUTO);
   const [hello, setHello] = useState<string | null>(null);
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();
@@ -160,7 +164,16 @@ export function HomeComposer({
             ) : undefined
           }
           submitDisabledReason={signedIn ? startBlockedReason : undefined}
-          modelPicker={<ModelPicker value={model} options={models} onChange={setModel} />}
+          modelPicker={
+            <ModelPicker<ModelPick>
+              value={model}
+              options={models}
+              blocked={blockedModels}
+              auto
+              autoResolves={models.find((m) => m.choice === defaultModel)?.label ?? models[0]?.label}
+              onChange={setModel}
+            />
+          }
           contextPills={
             <>
               <AddMenu
