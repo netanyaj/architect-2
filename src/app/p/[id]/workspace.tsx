@@ -48,7 +48,7 @@ import { AgentsPlanPanel, AgentsView } from "./agents-view";
 import { CodeEditCard } from "./code-edit-card";
 import { DataView } from "./data-view";
 import { OrgBudgetBanner } from "@/components/ax/org-budget-banner";
-import { CodeView, DevActivity, downloadCode, PrStatus, TerminalView } from "./dev-view";
+import { CodeView, DevActivity, downloadCode, PrStatus } from "./dev-view";
 import { HandoffBanner, TransferDialog } from "./handoff";
 import { SyncBanner } from "./pr-card";
 import { AppPreview, buildProgressLine, BudgetBanner, BuildActivity, BuildPanel, PreviewControls, TestTheApp } from "./build-stage";
@@ -62,6 +62,7 @@ import { useRun } from "./use-run";
 import { fromStreamed, GROUP_LABEL, GROUP_ORDER, PlanDocument } from "./plan-document";
 import { usePlanWriter } from "./use-plan-writer";
 import { savePane } from "@/server/actions/preferences";
+import { DevPanel } from "./dev-panel";
 
 type View = "app" | "agents" | "data" | "files" | "code" | "terminal";
 const VIEWS: View[] = ["app", "agents", "data", "files"];
@@ -142,7 +143,8 @@ function StageBody({
     );
   if (view === "agents") return <AgentsView project={project} items={items} />;
   if (view === "code") return <CodeView project={project} items={items} live={live} />;
-  if (view === "terminal") return <TerminalView project={project} items={items} live={live} />;
+  // The Developer panel (M5.10): Terminal, Console, Build logs and Live logs, in place of the old terminal.
+  if (view === "terminal") return <DevPanel project={project} items={items} live={live} />;
   if (view === "data") return <DataView project={project} items={items} />;
   if (project.runStatus === "queued") {
     return (
@@ -588,7 +590,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
                         { value: "agents" as const, label: "Agents" },
                         { value: "data" as const, label: "Data" },
                       ]),
-                  ...(dev ? [{ value: "code" as const, label: "Code" }, ...(canAct ? [{ value: "terminal" as const, label: "Terminal" }] : [])] : []),
+                  ...(dev ? [{ value: "code" as const, label: "Code" }, ...(canAct ? [{ value: "terminal" as const, label: "Terminal & logs" }] : [])] : []),
                 ] : [];
 
   const toggleDev = () => {
