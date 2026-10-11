@@ -1,4 +1,4 @@
-/* Architect 2.0 · Soft Tray tokens (design system v3). Generated from design-system/tokens.json. Do not edit by hand. */
+/* Architect 2.0 · Soft Tray tokens (design system v4). Generated from design-system/tokens.json. Do not edit by hand. */
 @import "tailwindcss";
 
 :root {
@@ -50,6 +50,18 @@
   --ax-shadow-drawer: 0 24px 60px rgba(0,0,0,0.25);
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Brand and art (v4). FOR PICTURES ONLY: the logo mark, the greeting's full stop, the credits bar, mosaics, agent
+     glyphs and the build loader. Never on a button, badge, link, status or text next to a status. */
+  --brand-moss: #2F6B3F;
+  --brand-fern: #7FA06A;
+  --brand-lime: #C8D96F;
+  --brand-mist: #EEF1EA;
+  --brand-mist-cell: #E2E8DC;
+  --art-peony: #F28DC4;
+  --art-tangerine: #FF8A3D;
+  --art-yolk: #FFC21A;
+  --art-lilac: #B9A6F5;
 }
 
 /* Dark: Developer view default, or the user's theme setting. Set data-theme="dark" on <html>. */
@@ -77,6 +89,16 @@
   --failed: #ff8d8d;
   --failed-bg: #381616;
   --primary-disabled: #8a8983;
+  /* Brand and art: pictures only. */
+  --brand-moss: #7DBA8A;
+  --brand-fern: #5E8A5A;
+  --brand-lime: #B5C95A;
+  --brand-mist: #1F2620;
+  --brand-mist-cell: #2A332B;
+  --art-peony: #E77FB7;
+  --art-tangerine: #F27F33;
+  --art-yolk: #EDB517;
+  --art-lilac: #A893EC;
   color-scheme: dark;
 }
 
