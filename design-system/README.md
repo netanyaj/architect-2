@@ -69,6 +69,8 @@ Read `tokens.json` for the values and their usage.
 
 The status hues are never used for decoration, links, or "brand".
 
+**Status words (v4.1):** only the icon or dot carries the status colour. The word is ink-2 (ink for Blocked), so a list of rows isn't a column of colour.
+
 **Brand and art (v4): pictures only.** Eight more tokens, light and dark, for pictures and nothing else (rules in `docs/product/23-brand-layer-v4.md`):
 
 | Token | Light | Dark | Where |
@@ -125,7 +127,7 @@ Pictures replace v3's "no illustrations" rule, in these places only. All are SVG
 - **Mosaic (`MosaicThumb`):** a project's picture. One column per plan part (up to 8): moss when it works, fern while it's being built, mist when it's up next. Column heights come from the part ids, so the picture never changes between renders; exactly one cell takes the project's accent. On Home, Projects and Templates (34px), and in the project header cropped to 4 columns.
 - **Empty states:** a 72px mosaic in mist and moss with one accent, above the existing one-line text and action (Projects, Agents, Connections, Usage).
 - **Agent glyph (`AgentGlyph`):** a dotted shape in moss on a mist tile, one per role: planner (ring), extractor (slanted block), checker (diamond), notifier (bell), router (fork), writer (stacked lines), data analyst (bars), custom (dot cluster). 20px in lists, 34px on cards and graph nodes, 52px on the agent's detail. The role comes from the agent's name and description; anything unknown is custom.
-- **Build loader (`BuildLoader`):** a 56px shape morphing circle → half-circle → square → leaf → lens → rounded square through moss, lime, peony, fern, tangerine and lilac every 3.6s, with the build's progress line under it in Geist Mono ("Build 2/5 · Building Policy check"). Only in the empty preview while a build runs; small inline spinners stay. With reduced motion it's a still moss circle.
+- **Build loader (`BuildLoader`):** a 64px mist tile with the agent glyphs' 7×7 dot grid, morphing between the glyphs of the parts being built in build order (each dot fades and scales in, about 15ms apart from the centre outwards; 500ms in, held 900ms), with one dot in the project's accent. The build's progress line sits under it in Geist Mono ("Build 2/5 · Building Policy check"). Only in the empty preview while a build runs; small inline spinners stay. With reduced motion it's a still ring.
 - **Brand touches:** the logo mark's tile, the full stop after the Home greeting, and the credits bar fill are moss. Nothing else turns green.
 
 ## Using it
@@ -133,6 +135,13 @@ Pictures replace v3's "no illustrations" rule, in these places only. All are SVG
 - **Code:** the app uses `src/app/tokens.css` (generated from `tokens.json`) with Tailwind v4. Map the classes to components in `src/components/ax/`.
 
 ## Changelog
+- **v4.1 (11 Oct 2026):** a subtraction pass (doc 25).
+  - the build loader is dotted, morphing between the parts' agent glyphs;
+  - status words are ink-2; only the icon or dot is coloured;
+  - secondary buttons are quiet (tray fill, no outline); action pills are quiet icon and text; outlined pills stay for segments and status;
+  - one Simulated label per region (the preview frame, the chat, the agent panel, the Data tab), not on each message or field;
+  - "Continue where you left off" and Projects sit on the pane with hairline dividers; Projects rows lose the connector letters;
+  - headings are tracked −0.02em at 28px and up and −0.01em at 20px; controls use tabular figures; mosaics at 34px and below show 4 columns.
 - **v4 (11 Oct 2026):** the brand layer. Type, layout, the nav, components and status colours are unchanged.
   - eight brand and art tokens (greens moss, fern, lime, mist; accents peony, tangerine, yolk, lilac), for pictures only;
   - mosaic pictures for projects, templates and empty states;

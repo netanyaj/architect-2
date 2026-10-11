@@ -3,7 +3,8 @@ import { cn } from "@/lib/utils";
 import { Icon, type IconName } from "./icon";
 
 /**
- * A pressable option that sits inside the box it acts on.
+ * A pressable option that sits inside the box it acts on: quiet icon and text, filled on hover (M5.9). Outlined pills
+ * are kept for segments and status.
  * - `pressed` makes it a toggle.
  * - `soft` is a picker showing its current value (the model).
  */
@@ -29,9 +30,9 @@ export function Pill({
       onClick={(e) => (disabledReason ? e.preventDefault() : onClick?.(e))}
       className={cn(
         "inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-body font-[550] whitespace-nowrap text-ink transition-colors",
-        soft ? "border-line bg-tray hover:bg-selected" : "border-line-ctl bg-surface hover:bg-selected",
+        soft ? "border-line bg-tray hover:bg-selected" : "border-transparent bg-transparent hover:bg-selected",
         pressed && "border-ink bg-selected",
-        disabledReason && "cursor-not-allowed border-line text-ink-3 hover:bg-surface",
+        disabledReason && "cursor-not-allowed text-ink-3 hover:bg-transparent",
         className,
       )}
       {...rest}

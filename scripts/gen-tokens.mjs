@@ -57,6 +57,8 @@ const lines = [
   `  --shadow-hero: var(--ax-shadow-hero);`,
   `  --shadow-drawer: var(--ax-shadow-drawer);`,
   ...texts.map((s) => `${`  --text-${textName[s.name]}: ${s.fontSize};`.padEnd(25)}--text-${textName[s.name]}--line-height: ${s.lineHeight};`),
+  // Headings are tracked in (M5.9): −0.02em at 28px and up, −0.01em at 20px.
+  ...texts.filter((s) => s.letterSpacing?.endsWith("em")).map((s) => `  --text-${textName[s.name]}--letter-spacing: ${s.letterSpacing};`),
   `}`,
   ``,
   `body { background: var(--canvas); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 21px; font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }`,

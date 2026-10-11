@@ -141,6 +141,9 @@
   --text-sub: 16px;      --text-sub--line-height: 24px;
   --text-body: 14px;     --text-body--line-height: 21px;
   --text-small: 12.5px;  --text-small--line-height: 18px;
+  --text-display--letter-spacing: -0.02em;
+  --text-title--letter-spacing: -0.02em;
+  --text-heading--letter-spacing: -0.01em;
 }
 
 body { background: var(--canvas); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 21px; font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }

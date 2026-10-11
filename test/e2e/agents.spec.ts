@@ -99,9 +99,10 @@ test.describe("M4: Agents", () => {
     await graph.getByRole("button", { name: "Brief writer: open its settings" }).click();
     const settings = panel(page, "Brief writer");
     await expect(settings.getByLabel("Instructions")).toHaveValue(/Stay under 200 words/);
-    // Sample runs are labelled Simulated.
+    // One Simulated label for the whole panel (M5.9): Try it is real on Studio, the rest isn't. Runs say what ran them.
+    await expect(settings.getByText("Partly simulated")).toBeVisible();
     await settings.getByRole("tab", { name: "Runs" }).click();
-    await expect(settings.getByRole("listitem").filter({ hasText: "Check run during the build" }).or(settings.getByRole("listitem").filter({ hasText: "Build check" })).first().getByText("Simulated")).toBeVisible();
+    await expect(settings.getByRole("listitem").filter({ hasText: "Check run during the build" }).or(settings.getByRole("listitem").filter({ hasText: "Build check" })).first()).toBeVisible();
     await settings.getByRole("tab", { name: "Checks" }).click();
     await expect(settings.getByText("Its check")).toBeVisible();
     made.push(...(await studioAgents(id)));

@@ -79,7 +79,7 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
             </h2>
             <TextLink href="/projects">All projects</TextLink>
           </div>
-          <Tray label="Recent projects">
+          <Tray label="Recent projects" flat>
             {recent.map((p) => (
               <ListRow
                 key={p.id}

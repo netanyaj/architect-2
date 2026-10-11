@@ -338,6 +338,8 @@ export function ChatPane({
     <aside aria-label={title} className="flex min-h-0 flex-col overflow-hidden rounded-pane border border-line bg-surface shadow-pane lg:w-[344px] lg:flex-none">
       <div className="flex items-center gap-2 px-4 pt-3.5 pb-2.5">
         <h2 className="flex-1 text-sub font-semibold">{title}</h2>
+        {/* One label for the region (M5.9): answers are real; the build, pull requests, edits and sessions shown here are not. */}
+        <SimTag title="Answers come from a real model. The build, pull requests, code edits, keys and coding-agent sessions shown here are simulated in this prototype.">Builds simulated</SimTag>
         <IconButton icon="panelRight" label={`Collapse ${title.toLowerCase()}`} quiet size={32} onClick={onCollapse} />
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4 pt-1.5 pb-3" aria-live="polite">
@@ -429,7 +431,7 @@ export function ChatPane({
                 key={n}
                 type="button"
                 onClick={() => setDraft(n)}
-                className="min-h-8 max-w-full truncate rounded-full border border-line-ctl bg-surface px-3 text-left text-small font-[550] hover:bg-selected"
+                className="min-h-8 max-w-full truncate rounded-full border border-transparent bg-tray px-3 text-left text-small font-[550] hover:bg-selected"
               >
                 {n}
               </button>
@@ -507,10 +509,8 @@ export function ChatPane({
           }
         />
       </div>
-      {/* The footer row: what a message does, and room on the right for the Help button (it never covers Send). */}
-      <p className="flex min-h-12 items-center px-4 pr-16 text-small text-ink-3">
-        {canChange ? "Changes come back as a card to apply." : "Changes you ask for go to a Builder."}
-      </p>
+      {/* The footer row keeps room on the right for the Help button (it never covers Send); Viewers learn where changes go. */}
+      <p className="flex min-h-12 items-center px-4 pr-16 text-small text-ink-3">{canChange ? null : "Changes you ask for go to a Builder."}</p>
     </aside>
   );
 }

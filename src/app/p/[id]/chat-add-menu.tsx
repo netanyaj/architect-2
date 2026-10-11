@@ -117,7 +117,7 @@ export function ChatAddMenu({
           aria-label="Add files, building blocks or a look"
           title={disabledReason ?? "Add files, building blocks or a look"}
           disabled={Boolean(disabledReason)}
-          className="grid size-8 flex-none place-items-center rounded-full border border-line-ctl bg-surface text-ink hover:bg-selected disabled:cursor-not-allowed disabled:text-ink-3 disabled:hover:bg-surface"
+          className="grid size-8 flex-none place-items-center rounded-full border border-transparent bg-tray text-ink hover:bg-selected disabled:cursor-not-allowed disabled:text-ink-3 disabled:hover:bg-tray"
         >
           <Icon name="plus" size="sm" />
         </DropdownMenuTrigger>

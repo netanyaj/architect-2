@@ -1,5 +1,4 @@
 import { Icon } from "@/components/ax/icon";
-import { SimTag } from "@/components/ax/pill";
 import { StatusMark, StatusWord } from "@/components/ax/status-mark";
 import { editLine, type CodeEditView } from "@/lib/code-edits";
 
@@ -10,7 +9,6 @@ export function CodeEditCard({ edit }: { edit: CodeEditView }) {
       <div className="flex flex-wrap items-center gap-2">
         <Icon name="code" size="sm" />
         <h3 className="flex-1 font-[650]">{editLine(edit)}</h3>
-        <SimTag title="Edits are simulated: nothing is written to a repo, and the check run is simulated." />
       </div>
       <p className="text-small text-ink-2">
         {edit.byKind === "coding_agent" ? `Coding agent: ${edit.by} · via MCP` : `By ${edit.by}`} · +{edit.added} −{edit.removed}

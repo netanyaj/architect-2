@@ -178,7 +178,7 @@ export function ProjectsList({ projects, creditsUsed, canStart }: { projects: Ro
       )}
 
       {shown.length ? (
-        <Tray label="Projects">
+        <Tray label="Projects" flat>
           {shown.map((p) => (
             <ListRow
               key={p.id}
@@ -191,7 +191,6 @@ export function ProjectsList({ projects, creditsUsed, canStart }: { projects: Ro
                   {p.ownerName} · {relativeTime(p.updatedAt)} · {p.creditsUsed.toLocaleString("en-US")} credits
                 </span>
               }
-              tools={p.tools}
               status={
                 <span className="inline-block w-[210px]">
                   <StatusWord status={p.summary.next.status === "todo" ? "blocked" : p.summary.next.status} className={p.summary.next.status === "todo" ? "text-ink-2" : undefined}>

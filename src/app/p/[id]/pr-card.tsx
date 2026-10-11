@@ -23,7 +23,6 @@ export function PrCard({ pr, project }: { pr: PullRequestView; project: ProjectW
         <h3 className="flex-1 font-[650]">
           PR #{pr.number} · {pr.title}
         </h3>
-        <SimTag title="Pull requests are simulated in this prototype: nothing is written to GitHub." />
       </div>
       <p className="text-small text-ink-2">
         <code className="font-mono">{pr.branch}</code> → <code className="font-mono">{pr.base}</code> on {project.repo} · <span className="font-semibold text-ink">{pr.status === "open" && pr.checks === "failing" ? "Checks failing" : step}</span>

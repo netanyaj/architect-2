@@ -293,7 +293,7 @@ function AddMenu({ label, options, onPick, disabledReason, emptyNote }: { label:
   if (disabledReason) return <Pill icon="plus" disabledReason={disabledReason}>{label}</Pill>;
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-line-ctl bg-surface px-3 text-body font-[550] whitespace-nowrap text-ink hover:bg-selected">
+      <DropdownMenuTrigger className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-transparent bg-tray px-3 text-body font-[550] whitespace-nowrap text-ink hover:bg-selected">
         <Icon name="plus" size="sm" />
         {label}
       </DropdownMenuTrigger>
@@ -380,7 +380,7 @@ function RunChoice({ agent, readOnly, onChanged }: { agent: AgentView; readOnly:
             className={cn("flex flex-col rounded-tile border px-3 py-2 text-left", picked === c.value ? "border-[1.5px] border-ink" : "border-line hover:border-line-ctl")}
           >
             <span className="flex items-center gap-2 font-semibold">
-              {c.label} {c.value !== "studio" && <SimTag title={c.value === "native" ? `${fw} agents run natively behind the agent interface; in this prototype Gemini answers Try it for them.` : "Wrapping as a tool is simulated."} />}
+              {c.label}
             </span>
             <span className="text-small text-ink-2">{c.about}</span>
           </button>
@@ -431,7 +431,7 @@ function SettingsTab({ agent, draft, setDraft, project, readOnly, lyzrModel, mcp
         ) : (
           <>
         <label htmlFor={`fw-${agent.id}`} className="flex items-center gap-2 text-small font-semibold text-ink-2">
-          Runs on {draft.framework !== "lyzr" && <SimTag title="CrewAI and LangGraph agents run natively behind the same agent interface; in this prototype Gemini answers Try it for them." />}
+          Runs on
         </label>
         <Select id={`fw-${agent.id}`} value={draft.framework ?? "lyzr"} aria-disabled={reason ? true : undefined} title={reason} onChange={(e) => !reason && setDraft({ ...draft, framework: e.target.value as Draft["framework"] })} wrapperClassName="self-start">
           <option value="lyzr">Lyzr Studio</option>
@@ -492,7 +492,7 @@ function SettingsTab({ agent, draft, setDraft, project, readOnly, lyzrModel, mcp
       </div>
       <div className="flex flex-col gap-1.5">
         <span className="flex items-center gap-2 text-small font-semibold text-ink-2">
-          Tools <SimTag title="Tools are simulated in this prototype. Try it runs the instructions on Lyzr Studio without them." />
+          Tools
         </span>
         <div className="flex flex-wrap gap-1.5">
           <Chips values={draft.tools} readOnly={readOnly} onRemove={(v) => setDraft({ ...draft, tools: draft.tools.filter((t) => t !== v) })} />
@@ -512,7 +512,7 @@ function SettingsTab({ agent, draft, setDraft, project, readOnly, lyzrModel, mcp
       </div>
       <div className="flex flex-col gap-1.5">
         <span className="flex items-center gap-2 text-small font-semibold text-ink-2">
-          Knowledge <SimTag title="Knowledge bases are simulated in this prototype." />
+          Knowledge
         </span>
         <div className="flex flex-wrap gap-1.5">
           <Chips values={draft.knowledge} readOnly={readOnly} onRemove={(v) => setDraft({ ...draft, knowledge: draft.knowledge.filter((k) => k !== v) })} />
@@ -556,7 +556,7 @@ function RunRow({ run, defaultOpen }: { run: AgentRunView; defaultOpen?: boolean
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1 font-[650]">
             {run.runtime === "sample" ? (run.note ?? RUNTIME_WORDS.sample) : `Try it · ${RUNTIME_WORDS[run.runtime]}`}
-            {!real && <SimTag />}
+
           </span>
           <span className="text-small text-ink-2">
             {[when, run.modelLabel, seconds(run.durationMs)].filter(Boolean).join(" · ")}
@@ -633,11 +633,11 @@ function TryTab({ agent, dirty, lyzr, readOnly, onRan }: { agent: AgentView; dir
           </>
         ) : agent.framework !== "lyzr" ? (
           <>
-            {runtimeLine(agent.framework).text}. Here Gemini answers in its place. <SimTag />
+            {runtimeLine(agent.framework).text}. Here Gemini answers in its place.
           </>
         ) : (
           <>
-            Lyzr Studio isn&apos;t set up here, so Gemini answers through Architect&apos;s gateway. <SimTag />
+            Lyzr Studio isn&apos;t set up here, so Gemini answers through Architect&apos;s gateway.
           </>
         )}
         {dirty && " It uses the saved settings: save first to try your changes."}
@@ -658,7 +658,7 @@ function TryTab({ agent, dirty, lyzr, readOnly, onRan }: { agent: AgentView; dir
           <span className="flex flex-col gap-0.5">
             <span className="flex flex-wrap items-center gap-2 text-small font-semibold text-ink">
               {RUNTIME_WORDS[last.runtime]}
-              {last.runtime === "gateway" && <SimTag />}
+
             </span>
             <span className="text-small text-ink-2">{[last.modelLabel, seconds(last.durationMs), "saved to Runs"].filter(Boolean).join(" · ")}</span>
           </span>
@@ -699,7 +699,7 @@ function ChecksTab({ agent, item }: { agent: AgentView; item: WorkspaceItem | un
         <h4 className="font-[650]">Its check</h4>
         <p>{detail.check.description}</p>
         <p className="text-small text-ink-2">
-          Written by the checker before the code, {new Date(detail.check.writtenAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}. <SimTag />
+          Written by the checker before the code, {new Date(detail.check.writtenAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.
         </p>
       </div>
       <ul className="flex flex-col gap-1.5">
@@ -718,12 +718,22 @@ function ChecksTab({ agent, item }: { agent: AgentView; item: WorkspaceItem | un
   );
 }
 
+/** The agent panel's one Simulated label. Try it is real on Lyzr Studio; tools, knowledge and checks never are. */
+function PanelSimTag({ agent, lyzr }: { agent: AgentView; lyzr: AgentsData["lyzr"] }) {
+  const realRuns = lyzr.configured && agent.framework === "lyzr";
+  return realRuns ? (
+    <SimTag title="Try it runs for real on Lyzr Studio. Tools, knowledge, checks and the build are simulated in this prototype.">Partly simulated</SimTag>
+  ) : (
+    <SimTag title="Gemini answers Try it in this agent's place; tools, knowledge, checks and the build are simulated in this prototype." />
+  );
+}
+
 function SyncLine({ agent, lyzr }: { agent: AgentView; lyzr: AgentsData["lyzr"] }) {
   if (agent.framework !== "lyzr") {
     const rt = runtimeLine(agent.framework);
     return (
       <span className="flex flex-1 flex-wrap items-center gap-2 text-small text-ink-2">
-        {rt.text} <SimTag />
+        {rt.text}
       </span>
     );
   }
@@ -741,7 +751,7 @@ function SyncLine({ agent, lyzr }: { agent: AgentView; lyzr: AgentsData["lyzr"] 
   return (
     <>
       <span className="flex flex-1 flex-wrap items-center gap-2 text-small text-ink-2">
-        Synced with Lyzr Studio · just now <SimTag title="This agent is made on Lyzr Studio on its first Try it or Save." />
+        Synced with Lyzr Studio · just now
       </span>
       <Button size="sm" iconAfter="external" disabledReason={lyzr.configured ? "It's made on Lyzr Studio on its first Try it or Save." : "Lyzr Studio isn't set up here."}>
         Open in Studio
@@ -798,6 +808,8 @@ function AgentPanel({
           <h2 className="text-sub font-semibold">{agent.name}</h2>
           <span className="text-small text-ink-2">{agent.description}</span>
         </div>
+        {/* One label for the panel (M5.9): what's real here depends on where the agent runs. */}
+        <PanelSimTag agent={agent} lyzr={data.lyzr} />
         <IconButton icon="close" label="Close settings" quiet size={32} onClick={onClose} />
       </div>
       <div className="flex flex-wrap items-center gap-2 px-4 pb-1">

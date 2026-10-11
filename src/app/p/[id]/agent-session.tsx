@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { SimTag } from "@/components/ax/pill";
 import { agentSession, sessionLine, sessionPart, type AgentSession, type SessionStep } from "@/lib/mcp";
 import { cn } from "@/lib/utils";
 import { recordAgentSession } from "@/server/actions/agent-session";
@@ -59,7 +58,7 @@ export function AgentSessionLines({ project, state }: { project: ProjectWorkspac
     return (
       <section aria-label="Coding agent session" className="flex w-full min-w-0 flex-col gap-1 rounded-card border border-line bg-surface px-3.5 py-3 text-small">
         <span className="flex items-center gap-2 font-semibold">
-          Coding agent session <SimTag />
+          Coding agent session
         </span>
         <span className="text-ink-2">
           {state.blocked}{" "}
@@ -73,7 +72,7 @@ export function AgentSessionLines({ project, state }: { project: ProjectWorkspac
   return (
     <section aria-label="Coding agent session" className="flex w-full min-w-0 flex-col gap-1.5 rounded-card border border-line bg-surface px-3.5 py-3">
       <span className="flex items-center gap-2 text-small font-semibold">
-        Coding agent session <SimTag title="A scripted session (?sim=byoagent). No coding agent is connected in this prototype." />
+        Coding agent session
       </span>
       <ol aria-label="Coding agent activity" className="flex flex-col gap-1 text-small">
         {state.played.map((s) => (

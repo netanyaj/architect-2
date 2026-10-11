@@ -24,7 +24,7 @@ export function AddMenu({ onAddFiles, attached, onAttach, disabledReason }: { on
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-line-ctl bg-surface px-3 text-body font-[550] whitespace-nowrap text-ink hover:bg-selected">
+        <DropdownMenuTrigger className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-transparent px-3 text-body font-[550] whitespace-nowrap text-ink hover:bg-selected">
           <Icon name="plus" size="sm" />
           Add files, agents or tools
         </DropdownMenuTrigger>

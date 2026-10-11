@@ -3,10 +3,21 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Icon, type IconName } from "./icon";
 
-/** A warm tray that groups white rows. */
-export function Tray({ children, className, label }: { children: ReactNode; className?: string; label?: string }) {
+/**
+ * A warm tray that groups white rows. `flat` (M5.9) drops the tray box: the rows sit on the pane, split by hairlines,
+ * and a row tints on hover instead of drawing its own card.
+ */
+export function Tray({ children, className, label, flat = false }: { children: ReactNode; className?: string; label?: string; flat?: boolean }) {
   return (
-    <ul aria-label={label} className={cn("flex flex-col gap-1.5 rounded-pane border border-line bg-tray p-1.5", className)}>
+    <ul
+      aria-label={label}
+      className={cn(
+        flat
+          ? "flex flex-col [&>li]:rounded-none [&>li]:border-0 [&>li]:border-b [&>li]:border-line [&>li]:px-2 [&>li:hover]:border-line [&>li:hover]:bg-tray [&>li:last-child]:border-b-0"
+          : "flex flex-col gap-1.5 rounded-pane border border-line bg-tray p-1.5",
+        className,
+      )}
+    >
       {children}
     </ul>
   );

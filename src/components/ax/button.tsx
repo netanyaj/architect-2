@@ -10,7 +10,8 @@ const base =
 
 const variants: Record<Variant, string> = {
   primary: "bg-primary border-primary text-on-primary font-semibold hover:opacity-90",
-  secondary: "bg-surface border-line-ctl text-ink hover:bg-selected",
+  // Quiet (M5.9, doc 25): a tray fill and no outline, so the one ink primary is the only loud control.
+  secondary: "bg-tray border-transparent text-ink hover:bg-selected",
   quiet: "bg-transparent border-transparent text-ink hover:bg-selected",
 };
 
@@ -117,7 +118,7 @@ export function IconButton({
       title={label}
       className={cn(
         "grid flex-none place-items-center rounded-full border text-ink transition-colors hover:bg-selected",
-        quiet ? "border-transparent bg-transparent" : "border-line-ctl bg-surface",
+        quiet ? "border-transparent bg-transparent" : "border-transparent bg-tray",
         size === 32 ? "size-8" : size === 36 ? "size-9" : "size-[38px]",
         className,
       )}

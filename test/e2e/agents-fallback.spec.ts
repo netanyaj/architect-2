@@ -37,7 +37,8 @@ test.describe("M4: Agents without Lyzr Studio (Simulated)", () => {
     const answer = settings.getByRole("region", { name: "Answer" });
     await expect(answer).toBeVisible({ timeout: 60_000 });
     await expect(answer).toContainText("Answered by Gemini through Architect");
-    await expect(answer.getByText("Simulated")).toBeVisible();
+    // The panel carries the one Simulated label (M5.9); the answer says Gemini gave it.
+    await expect(settings.getByText("Simulated", { exact: true }).first()).toBeVisible();
     await expect(answer.getByRole("link", { name: "Open in Studio" })).toHaveCount(0);
 
     const { data: agent } = await db.from("agents").select("id, lyzr_agent_id").eq("project_id", p!.id).eq("item_key", "urgency-and-team-label").single();
@@ -46,6 +47,6 @@ test.describe("M4: Agents without Lyzr Studio (Simulated)", () => {
     expect(runs).toEqual([{ runtime: "gateway", status: "passed" }]);
 
     await settings.getByRole("tab", { name: "Runs" }).click();
-    await expect(settings.getByRole("button", { name: /Try it · Answered by Gemini through Architect/ })).toContainText("Simulated");
+    await expect(settings.getByRole("button", { name: /Try it · Answered by Gemini through Architect/ })).toBeVisible();
   });
 });

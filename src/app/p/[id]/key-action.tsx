@@ -49,7 +49,6 @@ export function KeyAction({ item, project, primary = false }: { item: WorkspaceI
             Skip
           </TextLink>
         )}
-        <SimTag title="The key is checked and thrown away in this prototype; only that it's set is saved" />
       </span>
       {error && (
         <span role="alert" className="text-small font-semibold text-failed">

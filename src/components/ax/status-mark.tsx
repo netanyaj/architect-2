@@ -42,16 +42,26 @@ const tone: Record<Status, string> = {
   todo: "text-ink-2 shadow-[inset_0_0_0_1.5px_var(--line-ctl)]",
 };
 
-// Words take the status colour only where they need attention. Finished ("works") gets a quiet check
-// and an ink word, never a green one (design-system rule: finished rows get only a quiet check).
+// Only the icon or dot carries the status colour (M5.9, doc 25): the word is ink-2, and ink for Blocked, so a list of
+// rows doesn't become a column of colour. It's still icon plus word. ink-2 is 9.7:1 on surface in light, and more in dark.
 const wordTone: Record<Status, string> = {
-  works: "text-ink",
-  building: "text-building",
-  attention: "text-attention",
-  approval: "text-approval",
-  failed: "text-failed",
+  works: "text-ink-2",
+  building: "text-ink-2",
+  attention: "text-ink-2",
+  approval: "text-ink-2",
+  failed: "text-ink-2",
   blocked: "text-ink",
-  todo: "text-ink",
+  todo: "text-ink-2",
+};
+
+const dotTone: Record<Status, string> = {
+  works: "bg-works",
+  building: "bg-building",
+  attention: "bg-attention",
+  approval: "bg-approval",
+  failed: "bg-failed",
+  blocked: "bg-ink",
+  todo: "bg-ink-3",
 };
 
 /** The 20px circle with the status icon. Decorative unless given a label. */
@@ -96,7 +106,7 @@ export function StatusWord({
 }) {
   return (
     <span className={cn("inline-flex items-center gap-1.5 text-body font-[650]", wordTone[status], className)}>
-      <i className={cn("block size-2 flex-none rounded-full bg-current", status === "works" && "bg-works")} aria-hidden="true" />
+      <i className={cn("block size-2 flex-none rounded-full", dotTone[status])} aria-hidden="true" />
       {children}
     </span>
   );
