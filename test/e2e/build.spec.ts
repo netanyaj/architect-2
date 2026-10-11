@@ -37,8 +37,8 @@ test.describe("M3: the simulated build", () => {
     // Settled: the Launch stage, and the database has the real outcome.
     await expect(page.getByText(/^(Build finished|The change is built)\./).first()).toBeVisible({ timeout: 60_000 });
     const db = adminDb();
-    const { data: runs } = await db.from("runs").select("status, kind").eq("project_id", id);
-    expect(runs).toEqual([{ status: "done", kind: "build" }]);
+    // The chat says so as the replay ends; the server settles the run a moment later.
+    await expect.poll(async () => (await db.from("runs").select("status, kind").eq("project_id", id)).data, { timeout: 30_000 }).toEqual([{ status: "done", kind: "build" }]);
     const { data: usage } = await db.from("usage_ledger").select("kind, note").eq("project_id", id).order("kind");
     expect(usage!.map((u) => u.kind)).toEqual(["build", "fix"]);
     expect(usage![1].note).toBe("Fix · Talking points generator, try 1 of 3");
@@ -59,6 +59,10 @@ test.describe("M3: the simulated build", () => {
     // The chat says what it did, with the steps behind it.
     const chat = page.getByRole("complementary", { name: "Chat" });
     await chat.getByRole("button", { name: /Show what I did \(\d+ steps\)/ }).click();
+    // One line per part (M5.8); each opens to its steps.
+    const groups = chat.getByRole("list", { name: "Steps by part" }).locator(":scope > li > button");
+    expect(await groups.count()).toBeGreaterThan(1);
+    await chat.getByRole("list", { name: "Steps by part" }).getByRole("button", { name: /Talking points generator/ }).click();
     await expect(chat.getByText("Building", { exact: true }).first()).toBeVisible();
   });
 
@@ -107,8 +111,9 @@ test.describe("M3: the simulated build", () => {
     await expect(banner).toHaveCount(0, { timeout: 20_000 });
     await expect(page.getByText(/^(Build finished|The change is built)\./).first()).toBeVisible({ timeout: 90_000 });
     const db = adminDb();
-    const { data: runs } = await db.from("runs").select("status").eq("project_id", id).order("started_at");
-    expect(runs!.map((r) => r.status)).toEqual(["paused_budget", "done"]);
+    await expect
+      .poll(async () => ((await db.from("runs").select("status").eq("project_id", id).order("started_at")).data ?? []).map((r) => r.status), { timeout: 30_000 })
+      .toEqual(["paused_budget", "done"]);
   });
 
   test("A-9 and the preview dock: a Blocked part's choice works while the build plays; sizes, Point at something, problems, Test the app", async ({ page }) => {

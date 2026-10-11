@@ -72,7 +72,7 @@ test.describe("M5.5", () => {
     // Resources: Documentation, Join Discord, Keyboard shortcuts, Trash, What's new (3 + View all), Theme cycling.
     await nav.getByRole("button", { name: "Resources" }).click();
     const rmenu = page.getByRole("menu");
-    for (const name of [/^Documentation/, /^Join Discord/, "Keyboard shortcuts", /^Trash/, /^View all/]) await expect(rmenu.getByRole("menuitem", { name })).toBeVisible();
+    for (const name of [/^Documentation/, /^Join Discord/, "Keyboard shortcuts", /^Trash( \d+)?$/, /^View all/]) await expect(rmenu.getByRole("menuitem", { name })).toBeVisible();
     const theme = rmenu.getByRole("menuitem", { name: /^Theme: / });
     await expect(theme).toHaveAttribute("title", /^Theme: /);
     const before = await page.locator("html").getAttribute("data-theme-choice");
