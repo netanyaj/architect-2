@@ -105,8 +105,8 @@ test.describe("M5.5", () => {
     await page.getByRole("button", { name: "Leave Developer view" }).click();
     await page.waitForURL((u) => !u.search.includes("dev=1"));
 
-    // The personal setting: Always.
-    await page.goto("/settings");
+    // The personal setting: Always (after the page is interactive).
+    await page.goto("/settings", { waitUntil: "networkidle" });
     const always = page.getByRole("group", { name: "Open projects in Developer view" }).getByRole("button", { name: "Always" });
     await always.click();
     await expect(always).toHaveAttribute("aria-pressed", "true");
@@ -138,5 +138,50 @@ test.describe("M5.5", () => {
     await confirm.getByRole("button", { name: "Delete project" }).click();
     await page.waitForURL(/\/projects$/);
     expect((await db.from("projects").select("id").eq("id", vt!.id)).data).toEqual([]);
+  });
+
+  test("Developer view terminal: real-mapped commands, the sandbox line for the rest, audited; none for Viewers; Open PR", async ({ page }) => {
+    await start(page);
+    const db = adminDb();
+    const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
+    const ws = m!.workspace_id;
+    const { data: mp } = await db.from("projects").select("id").eq("workspace_id", ws).eq("name", "Meeting Prep").single();
+    await page.goto(`/p/${mp!.id}?dev=1&view=terminal`);
+    const term = page.getByRole("log", { name: "Terminal" });
+    const type = async (cmd: string) => {
+      await page.getByLabel("Command").fill(cmd);
+      await page.getByLabel("Command").press("Enter");
+    };
+    await type("npm test");
+    await expect(term).toContainText("PASS  Brief writer", { timeout: 30_000 });
+    await expect(term).toContainText(/\d+ passed/);
+    await type("ls");
+    await expect(term).toContainText("agents/");
+    await type("cat README.md");
+    await expect(term).toContainText("# Meeting Prep");
+    await type("git status");
+    await expect(term).toContainText("On branch architect/plan-v1");
+    await type("curl https://example.com");
+    await expect(term).toContainText("Runs in your project's sandbox in Architect 2.0");
+    const { data: audit } = await db.from("audit_log").select("target").eq("workspace_id", ws).eq("action", "terminal.command");
+    expect(audit!.map((a) => a.target)).toEqual(expect.arrayContaining(["Meeting Prep: npm test", "Meeting Prep: curl https://example.com"]));
+
+    // A repo project: Open PR (Simulated).
+    await db.from("projects").update({ repo_full_name: "netanyaj/ticket-triage" }).eq("id", mp!.id);
+    await page.goto(`/p/${mp!.id}?dev=1`);
+    await page.getByRole("button", { name: "Open PR" }).click();
+    await expect(page.getByText(/PR #12/).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open PR" })).toHaveAttribute("aria-disabled", "true");
+
+    // Viewers: no terminal.
+    await db.from("members").update({ role: "viewer" }).eq("workspace_id", ws).eq("user_id", user.id);
+    try {
+      await page.goto(`/p/${mp!.id}?dev=1&view=terminal`);
+      await expect(page.getByRole("tab", { name: "Code" })).toBeVisible();
+      await expect(page.getByRole("tab", { name: "Terminal" })).toHaveCount(0);
+      await expect(page.getByLabel("Command")).toHaveCount(0);
+    } finally {
+      await db.from("members").update({ role: "owner" }).eq("workspace_id", ws).eq("user_id", user.id);
+    }
   });
 });

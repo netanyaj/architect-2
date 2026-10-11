@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ax/button";
 import { Icon } from "@/components/ax/icon";
 import { SimTag } from "@/components/ax/pill";
@@ -26,6 +26,8 @@ import type { LiveRun } from "@/lib/sim/replay";
 import { useUi } from "@/lib/ui-store";
 import { cn } from "@/lib/utils";
 import { loadRepoFile, loadRepoView, saveCodeEdit, type RepoView } from "@/server/actions/dev";
+import { openPullRequestNow } from "@/server/actions/pull-requests";
+import { runCommand } from "@/server/actions/terminal";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 
 /* Developer view (screen 8). Simulated from the plan and its run, except an imported repo's files, which are real. */
@@ -84,8 +86,39 @@ export function PrStatus({ project, items }: { project: ProjectWorkspace; items:
         <span aria-hidden="true">·</span>
         <span className={cn(info.status === "failing" && "text-failed", info.status === "running" && "text-building")}>{words}</span>
       </span>
+      {project.repo && canBuild(project.role) && <OpenPrButton project={project} openPr={pr?.status === "open" ? pr.number : null} />}
       <SimTag title="Branches and pull requests are simulated in this prototype." />
     </span>
+  );
+}
+
+/** Open PR (Simulated): one open pull request at a time, from the branch into main. */
+function OpenPrButton({ project, openPr }: { project: ProjectWorkspace; openPr: number | null }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string>();
+  return (
+    <>
+      <Button
+        size="sm"
+        disabledReason={openPr ? `PR #${openPr} is already open.` : pending ? "Opening…" : undefined}
+        onClick={() =>
+          start(async () => {
+            setError(undefined);
+            const r = await openPullRequestNow({ projectId: project.id });
+            if (!r.ok) return setError(r.message);
+            router.refresh();
+          })
+        }
+      >
+        Open PR
+      </Button>
+      {error && (
+        <span role="alert" className="text-small font-semibold text-failed">
+          {error}
+        </span>
+      )}
+    </>
   );
 }
 
@@ -538,7 +571,8 @@ function useTerminal(project: ProjectWorkspace, items: WorkspaceItem[], live: Li
 /** The last few terminal lines under the code (screen 8). */
 function TerminalStrip({ project, items, live }: { project: ProjectWorkspace; items: WorkspaceItem[]; live: LiveRun }) {
   const lines = useTerminal(project, items, live).slice(-4);
-  if (!lines.length) return null;
+  // No terminal for Viewers (M5.5).
+  if (!lines.length || !canBuild(project.role)) return null;
   return (
     <div aria-label="Terminal, latest" className="border-t border-line bg-tray px-4 py-2.5 font-mono text-[12.5px] leading-[1.7]">
       <TermLines lines={lines} />
@@ -546,17 +580,75 @@ function TerminalStrip({ project, items, live }: { project: ProjectWorkspace; it
   );
 }
 
-/** Terminal: a simulated session that replays the run's commands. */
+/**
+ * Terminal: the build's commands, replayed as it runs (simulated), and below them your own commands. A few map to the
+ * project's real data (npm test and pytest re-run the checks; git status and git diff show the edits; ls and cat read
+ * the files); anything else says it runs in the sandbox in Architect 2.0. Nothing runs in a shell. Builders and up.
+ */
 export function TerminalView({ project, items, live }: { project: ProjectWorkspace; items: WorkspaceItem[]; live: LiveRun }) {
-  const lines = useTerminal(project, items, live);
+  const replay = useTerminal(project, items, live);
+  const router = useRouter();
+  const [mine, setMine] = useState<TerminalLine[]>([]);
+  const [cleared, setCleared] = useState(false);
+  const [command, setCommand] = useState("");
+  const [history, setHistory] = useState<string[]>([]);
+  const [pending, start] = useTransition();
+  const inputId = useId();
+  const log = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    log.current?.scrollTo({ top: log.current.scrollHeight });
+  }, [mine.length]);
+  const run = (line: string) =>
+    start(async () => {
+      setCommand("");
+      setHistory((h) => [line, ...h].slice(0, 20));
+      setMine((m) => [...m, { kind: "cmd", text: line }]);
+      const r = await runCommand({ projectId: project.id, command: line });
+      if (!r.ok) return setMine((m) => [...m, { kind: "fail", text: r.message }]);
+      if (r.clear) {
+        setCleared(true);
+        return setMine([]);
+      }
+      setMine((m) => [...m, ...r.lines]);
+      // A re-run of the checks writes proofs: let the rest of the page catch up.
+      if (/^(npm (run )?test|pytest)$/.test(line)) router.refresh();
+    });
+  const lines = [...(cleared ? [] : replay), ...mine];
   return (
     <div className="flex min-h-0 flex-1 flex-col px-3 pb-3">
       <div className="flex items-center gap-2 pb-2 text-small text-ink-2">
-        The build&apos;s commands, replayed as it runs. <SimTag />
+        The build&apos;s commands, replayed as it runs, then yours. Try <code className="font-mono">npm test</code>, <code className="font-mono">git status</code> or <code className="font-mono">ls</code>; type <code className="font-mono">help</code> for the list. <SimTag title="The build's commands are replayed. Your commands map to the project's data; nothing runs in a shell." />
       </div>
-      <div role="log" aria-label="Terminal" className="min-h-0 flex-1 overflow-auto rounded-card border border-line bg-tray p-4 font-mono text-[12.5px] leading-[1.7]">
+      <div ref={log} role="log" aria-label="Terminal" className="min-h-0 flex-1 overflow-auto rounded-t-card border border-line bg-tray p-4 font-mono text-[12.5px] leading-[1.7]">
         {lines.length ? <TermLines lines={lines} /> : <span className="text-ink-2">{project.run?.startedAt ? "No commands were recorded for this build." : "Nothing has run yet. The session starts when you click Build."}</span>}
       </div>
+      <form
+        className="flex items-center gap-2 rounded-b-card border border-t-0 border-line bg-surface px-3 py-2 font-mono text-[12.5px]"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (command.trim() && !pending) run(command.trim());
+        }}
+      >
+        <label htmlFor={inputId} className="text-ink-2">
+          $<span className="sr-only"> Command</span>
+        </label>
+        <input
+          id={inputId}
+          value={command}
+          onChange={(e) => setCommand(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowUp" && history.length) {
+              e.preventDefault();
+              setCommand(history[0]);
+            }
+          }}
+          maxLength={200}
+          autoComplete="off"
+          spellCheck={false}
+          placeholder={pending ? "Running…" : "Type a command"}
+          className="min-h-8 flex-1 bg-transparent outline-none"
+        />
+      </form>
     </div>
   );
 }

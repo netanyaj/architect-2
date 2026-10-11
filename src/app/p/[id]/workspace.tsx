@@ -298,7 +298,9 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   const raw = params.get("view");
   const planStage = project.status === "draft";
   const dev = params.get("dev") === "1";
-  const allowed: View[] = dev ? (planStage ? ["files", "code", "terminal"] : DEV_VIEWS) : VIEWS;
+  // No terminal for Viewers (M5.5): Developer view shows them the code and the files only.
+  const devViews: View[] = (planStage ? (["files", "code", "terminal"] as View[]) : DEV_VIEWS).filter((v) => v !== "terminal" || canBuild(project.role));
+  const allowed: View[] = dev ? devViews : VIEWS;
   // Before Build the plan is the default; Mockup (the preview shell) and Workflow (the agents graph) are a click away.
   const view: View = allowed.includes(raw as View) ? (raw as View) : dev ? "code" : planStage ? "files" : "app";
   const fullWidth = onLaunch || (!planStage && view !== "app");
@@ -609,12 +611,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
                         { value: "data" as const, label: "Data" },
                         { value: "files" as const, label: "Files" },
                       ]),
-                  ...(dev
-                    ? [
-                        { value: "code" as const, label: "Code" },
-                        { value: "terminal" as const, label: "Terminal" },
-                      ]
-                    : []),
+                  ...(dev ? [{ value: "code" as const, label: "Code" }, ...(canAct ? [{ value: "terminal" as const, label: "Terminal" }] : [])] : []),
                 ]}
               />
               {dev && (
