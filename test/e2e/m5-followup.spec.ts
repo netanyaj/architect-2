@@ -170,9 +170,25 @@ test.describe("M5 follow-up", () => {
     const { data: mp } = await db.from("projects").select("id").eq("workspace_id", workspace).eq("name", "Meeting Prep").single();
     await page.goto("/settings#plan");
     const plans = page.getByRole("list", { name: "Plans" });
-    await expect(plans.getByRole("listitem").filter({ hasText: "Enterprise" })).toContainText("Your plan");
+    const custom = plans.getByRole("listitem").filter({ hasText: "Let's talk" });
+    await expect(custom).toContainText("Your plan");
+    await expect(custom).toContainText("Runs in Lyzr Cloud or your own AWS VPC");
+    // Today's Architect plans: prices monthly or yearly, credits, the watermark and priority support, "Soon" items.
+    const starter = plans.getByRole("listitem").filter({ hasText: "$20 a month" });
+    await expect(starter).toContainText("$20 a month");
+    await expect(starter).toContainText("No “Built with Architect” watermark");
+    await expect(starter).toContainText("Priority support");
+    await expect(starter).toContainText("SoonCustom agent branding");
+    await page.getByRole("group", { name: "Billing" }).getByRole("button", { name: "Yearly" }).click();
+    await expect(plans.getByRole("listitem").filter({ hasText: "$17 a month, billed yearly" })).toContainText("Saves $40 a year");
+    await expect(plans.getByRole("listitem").filter({ hasText: "$35 a month" })).toContainText("Popular");
+    // A top-up (simulated) adds to this month's allowance.
+    const { data: before } = await db.from("workspaces").select("credits_total").eq("id", workspace).single();
+    await page.getByRole("button", { name: "500 credits · $5" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Added 500 credits." })).toBeVisible();
+    expect((await db.from("workspaces").select("credits_total").eq("id", workspace).single()).data!.credits_total).toBe(Number(before!.credits_total) + 500);
     await plans.getByRole("button", { name: "Switch to Free" }).click();
-    await expect(plans.getByRole("listitem").filter({ hasText: "Free" })).toContainText("Your plan");
+    await expect(plans.getByRole("listitem").filter({ hasText: "Free credits to start" })).toContainText("Your plan");
 
     await page.goto(`/p/${mp!.id}/launch`);
     const badge = page.getByRole("switch", { name: "Show “Built with Architect”" });
@@ -182,7 +198,7 @@ test.describe("M5 follow-up", () => {
 
     await page.goto("/settings#plan");
     await plans.getByRole("button", { name: "Switch to Pro" }).click();
-    await expect(plans.getByRole("listitem").filter({ hasText: "Pro" })).toContainText("Your plan");
+    await expect(plans.getByRole("listitem").filter({ hasText: "$40 of credits a month" })).toContainText("Your plan");
     await page.goto(`/p/${mp!.id}/launch`);
     await badge.click();
     // The switch flips at once; the save follows.

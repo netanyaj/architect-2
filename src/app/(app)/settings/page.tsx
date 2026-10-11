@@ -5,7 +5,7 @@ import { assignableRolesFor, canBuild, canChangeMember, canManageMembers, canRes
 import { signOut } from "@/server/actions/auth";
 import { createAdminDb, createServerDb } from "@/server/db";
 import { origin } from "@/server/origin";
-import { listProjects } from "@/server/queries";
+import { getNavData, listProjects } from "@/server/queries";
 import { GitHubProblem, listRepos } from "@/server/github";
 import { importPageData } from "@/server/import";
 import { userOpenInDev, userTheme } from "@/server/theme";
@@ -30,6 +30,7 @@ export default async function SettingsPage() {
     .order("created_at");
 
   const manage = canManageMembers(ctx.role);
+  const nav = await getNavData(ctx);
   const projects = await listProjects(ctx);
   const theme = await userTheme();
   // GitHub (BL-11): each connected installation and the repos it can read, from GitHub itself.
@@ -95,7 +96,7 @@ export default async function SettingsPage() {
         projects={projects.map((p) => ({ id: p.id, name: p.name, budget: p.budgetCredits, spent: p.creditsUsed }))}
       />
 
-      <PlanSection plan={ctx.workspace.plan} canEdit={manage} />
+      <PlanSection plan={ctx.workspace.plan} canEdit={manage} credits={{ left: nav.credits.left, total: nav.credits.total }} />
 
       <GovernanceSection on={ctx.workspace.governanceEnabled} canEdit={manage} />
 

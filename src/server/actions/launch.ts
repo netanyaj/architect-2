@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { BADGE_FREE, canHideBadge, PLANS } from "@/lib/plans";
+import { BADGE_FREE, canHideBadge, PLANS, TOP_UPS } from "@/lib/plans";
 import { THEMES } from "@/lib/themes";
 import type { Json } from "@/lib/database.types";
 import { missingForLive } from "@/lib/keys";
@@ -278,6 +278,20 @@ export async function setWorkspacePlan(input: { plan: string }): Promise<ActionR
   await admin.from("audit_log").insert({ workspace_id: ctx.workspace.id, actor: ctx.name, action: "plan.changed", target: ctx.workspace.name, details: { from: ctx.workspace.plan, to: plan.id, simulated: true } as Json });
   revalidatePath("/", "layout");
   return { ok: true };
+}
+
+/** Top up credits (Settings › Plan, simulated: no payment). Owners and Admins; the credits join this month's allowance. */
+export async function topUpCredits(input: { credits: number }): Promise<ActionResult<{ total: number }>> {
+  const ctx = await getAppContext();
+  if (!canManageMembers(ctx.role)) return { ok: false, message: "Only Owners and Admins can buy credits." };
+  const pack = TOP_UPS.find((t) => t.credits === input.credits);
+  if (!pack) return { ok: false, message: "Pick one of the top-ups shown." };
+  const admin = createAdminDb();
+  const total = ctx.workspace.creditsTotal + pack.credits;
+  await admin.from("workspaces").update({ credits_total: total }).eq("id", ctx.workspace.id);
+  await admin.from("audit_log").insert({ workspace_id: ctx.workspace.id, actor: ctx.name, action: "credits.topped_up", target: ctx.workspace.name, details: { credits: pack.credits, price: pack.price, simulated: true } as Json });
+  revalidatePath("/", "layout");
+  return { ok: true, total };
 }
 
 /** Marketplace (review gap 4): your workspace or Public Agentlets, with today's listing form. */

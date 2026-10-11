@@ -19,7 +19,7 @@ vi.mock("@/server/db", () => ({
 }));
 vi.mock("@/server/workspace", async (orig) => ({
   ...(await orig<typeof import("@/server/workspace")>()),
-  getAppContext: async () => ({ user: { id: "me", email: "me@example.com" }, name: "Rita", role, workspace: { id: "ws-1", name: "Acme Ops (Enterprise)", governanceEnabled: true, plan: "enterprise", kind: "demo" }, memberships: [] }),
+  getAppContext: async () => ({ user: { id: "me", email: "me@example.com" }, name: "Rita", role, workspace: { id: "ws-1", name: "Acme Ops (Enterprise)", governanceEnabled: true, plan: "enterprise", kind: "demo", creditsTotal: 2000 }, memberships: [] }),
 }));
 
 describe("pending invites: Resend link and email (People)", () => {
@@ -259,5 +259,26 @@ describe("New workspace (the workspace menu)", () => {
     expect(r.ok).toBe(true);
     expect(db.tables.workspaces[0]).toMatchObject({ name: "Marketing team", kind: "personal", governance_enabled: false, plan: "free" });
     expect(db.tables.members[0]).toMatchObject({ user_id: "me", role: "owner", status: "active" });
+  });
+});
+
+describe("Settings › Plan: today's Architect plans and a top-up (simulated)", () => {
+  it("the plans mirror today's Architect; a top-up adds to the month's allowance, Owners and Admins only", async () => {
+    const { PLANS } = await import("@/lib/plans");
+    expect(PLANS.map((p) => [p.label, p.monthly, p.annual])).toEqual([
+      ["Free", "$0", "$0"],
+      ["Starter", "$20 a month", "$17 a month, billed yearly"],
+      ["Pro", "$40 a month", "$35 a month, billed yearly"],
+      ["Custom", "Let's talk", "Let's talk"],
+    ]);
+    db = new FakeDb({ workspaces: [{ id: "ws-1", credits_total: 2000 }], audit_log: [] });
+    const { topUpCredits } = await import("@/server/actions/launch");
+    role = "builder";
+    expect((await topUpCredits({ credits: 500 })).ok).toBe(false);
+    role = "owner";
+    expect(await topUpCredits({ credits: 7 })).toEqual({ ok: false, message: "Pick one of the top-ups shown." });
+    expect(await topUpCredits({ credits: 500 })).toEqual({ ok: true, total: 2500 });
+    expect(db.tables.workspaces[0].credits_total).toBe(2500);
+    expect(db.tables.audit_log[0]).toMatchObject({ action: "credits.topped_up", details: { credits: 500, simulated: true } });
   });
 });
