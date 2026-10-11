@@ -33,6 +33,9 @@
   .pointing section:hover { outline: 2px dashed var(--blue); outline-offset: 3px; }
   .empty { color: var(--ink2); padding: 40px 0; text-align: center; }
   @media (max-width: 640px) { .app { grid-template-columns: 1fr; } nav { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); } }
+  /* The Dark view (M5.8): status colours that stay readable on a dark background. */
+  [data-scheme="dark"] { --blue: #8ab4ff; --amber: #f0c060; --amber-bg: #3a2c10; }
+  [data-scheme="dark"] .ok { color: #6fd08f; }
 </style>
 </head>
 <body>
@@ -107,6 +110,9 @@
     const r = document.documentElement.style;
     for (const [k, val] of Object.entries({ "--bg": v.bg, "--ink": v.ink, "--ink2": v.ink2, "--line": v.line, "--sel": v.sel, "--accent": v.accent, "--font": v.font, "--radius": v.radius })) if (val) r.setProperty(k, val);
     document.documentElement.dataset.theme = e.data.id || "";
+    // The preview's Light / Dark view (M5.8): form controls and scrollbars follow it too.
+    document.documentElement.dataset.scheme = e.data.scheme || "light";
+    r.colorScheme = e.data.scheme || "light";
   });
 </script>
 </body>

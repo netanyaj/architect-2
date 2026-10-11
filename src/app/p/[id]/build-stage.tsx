@@ -14,8 +14,10 @@ import { canBuild, canManageMembers } from "@/lib/permissions";
 import { providerName } from "@/lib/providers";
 import { previewState } from "@/lib/sim/preview";
 import type { LiveRun } from "@/lib/sim/replay";
-import { themeOf } from "@/lib/themes";
+import { usePreviewScheme } from "@/lib/preview-scheme";
+import { hasDarkTheme, previewVars, themeOf } from "@/lib/themes";
 import { useUi } from "@/lib/ui-store";
+import { proposeDarkTheme } from "@/server/actions/chat";
 import { raiseBudgetAndContinue, setWaitingAside, stopHere } from "@/server/actions/run";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 import { ConnectButton } from "./connect-button";
@@ -203,6 +205,33 @@ export function TestTheApp({ items }: { items: WorkspaceItem[] }) {
   );
 }
 
+/** The Dark view of an app with no dark theme (M5.8): it says so, and "Add to plan" makes the change card in chat. */
+function NoDarkTheme({ project }: { project: ProjectWorkspace }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string>();
+  const canAct = canBuild(project.role);
+  return (
+    <div role="status" className="absolute top-[58px] left-1/2 z-10 flex max-w-[calc(100%-24px)] -translate-x-1/2 flex-wrap items-center gap-x-3 gap-y-1 rounded-full border border-line bg-surface py-1 pr-1 pl-3.5 text-small shadow-pop">
+      <span>{error ?? "This app has no dark theme yet"}</span>
+      <Button
+        size="sm"
+        disabledReason={!canAct ? "Viewers can't change the plan." : pending ? "Adding…" : undefined}
+        onClick={() =>
+          start(async () => {
+            setError(undefined);
+            const r = await proposeDarkTheme({ projectId: project.id });
+            if (!r.ok) setError(r.message);
+            router.refresh();
+          })
+        }
+      >
+        {pending ? "Adding…" : "Add to plan"}
+      </Button>
+    </div>
+  );
+}
+
 /** The app in its Test version, with the dock: sizes, Point at something, N problems (BL-6). */
 export function AppPreview({ project, items }: { project: ProjectWorkspace; items: WorkspaceItem[] }) {
   const { partKey, openPart, sendToChat } = useUi();
@@ -223,9 +252,16 @@ export function AppPreview({ project, items }: { project: ProjectWorkspace; item
     post({ type: "highlight", part: section, label });
   }, [section, label]);
   useEffect(() => post({ type: "point", on: pointing }), [pointing]);
-  // Look and feel (Files): the chosen theme, sent to the preview as CSS variables.
+  // Look and feel (Plan › Design): the chosen theme, sent to the preview as CSS variables. The Light / Dark view
+  // (M5.8) picks its light or dark variables; an app without a dark theme stays light, with a note saying so.
   const theme = themeOf(project.look);
-  useEffect(() => post({ type: "theme", id: theme.id, vars: theme.vars }), [theme]);
+  const [scheme, setScheme] = usePreviewScheme(project.id);
+  const dark = hasDarkTheme(theme.id, items);
+  const shown = scheme === "dark" && dark ? "dark" : "light";
+  const vars = previewVars(theme.id, shown);
+  const themeMessage = { type: "theme", id: theme.id, vars, scheme: shown };
+  const themeKey = JSON.stringify(themeMessage);
+  useEffect(() => post(JSON.parse(themeKey)), [themeKey]);
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
       if (e.origin !== window.location.origin || e.data?.type !== "select") return;
@@ -268,7 +304,8 @@ export function AppPreview({ project, items }: { project: ProjectWorkspace; item
               ))}
             </div>
           )}
-          <PreviewDock size={size} onSizeChange={setSize} pointing={pointing} onPointToggle={() => setPointing((p) => !p)} problems={preview.problems.length} onOpenProblems={() => setConsole((c) => !c)} />
+          {scheme === "dark" && !dark && <NoDarkTheme project={project} />}
+          <PreviewDock size={size} onSizeChange={setSize} scheme={scheme} onSchemeChange={setScheme} pointing={pointing} onPointToggle={() => setPointing((p) => !p)} problems={preview.problems.length} onOpenProblems={() => setConsole((c) => !c)} />
         </>
       }
     >
@@ -282,7 +319,7 @@ export function AppPreview({ project, items }: { project: ProjectWorkspace; item
           title={`${project.name}, test version`}
           src={preview.src}
           onLoad={() => {
-            post({ type: "theme", id: theme.id, vars: theme.vars });
+            post(themeMessage);
             post({ type: "point", on: pointing });
             if (selected) post({ type: "highlight", part: preview.highlight(selected), label: selected.title });
           }}

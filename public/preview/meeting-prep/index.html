@@ -38,6 +38,9 @@
   .ok { color: #1d6b3a; font-weight: 600; } .wait { color: var(--amber); font-weight: 600; }
   @media (max-width: 640px) { .app { grid-template-columns: 1fr; } nav { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); } nav h1 { display: none; } main { grid-template-columns: 1fr; } .list { border-right: 0; border-bottom: 1px solid var(--line); } }
   @media (prefers-reduced-motion: reduce) { .fade { animation: none; } }
+  /* The Dark view (M5.8): status colours that stay readable on a dark background. */
+  [data-scheme="dark"] { --blue: #8ab4ff; --amber: #f0c060; --amber-bg: #3a2c10; }
+  [data-scheme="dark"] .ok { color: #6fd08f; }
 </style>
 </head>
 <body>
@@ -151,6 +154,9 @@
     const r = document.documentElement.style;
     for (const [k, val] of Object.entries({ "--bg": v.bg, "--ink": v.ink, "--ink2": v.ink2, "--line": v.line, "--sel": v.sel, "--accent": v.accent, "--font": v.font, "--radius": v.radius })) if (val) r.setProperty(k, val);
     document.documentElement.dataset.theme = e.data.id || "";
+    // The preview's Light / Dark view (M5.8): form controls and scrollbars follow it too.
+    document.documentElement.dataset.scheme = e.data.scheme || "light";
+    r.colorScheme = e.data.scheme || "light";
   });
 </script>
 </body>

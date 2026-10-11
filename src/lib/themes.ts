@@ -17,3 +17,38 @@ export const THEMES: { id: ThemeId; label: string; about: string; vars: ThemeVar
 export function themeOf(id: unknown): (typeof THEMES)[number] {
   return THEMES.find((t) => t.id === id) ?? THEMES[0];
 }
+
+/**
+ * The preview's Dark view (M5.8): each preset's dark counterpart. Graphite is dark already. Used only when the app's
+ * plan has a dark theme; otherwise the Dark view says so and offers to add one.
+ */
+const DARK: Record<ThemeId, Omit<ThemeVars, "font" | "radius">> = {
+  soft: { bg: "#15171b", ink: "#eceef2", ink2: "#a3a9b5", line: "#2f343c", sel: "#262a31", accent: "#eceef2" },
+  ocean: { bg: "#0d1b26", ink: "#e3eef7", ink2: "#93acc0", line: "#23394a", sel: "#17293a", accent: "#6cb4f0" },
+  forest: { bg: "#121a12", ink: "#e4ece0", ink2: "#9db097", line: "#2a3a29", sel: "#1c281b", accent: "#7fc27f" },
+  sunset: { bg: "#1f1410", ink: "#fbe9de", ink2: "#c9a593", line: "#3d2a20", sel: "#2c1d16", accent: "#fb8c4c" },
+  graphite: { bg: "#15171b", ink: "#eceef2", ink2: "#a3a9b5", line: "#2f343c", sel: "#262a31", accent: "#8ab4ff" },
+  editorial: { bg: "#1a1816", ink: "#f1ece4", ink2: "#b2aba0", line: "#37322b", sel: "#26221d", accent: "#e3a27a" },
+};
+
+export type PreviewScheme = "light" | "dark";
+
+/** The variables the preview gets for a scheme: the preset itself, or its dark counterpart. */
+export function previewVars(id: ThemeId, scheme: PreviewScheme): ThemeVars {
+  const t = themeOf(id);
+  return scheme === "dark" ? { ...t.vars, ...DARK[t.id] } : t.vars;
+}
+
+/** The part that adds a dark theme, when "Add to plan" makes the change card. */
+export const DARK_THEME_PART = {
+  key: "dark-theme",
+  title: "Dark theme",
+  description: "A dark colour scheme that follows the device's setting, with a switch to change it.",
+  proved_when: "With the device set to dark, every screen shows light text on a dark background and passes a 4.5:1 contrast check.",
+};
+
+/** Whether the app has a dark theme: a dark-only preset (Graphite), or a part in the plan that adds one. */
+export function hasDarkTheme(look: ThemeId, parts: { key: string; title: string; description?: string | null; status?: string }[]): boolean {
+  if (look === "graphite") return true;
+  return parts.some((p) => p.status !== "dropped" && p.status !== "deferred" && (p.key === DARK_THEME_PART.key || /\bdark (theme|mode)\b/i.test(`${p.title} ${p.description ?? ""}`)));
+}

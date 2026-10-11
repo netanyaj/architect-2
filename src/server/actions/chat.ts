@@ -15,6 +15,7 @@ import { estimate, totals as planTotals } from "../estimate";
 import { startRun } from "../sim/run";
 import { budgetRefusal } from "../policy";
 import { getAppContext } from "../workspace";
+import { DARK_THEME_PART } from "@/lib/themes";
 import type { ActionResult } from "./members";
 
 const ITEM_FIELDS =
@@ -467,4 +468,49 @@ export async function discardChange(input: { proposalId: string }): Promise<Acti
   await admin.from("change_proposals").update({ status: "discarded", decided_by: ctx.user.id, decided_at: new Date().toISOString() }).eq("id", proposal.id);
   revalidatePath(`/p/${proposal.project_id}`);
   return { ok: true };
+}
+
+/**
+ * "Add to plan" from the preview's Dark view (M5.8), when the app has no dark theme: a change card that adds one, with
+ * its price, in chat. No model call: the part is always the same. Nothing changes until Apply. One open card at a time.
+ */
+export async function proposeDarkTheme(input: { projectId: string }): Promise<ChatResult> {
+  const ctx = await getAppContext();
+  if (!canBuild(ctx.role)) return { ok: false, message: "Viewers can't change the plan. Ask an Owner, Admin or Builder." };
+  const admin = createAdminDb();
+  const project = await projectInWorkspace(admin, input.projectId, ctx.workspace.id);
+  if (!project) return { ok: false, message: "That project isn't in this workspace." };
+  const plan = await latestPlan(admin, project.id);
+  if (!plan || plan.generation !== "ready") return { ok: false, message: "Wait for the plan to finish writing." };
+  const { data: open } = await admin.from("change_proposals").select("id, diff").eq("project_id", project.id).eq("status", "proposed");
+  const already = (open ?? []).find((p) => ((p.diff ?? {}) as Diff).add?.some((a) => a.key === DARK_THEME_PART.key));
+  if (already) return { ok: true, proposalId: already.id, intent: "change" };
+
+  const { data: items } = await admin.from("items").select("key").eq("blueprint_id", plan.id);
+  if ((items ?? []).some((i) => i.key === DARK_THEME_PART.key)) return { ok: false, message: "The plan already has a dark theme." };
+  const model = toModelChoice(project.model);
+  const part = { ...DARK_THEME_PART, grp: "features", source_quote: "Add a dark theme (from the preview's Dark view)", item_class: "screen.detail", size: "s" };
+  const price = estimate({ item_class: "screen.detail", size: "s" }, model);
+  const t = planTotals([price]);
+  const { data: msg } = await admin.from("messages").insert({ project_id: project.id, role: "user", mode: "build", content: "Add a dark theme to the app.", model }).select("id").single();
+  const { data: reply } = await admin
+    .from("messages")
+    .insert({ project_id: project.id, role: "architect", mode: "build", content: "I'd add a dark theme that follows each person's device setting, checked for contrast on every screen.", model })
+    .select("id")
+    .single();
+  const { data: proposal } = await admin
+    .from("change_proposals")
+    .insert({
+      project_id: project.id,
+      message_id: reply?.id ?? msg?.id ?? null,
+      diff: { add: [part], change: [], remove: [], base_version: plan.version } as unknown as Json,
+      estimate_likely: t.likely,
+      est_minutes: t.minutes,
+      reply: "I'd add a dark theme.",
+      status: "proposed",
+    })
+    .select("id")
+    .single();
+  revalidatePath(`/p/${project.id}`);
+  return { ok: true, proposalId: proposal?.id, intent: "change" };
 }
