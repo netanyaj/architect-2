@@ -35,6 +35,12 @@ export const GROUP_ORDER = ["features", "integrations", "agents", "data", "quali
  * A part's estimate in words (A-4): its credit range, a time range, how sure the estimate is and what drives it.
  * Time scales with credits (BG: 45 s per typical 12-credit unit), so the range follows the credit range.
  */
+/** "Done when …", once: some checks already start with it (the seeded ones), most don't. */
+export function doneWhen(provedWhen: string): string {
+  const rest = provedWhen.replace(/^\s*done when\s+/i, "");
+  return `Done when ${rest.charAt(0).toLowerCase()}${rest.slice(1)}`;
+}
+
 export function estimateLine(item: Pick<WorkspaceItem, "range" | "estimate" | "seconds" | "confidence" | "driver">): string {
   const parts: string[] = [];
   if (item.range) parts.push(`${item.range.low}–${item.range.high} cr`);
@@ -234,7 +240,7 @@ function ItemRow({ item, editReason, fromRepo = false, projectId, comments }: { 
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className={item.status === "dropped" ? "font-semibold text-ink-3 line-through" : "font-semibold"}>{item.title}</span>
           {item.description && <span className="text-small text-ink-2">{item.description}</span>}
-          <span className="text-small text-ink-2">Done when {item.provedWhen.charAt(0).toLowerCase() + item.provedWhen.slice(1)}</span>
+          <span className="text-small text-ink-2">{doneWhen(item.provedWhen)}</span>
           {item.statusDetail && <span className="text-small font-semibold text-ink-2">{item.statusDetail}</span>}
           {item.sourceQuote && (
             <span className="text-small text-ink-3">

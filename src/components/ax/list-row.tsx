@@ -43,7 +43,7 @@ export function IconTile({ icon, dark = false, className }: { icon: IconName; da
 export function ToolInitials({ tools }: { tools: string[] }) {
   if (tools.length === 0) return null;
   return (
-    <span className="inline-flex gap-[3px]" aria-label={`Tools: ${tools.join(", ")}`}>
+    <span role="img" className="inline-flex gap-[3px]" aria-label={`Tools: ${tools.join(", ")}`}>
       {tools.map((t) => (
         <span
           key={t}

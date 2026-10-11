@@ -70,7 +70,7 @@ export function LyzrCard({ status, isAdmin }: { status: LyzrCardStatus; isAdmin:
           <label htmlFor={inputId} className="text-small font-semibold text-ink-2">
             Lyzr API key
           </label>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 max-sm:flex-col max-sm:items-stretch">
             <input
               id={inputId}
               type="password"

@@ -12,12 +12,13 @@
   nav { border-right: 1px solid var(--line); padding: 18px 10px; display: flex; flex-direction: column; gap: 2px; }
   nav h1 { font-size: 15px; margin: 0 8px 4px; }
   nav .sim { margin: 0 8px 14px; display: inline-block; align-self: flex-start; border: 1px dashed #b9bec8; border-radius: 99px; padding: 0 8px; font-size: 12px; color: var(--ink2); }
-  nav a { padding: 8px 10px; border-radius: 8px; color: var(--ink2); text-decoration: none; }
+  #nav { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  nav a { padding: 8px 10px; border-radius: 8px; color: var(--ink2); text-decoration: none; overflow-wrap: anywhere; }
   nav a[aria-current="page"] { background: var(--sel); color: var(--accent, var(--ink)); font-weight: 600; }
   main { padding: 22px 26px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
   h2 { font-size: 18px; margin: 0; }
   .group { display: flex; flex-direction: column; gap: 10px; }
-  .group > h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink3); margin: 0; }
+  .group > h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink2); margin: 0; }
   section { position: relative; border: 1px solid var(--line); border-radius: var(--radius, 12px); padding: 14px 16px; }
   section h4 { margin: 0 0 6px; font-size: 15px; }
   .lines span { display: block; height: 9px; border-radius: 5px; background: var(--sel); margin: 7px 0; }
@@ -32,7 +33,7 @@
   .pointing * { cursor: crosshair !important; }
   .pointing section:hover { outline: 2px dashed var(--blue); outline-offset: 3px; }
   .empty { color: var(--ink2); padding: 40px 0; text-align: center; }
-  @media (max-width: 640px) { .app { grid-template-columns: 1fr; } nav { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); } }
+  @media (max-width: 640px) { .app { grid-template-columns: 1fr; } nav { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); } #nav { flex-direction: row; flex-wrap: wrap; } }
   /* The Dark view (M5.8): status colours that stay readable on a dark background. */
   [data-scheme="dark"] { --blue: #8ab4ff; --amber: #f0c060; --amber-bg: #3a2c10; }
   [data-scheme="dark"] .ok { color: #6fd08f; }

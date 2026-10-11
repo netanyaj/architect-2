@@ -681,3 +681,12 @@ describe("M6: MCP servers in Connections (0024)", () => {
     expect(await count("select count(*) as n from vault.secrets where id = $1", [auth_secret_id])).toBe(0);
   });
 });
+
+describe("M6: the seed's checks say what they check (0025)", () => {
+  it("a new demo workspace has no placeholder checks; each seeded part says what its check proves", async () => {
+    await db.query("insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000c1', 'seedcheck@example.com') on conflict do nothing");
+    const { ws } = await one<{ ws: string }>("select create_demo_workspace('00000000-0000-0000-0000-0000000000c1', 'seedcheck@example.com', 'Seed Check') as ws");
+    expect(await count("select count(*) as n from items i join projects p on p.id = i.project_id where p.workspace_id = $1 and i.proved_when ilike 'done when % passes its check'", [ws])).toBe(0);
+    expect(await one("select i.proved_when from items i join projects p on p.id = i.project_id where p.workspace_id = $1 and i.key = 'talking-points'", [ws])).toEqual({ proved_when: "Each brief ends with exactly three talking points" });
+  });
+});
