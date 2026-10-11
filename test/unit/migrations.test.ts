@@ -20,6 +20,11 @@ const SUPABASE_STUB = `
   create publication supabase_realtime;
   create schema storage;
   create table storage.buckets (id text primary key, name text not null, public boolean, file_size_limit bigint);
+  create schema vault;
+  create table vault.secrets (id uuid primary key default gen_random_uuid(), secret text not null, name text, description text);
+  create view vault.decrypted_secrets as select id, secret as decrypted_secret, name from vault.secrets;
+  create function vault.create_secret(new_secret text, new_name text default null, new_description text default '') returns uuid
+    language sql as $$ insert into vault.secrets (secret, name, description) values (new_secret, new_name, new_description) returning id $$;
 `;
 
 const MORGAN = "00000000-0000-0000-0000-00000000000a";
@@ -589,5 +594,64 @@ describe("recently deleted projects (0022)", () => {
     expect(purged.rows.map((r) => r.id)).toEqual([prep]);
     expect(await count("select count(*) as n from projects where id = $1", [prep])).toBe(0);
     await expect(as(SAM, "select * from purge_deleted_projects($1)", [ws])).rejects.toThrow(/permission denied/);
+  });
+});
+
+describe("M5.10: secrets in Vault, preferences, terminal sessions and analytics (0023)", () => {
+  const as = async <T,>(user: string, sql: string, params: unknown[] = []) => {
+    await db.exec(`set role authenticated; set request.jwt.claim.sub = '${user}';`);
+    try {
+      return (await db.query<T>(sql, params)).rows;
+    } finally {
+      await db.exec("reset role;");
+    }
+  };
+
+  beforeAll(async () => {
+    // An earlier test grants everything to signed-in users after the migrations ran. On Supabase that default grant
+    // comes first and 0023's revokes follow, so replay them here in that order.
+    const sql = readFileSync(join(MIGRATIONS, "0023_m510_pre_m6.sql"), "utf8");
+    for (const line of sql.split("\n").filter((l) => l.startsWith("revoke "))) await db.exec(line);
+  });
+
+  it("keeps a workspace's Lyzr key in Vault, shows only its last 4, replaces and removes it, and nobody signed in can read it", async () => {
+    const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
+    await db.query("select set_workspace_secret($1, 'lyzr_api_key', 'sk-first-key-1234', $2, 'Morgan Lee')", [ws, MORGAN]);
+    expect(await one("select last4 from workspace_secrets where workspace_id = $1", [ws])).toEqual({ last4: "1234" });
+    expect(await one("select workspace_secret($1, 'lyzr_api_key') as v", [ws])).toEqual({ v: "sk-first-key-1234" });
+    const vaultBefore = await count("select count(*) as n from vault.secrets");
+    await db.query("select set_workspace_secret($1, 'lyzr_api_key', 'sk-second-key-9876', $2, 'Morgan Lee')", [ws, MORGAN]);
+    expect(await one("select workspace_secret($1, 'lyzr_api_key') as v", [ws])).toEqual({ v: "sk-second-key-9876" });
+    // The old secret is gone from Vault, not left behind.
+    expect(await count("select count(*) as n from vault.secrets")).toBe(vaultBefore);
+    // Even the workspace's Owner can't read the table or call the functions from the API.
+    expect(await as(MORGAN, "select * from workspace_secrets")).toHaveLength(0);
+    await expect(as(MORGAN, "select workspace_secret($1, 'lyzr_api_key')", [ws])).rejects.toThrow(/permission denied/);
+    await db.query("select delete_workspace_secret($1, 'lyzr_api_key')", [ws]);
+    expect(await count("select count(*) as n from vault.secrets")).toBe(vaultBefore - 1);
+  });
+
+  it("keeps a project key's value in Vault and drops it with the key", async () => {
+    const { p } = await one<{ p: string }>("select id as p from projects where name = 'Meeting Prep' limit 1");
+    const { k } = await one<{ k: string }>("insert into project_keys (project_id, name, environment, set_by_name) values ($1, 'SLACK_TOKEN', 'preview', 'Morgan') returning id as k", [p]);
+    await db.query("select set_project_key_value($1, 'xoxb-test')", [k]);
+    const { secret_id } = await one<{ secret_id: string }>("select secret_id from project_keys where id = $1", [k]);
+    expect(await count("select count(*) as n from vault.secrets where id = $1", [secret_id])).toBe(1);
+    await db.query("delete from project_keys where id = $1", [k]);
+    expect(await count("select count(*) as n from vault.secrets where id = $1", [secret_id])).toBe(0);
+  });
+
+  it("lets a person read only their own preferences, and nobody read analytics through the API", async () => {
+    await db.query("insert into user_preferences (user_id, panes) values ($1, '{\"parts\": \"closed\"}'), ($2, '{}')", [MORGAN, REVIEWER]);
+    expect(await as<{ user_id: string }>(MORGAN, "select user_id from user_preferences")).toEqual([{ user_id: MORGAN }]);
+    await db.query("insert into analytics_events (event, user_id, is_demo) values ('plan_written', $1, false)", [MORGAN]);
+    // Supabase grants table access by default, so the revoke turns this into "permission denied"; either way, no rows.
+    const read = await as(MORGAN, "select * from analytics_events").catch((e: Error) => e);
+    expect(read instanceof Error ? read.message : read).toMatch(/permission denied/);
+    await expect(db.query("insert into analytics_events (event) values ('clicked_anything')")).rejects.toThrow(/check/);
+  });
+
+  it("forgets Studio agents made on the platform's shared account", async () => {
+    expect(await count("select count(*) as n from agents where lyzr_agent_id is not null")).toBe(0);
   });
 });

@@ -69,6 +69,7 @@ export type Database = {
       }
       agents: {
         Row: {
+          studio_error: string | null
           created_at: string
           description: string | null
           framework: string
@@ -90,6 +91,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          studio_error?: string | null
           created_at?: string
           description?: string | null
           framework?: string
@@ -111,6 +113,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          studio_error?: string | null
           created_at?: string
           description?: string | null
           framework?: string
@@ -211,6 +214,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      analytics_events: {
+        Row: {
+          created_at: string
+          detail: string | null
+          event: string
+          id: number
+          is_demo: boolean
+          project_id: string | null
+          user_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          detail?: string | null
+          event: string
+          id?: number
+          is_demo?: boolean
+          project_id?: string | null
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          detail?: string | null
+          event?: string
+          id?: number
+          is_demo?: boolean
+          project_id?: string | null
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: []
       }
       approvals: {
         Row: {
@@ -1129,6 +1165,7 @@ export type Database = {
       }
       project_keys: {
         Row: {
+          secret_id: string | null
           approval_id: string | null
           environment: string
           id: string
@@ -1140,6 +1177,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          secret_id?: string | null
           approval_id?: string | null
           environment: string
           id?: string
@@ -1151,6 +1189,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          secret_id?: string | null
           approval_id?: string | null
           environment?: string
           id?: string
@@ -1673,6 +1712,36 @@ export type Database = {
           },
         ]
       }
+      terminal_sessions: {
+        Row: {
+          ended_at: string | null
+          id: string
+          lines: Json
+          project_id: string
+          started_at: string
+          user_id: string | null
+          user_name: string
+        }
+        Insert: {
+          ended_at?: string | null
+          id?: string
+          lines?: Json
+          project_id: string
+          started_at?: string
+          user_id?: string | null
+          user_name: string
+        }
+        Update: {
+          ended_at?: string | null
+          id?: string
+          lines?: Json
+          project_id?: string
+          started_at?: string
+          user_id?: string | null
+          user_name?: string
+        }
+        Relationships: []
+      }
       usage_ledger: {
         Row: {
           created_at: string
@@ -1738,6 +1807,57 @@ export type Database = {
           },
         ]
       }
+      user_preferences: {
+        Row: {
+          panes: Json
+          tour: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          panes?: Json
+          tour?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          panes?: Json
+          tour?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      workspace_secrets: {
+        Row: {
+          last4: string
+          name: string
+          secret_id: string
+          set_at: string
+          set_by: string | null
+          set_by_name: string
+          workspace_id: string
+        }
+        Insert: {
+          last4: string
+          name: string
+          secret_id: string
+          set_at?: string
+          set_by?: string | null
+          set_by_name: string
+          workspace_id: string
+        }
+        Update: {
+          last4?: string
+          name?: string
+          secret_id?: string
+          set_at?: string
+          set_by?: string | null
+          set_by_name?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       workspaces: {
         Row: {
           created_at: string
@@ -1776,6 +1896,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_workspace_secret: {
+        Args: { p_name: string; p_workspace: string }
+        Returns: undefined
+      }
+      set_project_key_value: {
+        Args: { p_key: string; p_value: string }
+        Returns: undefined
+      }
+      set_workspace_secret: {
+        Args: {
+          p_by: string
+          p_by_name: string
+          p_name: string
+          p_value: string
+          p_workspace: string
+        }
+        Returns: undefined
+      }
+      workspace_secret: {
+        Args: { p_name: string; p_workspace: string }
+        Returns: string
+      }
       agree_and_build: {
         Args: { p_blueprint: string; p_kind?: string; p_user: string }
         Returns: string
