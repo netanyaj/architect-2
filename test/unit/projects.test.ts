@@ -175,10 +175,11 @@ describe("deleteProject", () => {
     expect(await deleteProject({ projectId: P1 })).toEqual({ ok: true });
     expect([...db.objects.uploads]).toEqual([`ws-1/${P2}/c-other.pdf`]);
   });
-  it("a Builder can delete their own project but not someone else's", async () => {
+  it("only Owners and Admins delete, even a Builder's own project (M5.5)", async () => {
     role = "builder";
-    expect(await deleteProject({ projectId: P2 })).toEqual({ ok: false, message: "Only the project's owner, an Owner or an Admin can delete it." });
-    expect(await deleteProject({ projectId: P1 })).toEqual({ ok: true });
+    expect(await deleteProject({ projectId: P1 })).toEqual({ ok: false, message: "Only an Owner or an Admin can delete a project." });
+    role = "admin";
+    expect(await deleteProject({ projectId: P2 })).toEqual({ ok: true });
   });
 });
 

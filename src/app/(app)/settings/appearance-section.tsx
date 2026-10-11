@@ -3,10 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { Segmented } from "@/components/ax/segmented";
-import { setTheme } from "@/server/actions/projects";
+import { OPEN_IN_DEV, type OpenInDev } from "@/lib/dev-preference";
+import { setOpenInDev, setTheme } from "@/server/actions/projects";
 
 /** Light or dark: saved to the person's account, and used everywhere, Developer view included. */
-export function AppearanceSection({ theme }: { theme: "light" | "dark" }) {
+export function AppearanceSection({ theme, openInDev, canBuild }: { theme: "light" | "dark"; openInDev: OpenInDev; canBuild: boolean }) {
   const router = useRouter();
   const [, start] = useTransition();
   return (
@@ -33,6 +34,25 @@ export function AppearanceSection({ theme }: { theme: "light" | "dark" }) {
           ]}
         />
       </div>
+      {canBuild && (
+        <div className="flex flex-wrap items-center gap-4 rounded-card border border-line p-4">
+          <p className="min-w-[220px] flex-1 text-ink-2">
+            <b className="text-ink">Open projects in Developer view.</b> Where a project opens from Home and Projects. You can switch any time with Code in the project.
+          </p>
+          <Segmented
+            mode="filter"
+            label="Open projects in Developer view"
+            value={openInDev}
+            onChange={(v) =>
+              start(async () => {
+                await setOpenInDev(v);
+                router.refresh();
+              })
+            }
+            options={OPEN_IN_DEV}
+          />
+        </div>
+      )}
     </section>
   );
 }

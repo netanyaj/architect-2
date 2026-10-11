@@ -82,4 +82,61 @@ test.describe("M5.5", () => {
     const { data: audit } = await adminDb().from("audit_log").select("action").eq("target", email);
     expect(audit!.map((a) => a.action).sort()).toEqual(["member.invite_cancelled", "member.invite_resent", "member.invited"]);
   });
+
+  test("Developer view entry: Code in the header for Builders and up; imported repos open in it; the personal setting; Delete for Owners only", async ({ page }) => {
+    await start(page);
+    const db = adminDb();
+    const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
+    const ws = m!.workspace_id;
+    const { data: vt } = await db.from("projects").select("id").eq("workspace_id", ws).eq("name", "Vendor tracker").single();
+    await db.from("projects").update({ repo_full_name: "netanyaj/ticket-triage" }).eq("id", vt!.id);
+
+    // An imported repo opens in Developer view from Projects; the others don't.
+    await page.goto("/projects");
+    await expect(page.getByRole("link", { name: "Vendor tracker" })).toHaveAttribute("href", `/p/${vt!.id}?dev=1`);
+    await expect(page.getByRole("link", { name: "Meeting Prep" })).not.toHaveAttribute("href", /dev=1/);
+
+    // Code in the header switches it.
+    const { data: mp } = await db.from("projects").select("id").eq("workspace_id", ws).eq("name", "Meeting Prep").single();
+    await page.goto(`/p/${mp!.id}`);
+    await page.getByRole("button", { name: "Developer view" }).click();
+    await page.waitForURL(/dev=1/);
+    await expect(page.getByText("Developer view", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Leave Developer view" }).click();
+    await page.waitForURL((u) => !u.search.includes("dev=1"));
+
+    // The personal setting: Always.
+    await page.goto("/settings");
+    const always = page.getByRole("group", { name: "Open projects in Developer view" }).getByRole("button", { name: "Always" });
+    await always.click();
+    await expect(always).toHaveAttribute("aria-pressed", "true");
+    await page.goto("/projects");
+    await expect(page.getByRole("link", { name: "Meeting Prep" })).toHaveAttribute("href", `/p/${mp!.id}?dev=1`);
+
+    // Viewers: no Code, no Delete.
+    await db.from("members").update({ role: "viewer" }).eq("workspace_id", ws).eq("user_id", user.id);
+    try {
+      await page.goto(`/p/${mp!.id}`);
+      await expect(page.getByRole("navigation", { name: "Project stage" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Developer view" })).toHaveCount(0);
+      await page.getByRole("button", { name: "More for this project" }).click();
+      await expect(page.getByRole("menuitem", { name: "Delete project…" })).toHaveCount(0);
+      await page.keyboard.press("Escape");
+    } finally {
+      await db.from("members").update({ role: "owner" }).eq("workspace_id", ws).eq("user_id", user.id);
+    }
+
+    // An Owner deletes from the project's ⋯, after confirming.
+    await page.goto(`/p/${vt!.id}`);
+    await page.getByRole("button", { name: "More for this project" }).click();
+    await page.getByRole("menuitem", { name: "Delete project…" }).click();
+    const confirm = page.getByRole("dialog", { name: "Delete Vendor tracker?" });
+    await confirm.getByRole("button", { name: "Keep it" }).click();
+    await expect(confirm).toHaveCount(0);
+    await page.getByRole("button", { name: "More for this project" }).click();
+    await page.getByRole("menuitem", { name: "Delete project…" }).click();
+    await confirm.getByRole("button", { name: "Delete project" }).click();
+    await page.waitForURL(/\/projects$/);
+    expect((await db.from("projects").select("id").eq("id", vt!.id)).data).toEqual([]);
+  });
 });

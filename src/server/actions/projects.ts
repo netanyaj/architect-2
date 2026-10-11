@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { OPEN_IN_DEV } from "@/lib/dev-preference";
 import type { Json } from "@/lib/database.types";
 import { DEFAULT_MODEL, MODEL_CHOICES, MODEL_LABEL } from "@/lib/models";
 import { canBuild, canManageMembers } from "@/lib/permissions";
@@ -156,8 +157,8 @@ export async function deleteProject(input: { projectId: string }): Promise<Actio
   const ctx = await getAppContext();
   const project = await loadProject(input.projectId, ctx.workspace.id);
   if (!project) return { ok: false, message: "That project isn't in this workspace any more." };
-  const allowed = canManageMembers(ctx.role) || (ctx.role === "builder" && project.owner_id === ctx.user.id);
-  if (!allowed) return { ok: false, message: "Only the project's owner, an Owner or an Admin can delete it." };
+  // Owners and Admins only (M5.5): deleting removes every version, file and run for everyone.
+  if (!canManageMembers(ctx.role)) return { ok: false, message: "Only an Owner or an Admin can delete a project." };
 
   const admin = createAdminDb();
   // Support tickets point at projects without a cascade: keep the ticket, drop the link.
@@ -193,6 +194,18 @@ export async function setProjectBudget(input: { projectId: string; credits: numb
  * Light or dark: a user setting, saved on the account (so it follows the person to other browsers) and in a cookie
  * (so pages render in it without a round trip). Developer view uses it too.
  */
+/** "Open projects in Developer view", saved to the person's account. */
+export async function setOpenInDev(value: string): Promise<ActionResult> {
+  if (!OPEN_IN_DEV.some((o) => o.value === value)) return { ok: false, message: "Pick one of the choices shown." };
+  const db = await createServerDb();
+  const { error } = await db.auth.updateUser({ data: { open_in_dev: value } });
+  if (error) return { ok: false, message: "That couldn't be saved. Try again." };
+  // Read first on the next page, as the theme is: the session's copy of the account catches up later.
+  (await cookies()).set("ax_open_in_dev", value, { path: "/", sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
 export async function setTheme(theme: "light" | "dark"): Promise<ActionResult> {
   if (theme !== "light" && theme !== "dark") return { ok: false, message: "Pick Light or Dark." };
   const db = await createServerDb();

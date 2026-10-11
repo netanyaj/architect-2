@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Role } from "@/lib/db";
+import { openInDevOf, projectHref } from "@/lib/dev-preference";
 import { FakeDb } from "./fake-db";
 
 /* M5.5 polish: server actions and rules. */
@@ -53,5 +54,16 @@ describe("pending invites: Resend link and email (People)", () => {
     role = "admin";
     db.tables.members[0].status = "active";
     expect(await resendInvite({ memberId: M })).toEqual({ ok: false, message: "That invite isn't pending any more." });
+  });
+});
+
+describe("Open projects in Developer view", () => {
+  it("imported repos open in Developer view by default; Always and Never; never for Viewers", () => {
+    expect(openInDevOf(undefined)).toBe("repos");
+    expect(projectHref("p1", { repo: true, pref: "repos", canBuild: true })).toBe("/p/p1?dev=1");
+    expect(projectHref("p1", { repo: false, pref: "repos", canBuild: true })).toBe("/p/p1");
+    expect(projectHref("p1", { repo: false, pref: "always", canBuild: true })).toBe("/p/p1?dev=1");
+    expect(projectHref("p1", { repo: true, pref: "never", canBuild: true })).toBe("/p/p1");
+    expect(projectHref("p1", { repo: true, pref: "always", canBuild: false })).toBe("/p/p1");
   });
 });

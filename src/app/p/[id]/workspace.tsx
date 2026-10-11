@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/ax/empty-state";
 import { Icon } from "@/components/ax/icon";
 import { IconTile } from "@/components/ax/list-row";
 import { NeedsYouCard } from "@/components/ax/needs-you-card";
-import { SimTag } from "@/components/ax/pill";
+import { Pill, SimTag } from "@/components/ax/pill";
 import { PlanGroup, PlanPanel, PlanRow } from "@/components/ax/plan-panel";
 import { Segmented } from "@/components/ax/segmented";
 import { NotDoneButton } from "@/components/ax/not-done";
@@ -28,7 +28,7 @@ import { launchState } from "@/lib/launch";
 import { goLive, shareWithTeam } from "@/server/actions/launch";
 import { buildPlan, setProjectModel } from "@/server/actions/plan";
 import { settleEdits } from "@/server/actions/dev";
-import { duplicateProject } from "@/server/actions/projects";
+import { deleteProject, duplicateProject } from "@/server/actions/projects";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 import { AgentSessionLines, useAgentSession, withSession } from "./agent-session";
 import { AgentsPlanPanel, AgentsView } from "./agents-view";
@@ -144,7 +144,7 @@ function Rail({ label, icon, onOpen }: { label: string; icon: "panelLeft" | "pan
   );
 }
 
-function MoreMenu({ project, items, canAct, dev, onToggleDev, onTransfer }: { project: ProjectWorkspace; items: WorkspaceItem[]; canAct: boolean; dev: boolean; onToggleDev: () => void; onTransfer: () => void }) {
+function MoreMenu({ project, items, canAct, dev, onToggleDev, onTransfer, onDelete }: { project: ProjectWorkspace; items: WorkspaceItem[]; canAct: boolean; dev: boolean; onToggleDev: () => void; onTransfer: () => void; onDelete: () => void }) {
   const router = useRouter();
   const [, start] = useTransition();
   const item = "flex min-h-10 items-center gap-2.5 rounded-tile px-2.5";
@@ -192,8 +192,57 @@ function MoreMenu({ project, items, canAct, dev, onToggleDev, onTransfer }: { pr
         <DropdownMenuItem className={item} onSelect={() => router.push("/settings")}>
           Workspace settings
         </DropdownMenuItem>
+        {canManageMembers(project.role) && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className={item} onSelect={onDelete}>
+              Delete project…
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** Delete project (Owners and Admins), after a confirmation; then back to Projects. */
+function DeleteProjectDialog({ project, open, onOpenChange }: { project: ProjectWorkspace; open: boolean; onOpenChange: (o: boolean) => void }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string>();
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="rounded-pane border border-line bg-surface p-6 shadow-pop sm:max-w-[440px]" showCloseButton={false}>
+        <DialogTitle className="text-sub font-semibold">Delete {project.name}?</DialogTitle>
+        <DialogDescription className="text-ink-2">
+          Its plan, parts, versions, files and usage lines are deleted for everyone in the workspace{project.status === "live" ? ", and Live stops" : ""}. This can&apos;t be undone.
+        </DialogDescription>
+        {error && (
+          <p role="alert" className="text-small font-semibold text-failed">
+            {error}
+          </p>
+        )}
+        <DialogFooter className="mt-2 gap-2">
+          <Button variant="quiet" onClick={() => onOpenChange(false)}>
+            Keep it
+          </Button>
+          <Button
+            variant="primary"
+            disabledReason={pending ? "Deleting…" : undefined}
+            onClick={() =>
+              start(async () => {
+                setError(undefined);
+                const r = await deleteProject({ projectId: project.id });
+                if (!r.ok) return setError(r.message);
+                router.push("/projects");
+              })
+            }
+          >
+            {pending ? "Deleting…" : "Delete project"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -277,6 +326,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
 
   const [modelAsk, setModelAsk] = useState<ModelChoice | null>(null);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [pending, start] = useTransition();
   const [actionError, setActionError] = useState<string>();
 
@@ -469,8 +519,14 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
         />
         <div className="flex items-center gap-2">
           <IconButton icon="help" label="Help with this project" onClick={() => openHelp(project.id)} />
+          {/* Developer view, one click away for anyone who can change code; Viewers don't see it. */}
+          {canAct && (
+            <Pill pressed={dev} onClick={toggleDev} title={dev ? "Leave Developer view" : "Open Developer view: the code, files and terminal"} aria-label={dev ? "Leave Developer view" : "Developer view"}>
+              <span aria-hidden="true" className="font-mono text-small">&lt;/&gt;</span> Code
+            </Pill>
+          )}
           <ShareMenu project={project} />
-          <MoreMenu project={project} items={items} canAct={canAct} dev={dev} onToggleDev={toggleDev} onTransfer={() => setTransferOpen(true)} />
+          <MoreMenu project={project} items={items} canAct={canAct} dev={dev} onToggleDev={toggleDev} onTransfer={() => setTransferOpen(true)} onDelete={() => setDeleteOpen(true)} />
           {state.action.beside && <span className="max-w-[190px] text-right text-small leading-tight text-ink-2 max-md:hidden">{state.action.beside}</span>}
           <Button
             // The stage action is the primary only when nothing on screen needs the person first (BUILD-SPEC §2).
@@ -645,6 +701,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
       </div>
 
       {!planStage && <PartDrawer project={project} items={items} />}
+      <DeleteProjectDialog project={project} open={deleteOpen} onOpenChange={setDeleteOpen} />
       {transferOpen && <TransferDialog project={project} open={transferOpen} onOpenChange={setTransferOpen} />}
 
       {/* Switching models mid-project asks first (BL-3). */}

@@ -55,6 +55,8 @@ export type ProjectRow = {
   budgetCredits: number | null;
   /** Built or live: Launch (Share) is open. */
   launchable: boolean;
+  /** Imported from a repo (B-1): opens in Developer view by default ("Open projects in Developer view"). */
+  repo: boolean;
   /** An Architect 1.0 app (F9): its repo, and the 2.0 project it moved to. */
   legacy: { repo: string; movedTo: { id: string; name: string } | null } | null;
 };
@@ -66,7 +68,7 @@ export async function listProjects(ctx: AppContext): Promise<ProjectRow[]> {
   const [{ data: projects, error }, { data: owners }, { data: usage }] = await Promise.all([
     db
       .from("projects")
-      .select("id, name, icon, status, owner_id, owner_display_name, updated_at, budget_credits, prompt, legacy_repo, moved_to, items(status, title, grp, blueprint_id, provider), blueprints(id, version), runs(status, started_at)")
+      .select("id, name, icon, status, owner_id, owner_display_name, updated_at, budget_credits, prompt, legacy_repo, moved_to, repo_full_name, items(status, title, grp, blueprint_id, provider), blueprints(id, version), runs(status, started_at)")
       .eq("workspace_id", ws)
       .order("updated_at", { ascending: false }),
     db.from("members").select("user_id, display_name").eq("workspace_id", ws).eq("status", "active"),
@@ -95,6 +97,7 @@ export async function listProjects(ctx: AppContext): Promise<ProjectRow[]> {
       updatedAt: p.updated_at,
       creditsUsed: Math.round(spent.get(p.id) ?? 0),
       tools: detectTools([p.prompt, ...items.map((i) => i.title)]),
+      repo: Boolean(p.repo_full_name),
       providers: [...new Set(items.map((i) => i.provider).filter((x): x is string => Boolean(x)))],
       summary: summarizeProject({
         status: p.status as ProjectInput["status"],

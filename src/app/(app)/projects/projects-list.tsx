@@ -21,7 +21,7 @@ import { relativeTime } from "@/lib/project-status";
 import { deleteProject, duplicateProject } from "@/server/actions/projects";
 import type { ProjectRow } from "@/server/queries";
 
-type Row = ProjectRow & { canDelete: boolean };
+type Row = ProjectRow & { canDelete: boolean; href: string };
 type Filter = "all" | "needs" | "live" | "drafts";
 
 function RowMenu({ p, canStart, onDelete, onError }: { p: Row; canStart: boolean; onDelete: () => void; onError: (m: string) => void }) {
@@ -180,7 +180,7 @@ export function ProjectsList({ projects, creditsUsed, canStart }: { projects: Ro
               key={p.id}
               icon={p.icon}
               name={p.name}
-              href={`/p/${p.id}`}
+              href={p.href}
               meta={
                 <span className="tabular-nums">
                   {p.ownerName} · {relativeTime(p.updatedAt)} · {p.creditsUsed.toLocaleString("en-US")} credits

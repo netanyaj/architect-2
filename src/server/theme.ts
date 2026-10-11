@@ -1,5 +1,6 @@
 import "server-only";
 
+import { openInDevOf, type OpenInDev } from "@/lib/dev-preference";
 import { cookies } from "next/headers";
 import { createServerDb } from "./db";
 
@@ -14,4 +15,13 @@ export async function userTheme(): Promise<"light" | "dark"> {
   const db = await createServerDb();
   const { data } = await db.auth.getSession();
   return data.session?.user.user_metadata?.theme === "dark" ? "dark" : "light";
+}
+
+/** "Open projects in Developer view" (M5.5): from the person's account; imported repos only by default. */
+export async function userOpenInDev(): Promise<OpenInDev> {
+  const cookie = (await cookies()).get("ax_open_in_dev")?.value;
+  if (cookie) return openInDevOf(cookie);
+  const db = await createServerDb();
+  const { data } = await db.auth.getSession();
+  return openInDevOf(data.session?.user.user_metadata?.open_in_dev);
 }

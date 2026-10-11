@@ -4,12 +4,14 @@ import { buttonClasses, TextLink } from "@/components/ax/button";
 import { Icon } from "@/components/ax/icon";
 import { ListRow, Tray } from "@/components/ax/list-row";
 import { StatusLine } from "@/components/ax/status-mark";
-import { buildBlockedReason } from "@/lib/permissions";
+import { projectHref } from "@/lib/dev-preference";
+import { buildBlockedReason, canBuild } from "@/lib/permissions";
 import { STARTERS } from "@/lib/templates";
 import { modelAvailability } from "@/lib/gateway";
 import { modelSetupFor } from "@/server/project";
 import { createServerDb } from "@/server/db";
 import { listProjects } from "@/server/queries";
+import { userOpenInDev } from "@/server/theme";
 import { displayNameFor, getAppContext } from "@/server/workspace";
 import { HomeComposer } from "./home-composer";
 import { IdeaCards } from "./idea-cards";
@@ -49,7 +51,7 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
   }
 
   const ctx = await getAppContext();
-  const [projects, { options: models, architect }] = await Promise.all([listProjects(ctx), modelSetupFor(ctx.workspace.id)]);
+  const [projects, { options: models, architect }, pref] = await Promise.all([listProjects(ctx), modelSetupFor(ctx.workspace.id), userOpenInDev()]);
   // Things that need the person first, then the most recently changed.
   const recent = [...projects].sort((a, b) => Number(b.summary.needsYou) - Number(a.summary.needsYou)).slice(0, 3);
 
@@ -83,7 +85,7 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
                 icon={p.icon}
                 name={p.name}
                 meta={p.summary.meta}
-                href={`/p/${p.id}`}
+                href={projectHref(p.id, { repo: p.repo, pref, canBuild: canBuild(ctx.role) })}
                 status={
                   <StatusLine status={p.summary.next.status} icon={p.summary.next.icon}>
                     {p.summary.next.text}
