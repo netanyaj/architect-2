@@ -14,6 +14,8 @@ vi.mock("@/server/blueprint/generate", async (orig) => ({
   ...(await orig<object>()),
   generateBlueprint: (...a: unknown[]) => generate(...a),
 }));
+/** Whether OpenRouter's free model is set up (its key): the fallback when Gemini refuses on quota (M5.10). */
+const gw = { openRouterReal: false };
 vi.mock("@/lib/gateway", async () => {
   class GatewayRateLimited extends Error {}
   class GatewayUnavailable extends Error {}
@@ -29,7 +31,13 @@ vi.mock("@/lib/gateway", async () => {
     GatewayRateLimited,
     GatewayUnavailable,
     GatewaySlow,
-    resolveModel: (m: string) => ({ choice: m, label: m === "claude" ? "Claude Sonnet" : "Gemini", simulated: m === "claude", model: null }),
+    resolveModel: (m: string) => ({
+      choice: m,
+      label: m === "claude" ? "Claude Sonnet" : m === "openrouter" ? "OpenRouter (free)" : "Gemini",
+      simulated: m === "claude" || (m === "openrouter" && !gw.openRouterReal),
+      model: null,
+    }),
+    modelName: (m: string) => (m === "openrouter" ? "Nemotron 3 Super on OpenRouter" : "Gemini 3.5 Flash Lite"),
   };
 });
 
@@ -49,6 +57,7 @@ function run(opts: { role?: Role; model?: "gemini" | "claude" | "gpt"; prompt?: 
 
 beforeEach(() => {
   events = [];
+  gw.openRouterReal = false;
   generate.mockReset();
   db = new FakeDb({
     projects: [{ id: PROJECT, workspace_id: "ws-1", name: "Untitled app", prompt: "Before each meeting on my calendar, send me a Slack brief with each attendee's last email thread, a summary of any attached agenda PDF, and three talking points.", model: "gemini" }],
@@ -60,6 +69,7 @@ beforeEach(() => {
     defaults: [],
     usage_ledger: [],
     files: [],
+    messages: [],
   });
 });
 
@@ -123,6 +133,36 @@ describe("writePlan", () => {
     expect(db.tables.blueprints[0]).toMatchObject({ generation: "failed", error_kind: "rate_limited" });
     expect(db.tables.items).toHaveLength(2);
     expect(db.tables.usage_ledger).toEqual([]); // nothing charged for a plan that didn't finish
+  });
+
+  it("when Gemini refuses on quota and OpenRouter is set up and allowed, OpenRouter writes the plan and the chat says so (M5.10)", async () => {
+    gw.openRouterReal = true;
+    generate.mockImplementation(async (input: { model: string }, ev) => {
+      if (input.model === "gemini") {
+        await ev.onItem(plan.items[0], 0);
+        throw new GatewayRateLimited("Gemini");
+      }
+      for (const [i, item] of plan.items.entries()) await ev.onItem(item, i);
+      return { blueprint: plan, tokens: 4500, label: "OpenRouter (free)", simulated: false, ms: 9000 };
+    });
+    await run();
+    expect(generate.mock.calls.map((c) => (c[0] as { model: string }).model)).toEqual(["gemini", "openrouter"]);
+    expect(events.filter((e) => e.type === "started").at(-1)).toMatchObject({ model: { label: "OpenRouter (free)", simulated: false }, note: "Gemini 3.5 Flash Lite is busy right now (its free limit), so Nemotron 3 Super on OpenRouter is writing this plan instead." });
+    expect(events.at(-1)?.type).toBe("done");
+    expect(db.tables.blueprints[0]).toMatchObject({ generation: "ready", model: "openrouter", simulated_model: false });
+    expect(db.tables.messages).toEqual([expect.objectContaining({ role: "architect", content: expect.stringMatching(/is writing this plan instead\.$/) })]);
+    expect(db.tables.items).toHaveLength(plan.items.length);
+  });
+
+  it("no fallback when OpenRouter isn't allowed here: the paused banner, as before", async () => {
+    gw.openRouterReal = true;
+    db.tables.policies[0].config = { allowed: ["gemini"] };
+    generate.mockImplementation(async () => {
+      throw new GatewayRateLimited("Gemini");
+    });
+    await run();
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(events.at(-1)).toMatchObject({ type: "error", kind: "rate_limited" });
   });
 
   it("a slow model pauses cleanly: the paused banner (Switch model), parts kept, nothing charged", async () => {

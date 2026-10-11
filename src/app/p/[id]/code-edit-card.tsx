@@ -1,6 +1,7 @@
 import { Icon } from "@/components/ax/icon";
 import { StatusMark, StatusWord } from "@/components/ax/status-mark";
 import { editLine, type CodeEditView } from "@/lib/code-edits";
+import { SimTag } from "@/components/ax/pill";
 
 /** A code edit from Developer view (simulated): which file, which part's check runs again, and how it went. */
 export function CodeEditCard({ edit }: { edit: CodeEditView }) {
@@ -9,6 +10,7 @@ export function CodeEditCard({ edit }: { edit: CodeEditView }) {
       <div className="flex flex-wrap items-center gap-2">
         <Icon name="code" size="sm" />
         <h3 className="flex-1 font-[650]">{editLine(edit)}</h3>
+        <SimTag title="The build is simulated in this prototype: no code is written, run or deployed.">Simulated build</SimTag>
       </div>
       <p className="text-small text-ink-2">
         {edit.byKind === "coding_agent" ? `Coding agent: ${edit.by} · via MCP` : `By ${edit.by}`} · +{edit.added} −{edit.removed}

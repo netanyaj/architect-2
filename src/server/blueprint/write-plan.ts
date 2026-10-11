@@ -1,9 +1,9 @@
-import { planDailyLimit, planLimitMessage, startOfDayUtc } from "@/lib/plan-limit";
+import { DEMO_PLAN_DAILY_LIMIT, planDailyLimit, planLimitMessage, startOfDayUtc } from "@/lib/plan-limit";
 import { attachedFileKind, fileParts, type AttachedFile } from "@/lib/file-parts";
 import "server-only";
 
 import type { Item as ItemT } from "@/lib/blueprint";
-import { GatewayRateLimited, GatewaySlow, GatewayUnavailable, resolveModel } from "@/lib/gateway";
+import { GatewayRateLimited, GatewaySlow, GatewayUnavailable, modelName, resolveModel } from "@/lib/gateway";
 import { canBuild } from "@/lib/permissions";
 import { MODEL_LABEL, resolvePick, type ModelChoice } from "@/lib/models";
 import type { AdminDb } from "../db";
@@ -12,6 +12,7 @@ import { draftingCredits, estimate, totals as planTotals } from "../estimate";
 import { applyRepoProofs } from "../import";
 import type { AppContext } from "../workspace";
 import { BlueprintInvalid, generateBlueprint, type Attachment } from "./generate";
+import { track } from "../analytics";
 
 /** A part as the client shows it: the plan's fields plus its server-side price. */
 export type PlanItem = ItemT & {
@@ -21,7 +22,7 @@ export type PlanItem = ItemT & {
 };
 
 export type PlanEvent =
-  | { type: "started"; blueprintId: string; version: number; model: { label: string; simulated: boolean } }
+  | { type: "started"; blueprintId: string; version: number; model: { label: string; simulated: boolean }; note?: string }
   | { type: "item"; item: PlanItem }
   | { type: "reset"; problems: string[] }
   | { type: "done"; blueprintId: string; name: string; summary: string; totals: { low: number; likely: number; high: number; minutes: number }; questions: number; blocking: number }
@@ -97,10 +98,14 @@ export async function writePlan(
   if (stopped) throw new PlanRefused(stopped, 402);
   // The daily limit per person (M5.5): before any model call, so a refused plan costs no quota.
   const now = new Date();
-  const limit = planDailyLimit(process.env.PLAN_DAILY_LIMIT);
+  const demo = Boolean(ctx.user.is_anonymous);
+  const limit = demo ? DEMO_PLAN_DAILY_LIMIT : planDailyLimit(process.env.PLAN_DAILY_LIMIT);
   const { count: today } = await admin.from("blueprints").select("id", { count: "exact", head: true }).eq("created_by", ctx.user.id).gte("created_at", startOfDayUtc(now).toISOString());
-  if ((today ?? 0) >= limit) throw new PlanRefused(planLimitMessage(limit, now), 429);
+  if ((today ?? 0) >= limit) throw new PlanRefused(planLimitMessage(limit, now, demo), 429);
   const resolved = resolveModel(model);
+  // The model actually writing it: OpenRouter's free model if Gemini refuses on quota (M5.10).
+  let used: ModelChoice = model;
+  let usedResolved = resolved;
 
   const { data: last } = await admin.from("blueprints").select("version").eq("project_id", project.id).order("version", { ascending: false }).limit(1).maybeSingle();
   const version = (last?.version ?? 0) + 1;
@@ -118,7 +123,7 @@ export async function writePlan(
 
   const saved = new Map<string, PlanItem>();
   const saveItem = async (item: ItemT, position: number) => {
-    const e = estimate(item, model);
+    const e = estimate(item, used);
     const { data } = await admin
       .from("items")
       .upsert(
@@ -160,17 +165,37 @@ export async function writePlan(
     }
     const attachments = await loadAttachments(admin, project.id);
     const { data: conns } = await admin.from("connections").select("provider").eq("workspace_id", ctx.workspace.id).eq("status", "connected");
-    const result = await generateBlueprint(
-      { prompt, attachments, model, connected: (conns ?? []).map((c) => c.provider) },
-      {
-        onItem: async (item, index) => emit({ type: "item", item: await saveItem(item, index) }),
-        onRetry: async (problems) => {
-          await admin.from("items").delete().eq("blueprint_id", bp.id);
-          saved.clear();
-          emit({ type: "reset", problems });
+    const write = (m: ModelChoice) =>
+      generateBlueprint(
+        { prompt, attachments, model: m, connected: (conns ?? []).map((c) => c.provider) },
+        {
+          onItem: async (item, index) => emit({ type: "item", item: await saveItem(item, index) }),
+          onRetry: async (problems) => {
+            await admin.from("items").delete().eq("blueprint_id", bp.id);
+            saved.clear();
+            emit({ type: "reset", problems });
+          },
         },
-      },
-    );
+      );
+    let result: Awaited<ReturnType<typeof write>>;
+    try {
+      result = await write(model);
+    } catch (err) {
+      // Gemini refused on quota or its rate limit, after the gateway's retries (M5.10): when OpenRouter's free model
+      // is set up and allowed here, it writes the plan instead, and the chat says so in one line. Never silently.
+      const geminiAnswered = resolved.choice === "gemini" || resolved.simulated;
+      const openRouter = resolveModel("openrouter");
+      if (!(err instanceof GatewayRateLimited) || !geminiAnswered || openRouter.simulated || !(await allowedModels(admin, ctx.workspace.id)).includes("openrouter")) throw err;
+      await admin.from("items").delete().eq("blueprint_id", bp.id);
+      saved.clear();
+      used = "openrouter";
+      usedResolved = openRouter;
+      await admin.from("blueprints").update({ model: "openrouter", simulated_model: false }).eq("id", bp.id);
+      const note = `${modelName("gemini")} is busy right now (its free limit), so ${modelName("openrouter")} is writing this plan instead.`;
+      await admin.from("messages").insert({ project_id: project.id, role: "architect", mode: "plan", content: note });
+      emit({ type: "started", blueprintId: bp.id, version, model: { label: openRouter.label, simulated: false }, note });
+      result = await write("openrouter");
+    }
     const plan = result.blueprint;
     // A PDF the plan doesn't use becomes a knowledge base, a CSV a data analyst (simulated, as today's Architect).
     const files = attachments.map((a) => ({ name: a.name, kind: attachedFileKind(a.name) })).filter((f): f is AttachedFile => f.kind !== null);
@@ -201,7 +226,7 @@ export async function writePlan(
     }
     // A plan from a repo: parts that work today, proved by the repo's own tests, aren't built or charged again (B-2).
     const works = project.repo_full_name ? await applyRepoProofs(admin, { projectId: project.id, blueprintId: bp.id }) : new Set<string>();
-    const t = planTotals(plan.items.filter((i) => !works.has(i.key)).map((i) => estimate(i, model)));
+    const t = planTotals(plan.items.filter((i) => !works.has(i.key)).map((i) => estimate(i, used)));
     const credits = draftingCredits(result.tokens);
     await admin
       .from("blueprints")
@@ -231,20 +256,21 @@ export async function writePlan(
       project_id: project.id,
       kind: "blueprint",
       credits,
-      note: `Plan written · v${version}${resolved.simulated ? ` · ${resolved.label} (simulated)` : ""}`,
+      note: `Plan written · v${version}${usedResolved.simulated ? ` · ${usedResolved.label} (simulated)` : used !== model ? ` · ${usedResolved.label} (Gemini was busy)` : ""}`,
     });
+    await track("plan_written", { user: ctx.user, workspaceId: ctx.workspace.id, projectId: project.id, detail: `v${version}` });
     const blocking = plan.questions.filter((q) => q.blocking).length; // decided by the server (applyQuestionRules)
     emit({ type: "done", blueprintId: bp.id, name: plan.name, summary: plan.summary, totals: t, questions: plan.questions.length, blocking });
   } catch (err) {
     const kind = err instanceof GatewayRateLimited ? "rate_limited" : err instanceof GatewaySlow ? "slow" : err instanceof BlueprintInvalid ? "invalid" : "unavailable";
     const message =
       kind === "rate_limited"
-        ? `${resolved.label} is busy right now (the free model's limit). The parts written so far are kept. Switch model, or try again in a minute.`
+        ? `${usedResolved.label} is busy right now (the free model's limit). The parts written so far are kept. Switch model, or try again in a minute.`
         : kind === "slow"
-          ? `${resolved.label} is taking too long (over ${(err as GatewaySlow).seconds} s). The parts written so far are kept. Switch model, or try again.`
+          ? `${usedResolved.label} is taking too long (over ${(err as GatewaySlow).seconds} s). The parts written so far are kept. Switch model, or try again.`
           : kind === "invalid"
           ? "The plan stopped part-way: it didn't pass its checks. The parts written so far are kept."
-          : `${resolved.label} didn't answer. The parts written so far are kept.`;
+          : `${usedResolved.label} didn't answer. The parts written so far are kept.`;
     await admin
       .from("blueprints")
       .update({ generation: "failed", error_kind: kind, error: err instanceof Error ? err.message.slice(0, 500) : String(err) })

@@ -76,7 +76,8 @@ export function usePlanWriter(opts: { projectId: string; writingBlueprintId: str
                 return s;
             }
           });
-          if (e.type === "done" || e.type === "error") router.refresh();
+          // A fallback note (Gemini busy, OpenRouter writing) is a chat message: show it now.
+          if (e.type === "done" || e.type === "error" || (e.type === "started" && e.note)) router.refresh();
         }
       } catch {
         setState((s) => ({ phase: "failed", kind: "unavailable", message: "The connection dropped. The parts written so far are kept.", items: s.phase === "idle" ? [] : s.items }));

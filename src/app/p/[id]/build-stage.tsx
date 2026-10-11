@@ -330,7 +330,7 @@ export function AppPreview({ project, items, live }: { project: ProjectWorkspace
   return (
     <PreviewFrame
       url={`${slug}--test.architect.space/today`}
-      badge={<SimTag title={preview.kind === "shell" ? "The preview is a stand-in shell showing this plan's parts" : "The preview is a pre-built sample app in this prototype"} />}
+      badge={<SimTag title={preview.kind === "shell" ? "The preview is a stand-in shell showing this plan's parts" : "The preview is a pre-built sample app in this prototype"}>Simulated build</SimTag>}
       dock={
         <>
           {console_ && preview.problems.length > 0 && (
@@ -463,7 +463,8 @@ export function BuildActivity({ project, items, live }: { project: ProjectWorksp
   if (approval.length) sentences.push(`${providerName(approval[0].provider)} is waiting for IT, and nothing else is blocked by it.`);
 
   return (
-    <ArchitectMessage time={chatTime(run.startedAt)}>
+    // Chat is real (M5.10): the label sits on the build card, not on the conversation.
+    <ArchitectMessage time={chatTime(run.startedAt)} tag={<SimTag title="The build is simulated in this prototype: no code is written, run or deployed.">Simulated build</SimTag>}>
       <p>{sentences.join(" ")}</p>
       {pause && (
         <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 rounded-card border border-line px-3.5 py-3 text-small tabular-nums">

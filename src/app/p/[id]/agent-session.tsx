@@ -6,6 +6,7 @@ import { agentSession, sessionLine, sessionPart, type AgentSession, type Session
 import { cn } from "@/lib/utils";
 import { recordAgentSession } from "@/server/actions/agent-session";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
+import { SimTag } from "@/components/ax/pill";
 
 export type SessionState = { session: AgentSession; played: SessionStep[]; waiting: boolean; done: boolean } | { blocked: string } | null;
 
@@ -72,7 +73,8 @@ export function AgentSessionLines({ project, state }: { project: ProjectWorkspac
   return (
     <section aria-label="Coding agent session" className="flex w-full min-w-0 flex-col gap-1.5 rounded-card border border-line bg-surface px-3.5 py-3">
       <span className="flex items-center gap-2 text-small font-semibold">
-        Coding agent session
+        <span className="flex-1">Coding agent session</span>
+        <SimTag title="The build is simulated in this prototype: no code is written, run or deployed.">Simulated build</SimTag>
       </span>
       <ol aria-label="Coding agent activity" className="flex flex-col gap-1 text-small">
         {state.played.map((s) => (

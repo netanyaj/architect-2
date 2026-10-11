@@ -130,10 +130,12 @@ async function proposeChange(
   plan: ChatPlan,
   content: string,
   model: ModelChoice,
-  opts: { unclear: boolean; skipLatest: number; say: (text: string, mode: "plan" | "build") => Promise<string | null> },
+  opts: { unclear: boolean; skipLatest: number; say: (text: string, mode: "plan" | "build") => Promise<string | null>; fallback?: ModelChoice | null },
 ): Promise<{ proposalId?: string }> {
   const { current, prompt } = await chatPrompt(admin, project, plan, content, opts.skipLatest);
-  const { object } = await askObject({ instructions: CHANGE, prompt, schema: ChangeDraft, model, fast: true });
+  const { object, fallbackNote } = await askObject({ instructions: CHANGE, prompt, schema: ChangeDraft, model, fast: true, fallback: opts.fallback });
+  // Gemini was busy and OpenRouter's free model wrote the card (M5.10): one line says so.
+  if (fallbackNote) await opts.say(fallbackNote, "plan");
   const proposed = normalizeChange(object, current);
   // Locked parts (M5.8) are never in a card: anything touching them is left out, and the reply says so.
   const locks = new Set(((project.launch_settings ?? {}) as LaunchSettings).locked ?? []);
@@ -195,6 +197,8 @@ export async function sendMessage(input: { projectId: string; content: string })
     return { ok: false, message: `${MODEL_NOT_ALLOWED} in this workspace. Switch model to carry on. Your message wasn't sent.` };
   }
   const plan = await latestPlan(admin, project.id);
+  // When Gemini refuses on quota, OpenRouter's free model answers instead, if the policy allows it (M5.10).
+  const fallback: ModelChoice | null = (await allowedModels(admin, ctx.workspace.id)).includes("openrouter") ? "openrouter" : null;
 
   const { data: saved } = await admin.from("messages").insert({ project_id: project.id, role: "user", mode: "build", content, model }).select("id").single();
   const say = async (text: string, mode: "plan" | "build") => {
@@ -220,7 +224,8 @@ export async function sendMessage(input: { projectId: string; content: string })
 
     if (intent === "question") {
       const { prompt } = await chatPrompt(admin, project, plan, content, 1);
-      const { text } = await ask({ instructions: ANSWER, prompt, model, maxOutputTokens: 500, fast: true });
+      const { text, fallbackNote } = await ask({ instructions: ANSWER, prompt, model, maxOutputTokens: 500, fast: true, fallback });
+      if (fallbackNote) await say(fallbackNote, "plan");
       await say(text || "Could you say a bit more about what you'd like?", "plan");
       revalidatePath(`/p/${project.id}`);
       return { ok: true, intent };
@@ -246,7 +251,7 @@ export async function sendMessage(input: { projectId: string; content: string })
       return { ok: true, intent: "suggestion", proposalId: proposal?.id };
     }
 
-    const r = await proposeChange(admin, project, plan, content, model, { unclear, skipLatest: 1, say });
+    const r = await proposeChange(admin, project, plan, content, model, { unclear, skipLatest: 1, say, fallback });
     revalidatePath(`/p/${project.id}`);
     return { ok: true, intent, ...r };
   } catch (err) {
@@ -287,7 +292,9 @@ export async function answerInstead(input: { proposalId: string }): Promise<Chat
   const model = await stepModel(admin, ctx.workspace.id, project.model);
   try {
     const { prompt } = await chatPrompt(admin, project, plan, diff.request, 0);
-    const { text } = await ask({ instructions: ANSWER, prompt, model, maxOutputTokens: 500, fast: true });
+    const fallback: ModelChoice | null = (await allowedModels(admin, ctx.workspace.id)).includes("openrouter") ? "openrouter" : null;
+    const { text, fallbackNote } = await ask({ instructions: ANSWER, prompt, model, maxOutputTokens: 500, fast: true, fallback });
+    if (fallbackNote) await admin.from("messages").insert({ project_id: project.id, role: "architect", mode: "plan", content: fallbackNote, model });
     await admin.from("messages").insert({ project_id: project.id, role: "architect", mode: "plan", content: text || "Could you say a bit more about what you'd like to know?", model });
     revalidatePath(`/p/${project.id}`);
     return { ok: true, intent: "question" };

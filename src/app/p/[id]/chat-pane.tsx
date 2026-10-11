@@ -338,8 +338,6 @@ export function ChatPane({
     <aside aria-label={title} className="flex min-h-0 flex-col overflow-hidden rounded-pane border border-line bg-surface shadow-pane lg:w-[344px] lg:flex-none">
       <div className="flex items-center gap-2 px-4 pt-3.5 pb-2.5">
         <h2 className="flex-1 text-sub font-semibold">{title}</h2>
-        {/* One label for the region (M5.9): answers are real; the build, pull requests, edits and sessions shown here are not. */}
-        <SimTag title="Answers come from a real model. The build, pull requests, code edits, keys and coding-agent sessions shown here are simulated in this prototype.">Builds simulated</SimTag>
         <IconButton icon="panelRight" label={`Collapse ${title.toLowerCase()}`} quiet size={32} onClick={onCollapse} />
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4 pt-1.5 pb-3" aria-live="polite">
@@ -349,6 +347,7 @@ export function ChatPane({
             {project.repo ? <YouMessage>Plan from my repo {project.repo}, keeping its stack.</YouMessage> : project.prompt && <YouMessage>{project.prompt}</YouMessage>}
             <ArchitectMessage time={chatTime(introAt)}>
               <p>{planIntro(project, writing)}</p>
+              {project.plan?.generation === "ready" && !writing && <p className="text-small text-ink-2">Written by {project.plan.writtenBy}</p>}
               {/* The plan's open questions, one at a time (M5.8); the plan shows them too. */}
               {project.plan?.generation === "ready" && !project.plan.agreedAt && !writing && (
                 <QuestionCard questions={project.plan.questions} editReason={canChange ? undefined : "Viewers can't answer the plan's questions."} />
