@@ -17,6 +17,10 @@ This folder becomes the root of the new repo. Claude Code reads `CLAUDE.md` firs
 | `docs/product/` | PRD, architecture, flows, stack and milestones (for context) |
 | `.env.example` | The keys you add yourself |
 
+## Invites
+
+Invites are shared by link: Settings › People › Create invite link, then send the link yourself. It only works for the email it was made for. There's no email service by decision; sending invites by email (Supabase Auth with custom SMTP, `INVITE_EMAILS=on`) and matching invites to a new sign-up automatically are **Next**.
+
 ## Real vs Simulated
 Everything simulated carries the `Simulated` tag in the interface. Full list: `docs/BUILD-SPEC.md` section 1; deviations: `docs/DECISIONS.md`; every PRD Must, row by row: [`docs/COVERAGE.md`](docs/COVERAGE.md).
 

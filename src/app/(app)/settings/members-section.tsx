@@ -218,6 +218,7 @@ export function MembersSection({
         <h2 id="people" className="text-heading font-[650]">
           People in {workspaceName}
         </h2>
+        <p className="text-ink-2">Invites are shared by link: make one, then send it to them yourself. It only works for the email you enter.</p>
         {!canManage && <p className="text-ink-2">Only Owners and Admins can invite people or change roles.</p>}
       </div>
 
@@ -255,7 +256,7 @@ export function MembersSection({
             </Button>
           </div>
           <p className="text-small text-ink-2">
-            {ROLE_INFO[role].label}: {ROLE_INFO[role].can} Send them the link yourself; it only works for the email you enter.
+            {ROLE_INFO[role].label}: {ROLE_INFO[role].can}
           </p>
           {result.link && (
             <div role="status" className="flex flex-col gap-1.5">

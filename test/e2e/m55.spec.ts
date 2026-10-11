@@ -91,6 +91,7 @@ test.describe("M5.5", () => {
   test("People: members and pending invites apart; Resend link makes a new link and the old one stops working; Revoke", async ({ page }) => {
     await start(page);
     await page.goto("/settings");
+    await expect(page.getByText("Invites are shared by link", { exact: false })).toBeVisible();
     const email = `invitee-${Date.now()}@example.com`;
     await page.getByLabel("Email", { exact: true }).fill(email);
     await page.getByRole("button", { name: "Create invite link" }).click();
