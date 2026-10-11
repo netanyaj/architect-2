@@ -592,27 +592,34 @@ export function TerminalView({ project, items, live }: { project: ProjectWorkspa
   const [cleared, setCleared] = useState(false);
   const [command, setCommand] = useState("");
   const [history, setHistory] = useState<string[]>([]);
-  const [pending, start] = useTransition();
+  // Commands run one after another without blocking the input (a refresh after a check re-run mustn't hold it).
+  const [running, setRunning] = useState(0);
   const inputId = useId();
   const log = useRef<HTMLDivElement>(null);
   useEffect(() => {
     log.current?.scrollTo({ top: log.current.scrollHeight });
   }, [mine.length]);
-  const run = (line: string) =>
-    start(async () => {
+  const run = async (line: string) => {
+      setRunning((n) => n + 1);
       setCommand("");
       setHistory((h) => [line, ...h].slice(0, 20));
       setMine((m) => [...m, { kind: "cmd", text: line }]);
-      const r = await runCommand({ projectId: project.id, command: line });
-      if (!r.ok) return setMine((m) => [...m, { kind: "fail", text: r.message }]);
-      if (r.clear) {
-        setCleared(true);
-        return setMine([]);
+      try {
+        const r = await runCommand({ projectId: project.id, command: line });
+        if (!r.ok) return setMine((m) => [...m, { kind: "fail", text: r.message }]);
+        if (r.clear) {
+          setCleared(true);
+          return setMine([]);
+        }
+        setMine((m) => [...m, ...r.lines]);
+        // A re-run of the checks writes proofs: let the rest of the page catch up.
+        if (/^(npm (run )?test|pytest)$/.test(line)) router.refresh();
+      } catch {
+        setMine((m) => [...m, { kind: "fail", text: "The command didn't reach Architect. Try again." }]);
+      } finally {
+        setRunning((n) => n - 1);
       }
-      setMine((m) => [...m, ...r.lines]);
-      // A re-run of the checks writes proofs: let the rest of the page catch up.
-      if (/^(npm (run )?test|pytest)$/.test(line)) router.refresh();
-    });
+    };
   const lines = [...(cleared ? [] : replay), ...mine];
   return (
     <div className="flex min-h-0 flex-1 flex-col px-3 pb-3">
@@ -626,7 +633,7 @@ export function TerminalView({ project, items, live }: { project: ProjectWorkspa
         className="flex items-center gap-2 rounded-b-card border border-t-0 border-line bg-surface px-3 py-2 font-mono text-[12.5px]"
         onSubmit={(e) => {
           e.preventDefault();
-          if (command.trim() && !pending) run(command.trim());
+          if (command.trim()) void run(command.trim());
         }}
       >
         <label htmlFor={inputId} className="text-ink-2">
@@ -645,7 +652,7 @@ export function TerminalView({ project, items, live }: { project: ProjectWorkspa
           maxLength={200}
           autoComplete="off"
           spellCheck={false}
-          placeholder={pending ? "Running…" : "Type a command"}
+          placeholder={running ? "Running…" : "Type a command"}
           className="min-h-8 flex-1 bg-transparent outline-none"
         />
       </form>
