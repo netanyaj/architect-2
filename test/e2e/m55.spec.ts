@@ -367,7 +367,7 @@ test.describe("M5.5", () => {
     await tt.getByRole("button", { name: "Delete permanently" }).click();
     await expect(trash.getByText("ticket-triage")).toHaveCount(0);
     expect((await db.from("projects").select("id").eq("workspace_id", ws).eq("name", "ticket-triage")).data).toEqual([]);
-    const { data: audit } = await db.from("audit_log").select("action").eq("workspace_id", ws).in("action", ["project.deleted", "project.restored", "project.deleted_forever"]);
+    const { data: audit } = await db.from("audit_log").select("action").eq("workspace_id", ws).in("action", ["project.deleted", "project.restored", "project.deleted_forever"]).in("target", ["Lead scorer", "ticket-triage"]);
     expect(audit!.map((a) => a.action).sort()).toEqual(["project.deleted", "project.deleted", "project.deleted_forever", "project.restored"]);
   });
 });

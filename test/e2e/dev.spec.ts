@@ -57,7 +57,7 @@ test.describe("M4: Developer view", () => {
     await page.getByRole("button", { name: "More for this project" }).click();
     await page.getByRole("menuitem", { name: "Developer view" }).click();
     await page.waitForURL(/dev=1/);
-    await expect(page.getByText("Developer view", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 }).getByText("Developer view")).toBeVisible();
     await expect(page.getByRole("tab", { name: "Code" })).toHaveAttribute("aria-selected", "true");
 
     // Nothing built yet, so Code opens on All files: the real tree.
