@@ -201,7 +201,7 @@ export type ProjectWorkspace = {
 export type Handoff = {
   canTransfer: boolean;
   /** Members it can go to (not Viewers, not its owner). Invited ones accept with their invite link. */
-  candidates: { id: string; name: string; role: Role; invited: boolean }[];
+  recipients: { id: string; name: string; role: Role; invited: boolean }[];
   /** An open offer for this project. */
   outgoing: { id: string; toName: string; invited: boolean; createdAt: string; fromMe: boolean } | null;
   /** An open offer to the person looking. */
@@ -488,7 +488,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
   const pendingTo = pending ? (memberRows ?? []).find((m) => m.id === pending.to_member) : undefined;
   const handoff: Handoff = {
     canTransfer: (p.owner_id === ctx.user.id || membership?.role === "owner" || membership?.role === "admin") && (membership?.role ?? "viewer") !== "viewer",
-    candidates: (memberRows ?? [])
+    recipients: (memberRows ?? [])
       .filter((m) => m.role !== "viewer" && !(m.user_id && m.user_id === p.owner_id && !p.owner_display_name))
       .map((m) => ({ id: m.id, name: m.display_name ?? m.email ?? m.invited_email ?? "Someone", role: m.role as Role, invited: m.status === "invited" })),
     outgoing: pending ? { id: pending.id, toName: pending.to_name, invited: pendingTo?.status === "invited", createdAt: pending.created_at, fromMe: pending.from_user === ctx.user.id } : null,

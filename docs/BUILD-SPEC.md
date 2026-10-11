@@ -111,7 +111,7 @@ Screen numbers refer to the final canvas. Interface words follow the design-syst
 - **Acceptance:** F5, F6 and F9 can be shown, and every Real/Sim row in the PRD is done.
 - **Status (11 Oct 2026): done and accepted on production.** F5, F6 and F9 pass on production, and so does the full browser suite (50 passed, 2 skipped by design). Every PRD Must, row by row: `docs/COVERAGE.md`. Details and deviations: DECISIONS.md "M5" and "M5 acceptance".
 
-### M6 · QA and submission (Fri 9)
+### M6 · QA and hand-in (Fri 9)
 - Work through `docs/QA-CHECKLIST.md`.
 - README with a Real vs Simulated table; architecture PDF; absolute image links in ARCHITECTURE.md; PRD links filled in.
-- Loom (3–5 min); submission form.
+- Loom (3–5 min); hand-in form.

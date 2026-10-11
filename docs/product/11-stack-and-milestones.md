@@ -20,7 +20,7 @@ _Draft 3 · 2026-10-03. Built from PRD section 14 ("What the assignment prototyp
 | GitHub | A GitHub App with read-only access to chosen repos (contents, metadata) | Matches B-1: no full `repo` scope | Supabase's GitHub sign-in token: it can't read private repos without broad scopes |
 | Build simulator | A server-side script engine that writes timed events to Postgres | Drives the same UI states a real orchestrator would; it is keyed to the real Blueprint's items | A hard-coded video-like demo: it breaks the moment the Blueprint differs |
 | Preview | A pre-built demo app ("Meeting Prep"), shown full-size in an iframe with its own navigation and URL bar, with a sample-data banner | It shows A-8 honestly without real code generation | Real sandbox: the PRD marks the build as Sim for the prototype |
-| Testing | Playwright smoke test of the core flow; schema tests on Blueprint output | Guards the demo path before submission | |
+| Testing | Playwright smoke test of the core flow; schema tests on Blueprint output | Guards the demo path before hand-in | |
 
 ## 2. What is Real and what is Simulated
 Everything the PRD marks **Real** or **Sim** is built. Only items marked **Doc** stay documented: BL-16 app analytics, BL-17 human support, A-12 Blueprint export, C-8 tracker-free tenant, C-9 policy as code and SSO/SCIM.
@@ -50,7 +50,7 @@ Each milestone ends with something that can be shown on the live URL.
 | M3 | Tue 6 | **Build to deploy (Sim).** Simulator and Realtime; BL-5, A-6 to A-10; preview with device sizes, select element → chat, console (BL-6); checkpoints (BL-7); budgets (BL-14); Needs connection → Connect inline; environments, pre-publish checks, deploy, rollback (BL-12, BL-13); building approved changes (F7) | F2 and F7 run end to end, prompt to live URL |
 | M4 | Wed 7 | **Developers and agents.** Import (B-1, B-2 Real), run as is (B-3), PRs and sync (B-4, B-5, BL-11); agent section with graph, inline edit, playground and traces (BL-8); CrewAI and LangGraph agents (B-6); coding-agent activity and the MCP tool spec page (B-7); default stack (B-8); developer view (B-9); data tab and auth toggle (BL-10) | F3, F4 and F8 can be shown |
 | M5 | Thu 8 | **Governance layer and remaining flows.** C-1 to C-7 and C-10: setup, model and connector policies, egress rules and data-flow view, approval queue, audit log, org budgets (F5, F6); migration (F9) | F5, F6 and F9 can be shown; every PRD Real/Sim row is done |
-| M6 | Fri 9 | **QA and submission.** Acceptance-criteria pass, accessibility pass, empty and error states; README; one architecture PDF; absolute image links in ARCHITECTURE.md; PRD links filled in; Loom; form | Submitted |
+| M6 | Fri 9 | **QA and hand-in.** Acceptance-criteria pass, accessibility pass, empty and error states; README; one architecture PDF; absolute image links in ARCHITECTURE.md; PRD links filled in; Loom; form | Submitted |
 
 **Capacity:** this is the full PRD scope with no cut list, so there is no slack inside M1 to M5. M6 is the only buffer. To keep it, Claude Code works on two branches in parallel from M3 onward (simulated screens are independent of each other), and any milestone not done by its evening carries into the next morning first.
 

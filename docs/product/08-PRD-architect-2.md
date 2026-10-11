@@ -1,6 +1,6 @@
 # PRD: Architect 2.0
 
-_Owner: Netanya Jaison (TPM candidate) · Draft v5 · 2026-10-03. Live prototype: (link to be added) · Repo: (link to be added) · Architecture: `ARCHITECTURE.md`. Supporting material: Appendix E._
+_Owner: Netanya Jaison · Draft v5 · 2026-10-03. Live prototype: (link to be added) · Repo: (link to be added) · Architecture: `ARCHITECTURE.md`. Supporting material: Appendix E._
 
 **At a glance**
 1. **One prompt becomes a full Blueprint (the app's PRD), and one click builds all of it.** The Blueprint always comes first, with defaults filled in and costs shown; nothing is built until the user clicks Build.
@@ -40,7 +40,7 @@ AI app builders produce impressive first demos, but users can't tell whether the
 | **Control is all or nothing** | Models are chosen only after planning, integrations are guessed, and agents are edited in a separate product |
 | **Enterprises can't govern AI-built apps** | 93% of tech and security leaders are concerned and 8% have strong governance (Retool, State of AI Governance 2026, n = 307). Architect has enterprise plumbing (tenants, SSO, a VPC option) but shows none of it |
 
-_Sources: our audit of Architect (Appendix E: `02`, `04`), forum and survey research (`07`). The forum sample is complaint-biased, so it ranks problems rather than sizing them._
+_Sources: our audit of Architect ([`docs/research/02`](../research/02-architect-today.md), [`04`](../research/04-import-audit.md)), forum and survey research ([`07`](../research/07-secondary-research.md)). The forum sample is complaint-biased, so it ranks problems rather than sizing them._
 
 ## 3. Market context
 **Why now**
@@ -380,7 +380,7 @@ What the system must sustain; the how lives in the architecture doc. Lyzr publis
 | Personas aren't interview-validated | Assumptions listed per persona; 5 interviews per persona before GA |
 | The rubric review used for subjective items favours its own model family | Deterministic checks first; switch the reviewer model if quality metrics show bias |
 
-## Appendix D. Submission form answers (draft)
+## Appendix D. Hand-in form answers (draft)
 - **Why a non-technical user picks Architect 2.0 over Replit, Lovable or Emergent:**
   - One prompt builds the whole thing: screens, agents and integrations, with no stitching.
   - You see what you'll get and what it costs before you spend.
@@ -397,10 +397,11 @@ What the system must sustain; the how lives in the architecture doc. Lyzr publis
   - Business teammates can drive the same project through its blueprint.
 
 ## Appendix E. Supporting material
-- Document codes used in this PRD:
-  - `02` = `02-architect-today.md` (feature audit and test build)
-  - `03` = `03-architect-architecture-today.md` (how today's system works)
-  - `04` = `04-import-audit.md` (repo import and build test)
-  - `06` = `06-competitor-matrix.md`, `07` = `07-secondary-research.md`
+- Document codes used in this PRD (all in [`docs/research/`](../research/)):
+  - `02` = [`02-architect-today.md`](../research/02-architect-today.md) (feature audit and test build)
+  - `03` = [`03-architect-architecture-today.md`](../research/03-architect-architecture-today.md) (how today's system works)
+  - `04` = [`04-import-audit.md`](../research/04-import-audit.md) (repo import and build test)
+  - `06` = [`06-competitor-matrix.md`](../research/06-competitor-matrix.md) (products compared), `07` = [`07-secondary-research.md`](../research/07-secondary-research.md) (forum and survey research)
+  - Our research synthesis, which ties these together, isn't published.
 - Personas: `personas/` (Morgan, Sam, and a reference profile of the org-admin role). IA and flows: `10-IA-and-flows.md`. Diagrams: `diagrams/`.
 - Today vs 2.0 (scale, performance, reliability, security): `sheets/architect-today-vs-2.0.xlsx`.

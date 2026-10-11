@@ -30,17 +30,17 @@ function useAct() {
 /** ⋯ › Transfer ownership: choose a member and add an optional note. */
 export function TransferDialog({ project, open, onOpenChange }: { project: ProjectWorkspace; open: boolean; onOpenChange: (o: boolean) => void }) {
   const h = project.handoff;
-  const [memberId, setMemberId] = useState(h.candidates[0]?.id ?? "");
+  const [memberId, setMemberId] = useState(h.recipients[0]?.id ?? "");
   const [note, setNote] = useState("");
   const { pending, error, act } = useAct();
   const ids = { member: useId(), note: useId() };
-  const chosen = h.candidates.find((c) => c.id === memberId);
+  const chosen = h.recipients.find((c) => c.id === memberId);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-pane border border-line bg-surface p-6 shadow-pop sm:max-w-[480px]">
         <DialogTitle className="text-sub font-semibold">Transfer ownership of {project.name}</DialogTitle>
         <DialogDescription className="text-ink-2">The new owner gets the plan, its checks, its versions and what still needs someone. Nothing changes until they accept.</DialogDescription>
-        {h.candidates.length === 0 ? (
+        {h.recipients.length === 0 ? (
           <p className="text-ink-2">Nobody else here can own it yet. Invite someone as a Builder in Settings first.</p>
         ) : (
           <div className="flex flex-col gap-3">
@@ -48,7 +48,7 @@ export function TransferDialog({ project, open, onOpenChange }: { project: Proje
               New owner
             </label>
             <Select id={ids.member} value={memberId} onChange={(e) => setMemberId(e.target.value)} controlSize="md" wrapperClassName="w-full">
-              {h.candidates.map((c) => (
+              {h.recipients.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                   {c.invited ? " (invited)" : ""}
@@ -74,7 +74,7 @@ export function TransferDialog({ project, open, onOpenChange }: { project: Proje
           </Button>
           <Button
             variant="primary"
-            disabledReason={!h.candidates.length ? "Nobody can own it yet." : pending ? "Sending…" : undefined}
+            disabledReason={!h.recipients.length ? "Nobody can own it yet." : pending ? "Sending…" : undefined}
             onClick={() => act(() => transferOwnership({ projectId: project.id, memberId, note }), () => onOpenChange(false))}
           >
             Offer ownership

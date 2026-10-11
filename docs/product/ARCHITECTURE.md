@@ -12,7 +12,7 @@ _Owner: Netanya Jaison · Draft 1 · 2026-10-03. Companion to the PRD (`08-PRD-a
 ![System overview](diagrams/A1-system-overview.png)
 
 ## 1. Starting point: what exists today, and what changes
-Based on our network captures and tests of today's Architect (`03-architect-architecture-today.md`, `04-import-audit.md`) and a DNS check on 2026-10-03.
+Based on our network captures and tests of today's Architect ([`docs/research/03-architect-architecture-today.md`](../research/03-architect-architecture-today.md), [`docs/research/04-import-audit.md`](../research/04-import-audit.md)) and a DNS check on 2026-10-03.
 
 | Area | Today | 2.0 | Why |
 |---|---|---|---|

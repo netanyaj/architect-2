@@ -48,7 +48,7 @@ Clean, calm and consistent with Soft Tray. The v4 pictures work, especially the 
 - Dark mode holds up: the mosaics and glyphs read well on the dark tray.
 
 ## Product review
-- **Does polish matter for this submission?** Partly. Reviewers judge product thinking first (plan-first, governance, honest Simulated labels, cost before spend), and the Loom and README carry that. A visibly crafted UI raises trust in the first 30 seconds of the Loom. A visibly unfinished one lowers it.
+- **Does polish matter for this hand-in?** Partly. Reviewers judge product thinking first (plan-first, governance, honest Simulated labels, cost before spend), and the Loom and README carry that. A visibly crafted UI raises trust in the first 30 seconds of the Loom. A visibly unfinished one lowers it.
 - **Risk:** a broad restyle the night before the deadline can break screens that work. **Only change tokens and shared components** (Button, ListRow, StatusLabel, SimulatedBadge, MosaicThumb, BuildLoader). No layout rewrites and no new screens.
 - **Order:** M5.8 (if not finished) → M5.9 polish (about 2 h) → M6 (visual QA, README, Loom, form). If time runs short, cut M5.9 items 4–6, not M6.
 - **Don't weaken honesty:** fewer "Simulated" chips is fine, but every simulated region keeps one clear label. Reviewers must never mistake a simulated thing for a real one.

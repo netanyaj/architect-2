@@ -63,10 +63,10 @@ export const STARTERS: Starter[] = [
       "Classify incoming Zendesk tickets by urgency and team, draft a reply for simple ones, and escalate anything from VIP customers.",
   },
   {
-    id: "candidate-screening",
+    id: "applicant-screening",
     kind: "Agentlet",
     icon: "person",
-    name: "Candidate screening",
+    name: "Applicant screening",
     description: "Scores CVs against the role and suggests interview questions.",
     tools: ["Drive"],
     credits: 110,

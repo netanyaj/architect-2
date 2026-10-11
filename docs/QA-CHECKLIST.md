@@ -1,6 +1,6 @@
 # QA checklist (run in M6, and on every milestone's own items)
 
-## Core flow (F2): must pass before submission
+## Core flow (F2): must pass before hand-in
 - [ ] Type the Meeting Prep prompt on Home and press Send. The project opens and the plan streams into the Plan panel and document within 60 s.
 - [ ] "Choices I made for you" lists the defaults; the Slack question card blocks Build, with "Answer 1 question to build · 1,240 credits available" beside the disabled button.
 - [ ] Answer it, edit one part's wording, then click **Build · ~N credits**. Nothing ran before this click; check `runs.started_by`.
