@@ -436,7 +436,12 @@ export function BuildActivity({ project, items, live }: { project: ProjectWorksp
   else if (pause) sentences.push(`I've paused at your ${project.budgetCredits ?? pause.budget}-credit budget. The ${plural(counted.filter((i) => i.status === "agreed").length, "part")} left should cost about ${pause.remainingEst} credits.`);
   else sentences.push(`${run.kind === "change" ? "The change is built" : "Build finished"}. ${works} of ${counted.length} parts work.`);
   if (blocked.length) sentences.push(`${blocked[0].title} is blocked after 3 fixes. Open it to see what I suggest.`);
-  if (connect.length) sentences.push(`I need you for one thing: connect ${providerName(connect[0].provider)} so ${connect[0].title.toLowerCase()} uses your real data.`);
+  if (connect.length)
+    sentences.push(
+      isSignInService(connect[0].provider)
+        ? `I need you for one thing: connect ${providerName(connect[0].provider)} so ${connect[0].title.toLowerCase()} uses your real data.`
+        : `I need you for one thing: the ${providerName(connect[0].provider)} key, so ${connect[0].title.toLowerCase()} uses your real data.`,
+    );
   if (approval.length) sentences.push(`${providerName(approval[0].provider)} is waiting for IT, and nothing else is blocked by it.`);
 
   return (

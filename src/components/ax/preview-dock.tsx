@@ -21,10 +21,10 @@ export function PreviewFrame({
   return (
     <div className={cn("relative mx-3 mb-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-white", className)}>
       {(url || badge) && (
-        <div className="flex items-center gap-2.5 border-b border-[#e4e6ea] bg-[#f7f8fa] px-2.5 py-2">
+        <div className="flex items-center gap-2.5 border-b border-line bg-tray px-2.5 py-2">
           {badge}
           {url && (
-            <span className="mx-auto flex h-7 max-w-[440px] flex-1 items-center gap-1.5 rounded-full border border-[#dfe2e7] bg-white px-3 font-mono text-small text-[#454b57]">
+            <span className="mx-auto flex h-7 max-w-[440px] flex-1 items-center gap-1.5 rounded-full border border-line bg-surface px-3 font-mono text-small text-ink-2">
               <Icon name="lock" size="sm" />
               <span className="truncate">{url}</span>
             </span>
