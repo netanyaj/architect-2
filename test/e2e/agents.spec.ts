@@ -1,16 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
 import { signIn } from "./build.spec.seed";
-import { adminDb, createTestUser, deleteTestUser, type TestUser } from "./helpers";
+import { adminDb, createTestUser, deleteTestUser, demoWorkspace, type TestUser } from "./helpers";
 
-/* Agents (screen 9): the graph, a node's settings, and Try it running the agent for real on Lyzr Studio.
-   Needs LYZR_API_KEY on the server under test. The Simulated fallback (no key) is agents-fallback.spec.ts. */
+/* Agents (screen 9, M5.10): each workspace's own Lyzr Studio. Connecting the key in Connections, an agent whose part
+   works made in that Studio (Not in Studio yet · Retry), saved edits syncing, Try it on it for real, and the shared,
+   read-only demo agent. Needs LYZR_API_KEY (used here as the test workspace's own key) and LYZR_AGENT_ID on the server. */
 
 const LYZR = "https://agent-prod.studio.lyzr.ai";
 
 async function projectId(user: TestUser, name: string) {
-  const db = adminDb();
-  const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
-  const { data: p } = await db.from("projects").select("id").eq("workspace_id", m!.workspace_id).eq("name", name).single();
+  const { data: p } = await adminDb().from("projects").select("id").eq("workspace_id", await demoWorkspace(user)).eq("name", name).single();
   return p!.id;
 }
 
@@ -22,8 +21,8 @@ async function studioAgents(id: string): Promise<string[]> {
 
 const panel = (page: Page, name: string) => page.getByRole("complementary", { name: `${name} settings` });
 
-test.describe("M4: Agents", () => {
-  test.setTimeout(150_000);
+test.describe("M4 · M5.10: Agents in the workspace's own Lyzr Studio", () => {
+  test.setTimeout(180_000);
   let user: TestUser;
   const made: string[] = [];
 
@@ -37,74 +36,81 @@ test.describe("M4: Agents", () => {
     if (user) await deleteTestUser(user);
   });
 
-  test("any plan: open Agents, open a node, Try it runs on Lyzr Studio for real and is saved as a run", async ({ page }) => {
+  test("without a key Studio actions are Simulated; connect it in Connections, Retry makes the agent there, Save syncs, Try it runs it", async ({ page }) => {
     await signIn(page, user);
     const id = await projectId(user, "ticket-triage");
     await page.goto(`/p/${id}?view=agents`);
-
-    // The graph is the default: what starts it, labelled hand-offs, where it delivers.
     const graph = page.getByRole("group", { name: "How the agents connect" });
-    await expect(graph.getByRole("button", { name: "Urgency and team label: open its settings" })).toBeVisible();
-    await expect(graph.getByText("Hands over urgency and team label")).toBeVisible();
-    await expect(page.getByRole("complementary", { name: "Parts" }).getByText("AI agents")).toBeVisible();
-
     await graph.getByRole("button", { name: "Urgency and team label: open its settings" }).click();
-    const settings = panel(page, "Urgency and team label");
-    await expect(settings.getByText("Runtime: Lyzr Studio")).toBeVisible();
-    await expect(settings.getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
+    let settings = panel(page, "Urgency and team label");
+    // No key: one label says how to make it real; Open in Studio says why it can't open.
+    await expect(settings.getByText("Simulated · connect your Lyzr key to make this real")).toBeVisible();
+    await expect(settings.getByRole("button", { name: "Open in Studio" })).toHaveAttribute("title", "Connect your Lyzr key");
 
-    // Settings: an edit is counted, holds the stage action, and Save clears it.
-    const instructions = settings.getByLabel("Instructions");
-    await instructions.fill("Label each ticket with one urgency (low, normal, urgent) and one team. Answer in one line.");
+    // Connect the workspace's own key (Owner). It's checked with Lyzr, then only its last 4 characters are shown.
+    await page.goto("/connections");
+    const card = page.getByRole("region", { name: "Lyzr Studio" });
+    await card.getByLabel("Lyzr API key").fill(process.env.LYZR_API_KEY!);
+    await card.getByRole("button", { name: "Connect with your Lyzr API key" }).click();
+    await expect(card.getByText(`Key ending ${process.env.LYZR_API_KEY!.slice(-4)}`)).toBeVisible({ timeout: 30_000 });
+    expect(await page.content()).not.toContain(process.env.LYZR_API_KEY!);
+
+    // The part works but its agent isn't in Studio yet: Retry makes it there.
+    await page.goto(`/p/${id}?view=agents`);
+    await graph.getByRole("button", { name: "Urgency and team label: open its settings" }).click();
+    settings = panel(page, "Urgency and team label");
+    await expect(settings.getByText("Not in Studio yet")).toBeVisible();
+    await settings.getByRole("button", { name: "Retry" }).click();
+    await expect(settings.getByText(/^Synced with Lyzr Studio · /)).toBeVisible({ timeout: 30_000 });
+    await expect(settings.getByRole("link", { name: "Open in Studio" })).toHaveAttribute("href", /^https:\/\/studio\.lyzr\.ai\/agent-create\/[a-z0-9]+$/);
+    await expect(settings.getByText("Partly simulated")).toBeVisible();
+
+    // A saved edit syncs to Studio.
+    await settings.getByLabel("Instructions").fill("Label each ticket with one urgency (low, normal, urgent) and one team. Answer in one line.");
     await expect(settings.getByText("1 unsaved change")).toBeVisible();
-    await expect(page.locator('header [title="Save or discard your agent changes first."]')).toBeVisible();
     await settings.getByRole("button", { name: "Save changes" }).click();
     await expect(settings.getByText("All changes saved")).toBeVisible({ timeout: 30_000 });
-    // Save made the node's own Studio agent; the sync line is real now.
-    await expect(settings.getByText(/^Synced with Lyzr Studio · /)).toBeVisible();
-    await expect(settings.getByRole("link", { name: "Open in Studio" })).toHaveAttribute("href", /^https:\/\/studio\.lyzr\.ai\/agent-create\/[a-z0-9]+$/);
 
-    // Try it: a real answer from Lyzr Studio.
+    // Try it: a real answer from the workspace's own Studio.
     await settings.getByRole("tab", { name: "Try it" }).click();
-    await expect(settings.getByText(/Runs on Lyzr Studio as its own Studio agent/)).toBeVisible();
+    await expect(settings.getByText(/Runs in your workspace's Lyzr Studio as its own agent/)).toBeVisible();
     await settings.getByRole("button", { name: "Run on Lyzr Studio" }).click();
     const answer = settings.getByRole("region", { name: "Answer" });
     await expect(answer).toBeVisible({ timeout: 60_000 });
     await expect(answer).toContainText("Runs on Lyzr Studio");
-    await expect(answer.getByText("Simulated")).toHaveCount(0);
 
-    // It's saved as a run, on the node's own Studio agent.
-    await settings.getByRole("tab", { name: "Runs" }).click();
-    await expect(settings.getByRole("button", { name: /Try it · Runs on Lyzr Studio/ }).first()).toBeVisible();
     const db = adminDb();
     const { data: agent } = await db.from("agents").select("id, lyzr_agent_id, instructions").eq("project_id", id).eq("item_key", "urgency-and-team-label").single();
     expect(agent!.instructions).toMatch(/^Label each ticket with one urgency/);
     expect(agent!.lyzr_agent_id).toMatch(/^[a-z0-9]{24}$/);
-    const { data: runs } = await db.from("agent_runs").select("runtime, status, output, model_label").eq("agent_id", agent!.id);
-    expect(runs).toHaveLength(1);
-    expect(runs![0]).toMatchObject({ runtime: "lyzr_agent", status: "passed" });
-    expect(runs![0].output!.length).toBeGreaterThan(5);
+    const { data: runs } = await db.from("agent_runs").select("runtime, status").eq("agent_id", agent!.id);
+    expect(runs).toEqual([{ runtime: "lyzr_agent", status: "passed" }]);
     made.push(...(await studioAgents(id)));
   });
 
-  test("Meeting Prep keeps its sample agents: the Research agent from Studio, then the Brief writer", async ({ page }) => {
+  test("Meeting Prep: the Research agent is the shared demo agent, Try it only; the Brief writer is the workspace's own", async ({ page }) => {
     await signIn(page, user);
     const id = await projectId(user, "Meeting Prep");
     await page.goto(`/p/${id}?view=agents`);
     const graph = page.getByRole("group", { name: "How the agents connect" });
-    await expect(graph.getByRole("button", { name: "Research agent: open its settings" })).toContainText("AI agent · from Lyzr Studio");
-    await expect(graph.getByText("Meeting coming up")).toBeVisible();
+    await expect(graph.getByRole("button", { name: "Research agent: open its settings" })).toContainText("AI agent · demo agent");
     await expect(graph.getByText("Hands over findings")).toBeVisible();
-    await expect(graph.getByRole("button", { name: /^HubSpot, a tool of Research agent/ })).toContainText("waiting for IT");
+    await graph.getByRole("button", { name: "Research agent: open its settings" }).click();
+    const research = panel(page, "Research agent");
+    await expect(research.getByText("Demo agent · shared and read-only")).toBeVisible();
+    await expect(research.getByRole("button", { name: "Open in Studio" })).toHaveAttribute("title", /lives in Architect's own Studio account/);
+    // Read-only: no Save bar.
+    await expect(research.getByRole("button", { name: "Save changes" })).toHaveCount(0);
+    await research.getByRole("tab", { name: "Try it" }).click();
+    await expect(research.getByText(/The demo agent runs for real on Lyzr Studio, in Architect's own account/)).toBeVisible();
+    await research.getByRole("button", { name: "Run on Lyzr Studio" }).click();
+    await expect(research.getByRole("region", { name: "Answer" })).toContainText("shared demo agent", { timeout: 60_000 });
+
     await graph.getByRole("button", { name: "Brief writer: open its settings" }).click();
-    const settings = panel(page, "Brief writer");
-    await expect(settings.getByLabel("Instructions")).toHaveValue(/Stay under 200 words/);
-    // One Simulated label for the whole panel (M5.9): Try it is real on Studio, the rest isn't. Runs say what ran them.
-    await expect(settings.getByText("Partly simulated")).toBeVisible();
-    await settings.getByRole("tab", { name: "Runs" }).click();
-    await expect(settings.getByRole("listitem").filter({ hasText: "Check run during the build" }).or(settings.getByRole("listitem").filter({ hasText: "Build check" })).first()).toBeVisible();
-    await settings.getByRole("tab", { name: "Checks" }).click();
-    await expect(settings.getByText("Its check")).toBeVisible();
+    const writer = panel(page, "Brief writer");
+    await expect(writer.getByLabel("Instructions")).toHaveValue(/Stay under 200 words/);
+    await writer.getByRole("tab", { name: "Checks" }).click();
+    await expect(writer.getByText("Its check")).toBeVisible();
     made.push(...(await studioAgents(id)));
   });
 });

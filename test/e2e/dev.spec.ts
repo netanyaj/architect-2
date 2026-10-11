@@ -109,11 +109,13 @@ test.describe("M4: Developer view", () => {
     await expect(activity).toContainText("Claude Code (you) · via MCP");
     await expect(activity).toContainText("GitHub");
 
-    // Terminal: the run's commands, replayed.
-    await page.getByRole("tab", { name: "Terminal" }).click();
-    const log = page.getByRole("log", { name: "Terminal" });
-    await expect(log).toContainText("$ git switch -c architect/plan-v1");
-    await expect(log).toContainText('$ architect build "Talking points generator"');
-    await expect(log).toContainText("assertions passed");
+    // The Developer panel (M5.10): the build's commands are its Build logs, per part; the terminal starts clean.
+    await page.getByRole("tab", { name: "Terminal & logs" }).click();
+    await expect(page.getByRole("log", { name: "Terminal" })).toContainText("Architect terminal.");
+    await expect(page.getByRole("log", { name: "Terminal" })).not.toContainText("git switch");
+    await page.getByRole("tab", { name: "Build logs" }).click();
+    const part = page.locator("details", { hasText: "Talking points generator" });
+    await expect(part).toContainText('architect build "Talking points generator"');
+    await expect(part).toContainText("assertions passed");
   });
 });

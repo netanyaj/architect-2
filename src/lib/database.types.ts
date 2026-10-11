@@ -69,7 +69,6 @@ export type Database = {
       }
       agents: {
         Row: {
-          studio_error: string | null
           created_at: string
           description: string | null
           framework: string
@@ -84,6 +83,7 @@ export type Database = {
           project_id: string | null
           run_as: string
           schedule: string | null
+          studio_error: string | null
           studio_synced_at: string | null
           temperature: number
           tools: string[]
@@ -91,7 +91,6 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
-          studio_error?: string | null
           created_at?: string
           description?: string | null
           framework?: string
@@ -106,6 +105,7 @@ export type Database = {
           project_id?: string | null
           run_as?: string
           schedule?: string | null
+          studio_error?: string | null
           studio_synced_at?: string | null
           temperature?: number
           tools?: string[]
@@ -113,7 +113,6 @@ export type Database = {
           workspace_id: string
         }
         Update: {
-          studio_error?: string | null
           created_at?: string
           description?: string | null
           framework?: string
@@ -128,6 +127,7 @@ export type Database = {
           project_id?: string | null
           run_as?: string
           schedule?: string | null
+          studio_error?: string | null
           studio_synced_at?: string | null
           temperature?: number
           tools?: string[]
@@ -230,7 +230,7 @@ export type Database = {
           created_at?: string
           detail?: string | null
           event: string
-          id?: number
+          id?: never
           is_demo?: boolean
           project_id?: string | null
           user_id?: string | null
@@ -240,13 +240,28 @@ export type Database = {
           created_at?: string
           detail?: string | null
           event?: string
-          id?: number
+          id?: never
           is_demo?: boolean
           project_id?: string | null
           user_id?: string | null
           workspace_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "analytics_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       approvals: {
         Row: {
@@ -1165,36 +1180,36 @@ export type Database = {
       }
       project_keys: {
         Row: {
-          secret_id: string | null
           approval_id: string | null
           environment: string
           id: string
           name: string
           project_id: string
+          secret_id: string | null
           set_at: string
           set_by: string | null
           set_by_name: string
           status: string
         }
         Insert: {
-          secret_id?: string | null
           approval_id?: string | null
           environment: string
           id?: string
           name: string
           project_id: string
+          secret_id?: string | null
           set_at?: string
           set_by?: string | null
           set_by_name: string
           status?: string
         }
         Update: {
-          secret_id?: string | null
           approval_id?: string | null
           environment?: string
           id?: string
           name?: string
           project_id?: string
+          secret_id?: string | null
           set_at?: string
           set_by?: string | null
           set_by_name?: string
@@ -1740,7 +1755,15 @@ export type Database = {
           user_id?: string | null
           user_name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "terminal_sessions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       usage_ledger: {
         Row: {
@@ -1856,7 +1879,15 @@ export type Database = {
           set_by_name?: string
           workspace_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "workspace_secrets_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workspaces: {
         Row: {
@@ -1896,28 +1927,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      delete_workspace_secret: {
-        Args: { p_name: string; p_workspace: string }
-        Returns: undefined
-      }
-      set_project_key_value: {
-        Args: { p_key: string; p_value: string }
-        Returns: undefined
-      }
-      set_workspace_secret: {
-        Args: {
-          p_by: string
-          p_by_name: string
-          p_name: string
-          p_value: string
-          p_workspace: string
-        }
-        Returns: undefined
-      }
-      workspace_secret: {
-        Args: { p_name: string; p_workspace: string }
-        Returns: string
-      }
       agree_and_build: {
         Args: { p_blueprint: string; p_kind?: string; p_user: string }
         Returns: string
@@ -1939,6 +1948,10 @@ export type Database = {
       }
       db_now: { Args: never; Returns: string }
       delete_project_forever: { Args: { p_project: string }; Returns: string }
+      delete_workspace_secret: {
+        Args: { p_name: string; p_workspace: string }
+        Returns: undefined
+      }
       is_member: { Args: { ws: string }; Returns: boolean }
       list_deleted_projects: {
         Args: { p_workspace: string }
@@ -1972,9 +1985,23 @@ export type Database = {
         Args: { p_workspace: string }
         Returns: undefined
       }
+      set_project_key_value: {
+        Args: { p_key: string; p_value: string }
+        Returns: undefined
+      }
       set_run_timeline: {
         Args: { p_duration_ms: number; p_outcome: Json; p_run: string }
         Returns: string
+      }
+      set_workspace_secret: {
+        Args: {
+          p_by: string
+          p_by_name: string
+          p_name: string
+          p_value: string
+          p_workspace: string
+        }
+        Returns: undefined
       }
       settle_run: { Args: { p_run: string }; Returns: string }
       start_followup_run: {
@@ -1989,6 +2016,10 @@ export type Database = {
       }
       workspace_name_for: {
         Args: { p_email: string; p_name: string }
+        Returns: string
+      }
+      workspace_secret: {
+        Args: { p_name: string; p_workspace: string }
         Returns: string
       }
     }

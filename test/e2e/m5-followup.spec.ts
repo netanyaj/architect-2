@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { signIn } from "./build.spec.seed";
-import { adminDb, createTestUser, deleteTestUser, type TestUser } from "./helpers";
+import { adminDb, connectLyzr, createTestUser, deleteTestUser, type TestUser } from "./helpers";
 
 /* M5 follow-up (gap analysis, 11 Oct): API key connections, and the rest of the build list. One seeded workspace. */
 
@@ -147,6 +147,8 @@ test.describe("M5 follow-up", () => {
 
   test("BL-2: attach a Lyzr Studio agent in the composer; the plan is asked to use it as a part", async ({ page }) => {
     await start(page);
+    // The workspace's own Studio (M5.10): its agents are listed with its own key.
+    await connectLyzr(workspace, user);
     await page.goto("/home");
     await page.getByRole("button", { name: "Add files, agents or tools" }).click();
     await page.getByRole("menuitem", { name: /Attach a Lyzr Studio agent/ }).click();

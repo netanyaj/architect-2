@@ -130,7 +130,7 @@ export async function decide(admin: AdminDb, ctx: AppContext, raw: z.input<typeo
   }
 
   if (a.kind === "secret" && project && typeof payload.key === "string") {
-    // The key was typed and thrown away when it was asked for; approving records it as set for Live.
+    // The value was stored encrypted when it was asked for (M5.10); approving marks it set for Live.
     if (decision === "approve") await admin.from("project_keys").update({ status: "set" }).eq("approval_id", a.id).eq("status", "waiting");
     else await admin.from("project_keys").delete().eq("approval_id", a.id).eq("status", "waiting");
   }

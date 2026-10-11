@@ -365,7 +365,7 @@ test.describe("M5.5", () => {
     await choice.getByRole("radio", { name: /^Convert to a Lyzr Studio agent/ }).click();
     await expect(settings.getByText(/runs its part's check again: about 3 credits/)).toBeVisible();
     await settings.getByRole("button", { name: "Convert · ~3 credits" }).click();
-    await expect(settings.getByRole("status")).toContainText(/Converted|simulated/, { timeout: 30_000 });
+    await expect(settings.getByRole("status")).toContainText(/Converted|[Ss]imulated/, { timeout: 30_000 });
     const { data: agent } = await db.from("agents").select("run_as, framework, lyzr_agent_id").eq("project_id", tt!.id).eq("item_key", "urgency-and-team-label").single();
     expect(agent).toMatchObject({ run_as: "studio", framework: "lyzr" });
     const { data: audit } = await db.from("audit_log").select("details").eq("workspace_id", m!.workspace_id).eq("action", "agent.run_changed");

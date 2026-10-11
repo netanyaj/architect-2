@@ -44,7 +44,7 @@ const toolCatalog = (mcp: string[] | null) => [...BASE_TOOLS, ...(mcp === null ?
 
 const RUNTIME_WORDS: Record<AgentRunView["runtime"], string> = {
   lyzr_agent: "Runs on Lyzr Studio",
-  lyzr_shared: "Runs on Lyzr Studio · shared Architect agent",
+  lyzr_shared: "Runs on Lyzr Studio · shared demo agent",
   gateway: "Answered by Gemini through Architect",
   sample: "Build check",
 };

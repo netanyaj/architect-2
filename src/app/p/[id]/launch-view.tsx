@@ -547,7 +547,7 @@ export function LaunchView({ project, state }: { project: ProjectWorkspace; stat
           <div className="flex flex-wrap items-center gap-3 px-4 py-3">
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-2 font-semibold">
-                Keys and passwords <SimTag title="Keys are simulated: values are checked and thrown away." />
+                Keys and passwords <SimTag title="Values are stored encrypted. The apps that would use them are simulated in this prototype." />
               </span>
               <span className="block text-small text-ink-2">
                 Saved per version, never in the code

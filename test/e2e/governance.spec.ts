@@ -83,11 +83,11 @@ test.describe("Governance policies", () => {
     await expect.poll(async () => (await adminDb().from("projects").select("model").eq("id", id).single()).data!.model).toBe("gemini");
     await expect(chat.getByText("This model is no longer allowed ·")).toHaveCount(0, { timeout: 30_000 });
 
-    // The agent on Claude says so too, next to "Model used on Studio".
+    // The agent on Claude says so too; the line under the picker says what Studio runs (M5.10).
     await page.goto(`/p/${id}?view=agents`);
     await page.getByRole("group", { name: "How the agents connect" }).getByRole("button", { name: "Brief writer: open its settings" }).click();
     const settings = page.getByRole("complementary", { name: "Brief writer settings" });
-    await expect(settings.getByText("Model used on Studio: Gemini 3.1 Flash Lite")).toBeVisible();
+    await expect(settings.getByText(/In Lyzr Studio it runs on Gemini 3\.1 Flash Lite, Lyzr's built-in model/)).toBeVisible();
     await expect(settings.getByText("This model is no longer allowed ·")).toBeVisible();
   });
 

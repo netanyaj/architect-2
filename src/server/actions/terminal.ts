@@ -201,10 +201,12 @@ export async function deployedEnvs(input: { projectId: string }): Promise<{ test
   const none = { test: false, team: false, live: false };
   if (!z.string().uuid().safeParse(input.projectId).success) return none;
   const db = await createServerDb();
-  const [{ data: deps }, { data: runs }] = await Promise.all([
+  const [{ data: deps }, { data: envs }, { data: runs }] = await Promise.all([
     db.from("deployments").select("environment, status").eq("project_id", input.projectId),
+    // Seeded apps are live through their environments, without deploy rows.
+    db.from("environments").select("name, status").eq("project_id", input.projectId),
     db.from("runs").select("id").eq("project_id", input.projectId).limit(1),
   ]);
-  const on = (env: string) => (deps ?? []).some((d) => d.environment === env && d.status === "live");
-  return { test: Boolean(runs?.length), team: on("staging"), live: on("production") };
+  const on = (env: string) => (deps ?? []).some((d) => d.environment === env && d.status === "live") || (envs ?? []).some((e) => e.name === env && e.status === "live");
+  return { test: Boolean(runs?.length) || on("preview"), team: on("staging"), live: on("production") };
 }
