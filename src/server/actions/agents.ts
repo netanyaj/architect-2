@@ -1,8 +1,9 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { agentGraph, type AgentOrigin, type GraphEnd } from "@/lib/agents";
+import { agentGraph, CONVERT_CREDITS, type AgentOrigin, type GraphEnd } from "@/lib/agents";
 import type { Json } from "@/lib/database.types";
 import { GatewayRateLimited, GatewaySlow, GatewayUnavailable, runAgent, type AgentRuntime } from "@/lib/gateway";
 import { MODEL_CHOICES, MODEL_LABEL, toModelChoice, type ModelChoice } from "@/lib/models";
@@ -11,7 +12,8 @@ import { canBuild } from "@/lib/permissions";
 import { allowedModels } from "../blueprint/write-plan";
 import { createAdminDb, createServerDb, type AdminDb } from "../db";
 import { createLyzrAgent, LYZR_MODEL, lyzrConfigured, LyzrError, updateLyzrAgent } from "../lyzr";
-import { loadPolicies } from "../policy";
+import { RECHECK_MS } from "../code-edits";
+import { budgetRefusal, loadPolicies } from "../policy";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
 
@@ -54,6 +56,10 @@ export type AgentView = {
   knowledge: string[];
   framework: "lyzr" | "crewai" | "langgraph";
   origin: AgentOrigin;
+  /** An agent found in an imported repo keeps the framework it was written in (B-6); null otherwise. */
+  importedFrom: "crewai" | "langgraph" | null;
+  /** How an imported agent runs (M5.5): natively in its framework, converted to a Studio agent, or as a tool. */
+  runAs: "native" | "studio" | "tool";
   lyzrAgentId: string | null;
   syncedAt: string | null;
   handoff: string;
@@ -75,7 +81,7 @@ export type AgentsData = {
 };
 
 const AGENT_COLUMNS =
-  "id, workspace_id, project_id, item_key, name, description, framework, model, instructions, tools, knowledge, temperature, max_tokens, lyzr_agent_id, studio_synced_at" as const;
+  "id, workspace_id, project_id, item_key, name, description, framework, model, instructions, tools, knowledge, temperature, max_tokens, lyzr_agent_id, studio_synced_at, run_as" as const;
 
 type AgentRow = {
   id: string;
@@ -93,6 +99,7 @@ type AgentRow = {
   max_tokens: number;
   lyzr_agent_id: string | null;
   studio_synced_at: string | null;
+  run_as: string;
 };
 
 /** Scripted runs for Meeting Prep's sample agents (Simulated). */
@@ -263,6 +270,11 @@ export async function loadAgents(input: { projectId: string }): Promise<ActionRe
       knowledge: row.knowledge,
       framework: (["crewai", "langgraph"].includes(row.framework) ? row.framework : "lyzr") as AgentView["framework"],
       origin: row.framework === "crewai" || row.framework === "langgraph" ? row.framework : a.origin,
+      importedFrom: (() => {
+        const f = (items ?? []).find((i) => i.key === a.key)?.framework;
+        return f === "crewai" || f === "langgraph" ? f : null;
+      })(),
+      runAs: row.run_as === "studio" || row.run_as === "tool" ? row.run_as : "native",
       lyzrAgentId: row.lyzr_agent_id,
       syncedAt: row.studio_synced_at,
       handoff: a.handoff,
@@ -455,4 +467,70 @@ export async function tryAgent(input: { agentId: string; message: string }): Pro
     lyzrAgentId: result.createdAgentId ?? row.lyzr_agent_id,
     syncedAt: result.createdAgentId ? now : row.studio_synced_at,
   };
+}
+
+const runInput = z.object({ agentId: z.string().uuid(), runAs: z.enum(["native", "studio", "tool"]) });
+
+/**
+ * "How should this agent run?" for an agent imported in CrewAI or LangGraph (M5.5). Keep it in its framework
+ * (natively, behind the agent interface: Simulated), convert it to a Lyzr Studio agent (real: a Studio agent made
+ * from its role and instructions, as Try it does; the part's check then runs again, ~3 credits, shown before the
+ * click), or wrap it as a tool other agents call (Simulated). Every choice is audited.
+ */
+export async function setAgentRun(raw: z.input<typeof runInput>): Promise<ActionResult<{ lyzrAgentId: string | null; warning?: string }>> {
+  const ctx = await getAppContext();
+  if (!canBuild(ctx.role)) return { ok: false, message: BUILDERS_ONLY };
+  const parsed = runInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, message: "Pick one of the three choices." };
+  const admin = createAdminDb();
+  const row = await agentInWorkspace(admin, parsed.data.agentId, ctx.workspace.id);
+  if (!row || !row.project_id || !row.item_key) return { ok: false, message: "That agent isn't in this workspace." };
+  const { data: bp } = await admin.from("blueprints").select("id").eq("project_id", row.project_id).order("version", { ascending: false }).limit(1).maybeSingle();
+  const { data: item } = bp ? await admin.from("items").select("id, title, status, framework").eq("blueprint_id", bp.id).eq("key", row.item_key).maybeSingle() : { data: null };
+  const imported = item?.framework === "crewai" || item?.framework === "langgraph" ? item.framework : null;
+  if (!imported) return { ok: false, message: "Only an agent imported from CrewAI or LangGraph has this choice." };
+  const runAs = parsed.data.runAs;
+  if (runAs === row.run_as) return { ok: true, lyzrAgentId: row.lyzr_agent_id };
+  const now = new Date();
+  const label = imported === "crewai" ? "CrewAI" : "LangGraph";
+
+  let lyzrAgentId = row.lyzr_agent_id;
+  let warning: string | undefined;
+  if (runAs === "studio") {
+    const stopped = await budgetRefusal(admin, ctx.workspace.id);
+    if (stopped) return { ok: false, message: stopped };
+    if (lyzrConfigured().perAgent) {
+      try {
+        lyzrAgentId = lyzrAgentId ?? (await createLyzrAgent(lyzrSpec(row)));
+      } catch (err) {
+        return { ok: false, message: `Lyzr Studio didn't make the agent: ${err instanceof LyzrError ? err.message : "it didn't answer"}. Nothing changed; try again.` };
+      }
+    } else warning = "Lyzr Studio isn't connected here, so the Studio agent is simulated.";
+    await admin.from("agents").update({ run_as: "studio", framework: "lyzr", lyzr_agent_id: lyzrAgentId, studio_synced_at: lyzrAgentId ? now.toISOString() : null, updated_at: now.toISOString() }).eq("id", row.id);
+    await admin.from("usage_ledger").insert({ workspace_id: ctx.workspace.id, project_id: row.project_id, item_id: item!.id, kind: "change", credits: CONVERT_CREDITS, note: `Converted to Lyzr Studio · ${item!.title}` });
+    // The part's check runs again on the Studio agent (simulated), as after a code edit.
+    if (["built", "sample_data", "needs_connection"].includes(item!.status)) {
+      await admin.from("items").update({ status: "building", status_detail: `Re-running its check · now a Lyzr Studio agent` }).eq("id", item!.id);
+      await admin.from("events").insert({
+        project_id: row.project_id,
+        item_id: item!.id,
+        type: "check.edited",
+        actor: "user",
+        actor_label: ctx.name,
+        payload: { part_key: row.item_key, part_title: item!.title, prior_status: item!.status, settle_at: new Date(now.getTime() + RECHECK_MS).toISOString(), settled: false, converted: true } as unknown as Json,
+      });
+    }
+  } else {
+    // Back to its framework, or wrapped as a tool: the code stays as it was imported.
+    await admin.from("agents").update({ run_as: runAs, framework: imported, updated_at: now.toISOString() }).eq("id", row.id);
+  }
+  await admin.from("audit_log").insert({
+    workspace_id: ctx.workspace.id,
+    actor: ctx.name,
+    action: "agent.run_changed",
+    target: row.name,
+    details: { from: row.run_as, to: runAs, framework: label, lyzr_agent_id: runAs === "studio" ? lyzrAgentId : null, credits: runAs === "studio" ? CONVERT_CREDITS : 0, simulated: runAs !== "studio" || !lyzrAgentId } as Json,
+  });
+  revalidatePath(`/p/${row.project_id}`);
+  return { ok: true, lyzrAgentId, warning };
 }

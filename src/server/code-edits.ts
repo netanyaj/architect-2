@@ -114,8 +114,10 @@ export async function settleCodeEdits(admin: AdminDb, projectId: string): Promis
       if (item?.status === "building" && item.status_detail?.startsWith("Re-running its check")) {
         await admin.from("items").update({ status: p.prior_status, status_detail: null }).eq("id", e.item_id);
         const { data: check } = await admin.from("checks").select("id").eq("item_id", e.item_id).order("written_at", { ascending: false }).limit(1).maybeSingle();
-        const summary = e.type === "check.edited" ? "Passed the edited check against the code already built" : `Passed again after a code edit to ${p.path}`;
-        if (check) await admin.from("proofs").insert({ item_id: e.item_id, check_id: check.id, attempt: 0, result: "pass", assertions_passed: 3, assertions_total: 3, summary, log: e.type === "check.edited" ? "Edited check" : "After a code edit" });
+        const converted = Boolean((p as unknown as { converted?: boolean }).converted);
+        const summary = converted ? "Passed its check as a Lyzr Studio agent" : e.type === "check.edited" ? "Passed the edited check against the code already built" : `Passed again after a code edit to ${p.path}`;
+        const log = converted ? "Converted to Lyzr Studio" : e.type === "check.edited" ? "Edited check" : "After a code edit";
+        if (check) await admin.from("proofs").insert({ item_id: e.item_id, check_id: check.id, attempt: 0, result: "pass", assertions_passed: 3, assertions_total: 3, summary, log });
       }
     }
     await admin.from("events").update({ payload: { ...p, settled: true } as unknown as Json }).eq("id", e.id);

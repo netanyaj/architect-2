@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Button, buttonClasses, IconButton, TextLink } from "@/components/ax/button";
 import { EmptyState } from "@/components/ax/empty-state";
@@ -12,14 +13,14 @@ import { Segmented } from "@/components/ax/segmented";
 import { StatusMark } from "@/components/ax/status-mark";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { agentGraph, changesBetween, GRAPH, layoutGraph, runtimeLine, studioUrl, type AgentDraft, type GraphEnd } from "@/lib/agents";
+import { agentGraph, changesBetween, CONVERT_CREDITS, GRAPH, layoutGraph, runtimeLine, studioUrl, type AgentDraft, type GraphEnd } from "@/lib/agents";
 import { MODEL_LABEL, type ModelChoice } from "@/lib/models";
 import { canBuild } from "@/lib/permissions";
 import { PROVIDERS, providerName } from "@/lib/providers";
 import { relativeTime } from "@/lib/project-status";
 import { useUi } from "@/lib/ui-store";
 import { cn } from "@/lib/utils";
-import { loadAgents, saveAgent, tryAgent, type AgentRunView, type AgentsData, type AgentView } from "@/server/actions/agents";
+import { loadAgents, saveAgent, setAgentRun, tryAgent, type AgentRunView, type AgentsData, type AgentView } from "@/server/actions/agents";
 import { loadPart, type PartDetail } from "@/server/actions/run";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 import { rowFor } from "./build-stage";
@@ -321,7 +322,83 @@ function Chips({ values, onRemove, readOnly }: { values: string[]; onRemove: (v:
   );
 }
 
-function SettingsTab({ agent, draft, setDraft, project, readOnly, lyzrModel, mcpServers }: { agent: AgentView; draft: Draft; setDraft: (d: Draft) => void; project: ProjectWorkspace; readOnly: boolean; lyzrModel: string; mcpServers: string[] | null }) {
+const RUN_LABEL = { crewai: "CrewAI", langgraph: "LangGraph" } as const;
+
+/**
+ * "How should this agent run?" for an agent imported in CrewAI or LangGraph (M5.5): keep it in its framework (the
+ * default), convert it to a Lyzr Studio agent (the estimate shows first; then a real Studio agent is made from its
+ * role and instructions), or wrap it as a tool. Each choice is saved and audited.
+ */
+function RunChoice({ agent, readOnly, onChanged }: { agent: AgentView; readOnly: boolean; onChanged: (fields: Partial<AgentView>) => void }) {
+  const router = useRouter();
+  const fw = RUN_LABEL[agent.importedFrom!];
+  const [picked, setPicked] = useState<AgentView["runAs"]>(agent.runAs);
+  const [pending, start] = useTransition();
+  const [note, setNote] = useState<{ kind: "error" | "info"; text: string }>();
+  const apply = (runAs: AgentView["runAs"]) =>
+    start(async () => {
+      setNote(undefined);
+      const r = await setAgentRun({ agentId: agent.id, runAs });
+      if (!r.ok) return setNote({ kind: "error", text: r.message });
+      onChanged({ runAs, framework: runAs === "studio" ? "lyzr" : agent.importedFrom!, lyzrAgentId: r.lyzrAgentId });
+      setNote({ kind: "info", text: r.warning ?? (runAs === "studio" ? "Converted. It's a Lyzr Studio agent now, and its part's check is running again." : runAs === "tool" ? "Saved: other agents call it as a tool." : `Saved: it runs in ${fw}.`) });
+      router.refresh();
+    });
+  const choices: { value: AgentView["runAs"]; label: string; about: string }[] = [
+    { value: "native", label: `Keep in ${fw}`, about: "Runs natively behind the same agent interface. The default." },
+    { value: "studio", label: "Convert to a Lyzr Studio agent", about: `A Studio agent made from its role and instructions. About ${CONVERT_CREDITS} credits: its check runs again.` },
+    { value: "tool", label: "Wrap as a tool", about: "Other agents call it like any tool; its code stays as it is." },
+  ];
+  return (
+    <div className="flex flex-col gap-2">
+      <span id={`run-${agent.id}`} className="text-small font-semibold text-ink-2">
+        How should this agent run?
+      </span>
+      <div role="radiogroup" aria-labelledby={`run-${agent.id}`} className="flex flex-col gap-1.5">
+        {choices.map((c) => (
+          <button
+            key={c.value}
+            type="button"
+            role="radio"
+            aria-checked={picked === c.value}
+            aria-disabled={readOnly || pending || undefined}
+            title={readOnly ? "Viewers can't change agents." : undefined}
+            onClick={() => {
+              if (readOnly || pending) return;
+              setPicked(c.value);
+              setNote(undefined);
+              // Keep and Wrap apply at once; Convert costs credits, so it waits for its own click below.
+              if (c.value !== "studio" && c.value !== agent.runAs) apply(c.value);
+            }}
+            className={cn("flex flex-col rounded-tile border px-3 py-2 text-left", picked === c.value ? "border-[1.5px] border-ink" : "border-line hover:border-line-ctl")}
+          >
+            <span className="flex items-center gap-2 font-semibold">
+              {c.label} {c.value !== "studio" && <SimTag title={c.value === "native" ? `${fw} agents run natively behind the agent interface; in this prototype Gemini answers Try it for them.` : "Wrapping as a tool is simulated."} />}
+            </span>
+            <span className="text-small text-ink-2">{c.about}</span>
+          </button>
+        ))}
+      </div>
+      {picked === "studio" && agent.runAs !== "studio" && (
+        <div className="flex flex-col gap-1.5 rounded-tile bg-tray p-3">
+          <p className="text-small">
+            Converting makes a Lyzr Studio agent from <b>{agent.name}</b>&apos;s role and instructions, then runs its part&apos;s check again: about <b className="tabular-nums">{CONVERT_CREDITS} credits</b>. The {fw} code stays in the repo.
+          </p>
+          <Button size="sm" variant="primary" className="self-start" disabledReason={pending ? "Converting…" : undefined} onClick={() => apply("studio")}>
+            Convert · ~{CONVERT_CREDITS} credits
+          </Button>
+        </div>
+      )}
+      {note && (
+        <p role={note.kind === "error" ? "alert" : "status"} className={cn("text-small", note.kind === "error" ? "font-semibold text-failed" : "text-ink-2")}>
+          {note.text}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function SettingsTab({ agent, draft, setDraft, project, readOnly, lyzrModel, mcpServers, onRunChanged }: { agent: AgentView; draft: Draft; setDraft: (d: Draft) => void; project: ProjectWorkspace; readOnly: boolean; lyzrModel: string; mcpServers: string[] | null; onRunChanged: (fields: Partial<AgentView>) => void }) {
   const [more, setMore] = useState(false);
   const [compare, setCompare] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -342,6 +419,10 @@ function SettingsTab({ agent, draft, setDraft, project, readOnly, lyzrModel, mcp
         {!modelAllowed && !readOnly && <ModelNotAllowed onSwitch={() => setPickerOpen(true)} />}
       </div>
       <div className="flex flex-col gap-1.5">
+        {agent.importedFrom ? (
+          <RunChoice agent={agent} readOnly={readOnly} onChanged={onRunChanged} />
+        ) : (
+          <>
         <label htmlFor={`fw-${agent.id}`} className="flex items-center gap-2 text-small font-semibold text-ink-2">
           Runs on {draft.framework !== "lyzr" && <SimTag title="CrewAI and LangGraph agents run natively behind the same agent interface; in this prototype Gemini answers Try it for them." />}
         </label>
@@ -350,6 +431,8 @@ function SettingsTab({ agent, draft, setDraft, project, readOnly, lyzrModel, mcp
           <option value="crewai">CrewAI</option>
           <option value="langgraph">LangGraph</option>
         </Select>
+          </>
+        )}
         <TextLink onClick={() => setMore((v) => !v)} aria-expanded={more}>
           More model settings · creativity {draft.temperature.toFixed(1)}
         </TextLink>
@@ -671,7 +754,9 @@ function AgentPanel({
   onClose,
   onSaved,
   onRan,
+  onRunChanged,
 }: {
+  onRunChanged: (fields: Partial<AgentView>) => void;
   agent: AgentView;
   saved: Draft;
   draft: Draft;
@@ -723,7 +808,7 @@ function AgentPanel({
         ]}
       />
       <div role="tabpanel" aria-label={tab === "try" ? "Try it" : tab.charAt(0).toUpperCase() + tab.slice(1)} className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-auto px-4 py-2.5">
-        {tab === "settings" && <SettingsTab agent={agent} draft={draft} setDraft={setDraft} project={project} readOnly={readOnly} lyzrModel={data.lyzr.model} mcpServers={data.mcpServers} />}
+        {tab === "settings" && <SettingsTab agent={agent} draft={draft} setDraft={setDraft} project={project} readOnly={readOnly} lyzrModel={data.lyzr.model} mcpServers={data.mcpServers} onRunChanged={onRunChanged} />}
         {tab === "runs" &&
           (runs.length ? (
             <ul className="flex flex-col gap-2" aria-label="Runs">
@@ -830,6 +915,7 @@ export function AgentsView({ project, items }: { project: ProjectWorkspace; item
               return next;
             });
           }}
+          onRunChanged={(fields) => patch(selected.id, fields)}
           onRan={(r) => {
             patch(selected.id, { lyzrAgentId: r.lyzrAgentId, syncedAt: r.syncedAt });
             setData((d) => (d ? { ...d, runs: { ...d.runs, [selected.id]: [r.run, ...(d.runs[selected.id] ?? [])] } } : d));

@@ -267,4 +267,32 @@ test.describe("M5.5", () => {
       await deleteTestUser(limited);
     }
   });
+
+  test("an imported CrewAI agent: How should this agent run? Wrap as a tool, then Convert to Lyzr Studio after the estimate", async ({ page }) => {
+    await start(page);
+    const db = adminDb();
+    const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
+    const { data: tt } = await db.from("projects").select("id").eq("workspace_id", m!.workspace_id).eq("name", "ticket-triage").single();
+    // As if this part's agent came from the repo in CrewAI (B-6).
+    await db.from("items").update({ framework: "crewai" }).eq("project_id", tt!.id).eq("key", "urgency-and-team-label");
+    await page.goto(`/p/${tt!.id}?view=agents`);
+    await page.getByRole("group", { name: "How the agents connect" }).getByRole("button", { name: "Urgency and team label: open its settings" }).click();
+    const settings = page.getByRole("complementary", { name: "Urgency and team label settings" });
+    const choice = settings.getByRole("radiogroup", { name: "How should this agent run?" });
+    await expect(choice.getByRole("radio", { name: /^Keep in CrewAI/ })).toHaveAttribute("aria-checked", "true");
+
+    await choice.getByRole("radio", { name: /^Wrap as a tool/ }).click();
+    await expect(settings.getByRole("status")).toContainText("Saved: other agents call it as a tool.");
+
+    await choice.getByRole("radio", { name: /^Convert to a Lyzr Studio agent/ }).click();
+    await expect(settings.getByText(/runs its part's check again: about 3 credits/)).toBeVisible();
+    await settings.getByRole("button", { name: "Convert · ~3 credits" }).click();
+    await expect(settings.getByRole("status")).toContainText(/Converted|simulated/, { timeout: 30_000 });
+    const { data: agent } = await db.from("agents").select("run_as, framework, lyzr_agent_id").eq("project_id", tt!.id).eq("item_key", "urgency-and-team-label").single();
+    expect(agent).toMatchObject({ run_as: "studio", framework: "lyzr" });
+    const { data: audit } = await db.from("audit_log").select("details").eq("workspace_id", m!.workspace_id).eq("action", "agent.run_changed");
+    expect(audit!.map((a) => (a.details as { to: string }).to).sort()).toEqual(["studio", "tool"]);
+    // Clean up the real Studio agent this made.
+    if (agent!.lyzr_agent_id && process.env.LYZR_API_KEY) await fetch(`${process.env.LYZR_BASE_URL ?? "https://agent-prod.studio.lyzr.ai"}/v3/agents/${agent!.lyzr_agent_id}`, { method: "DELETE", headers: { "x-api-key": process.env.LYZR_API_KEY } }).catch(() => {});
+  });
 });

@@ -298,3 +298,6 @@ export function changesBetween(saved: AgentDraft, draft: AgentDraft): number {
   );
 }
 
+
+/** What converting an imported agent to Lyzr Studio costs: its part's check runs again on the Studio agent (M5.5). */
+export const CONVERT_CREDITS = 3;

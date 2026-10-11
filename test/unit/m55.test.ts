@@ -11,6 +11,8 @@ const inviteUserByEmail = vi.fn();
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ set: () => {}, get: () => undefined }) }));
 vi.mock("@/server/origin", () => ({ origin: async () => "https://architect.test" }));
+const createLyzrAgent = vi.fn();
+vi.mock("@/server/lyzr", async (orig) => ({ ...(await orig<typeof import("@/server/lyzr")>()), lyzrConfigured: () => ({ perAgent: true, shared: false }), createLyzrAgent: (...a: unknown[]) => createLyzrAgent(...a) }));
 vi.mock("@/server/db", () => ({
   createAdminDb: () => Object.assign(db, { auth: { admin: { inviteUserByEmail: (...a: unknown[]) => inviteUserByEmail(...a) } } }),
   createServerDb: async () => db,
@@ -180,5 +182,57 @@ describe("Look and feel: theme presets", () => {
     expect(await setLook({ projectId: P, theme: "neon" })).toEqual({ ok: false, message: "Pick one of the themes shown." });
     role = "viewer";
     expect((await setLook({ projectId: P, theme: "soft" })).ok).toBe(false);
+  });
+});
+
+describe("How should this agent run? (an imported CrewAI or LangGraph agent)", () => {
+  const P = "44444444-4444-4444-8444-444444444444";
+  const A = "55555555-5555-4555-8555-555555555555";
+  const seed = (framework: string | null = "crewai") =>
+    new FakeDb({
+      workspaces: [{ id: "ws-1", governance_enabled: true }],
+      policies: [],
+      agents: [{ id: A, workspace_id: "ws-1", project_id: P, item_key: "triage", name: "Urgency and team label", description: "Labels tickets", framework: framework ?? "lyzr", model: "gemini", instructions: "Label each ticket.", tools: [], knowledge: [], temperature: 0.3, max_tokens: 800, lyzr_agent_id: null, studio_synced_at: null, run_as: "native" }],
+      blueprints: [{ id: "bp", project_id: P, version: 1 }],
+      items: [{ id: "it", blueprint_id: "bp", key: "triage", title: "Urgency and team label", status: "built", framework }],
+      usage_ledger: [],
+      events: [],
+      audit_log: [],
+    });
+  beforeEach(() => {
+    role = "builder";
+    createLyzrAgent.mockReset().mockResolvedValue("studio-agent-1");
+    db = seed();
+  });
+
+  it("Convert makes a real Studio agent from its role and instructions, charges the estimate and re-runs its check", async () => {
+    const { setAgentRun } = await import("@/server/actions/agents");
+    expect(await setAgentRun({ agentId: A, runAs: "studio" })).toEqual({ ok: true, lyzrAgentId: "studio-agent-1", warning: undefined });
+    expect(createLyzrAgent).toHaveBeenCalledWith(expect.objectContaining({ name: "Urgency and team label · Architect", role: "Urgency and team label", instructions: "Label each ticket." }));
+    expect(db.tables.agents[0]).toMatchObject({ run_as: "studio", framework: "lyzr", lyzr_agent_id: "studio-agent-1" });
+    expect(db.tables.usage_ledger[0]).toMatchObject({ kind: "change", credits: 3, note: "Converted to Lyzr Studio · Urgency and team label" });
+    expect(db.tables.items[0]).toMatchObject({ status: "building" });
+    expect(db.tables.audit_log[0]).toMatchObject({ action: "agent.run_changed", details: { from: "native", to: "studio", framework: "CrewAI", credits: 3 } });
+  });
+
+  it("Keep and Wrap as a tool are recorded (Simulated) and keep the framework; only imported agents have the choice; Viewers can't", async () => {
+    const { setAgentRun } = await import("@/server/actions/agents");
+    expect((await setAgentRun({ agentId: A, runAs: "tool" })).ok).toBe(true);
+    expect(db.tables.agents[0]).toMatchObject({ run_as: "tool", framework: "crewai" });
+    expect(db.tables.audit_log[0]).toMatchObject({ details: { from: "native", to: "tool", simulated: true } });
+    expect(createLyzrAgent).not.toHaveBeenCalled();
+    role = "viewer";
+    expect((await setAgentRun({ agentId: A, runAs: "native" })).ok).toBe(false);
+    role = "builder";
+    db = seed(null);
+    expect(await setAgentRun({ agentId: A, runAs: "tool" })).toEqual({ ok: false, message: "Only an agent imported from CrewAI or LangGraph has this choice." });
+  });
+
+  it("if Studio doesn't make the agent, nothing changes and nothing is charged", async () => {
+    createLyzrAgent.mockRejectedValue(new Error("down"));
+    const { setAgentRun } = await import("@/server/actions/agents");
+    expect((await setAgentRun({ agentId: A, runAs: "studio" })).ok).toBe(false);
+    expect(db.tables.agents[0].run_as).toBe("native");
+    expect(db.tables.usage_ledger).toEqual([]);
   });
 });
