@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils";
 import type { AgentRole } from "@/lib/brand";
 
-/** Each role's shape on a 7×7 dot grid ("x" is a moss dot; the rest stay faint). */
-const SHAPES: Record<AgentRole, string[]> = {
+/** Each role's shape on a 7×7 dot grid ("x" is a moss dot; the rest stay faint). The build loader morphs between them. */
+export const SHAPES: Record<AgentRole, string[]> = {
   planner: ["..xxx..", ".x...x.", "x.....x", "x.....x", "x.....x", ".x...x.", "..xxx.."],
   extractor: ["....xxx", "...xxx.", "...xxx.", "..xxx..", ".xxx...", ".xxx...", "xxx...."],
   checker: ["...x...", "..xxx..", ".xx.xx.", "xx...xx", ".xx.xx.", "..xxx..", "...x..."],

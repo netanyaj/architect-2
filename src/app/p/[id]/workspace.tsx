@@ -7,6 +7,7 @@ import { Button, IconButton, TextLink } from "@/components/ax/button";
 import { EmptyState } from "@/components/ax/empty-state";
 import { Icon } from "@/components/ax/icon";
 import { BuildLoader } from "@/components/ax/BuildLoader";
+import { loaderRoles } from "@/lib/brand";
 import { MosaicThumb } from "@/components/ax/MosaicThumb";
 import { NeedsYouCard } from "@/components/ax/needs-you-card";
 import { SimTag } from "@/components/ax/pill";
@@ -144,7 +145,7 @@ function StageBody({
   if (view === "data") return <DataView project={project} items={items} />;
   if (project.runStatus === "queued") {
     return (
-      <EmptyState icon="window" picture={<BuildLoader step={buildProgressLine(live, items.filter((i) => i.status !== "dropped" && i.status !== "deferred").length)} />} title="Starting your build">
+      <EmptyState icon="window" picture={<BuildLoader step={buildProgressLine(live, items.filter((i) => i.status !== "dropped" && i.status !== "deferred").length)} roles={loaderRoles(items)} seed={project.id} />} title="Starting your build">
         The plan is agreed and saved as v{project.plan?.version ?? 1}. Architect is about to build it, part by part, with a check for each.
       </EmptyState>
     );
@@ -187,7 +188,7 @@ function MoreMenu({ project, items, canAct, dev, onToggleDev, onTransfer, onDele
   const roles = (["builder", "viewer"] as const).filter((r) => RANK[r] < RANK[realRole]);
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger aria-label="More for this project" className="grid size-[38px] place-items-center rounded-full border border-line-ctl bg-surface hover:bg-selected">
+      <DropdownMenuTrigger aria-label="More for this project" className="grid size-[38px] place-items-center rounded-full border border-transparent bg-tray hover:bg-selected">
         <Icon name="more" size="sm" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" collisionPadding={12} className="w-72 rounded-card border border-line bg-surface p-1.5 shadow-pop">
@@ -284,7 +285,7 @@ function ChangesButton({ project }: { project: ProjectWorkspace }) {
   const openChanges = useUi((s) => s.openChanges);
   const { parts } = currentChange(project);
   return (
-    <button type="button" onClick={() => openChanges(true)} className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-line-ctl bg-surface px-3.5 font-[550] hover:bg-selected">
+    <button type="button" onClick={() => openChanges(true)} className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-transparent bg-tray px-3.5 font-[550] hover:bg-selected">
       <Icon name="branch" size="sm" />
       Changes <span className="tabular-nums text-ink-2">({parts})</span>
     </button>
@@ -356,7 +357,7 @@ function PeopleMenu({ project }: { project: ProjectWorkspace }) {
       <DropdownMenuTrigger
         aria-label={`People and sharing: ${project.people.length} ${project.people.length === 1 ? "person" : "people"} in this workspace`}
         title="People and sharing"
-        className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-line-ctl bg-surface py-1 pr-3 pl-1.5 font-[550] hover:bg-selected"
+        className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-transparent bg-tray py-1 pr-3 pl-1.5 font-[550] hover:bg-selected"
       >
         <span className="flex -space-x-1.5" aria-hidden="true">
           {shown.map((p) => (
@@ -711,8 +712,8 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
               title="The code, files and terminal for this project"
               className="inline-flex min-h-8 items-center gap-2 rounded-full px-2 text-small font-[600] text-ink hover:bg-selected max-sm:hidden"
             >
-              <span className="max-2xl:sr-only">Developer view</span>
-              <Icon name="code" size="sm" className="2xl:hidden" />
+              {/* Always labelled (M5.9): the bare <> icon didn't say what the switch does. */}
+              <span>Developer view</span>
               <span aria-hidden="true" className={cn("relative h-[18px] w-[30px] flex-none rounded-full", dev ? "bg-ink" : "bg-line-ctl")}>
                 <span className={cn("absolute top-[2px] size-[14px] rounded-full bg-surface transition-[left]", dev ? "left-[14px]" : "left-[2px]")} />
               </span>

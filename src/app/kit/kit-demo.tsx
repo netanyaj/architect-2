@@ -182,7 +182,8 @@ export function KitDemo() {
             <EmptyMosaic seed="projects" />
             <LogoMark />
           </div>
-          <BuildLoader step="Build 4/6 · Writing the rate-card check" />
+          <p className="text-small text-ink-2">The dotted build loader morphs through the glyphs of the parts being built, with one dot in the project&apos;s accent (a still ring with reduced motion):</p>
+          <BuildLoader step="Build 2/5 · Building Policy check" roles={["checker", "writer", "router", "data analyst"]} seed="kit-mid" />
         </Section>
         <Section title="Lists, templates, empty state">
           <Tray label="Projects">

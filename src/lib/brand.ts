@@ -83,3 +83,16 @@ export function agentRole(name: string, description = ""): AgentRole {
   }
   return "custom";
 }
+
+/**
+ * The build loader's sequence (M5.9): the glyphs of the parts still to build, in build order, from the one being
+ * built. Consecutive repeats fold into one; with a single shape, the ring alternates with it so the dots still move.
+ */
+export function loaderRoles(parts: { title: string; description?: string | null; status: string; position: number }[]): AgentRole[] {
+  const open = parts
+    .filter((p) => p.status !== "dropped" && p.status !== "deferred" && p.status !== "built" && p.status !== "sample_data")
+    .sort((a, b) => Number(b.status === "building") - Number(a.status === "building") || a.position - b.position);
+  const roles = open.map((p) => agentRole(p.title, p.description ?? "")).filter((r, i, all) => i === 0 || r !== all[i - 1]);
+  if (roles.length === 0) return ["planner"];
+  return roles.length === 1 ? [roles[0], "planner"] : roles;
+}

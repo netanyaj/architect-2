@@ -20,11 +20,12 @@ export function MosaicThumb({
   seed: string;
   parts: { id: string; status: string }[];
   size?: number;
-  /** Show only the first few columns (the project header shows 4). */
+  /** Show only the first few columns. Defaults to 4 at 34px and below, all (up to 8) above. */
   crop?: number;
   className?: string;
 }) {
-  const { columns, accent } = mosaicFor(seed, parts, crop);
+  // At 34px and below a full mosaic reads as a skeleton: show the first 4 columns, as the header does (M5.9).
+  const { columns, accent } = mosaicFor(seed, parts, crop ?? (size <= 34 ? 4 : undefined));
   // Cells fill a 100-unit box: square up to 4 columns, narrower beyond. Bottom-aligned and centred.
   const pad = 13;
   const gap = 3.5;

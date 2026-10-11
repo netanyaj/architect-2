@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { accentFor, ACCENTS, agentRole, emptyParts, hash, mosaicFor, templateParts, toneFor } from "@/lib/brand";
+import { accentFor, ACCENTS, agentRole, emptyParts, hash, loaderRoles, mosaicFor, templateParts, toneFor } from "@/lib/brand";
 
 const root = join(__dirname, "../..");
 
@@ -17,8 +17,8 @@ describe("brand and art tokens are for pictures only (Soft Tray v4)", () => {
   // credits bar fill. Anything else (a button, badge, link or status) fails here.
   const ALLOWED = new Set([
     "src/app/tokens.css",
-    "src/app/globals.css", // the build loader's keyframes
     "src/components/ax/MosaicThumb.tsx",
+    "src/components/ax/BuildLoader.tsx",
     "src/components/ax/AgentGlyph.tsx",
     "src/components/ax/logo-mark.tsx",
     "src/components/ax/side-nav.tsx", // the credits bar fill
@@ -122,5 +122,32 @@ describe("agent roles", () => {
     expect(agentRole("Meeting scheduler")).toBe("planner");
     expect(agentRole("Zork", "Does something new")).toBe("custom");
     expect(agentRole("Helper", "Sends an alert when a deal stalls")).toBe("notifier");
+  });
+});
+
+describe("the dotted build loader (M5.9)", () => {
+  const part = (title: string, status: string, position: number) => ({ title, status, position, description: "" });
+
+  it("morphs through the glyphs of the parts still to build, starting with the one being built", () => {
+    const parts = [part("Claims list", "built", 0), part("Weekly summary to Slack", "agreed", 3), part("Policy check", "building", 1), part("Lead router", "agreed", 2)];
+    expect(loaderRoles(parts)).toEqual(["checker", "router", "writer"]);
+  });
+
+  it("folds repeats, alternates with the ring when there's one shape, and rings when nothing is left", () => {
+    expect(loaderRoles([part("Policy check", "building", 0), part("Price check", "agreed", 1)])).toEqual(["checker", "planner"]);
+    expect(loaderRoles([part("Claims list", "built", 0)])).toEqual(["planner"]);
+  });
+
+  it("reuses the AgentGlyph masks and uses no keyframes", () => {
+    const src = readFileSync(join(root, "src/components/ax/BuildLoader.tsx"), "utf8");
+    expect(src).toContain('import { SHAPES } from "./AgentGlyph"');
+    expect(readFileSync(join(root, "src/app/globals.css"), "utf8")).not.toContain("ax-morph");
+  });
+});
+
+describe("small mosaics use the 4-column crop (M5.9)", () => {
+  it("defaults the crop to 4 at 34px and below", () => {
+    const src = readFileSync(join(root, "src/components/ax/MosaicThumb.tsx"), "utf8");
+    expect(src).toContain("crop ?? (size <= 34 ? 4 : undefined)");
   });
 });

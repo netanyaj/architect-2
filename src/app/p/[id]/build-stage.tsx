@@ -24,6 +24,7 @@ import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 import { ConnectButton } from "./connect-button";
 import { KeyAction, partsNeedingKey } from "./key-action";
 import { BuildLoader } from "@/components/ax/BuildLoader";
+import { loaderRoles } from "@/lib/brand";
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const time = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
@@ -366,7 +367,7 @@ export function AppPreview({ project, items, live }: { project: ProjectWorkspace
       {live?.playing && preview.reveal.length === 0 ? (
         // Nothing to show yet while the build runs: the brand loader and where the build is (Soft Tray v4).
         <div className="grid h-full place-items-center bg-surface p-8">
-          <BuildLoader step={buildProgressLine(live, items.filter((i) => i.status !== "dropped" && i.status !== "deferred").length)}>
+          <BuildLoader step={buildProgressLine(live, items.filter((i) => i.status !== "dropped" && i.status !== "deferred").length)} roles={loaderRoles(items)} seed={project.id}>
             <p className="text-ink-2">The app appears here, section by section, as its parts start to work.</p>
           </BuildLoader>
         </div>
@@ -462,7 +463,7 @@ export function BuildActivity({ project, items, live }: { project: ProjectWorksp
   if (approval.length) sentences.push(`${providerName(approval[0].provider)} is waiting for IT, and nothing else is blocked by it.`);
 
   return (
-    <ArchitectMessage time={chatTime(run.startedAt)} tag={<SimTag title="The build is simulated in this prototype" />}>
+    <ArchitectMessage time={chatTime(run.startedAt)}>
       <p>{sentences.join(" ")}</p>
       {pause && (
         <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 rounded-card border border-line px-3.5 py-3 text-small tabular-nums">
