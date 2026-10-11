@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
+    "perf": "playwright test --config=playwright.perf.config.ts",
     "db:push": "supabase db push",
     "db:types": "supabase gen types typescript --linked --schema public > src/lib/database.types.ts",
     "db:verify": "node --env-file=.env.local scripts/verify-db.mjs",
