@@ -27,6 +27,7 @@ export default async function GovernancePage({ searchParams }: PageProps<"/gover
     usedApps(admin, ctx.workspace.id),
     admin.from("projects").select("id, name, budget_credits").eq("workspace_id", ctx.workspace.id).is("deleted_at", null).order("updated_at", { ascending: false }),
   ]);
+  const { data: mcpRows } = await admin.from("connections").select("id, url, status, tools").eq("workspace_id", ctx.workspace.id).eq("kind", "mcp");
   const [{ data: usage }, { data: audit }, spent] = await Promise.all([
     admin.from("usage_ledger").select("project_id, credits").eq("workspace_id", ctx.workspace.id),
     admin.from("audit_log").select("id, created_at, actor, action, target, details").eq("workspace_id", ctx.workspace.id).order("created_at", { ascending: false }).limit(500),
@@ -57,6 +58,7 @@ export default async function GovernancePage({ searchParams }: PageProps<"/gover
       audit={auditEntries((audit ?? []) as AuditRow[], names)}
       availability={modelAvailability()}
       known={knownApps(used)}
+      mcpConnections={(mcpRows ?? []).map((c) => ({ id: c.id, url: c.url ?? "", connected: c.status === "connected", tools: Array.isArray(c.tools) ? c.tools.length : 0 }))}
     />
   );
 }

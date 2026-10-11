@@ -655,3 +655,29 @@ describe("M5.10: secrets in Vault, preferences, terminal sessions and analytics 
     expect(await count("select count(*) as n from agents where lyzr_agent_id is not null")).toBe(0);
   });
 });
+
+describe("M6: MCP servers in Connections (0024)", () => {
+  beforeAll(async () => {
+    // Replay 0024's revokes after the earlier test's blanket grant, as on Supabase (see the 0023 block).
+    const sql = readFileSync(join(MIGRATIONS, "0024_m6_mcp_connections.sql"), "utf8");
+    for (const line of sql.split("\n").filter((l) => l.startsWith("revoke "))) await db.exec(line);
+  });
+
+  it("an MCP row needs an HTTPS URL, once per workspace; its auth header lives in Vault and goes with the row", async () => {
+    const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
+    await expect(db.query("insert into connections (workspace_id, provider, status, kind, name, url) values ($1, 'mcp', 'connected', 'mcp', 'Docs', 'http://docs.example.com/mcp')", [ws])).rejects.toThrow(/check/);
+    const { c } = await one<{ c: string }>("insert into connections (workspace_id, provider, status, kind, name, url) values ($1, 'mcp', 'connected', 'mcp', 'Docs', 'https://docs.example.com/mcp') returning id as c", [ws]);
+    await expect(db.query("insert into connections (workspace_id, provider, status, kind, name, url) values ($1, 'mcp', 'connected', 'mcp', 'Docs again', 'https://docs.example.com/mcp')", [ws])).rejects.toThrow(/unique|duplicate/);
+    await db.query("select set_connection_secret($1, 'Bearer abc123')", [c]);
+    expect(await one("select connection_secret($1) as v", [c])).toEqual({ v: "Bearer abc123" });
+    const { auth_secret_id } = await one<{ auth_secret_id: string }>("select auth_secret_id from connections where id = $1", [c]);
+    await db.exec(`set role authenticated; set request.jwt.claim.sub = '${MORGAN}';`);
+    try {
+      await expect(db.query("select connection_secret($1)", [c])).rejects.toThrow(/permission denied/);
+    } finally {
+      await db.exec("reset role;");
+    }
+    await db.query("delete from connections where id = $1", [c]);
+    expect(await count("select count(*) as n from vault.secrets where id = $1", [auth_secret_id])).toBe(0);
+  });
+});

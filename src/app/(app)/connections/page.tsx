@@ -14,6 +14,8 @@ import { AddApiKey, ConnectionsList, type ConnectionRow } from "./connections-li
 import { EmptyMosaic } from "@/components/ax/MosaicThumb";
 import { lyzrKeyStatus } from "@/server/lyzr-key";
 import { LyzrCard } from "./lyzr-card";
+import { McpServers } from "./mcp-servers";
+import type { McpConnection } from "@/lib/mcp-connections";
 
 export const metadata: Metadata = { title: "Connections · Architect" };
 
@@ -21,7 +23,7 @@ export default async function ConnectionsPage() {
   const ctx = await getAppContext();
   const db = await createServerDb();
   const [{ data: connections }, policies, { data: approvals }, projects, lyzr] = await Promise.all([
-    db.from("connections").select("id, provider, status, scopes, kind, set_by_name, set_at").eq("workspace_id", ctx.workspace.id).order("created_at"),
+    db.from("connections").select("id, provider, status, scopes, kind, set_by_name, set_at, name, url, tools, checked_at, check_error").eq("workspace_id", ctx.workspace.id).order("created_at"),
     loadPolicies(createAdminDb(), ctx.workspace.id),
     db.from("approvals").select("payload, status").eq("workspace_id", ctx.workspace.id).eq("kind", "connector").eq("status", "waiting"),
     listProjects(ctx),
@@ -33,7 +35,19 @@ export default async function ConnectionsPage() {
   const isAdmin = canManageMembers(ctx.role);
   const waiting = new Set((approvals ?? []).map((a) => (a.payload as { provider?: string } | null)?.provider));
 
-  const rows: ConnectionRow[] = (connections ?? []).map((c) => {
+  // MCP servers (M6) have their own section; the rest are apps.
+  const mcp: McpConnection[] = (connections ?? [])
+    .filter((c) => c.kind === "mcp")
+    .map((c) => ({
+      id: c.id,
+      name: c.name ?? c.url ?? "MCP server",
+      url: c.url ?? "",
+      tools: ((c.tools ?? []) as { name: string }[]).map((t) => t.name),
+      checkedAt: c.checked_at,
+      error: c.check_error,
+      connected: c.status === "connected",
+    }));
+  const rows: ConnectionRow[] = (connections ?? []).filter((c) => c.kind !== "mcp").map((c) => {
     const name = providerName(c.provider);
     const info = PROVIDERS[c.provider] ?? { name, tool: name, what: "" };
     if (c.kind === "api_key") {
@@ -63,11 +77,12 @@ export default async function ConnectionsPage() {
       <div className="flex flex-col gap-1">
         <h1 className="text-title font-[650]">Connections</h1>
         <p className="flex flex-wrap items-center gap-2 text-ink-2">
-          Apps your projects can use, by signing in or with an API key. Connecting apps is simulated in this prototype: no real account is linked, and a key you add for an app is checked and thrown away. Lyzr Studio is real.
+          Apps your projects can use, by signing in, with an API key, or over MCP. Connecting apps is simulated in this prototype: no real account is linked, and a key you add for an app is checked and thrown away. Lyzr Studio and MCP Test connection are real.
           <SimTag title="Apps connect for real in the product; here only Lyzr Studio does." />
         </p>
       </div>
       <LyzrCard status={lyzr} isAdmin={isAdmin} />
+      <McpServers servers={mcp} canAct={canBuild(ctx.role)} refusal={connectRefusal(policies.apps, policies.governance, isAdmin)} governance={policies.governance} allowed={policies.governance ? policies.apps.mcp : []} />
       {canBuild(ctx.role) && <AddApiKey refusal={connectRefusal(policies.apps, policies.governance, isAdmin)} />}
       {rows.length ? (
         <ConnectionsList rows={rows} access={{ canConnect: canBuild(ctx.role), refusal: connectRefusal(policies.apps, policies.governance, isAdmin), isAdmin }} />

@@ -42,7 +42,7 @@ export async function startRun(admin: AdminDb, runId: string, sim: SimOptions = 
         .from("items")
         .select("id, key, grp, title, description, proved_when, item_class, size, provider, estimate_likely, position, status, fix_attempts")
         .eq("blueprint_id", run.blueprint_id),
-      admin.from("connections").select("provider").eq("workspace_id", project.workspace_id).eq("status", "connected"),
+      admin.from("connections").select("provider").eq("workspace_id", project.workspace_id).eq("status", "connected").neq("kind", "mcp"),
       admin.from("usage_ledger").select("credits").eq("project_id", run.project_id),
     ]);
     const ids = new Map((items ?? []).map((i) => [i.key, i.id]));

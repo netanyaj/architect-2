@@ -381,7 +381,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
       ? db.from("events").select("id, type, payload, actor_label").eq("run_id", latestRun.id).order("id").limit(2000)
       : Promise.resolve({ data: [] as { id: number; type: string; payload: unknown; actor_label: string | null }[] }),
     db.from("usage_ledger").select("kind, credits").eq("project_id", p.id),
-    db.from("connections").select("provider, status").eq("workspace_id", p.workspace_id),
+    db.from("connections").select("provider, status").eq("workspace_id", p.workspace_id).neq("kind", "mcp"),
     loadPolicies(createAdminDb(), p.workspace_id),
   ]);
   const runEvents: RunEvent[] = (events ?? []).map((e) => {

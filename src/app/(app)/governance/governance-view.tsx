@@ -33,6 +33,7 @@ import {
 import { PROVIDERS } from "@/lib/providers";
 import { cn } from "@/lib/utils";
 import { addMcpServer, registerPrivateModel, removeMcpServer, removePrivateModel, saveAppPolicy, saveBudgets, saveEgress, saveLocation, saveModelPolicy, savePermissionRules } from "@/server/actions/policies";
+import { normalizeMcpUrl } from "@/lib/mcp-connections";
 
 export type Section = "location" | "models" | "apps" | "egress" | "rules" | "budgets" | "audit";
 
@@ -61,6 +62,8 @@ export function GovernanceView(props: {
   apps: AppPolicy;
   availability: ModelOption[];
   known: string[];
+  /** MCP servers added in Connections (M6), so the allowed list can link to each one. */
+  mcpConnections?: { id: string; url: string; connected: boolean; tools: number }[];
   egress: EgressPolicy;
   flows: ProjectFlows[];
   permissions: PermissionRules;
@@ -126,7 +129,7 @@ export function GovernanceView(props: {
       {section === "rules" && <RulesEditor key={JSON.stringify(props.permissions)} permissions={props.permissions} onSaved={setNotice} />}
       {section === "budgets" && <BudgetsEditor key={JSON.stringify([props.budget, props.projectBudgets])} budget={props.budget} projects={props.projectBudgets} onSaved={setNotice} />}
       {section === "audit" && <AuditView entries={props.audit} />}
-      {section === "apps" && <AppsEditor key={JSON.stringify([props.apps, props.known])} apps={props.apps} known={props.known} onSaved={setNotice} mcpForm={mcpForm} />}
+      {section === "apps" && <AppsEditor key={JSON.stringify([props.apps, props.known])} apps={props.apps} known={props.known} onSaved={setNotice} mcpForm={mcpForm} connections={props.mcpConnections ?? []} />}
     </MasterDetail>
   );
 }
@@ -382,7 +385,7 @@ function PrivateModelCard({ models, onSaved }: { models: ModelPolicy; onSaved: (
 
 type McpForm = [{ name: string; url: string }, (f: { name: string; url: string }) => void];
 
-function AppsEditor({ apps, known, onSaved, mcpForm }: { apps: AppPolicy; known: string[]; onSaved: (n: string) => void; mcpForm: McpForm }) {
+function AppsEditor({ apps, known, onSaved, mcpForm, connections }: { apps: AppPolicy; known: string[]; onSaved: (n: string) => void; mcpForm: McpForm; connections: { id: string; url: string; connected: boolean; tools: number }[] }) {
   const [allow, setAllow] = useState<string[]>(apps.allow);
   const [scopes, setScopes] = useState<Record<string, Scope>>(Object.fromEntries(known.map((k) => [k, scopeOf(apps, k)])));
   const [who, setWho] = useState(apps.whoCanConnect);
@@ -448,12 +451,12 @@ function AppsEditor({ apps, known, onSaved, mcpForm }: { apps: AppPolicy; known:
         ))}
       </fieldset>
       <ErrorLine error={error} />
-      <McpCard apps={apps} onSaved={onSaved} formState={mcpForm} />
+      <McpCard apps={apps} onSaved={onSaved} formState={mcpForm} connections={connections} />
     </DetailBody>
   );
 }
 
-function McpCard({ apps, onSaved, formState }: { apps: AppPolicy; onSaved: (n: string) => void; formState: McpForm }) {
+function McpCard({ apps, onSaved, formState, connections }: { apps: AppPolicy; onSaved: (n: string) => void; formState: McpForm; connections: { id: string; url: string; connected: boolean; tools: number }[] }) {
   const [form, setForm] = formState;
   const { pending, error, run } = useSave(onSaved);
   const ids = { name: useId(), url: useId() };
@@ -462,7 +465,7 @@ function McpCard({ apps, onSaved, formState }: { apps: AppPolicy; onSaved: (n: s
       <h3 id="mcp-servers" className="font-[650]">
         MCP servers app agents may use
       </h3>
-      <p className="text-small text-ink-2">Agents pick these in Settings › Tools. A server not on this list can&apos;t be added to an agent.</p>
+      <p className="text-small text-ink-2">Only servers on this list can be added in Connections, and agents pick from the ones added there.</p>
       {apps.mcp.length ? (
         <ul aria-label="Allowed MCP servers" className="flex flex-col divide-y divide-line rounded-card border border-line">
           {apps.mcp.map((m) => (
@@ -471,6 +474,19 @@ function McpCard({ apps, onSaved, formState }: { apps: AppPolicy; onSaved: (n: s
                 <span className="font-semibold">{m.name}</span>
                 <code className="truncate font-mono text-small text-ink-2">{m.url}</code>
               </span>
+              {(() => {
+                // The Connections row for this server (M6), by URL.
+                const c = connections.find((x) => normalizeMcpUrl(x.url) === normalizeMcpUrl(m.url));
+                return c ? (
+                  <TextLink className="text-small" href={`/connections#mcp-${c.id}`}>
+                    {c.connected ? `In Connections · ${c.tools} ${c.tools === 1 ? "tool" : "tools"}` : "In Connections · not connected"}
+                  </TextLink>
+                ) : (
+                  <TextLink className="text-small" href="/connections#mcp">
+                    Add in Connections
+                  </TextLink>
+                );
+              })()}
               <Button size="sm" variant="quiet" disabledReason={pending ? "Saving…" : undefined} onClick={() => run(() => removeMcpServer({ name: m.name }), `Removed ${m.name}.`)}>
                 Remove
               </Button>

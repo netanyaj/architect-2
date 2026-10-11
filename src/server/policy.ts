@@ -94,7 +94,7 @@ export async function externalCallHolds(admin: AdminDb, workspaceId: string, pro
 export async function usedApps(admin: AdminDb, workspaceId: string): Promise<string[]> {
   const [{ data: items }, { data: conns }] = await Promise.all([
     admin.from("items").select("provider, projects!inner(workspace_id)").eq("projects.workspace_id", workspaceId).not("provider", "is", null),
-    admin.from("connections").select("provider").eq("workspace_id", workspaceId),
+    admin.from("connections").select("provider").eq("workspace_id", workspaceId).neq("kind", "mcp"),
   ]);
   return [...(items ?? []).map((i) => i.provider as string), ...(conns ?? []).map((c) => c.provider)];
 }

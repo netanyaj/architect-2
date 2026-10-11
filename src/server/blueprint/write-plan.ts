@@ -164,7 +164,7 @@ export async function writePlan(
       throw new GatewayRateLimited(resolved.label);
     }
     const attachments = await loadAttachments(admin, project.id);
-    const { data: conns } = await admin.from("connections").select("provider").eq("workspace_id", ctx.workspace.id).eq("status", "connected");
+    const { data: conns } = await admin.from("connections").select("provider").eq("workspace_id", ctx.workspace.id).eq("status", "connected").neq("kind", "mcp");
     const write = (m: ModelChoice) =>
       generateBlueprint(
         { prompt, attachments, model: m, connected: (conns ?? []).map((c) => c.provider) },

@@ -50,7 +50,7 @@ async function loadState(admin: AdminDb, projectId: string, ctx: AppContext) {
   const [decisions, liveRule, policies] = await Promise.all([liveDecisions(admin, project.id), allowRuleFor(admin, project.workspace_id, "production_deploy", project.id), loadPolicies(admin, project.workspace_id)]);
   // Where its data would go (C-4): a path the policy doesn't allow blocks the deploy, here as on the page.
   const flows = await projectFlows(admin, project.id, policies, items ?? []);
-  const { data: conns } = await admin.from("connections").select("provider").eq("workspace_id", project.workspace_id).eq("status", "connected");
+  const { data: conns } = await admin.from("connections").select("provider").eq("workspace_id", project.workspace_id).eq("status", "connected").neq("kind", "mcp");
   const env = (n: string) => (envs ?? []).some((e) => e.name === n && e.status === "live");
   const keys = await projectKeyRows(admin, { projectId: project.id, parts: items ?? [], connected: (conns ?? []).map((c) => c.provider), envLive: { staging: env("staging"), production: env("production") } });
   const externalCalls = await externalCallHolds(admin, project.workspace_id, project.id, items ?? [], policies);

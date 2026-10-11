@@ -40,6 +40,11 @@ export default async function McpDocsPage() {
               Claude Code, Cursor or any coding agent that speaks MCP can work on an Architect project with a project token. It uses the same tools as Architect&apos;s own
               agent, on its own branch, and the same rules hold: every change waits for its check, and only the checker can mark a part Works.
             </p>
+            <p className="rounded-card bg-tray px-3.5 py-2.5 text-ink-2">
+              <b className="text-ink">Simulated in this prototype.</b> This page is the spec: project tokens are real records, but no MCP server accepts them yet, and the
+              coding-agent sessions you see in a project are scripted. The other direction is real: in Connections › MCP servers, Test connection calls your MCP server and
+              lists its tools.
+            </p>
           </div>
 
           <section aria-labelledby="connect" className="flex flex-col gap-3">

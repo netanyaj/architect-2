@@ -550,6 +550,12 @@ export type Database = {
       }
       connections: {
         Row: {
+          auth_secret_id: string | null
+          check_error: string | null
+          checked_at: string | null
+          name: string | null
+          tools: Json | null
+          url: string | null
           created_at: string
           id: string
           kind: string
@@ -561,6 +567,12 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          auth_secret_id?: string | null
+          check_error?: string | null
+          checked_at?: string | null
+          name?: string | null
+          tools?: Json | null
+          url?: string | null
           created_at?: string
           id?: string
           kind?: string
@@ -572,6 +584,12 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          auth_secret_id?: string | null
+          check_error?: string | null
+          checked_at?: string | null
+          name?: string | null
+          tools?: Json | null
+          url?: string | null
           created_at?: string
           id?: string
           kind?: string
@@ -1927,6 +1945,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      connection_secret: {
+        Args: { p_connection: string }
+        Returns: string
+      }
+      set_connection_secret: {
+        Args: { p_connection: string; p_value: string }
+        Returns: undefined
+      }
       agree_and_build: {
         Args: { p_blueprint: string; p_kind?: string; p_user: string }
         Returns: string

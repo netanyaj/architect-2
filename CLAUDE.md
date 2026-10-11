@@ -38,6 +38,7 @@ Product documents (PRD, architecture, flows) are in `docs/product/`. When this f
 6. **No secrets in the repo or the client.** API keys live in Vercel env vars and are read only in server code (`src/server/**`). Commit `.env.example` only. Never log prompts with personal data.
 7. **Never push, deploy or publish** without Netanya's explicit OK in the session.
 8. **Accessibility:** real `<button>` and `<a>` elements, labels on inputs, a visible focus ring (`focus` token), hit areas of at least 24×24px, 4.5:1 text contrast. Use `line-ctl` for control outlines.
+9. **Nothing about other people's work.** Never commit anything about other people's take-home work: no names, repo links, scores or comparisons, in any file, commit message or PR text. Compare only against products (Lovable, Replit, v0, Base44, Cursor, today's Architect). A local pre-commit hook enforces the wording.
 
 ## Code conventions
 - Folders:

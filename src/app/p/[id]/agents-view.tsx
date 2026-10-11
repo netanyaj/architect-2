@@ -27,6 +27,7 @@ import { loadAgents, retryStudio, saveAgent, setAgentRun, tryAgent, type AgentRu
 import { loadPart, type PartDetail } from "@/server/actions/run";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 import { rowFor } from "./build-stage";
+import { mcpToolLabel } from "@/lib/mcp-connections";
 
 type Draft = AgentDraft;
 type Tab = "settings" | "runs" | "try" | "checks";
@@ -39,8 +40,8 @@ const seconds = (ms: number | null) => (ms === null ? null : `${(ms / 1000).toFi
 
 /** Tools the "Tool or MCP server" menu offers. Tools are simulated: Try it runs the agent's instructions only. */
 const BASE_TOOLS = ["Web search", "PDF summariser", "Calculator", ...Object.values(PROVIDERS).map((p) => p.name)];
-/** With governance on, only the MCP servers the policy allows (C-3); otherwise any MCP server. */
-const toolCatalog = (mcp: string[] | null) => [...BASE_TOOLS, ...(mcp === null ? ["MCP server"] : mcp.map((n) => `MCP: ${n}`))];
+/** The MCP servers connected in Connections (M6), which only takes servers the policy allows (C-3). */
+const toolCatalog = (mcp: AgentsData["mcpServers"]) => [...BASE_TOOLS, ...mcp.map((m) => mcpToolLabel(m.name))];
 
 const RUNTIME_WORDS: Record<AgentRunView["runtime"], string> = {
   lyzr_agent: "Runs on Lyzr Studio",
@@ -407,7 +408,7 @@ function RunChoice({ agent, readOnly, onChanged }: { agent: AgentView; readOnly:
   );
 }
 
-function SettingsTab({ agent, draft, setDraft, project, readOnly, lyzrModel, mcpServers, onRunChanged }: { agent: AgentView; draft: Draft; setDraft: (d: Draft) => void; project: ProjectWorkspace; readOnly: boolean; lyzrModel: string; mcpServers: string[] | null; onRunChanged: (fields: Partial<AgentView>) => void }) {
+function SettingsTab({ agent, draft, setDraft, project, readOnly, lyzrModel, mcpServers, onRunChanged }: { agent: AgentView; draft: Draft; setDraft: (d: Draft) => void; project: ProjectWorkspace; readOnly: boolean; lyzrModel: string; mcpServers: AgentsData["mcpServers"]; onRunChanged: (fields: Partial<AgentView>) => void }) {
   const [more, setMore] = useState(false);
   const [compare, setCompare] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -515,9 +516,20 @@ function SettingsTab({ agent, draft, setDraft, project, readOnly, lyzrModel, mcp
             onPick={(t) => setDraft({ ...draft, tools: [...draft.tools, t] })}
           />
         </div>
-        {mcpServers !== null && (
+        {/* Each MCP server on the agent, with the tools its last test found. Calling them is simulated. */}
+        {mcpServers
+          .filter((m) => draft.tools.includes(mcpToolLabel(m.name)))
+          .map((m) => (
+            <p key={m.name} className="text-small text-ink-2">
+              {m.name}: {m.tools.length ? m.tools.join(", ") : "no tools listed"}. Calling them is simulated.
+            </p>
+          ))}
+        {!mcpServers.length && (
           <p className="text-small text-ink-2">
-            {mcpServers.length ? `MCP servers your organisation allows: ${mcpServers.join(", ")}.` : "Your organisation hasn't allowed any MCP servers yet. An Owner or Admin adds them in Governance."}
+            No MCP servers connected yet.{" "}
+            <Link href="/connections#mcp" className="font-semibold text-ink underline decoration-line-ctl underline-offset-[3px]">
+              Add one in Connections
+            </Link>
           </p>
         )}
       </div>

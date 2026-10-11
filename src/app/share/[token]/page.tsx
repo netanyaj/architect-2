@@ -18,7 +18,7 @@ export default async function SharedTestPage({ params }: PageProps<"/share/[toke
   if (!project) notFound();
   const [{ data: bp }, { data: conns }] = await Promise.all([
     admin.from("blueprints").select("id").eq("project_id", project.id).not("agreed_at", "is", null).order("version", { ascending: false }).limit(1).maybeSingle(),
-    admin.from("connections").select("provider").eq("workspace_id", project.workspace_id).eq("status", "connected"),
+    admin.from("connections").select("provider").eq("workspace_id", project.workspace_id).eq("status", "connected").neq("kind", "mcp"),
   ]);
   const { data: items } = bp ? await admin.from("items").select("key, grp, title, provider, status, status_detail").eq("blueprint_id", bp.id) : { data: [] };
   const preview = previewState(

@@ -16,9 +16,10 @@ import { createLyzrAgent, demoLyzr, LYZR_MODEL, LyzrError, updateLyzrAgent } fro
 import { lyzrKeyStatus, workspaceLyzrKey } from "../lyzr-key";
 import { agentInWorkspace, agentRowsFor, isDemoAgent, lyzrSpec, makeInStudio, partWorks, type AgentRow, type ItemRow } from "../agents-core";
 import { RECHECK_MS } from "../code-edits";
-import { budgetRefusal, loadPolicies } from "../policy";
+import { budgetRefusal } from "../policy";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
+import { mcpToolLabel } from "@/lib/mcp-connections";
 
 const uuid = z.string().uuid();
 const BUILDERS_ONLY = "Viewers can't change or run agents. Ask an Owner, Admin or Builder.";
@@ -87,8 +88,8 @@ export type AgentsData = {
    * the shared demo agent can run, and the model Studio agents run on.
    */
   lyzr: { connected: boolean; last4: string | null; demoReady: boolean; model: string };
-  /** MCP servers the policy allows agents to use (C-3); null with governance off (any MCP server). */
-  mcpServers: string[] | null;
+  /** MCP servers connected in Connections (M6), with the tools their last test found. Agents pick from these. */
+  mcpServers: { name: string; tools: string[] }[];
   /** Meeting Prep's sample agents (screen 9) rather than agents derived from the plan. */
   sampleProject: boolean;
 };
@@ -154,6 +155,12 @@ function runView(r: {
   };
 }
 
+/** MCP servers connected in Connections (M6), with the tools their last test found. */
+async function connectedMcp(admin: ReturnType<typeof createAdminDb>, workspaceId: string): Promise<{ name: string; tools: string[] }[]> {
+  const { data } = await admin.from("connections").select("name, tools").eq("workspace_id", workspaceId).eq("kind", "mcp").eq("status", "connected");
+  return (data ?? []).map((c) => ({ name: c.name ?? "MCP server", tools: ((c.tools ?? []) as { name: string }[]).map((t) => t.name) }));
+}
+
 /**
  * The Agents view for a project: the graph from its plan, each agent's saved settings and its runs.
  * Read under RLS (members only). The first time, each agent part gets its settings row with defaults.
@@ -173,7 +180,6 @@ export async function loadAgents(input: { projectId: string }): Promise<ActionRe
   // The person's read above proved membership; settings rows are written with the service role.
   const admin = createAdminDb();
   const { spec, rows } = await agentRowsFor(admin, p, items ?? [], files ?? []);
-  const policies = await loadPolicies(admin, p.workspace_id);
 
   const ids = rows.map((r) => r.id);
   const itemByKey = new Map((items ?? []).map((i) => [i.key, i]));
@@ -254,7 +260,7 @@ export async function loadAgents(input: { projectId: string }): Promise<ActionRe
         const key = await lyzrKeyStatus(admin, p.workspace_id);
         return { connected: key.connected, last4: key.connected ? key.last4 : null, demoReady: Boolean(demoLyzr()), model: LYZR_MODEL.label };
       })(),
-      mcpServers: policies.governance ? policies.apps.mcp.map((m) => m.name) : null,
+      mcpServers: await connectedMcp(admin, p.workspace_id),
       sampleProject: spec.sample,
     },
   };
@@ -290,11 +296,11 @@ export async function saveAgent(input: z.input<typeof settings>): Promise<Action
   if (!(await allowedModels(admin, ctx.workspace.id)).includes(s.model)) {
     return { ok: false, message: s.model === toModelChoice(row.model) ? `${MODEL_NOT_ALLOWED}. Switch it to an allowed model, then save.` : `${MODEL_LABEL[s.model]} isn't allowed in this workspace. Pick another model.` };
   }
-  // A new MCP tool has to be a server the policy allows (C-3).
-  const policies = await loadPolicies(admin, ctx.workspace.id);
+  // A new MCP tool has to be a server connected in Connections (M6), which only takes servers the policy allows (C-3).
   const newMcp = s.tools.filter((t) => !row.tools.includes(t) && /^MCP\b/.test(t));
-  if (policies.governance && newMcp.some((t) => !policies.apps.mcp.some((m) => `MCP: ${m.name}` === t))) {
-    return { ok: false, message: "That MCP server isn't on your organisation's list. An Owner or Admin adds servers in Governance › Apps and MCP servers." };
+  const connected = (await connectedMcp(admin, ctx.workspace.id)).map((m) => mcpToolLabel(m.name));
+  if (newMcp.some((t) => !connected.includes(t))) {
+    return { ok: false, message: "That MCP server isn't connected here. Add it in Connections › MCP servers first; with governance on, it has to be on your organisation's list." };
   }
   const now = new Date().toISOString();
   const framework = s.framework ?? (row.framework as "lyzr" | "crewai" | "langgraph");

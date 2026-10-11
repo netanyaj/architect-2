@@ -82,7 +82,10 @@ class Query implements PromiseLike<Result> {
     return this;
   }
   eq(col: string, value: unknown) {
-    this.filters.push((r) => r[col] === value);
+    // "details->>user_id": a JSON field, compared as text.
+    const json = /^(\w+)->>(\w+)$/.exec(col);
+    if (json) this.filters.push((r) => String((r[json[1]] as Record<string, unknown> | null)?.[json[2]] ?? "") === String(value));
+    else this.filters.push((r) => r[col] === value);
     return this;
   }
   neq(col: string, value: unknown) {
