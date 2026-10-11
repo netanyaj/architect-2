@@ -69,6 +69,20 @@ Read `tokens.json` for the values and their usage.
 
 The status hues are never used for decoration, links, or "brand".
 
+**Brand and art (v4): pictures only.** Eight more tokens, light and dark, for pictures and nothing else (rules in `docs/product/23-brand-layer-v4.md`):
+
+| Token | Light | Dark | Where |
+|---|---|---|---|
+| `brand-moss` | #2F6B3F | #7DBA8A | the logo mark, the Home greeting's full stop, the credits bar fill, finished mosaic cells, agent glyph dots |
+| `brand-fern` | #7FA06A | #5E8A5A | the mosaic cell of a part being built |
+| `brand-lime` | #C8D96F | #B5C95A | a beat of the build loader |
+| `brand-mist` | #EEF1EA | #1F2620 | the ground of mosaics and agent glyphs; `brand-mist-cell` (#E2E8DC / #2A332B) is an unstarted cell |
+| `art-peony`, `art-tangerine`, `art-yolk`, `art-lilac` | #F28DC4, #FF8A3D, #FFC21A, #B9A6F5 | #E77FB7, #F27F33, #EDB517, #A893EC | one accent per project, inside its picture |
+
+- **Moss is not "works".** It is darker and greyer than the status green and never appears as an icon plus a word.
+- **Never on UI:** no brand or art colour on a button, badge, link, status or the text beside a status. They are CSS variables, not Tailwind colours, so there is no `bg-brand-moss` to reach for; `test/unit/brand.test.ts` fails if one shows up outside the picture components.
+- **One accent per project,** picked from the project's id, so each project is recognisable without its name.
+
 **Dark** is the Developer view theme; it's also available as a user setting. Same tokens, same rules.
 
 ## Type
@@ -103,14 +117,29 @@ The status hues are never used for decoration, links, or "brand".
 ## Iconography
 - Inline stroke icons at 1.7px on a 20px grid, `currentColor`, round caps.
 - 15px inside controls, 18px in nav.
-- Icon tiles (34px, radius 10) identify projects, files and templates; a dark tile marks the current project.
-- No emoji, no illustrations.
+- Icon tiles (34px, radius 10) identify files and anything without a picture.
+- No emoji.
+
+## Pictures (v4)
+Pictures replace v3's "no illustrations" rule, in these places only. All are SVG or CSS, decorative (`aria-hidden`), and drawn in brand and art colours.
+- **Mosaic (`MosaicThumb`):** a project's picture. One column per plan part (up to 8): moss when it works, fern while it's being built, mist when it's up next. Column heights come from the part ids, so the picture never changes between renders; exactly one cell takes the project's accent. On Home, Projects and Templates (34px), and in the project header cropped to 4 columns.
+- **Empty states:** a 72px mosaic in mist and moss with one accent, above the existing one-line text and action (Projects, Agents, Connections, Usage).
+- **Agent glyph (`AgentGlyph`):** a dotted shape in moss on a mist tile, one per role: planner (ring), extractor (slanted block), checker (diamond), notifier (bell), router (fork), writer (stacked lines), data analyst (bars), custom (dot cluster). 20px in lists, 34px on cards and graph nodes, 52px on the agent's detail. The role comes from the agent's name and description; anything unknown is custom.
+- **Build loader (`BuildLoader`):** a 56px shape morphing circle → half-circle → square → leaf → lens → rounded square through moss, lime, peony, fern, tangerine and lilac every 3.6s, with the build's progress line under it in Geist Mono ("Build 2/5 · Building Policy check"). Only in the empty preview while a build runs; small inline spinners stay. With reduced motion it's a still moss circle.
+- **Brand touches:** the logo mark's tile, the full stop after the Home greeting, and the credits bar fill are moss. Nothing else turns green.
 
 ## Using it
 - **CSS:** load `components/bundle.css` and wrap UI in `<div class="mx opt-c">` (add `dark` for the dark theme). Each component's README names its classes; its preview shows real markup.
 - **Code:** the app uses `src/app/tokens.css` (generated from `tokens.json`) with Tailwind v4. Map the classes to components in `src/components/ax/`.
 
 ## Changelog
+- **v4 (11 Oct 2026):** the brand layer. Type, layout, the nav, components and status colours are unchanged.
+  - eight brand and art tokens (greens moss, fern, lime, mist; accents peony, tangerine, yolk, lilac), for pictures only;
+  - mosaic pictures for projects, templates and empty states;
+  - dotted agent glyphs, one per role;
+  - the morphing build loader;
+  - the logo mark, the greeting's full stop and the credits bar in moss;
+  - pictures are allowed in those places (replaces "no illustrations"); emoji are still out.
 - **v3 (4 Oct 2026):** Soft Tray replaces the B monochrome system (v1–v2):
   - Figtree instead of Geist;
   - tray layering instead of hairlines;

@@ -4,7 +4,7 @@
 - The "Architect 2.0 – Modern direction" canvas, page "Final screens · Soft Tray" (17 screens). PNGs and HTML for every screen are in `docs/screens/`.
 - The "Architect 2.0 · Soft Tray" design system, copied into `design-system/`: the README is the brand book, plus `tokens.json` and one README and live preview per component.
 
-**Tokens:** `src/app/tokens.css`, generated from `design-system/tokens.json`.
+**Tokens:** `src/app/tokens.css`, generated from `design-system/tokens.json` with `pnpm tokens` (never edit the CSS by hand).
 - Use the Tailwind classes it creates, never a hard-coded colour: `bg-canvas`, `bg-tray`, `bg-surface`, `text-ink-2`, `border-line-ctl`, `rounded-pane`, `rounded-card`, `shadow-pane`, `text-body`, `text-small`.
 - Dark mode is `data-theme="dark"` on `<html>`.
 
@@ -17,6 +17,7 @@
 - **Type:** Figtree on a 40/28/20/16/14/12.5 scale.
 - **Shape:** buttons, pills, segments and the stepper are all pills. One black primary per screen.
 - **Colour:** means status only, shown as an icon plus a word where it needs attention. Blocked and paused are neutral ink.
+- **Pictures (v4):** brand greens and four accents live only inside pictures: project mosaics, agent glyphs, the build loader and empty states, plus the logo mark, the greeting's full stop and the credits bar. Never on a button, badge, link or status. See the design-system README, "Pictures (v4)".
 - **Preview tools:** they float over the app in one dark dock.
 
 ## Components to build (`src/components/ax/`)
@@ -43,6 +44,9 @@
 | `CodeDiff`, `ChangedFiles`, `Terminal` | components/CodeDiff | n/a | 8 |
 | `HelpPanel` | components/HelpPanel | Popover | 12, and "?" everywhere |
 | `EmptyState` | components/EmptyState | n/a | 17, and every empty list |
+| `MosaicThumb`, `EmptyMosaic` (v4) | README "Pictures (v4)" | n/a, SVG | Home, Projects, Templates, project header, empty states |
+| `AgentGlyph` (v4) | README "Pictures (v4)" | n/a, SVG | Agents list, agents graph, agent detail and Try it |
+| `BuildLoader` (v4) | README "Pictures (v4)" | n/a, CSS | the empty preview during a build |
 | `SimTag` | n/a | Badge | every simulated surface: a dashed outline pill with the word "Simulated" |
 
 ## Copy rules
