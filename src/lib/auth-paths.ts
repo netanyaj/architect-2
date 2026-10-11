@@ -2,8 +2,8 @@
 
 export const HOME = "/home";
 
-/** Signed-out visitors may open these. Home works signed out so a typed prompt survives sign-in; /share/ is a test version's view-only link; /docs/ is the MCP spec. */
-const PUBLIC_PREFIXES = ["/login", "/auth/", "/invite/", "/kit", "/share/", "/docs/"];
+/** Signed-out visitors may open these. Home works signed out so a typed prompt survives sign-in; /share/ is a test version's view-only link; /docs/ is the MCP spec; /api/cron/ checks its own secret. */
+const PUBLIC_PREFIXES = ["/login", "/auth/", "/invite/", "/kit", "/share/", "/docs/", "/api/cron/"];
 
 /** Home itself only: its sub-pages (Help me decide) need a signed-in person. */
 export function isPublicPath(pathname: string): boolean {

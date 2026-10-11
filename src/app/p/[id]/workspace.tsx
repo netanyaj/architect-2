@@ -199,7 +199,8 @@ function MoreMenu({ project, items, canAct, dev, onToggleDev, onTransfer, onDele
         <DropdownMenuItem className={item} onSelect={() => router.push("/settings")}>
           Workspace settings
         </DropdownMenuItem>
-        {canManageMembers(project.role) && (
+        {/* Owners and Admins; a Builder their own project unless it's Live (the server checks the rest). */}
+        {(canManageMembers(project.role) || (project.role === "builder" && project.isOwner && project.status !== "live")) && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem className={item} onSelect={onDelete}>
@@ -222,7 +223,7 @@ function DeleteProjectDialog({ project, open, onOpenChange }: { project: Project
       <DialogContent className="rounded-pane border border-line bg-surface p-6 shadow-pop sm:max-w-[440px]" showCloseButton={false}>
         <DialogTitle className="text-sub font-semibold">Delete {project.name}?</DialogTitle>
         <DialogDescription className="text-ink-2">
-          Its plan, parts, versions, files and usage lines are deleted for everyone in the workspace{project.status === "live" ? ", and Live stops" : ""}. This can&apos;t be undone.
+          It moves to Recently deleted in Projects for 30 days, where it can be restored{project.status === "live" ? ". Live goes offline first" : ""}. After that it&apos;s gone for good.
         </DialogDescription>
         {error && (
           <p role="alert" className="text-small font-semibold text-failed">

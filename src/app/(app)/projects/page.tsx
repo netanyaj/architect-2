@@ -15,12 +15,13 @@ export default async function ProjectsPage() {
     <ProjectsList
       projects={projects.map((p) => ({
         ...p,
-        // Deleting a project is for Owners and Admins only (M5.5), always after a confirmation.
-        canDelete: canManageMembers(ctx.role),
+        // Owners and Admins; a Builder their own project unless it's Live (the server checks it isn't shared).
+        canDelete: canManageMembers(ctx.role) || (ctx.role === "builder" && p.ownerId === ctx.user.id && p.summary.filter !== "live"),
         href: projectHref(p.id, { repo: p.repo, pref, canBuild: canBuild(ctx.role) }),
       }))}
       creditsUsed={used}
       canStart={canBuild(ctx.role)}
+      canSeeDeleted={canBuild(ctx.role)}
     />
   );
 }

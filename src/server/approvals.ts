@@ -167,7 +167,7 @@ export async function decide(admin: AdminDb, ctx: AppContext, raw: z.input<typeo
 const firstName = (v: unknown) => (typeof v === "string" && v ? v.split(" ")[0] : "The person who asked");
 
 async function workspaceProjects(admin: AdminDb, workspaceId: string): Promise<string[]> {
-  const { data } = await admin.from("projects").select("id").eq("workspace_id", workspaceId);
+  const { data } = await admin.from("projects").select("id").eq("workspace_id", workspaceId).is("deleted_at", null);
   return (data ?? []).map((p) => p.id);
 }
 

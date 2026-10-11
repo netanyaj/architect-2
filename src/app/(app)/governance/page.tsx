@@ -22,7 +22,7 @@ export default async function GovernancePage({ searchParams }: PageProps<"/gover
   const [policies, used, { data: projects }] = await Promise.all([
     loadPolicies(admin, ctx.workspace.id),
     usedApps(admin, ctx.workspace.id),
-    admin.from("projects").select("id, name, budget_credits").eq("workspace_id", ctx.workspace.id).order("updated_at", { ascending: false }),
+    admin.from("projects").select("id, name, budget_credits").eq("workspace_id", ctx.workspace.id).is("deleted_at", null).order("updated_at", { ascending: false }),
   ]);
   const [{ data: usage }, { data: audit }, spent] = await Promise.all([
     admin.from("usage_ledger").select("project_id, credits").eq("workspace_id", ctx.workspace.id),

@@ -11,6 +11,8 @@ import { canBuild, canManageMembers } from "@/lib/permissions";
 import { allowedModels } from "../blueprint/write-plan";
 import { prepareUploads, removeProjectFiles, type UploadSlot } from "../uploads";
 import { createAdminDb, createServerDb } from "../db";
+import { goOffline } from "../offline";
+import { builderDeleteRefusal, purgeDeleted } from "../trash";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
 
@@ -24,9 +26,10 @@ async function loadProject(id: string, workspaceId: string) {
   if (!z.string().uuid().safeParse(id).success) return null;
   const { data } = await createAdminDb()
     .from("projects")
-    .select("id, workspace_id, name, owner_id, prompt, icon, model, budget_credits")
+    .select("id, workspace_id, name, owner_id, prompt, icon, model, budget_credits, status, current_version")
     .eq("id", id)
     .eq("workspace_id", workspaceId)
+    .is("deleted_at", null)
     .maybeSingle();
   return data;
 }
@@ -152,24 +155,68 @@ export async function duplicateProject(input: { projectId: string }): Promise<Ac
   return { ok: true, projectId: copy.id };
 }
 
-/** Owners and Admins can delete any project; a Builder can delete their own. Usage history and uploaded files go with it. */
+/**
+ * Delete a project: it moves to Recently deleted for 30 days, where it can be restored. Owners and Admins can delete
+ * any project; a Builder only their own, if it isn't Live or shared with the team and nobody else has worked on it.
+ * A Live project goes offline first. Deleting permanently is the Owner's, from Recently deleted.
+ */
 export async function deleteProject(input: { projectId: string }): Promise<ActionResult> {
   const ctx = await getAppContext();
+  if (!canBuild(ctx.role)) return { ok: false, message: "Viewers can't delete projects." };
   const project = await loadProject(input.projectId, ctx.workspace.id);
   if (!project) return { ok: false, message: "That project isn't in this workspace any more." };
-  // Owners and Admins only (M5.5): deleting removes every version, file and run for everyone.
-  if (!canManageMembers(ctx.role)) return { ok: false, message: "Only an Owner or an Admin can delete a project." };
-
   const admin = createAdminDb();
-  // Support tickets point at projects without a cascade: keep the ticket, drop the link.
-  await admin.from("support_tickets").update({ project_id: null }).eq("project_id", project.id);
-  const { error } = await admin.from("projects").delete().eq("id", project.id);
+  if (!canManageMembers(ctx.role)) {
+    const refusal = await builderDeleteRefusal(admin, project, ctx.user.id);
+    if (refusal) return { ok: false, message: refusal };
+  }
+  if (project.status === "live") await goOffline(admin, project, { name: ctx.name, userId: ctx.user.id });
+  const { error } = await admin.from("projects").update({ deleted_at: new Date().toISOString(), deleted_by: ctx.user.id, deleted_by_name: ctx.name }).eq("id", project.id);
   if (error) return { ok: false, message: "The project couldn't be deleted. Try again." };
-  // Its rows are gone (file records with them); now the files themselves.
-  await removeProjectFiles(admin, ctx.workspace.id, project.id);
-  await audit(ctx.workspace.id, ctx.name, "project.deleted", project.name);
+  await audit(ctx.workspace.id, ctx.name, "project.deleted", project.name, { recoverable_days: 30 });
   revalidatePath("/projects");
   revalidatePath("/home");
+  return { ok: true };
+}
+
+/** Recently deleted: the projects this person deleted, or all of the workspace's for Owners and Admins. Purges first. */
+export async function recentlyDeleted(): Promise<ActionResult<{ projects: { id: string; name: string; deletedAt: string; deletedBy: string | null; canDeleteForever: boolean }[] }>> {
+  const ctx = await getAppContext();
+  if (!canBuild(ctx.role)) return { ok: true, projects: [] };
+  await purgeDeleted(createAdminDb(), ctx.workspace.id);
+  const db = await createServerDb();
+  const { data, error } = await db.rpc("list_deleted_projects", { p_workspace: ctx.workspace.id });
+  if (error) return { ok: false, message: "Recently deleted couldn't be loaded. Try again." };
+  return { ok: true, projects: (data ?? []).map((p) => ({ id: p.id, name: p.name, deletedAt: p.deleted_at, deletedBy: p.deleted_by_name, canDeleteForever: ctx.role === "owner" })) };
+}
+
+/** Restore from Recently deleted (the person who deleted it, or an Owner or Admin; checked in the database). */
+export async function restoreProject(input: { projectId: string }): Promise<ActionResult> {
+  const ctx = await getAppContext();
+  if (!z.string().uuid().safeParse(input.projectId).success) return { ok: false, message: "That project can't be restored." };
+  const db = await createServerDb();
+  const { data: ws, error } = await db.rpc("restore_project", { p_project: input.projectId });
+  if (error || ws !== ctx.workspace.id) return { ok: false, message: error?.message.includes("Only the person") ? "Only the person who deleted it, or an Owner or Admin, can restore it." : "That project can't be restored any more." };
+  const { data: p } = await createAdminDb().from("projects").select("name").eq("id", input.projectId).single();
+  await audit(ctx.workspace.id, ctx.name, "project.restored", p?.name ?? input.projectId);
+  revalidatePath("/projects");
+  revalidatePath("/home");
+  return { ok: true };
+}
+
+/** Delete permanently, from Recently deleted: the workspace Owner only (checked in the database). Files go too. */
+export async function deleteProjectForever(input: { projectId: string }): Promise<ActionResult> {
+  const ctx = await getAppContext();
+  if (ctx.role !== "owner") return { ok: false, message: "Only the workspace Owner can delete a project permanently." };
+  if (!z.string().uuid().safeParse(input.projectId).success) return { ok: false, message: "That project isn't in Recently deleted." };
+  const admin = createAdminDb();
+  const { data: p } = await admin.from("projects").select("name").eq("id", input.projectId).maybeSingle();
+  const db = await createServerDb();
+  const { data: ws, error } = await db.rpc("delete_project_forever", { p_project: input.projectId });
+  if (error || !ws) return { ok: false, message: "That project isn't in Recently deleted." };
+  await removeProjectFiles(admin, ws, input.projectId);
+  await audit(ctx.workspace.id, ctx.name, "project.deleted_forever", p?.name ?? input.projectId);
+  revalidatePath("/projects");
   return { ok: true };
 }
 

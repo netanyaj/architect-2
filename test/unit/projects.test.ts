@@ -163,23 +163,44 @@ describe("duplicateProject", () => {
   });
 });
 
-describe("deleteProject", () => {
-  it("deletes, keeps support tickets, and logs it", async () => {
+describe("deleteProject (to Recently deleted)", () => {
+  it("moves it to Recently deleted: hidden, restorable for 30 days, logged; nothing is removed yet", async () => {
     expect(await deleteProject({ projectId: P1 })).toEqual({ ok: true });
-    expect(db.tables.projects.find((p) => p.id === P1)).toBeUndefined();
-    expect(db.tables.support_tickets[0]).toMatchObject({ question: "Why?", project_id: null });
+    expect(db.tables.projects.find((p) => p.id === P1)).toMatchObject({ deleted_by: "me", deleted_by_name: "Morgan Lee" });
+    expect(db.tables.projects.find((p) => p.id === P1)!.deleted_at).toBeTruthy();
+    expect(db.tables.support_tickets[0]).toMatchObject({ project_id: P1 });
     expect(audits()).toEqual(["project.deleted"]);
+    // Deleted twice? It's already gone from the workspace.
+    expect((await deleteProject({ projectId: P1 })).ok).toBe(false);
   });
-  it("removes the project's uploaded files from the bucket, and only those", async () => {
-    db.objects.uploads = new Set([`ws-1/${P1}/a-agenda.pdf`, `ws-1/${P1}/b-logo.png`, `ws-1/${P2}/c-other.pdf`]);
-    expect(await deleteProject({ projectId: P1 })).toEqual({ ok: true });
-    expect([...db.objects.uploads]).toEqual([`ws-1/${P2}/c-other.pdf`]);
-  });
-  it("only Owners and Admins delete, even a Builder's own project (M5.5)", async () => {
+  it("a Builder deletes their own project if it isn't Live or shared and nobody else worked on it", async () => {
     role = "builder";
-    expect(await deleteProject({ projectId: P1 })).toEqual({ ok: false, message: "Only an Owner or an Admin can delete a project." });
+    db.tables.environments = [];
+    db.tables.blueprints[0].created_by = "me";
+    db.tables.part_comments = [];
+    expect(await deleteProject({ projectId: P2 })).toEqual({ ok: false, message: "A Builder can delete only their own projects. Ask an Owner or Admin." });
+    db.tables.part_comments.push({ project_id: P1, author_id: "someone" });
+    expect(await deleteProject({ projectId: P1 })).toEqual({ ok: false, message: "Someone else has worked on it. Ask an Owner or Admin to delete it." });
+    db.tables.part_comments = [];
+    db.tables.environments.push({ project_id: P1, name: "staging", status: "live" });
+    expect(await deleteProject({ projectId: P1 })).toEqual({ ok: false, message: "It's shared with your team. Ask an Owner or Admin to delete it." });
+    db.tables.environments = [];
+    db.tables.projects[0].status = "live";
+    expect(await deleteProject({ projectId: P1 })).toEqual({ ok: false, message: "It's live. Ask an Owner or Admin to delete it." });
+    db.tables.projects[0].status = "built";
+    expect(await deleteProject({ projectId: P1 })).toEqual({ ok: true });
+    role = "viewer";
+    expect((await deleteProject({ projectId: P2 })).ok).toBe(false);
+  });
+  it("an Owner or Admin deleting a Live project takes it offline first", async () => {
     role = "admin";
-    expect(await deleteProject({ projectId: P2 })).toEqual({ ok: true });
+    db.tables.projects[0].status = "live";
+    db.tables.deployments = [{ id: "d1", project_id: P1, environment: "production", status: "live", blueprint_version: 1 }];
+    db.tables.environments = [{ id: "e1", project_id: P1, name: "production", status: "live" }];
+    expect(await deleteProject({ projectId: P1 })).toEqual({ ok: true });
+    expect(db.tables.deployments[0].status).toBe("offline");
+    expect(db.tables.environments[0].status).toBe("offline");
+    expect(audits()).toEqual(["deploy.offline", "project.deleted"]);
   });
 });
 

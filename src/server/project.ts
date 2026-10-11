@@ -125,6 +125,8 @@ export type ProjectWorkspace = {
   /** Coding agent tokens (F4): active ones let ?sim=byoagent play. */
   tokens: { active: number; waiting: number };
   ownerName: string;
+  /** The signed-in person owns it (a Builder may delete their own: M5.5 review). */
+  isOwner: boolean;
   updatedAt: string;
   budgetCredits: number | null;
   /** The latest version of the plan (what the workspace shows), or null before the first plan. */
@@ -491,6 +493,7 @@ export async function getProjectWorkspace(id: string, ctx: AppContext, creditsLe
     tokens: { active: (tokenRows ?? []).filter((t) => t.status === "active").length, waiting: (tokenRows ?? []).filter((t) => t.status === "waiting").length },
     governance: p.workspace_id === ctx.workspace.id ? ctx.workspace.governanceEnabled : true,
     ownerName,
+    isOwner: p.owner_id === ctx.user.id,
     updatedAt: p.updated_at,
     budgetCredits: num(p.budget_credits),
     plan: bp

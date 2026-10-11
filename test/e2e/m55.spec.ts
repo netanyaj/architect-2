@@ -137,7 +137,7 @@ test.describe("M5.5", () => {
     await page.getByRole("menuitem", { name: "Delete project…" }).click();
     await confirm.getByRole("button", { name: "Delete project" }).click();
     await page.waitForURL(/\/projects$/);
-    expect((await db.from("projects").select("id").eq("id", vt!.id)).data).toEqual([]);
+    expect((await db.from("projects").select("deleted_at").eq("id", vt!.id).single()).data!.deleted_at).toBeTruthy();
   });
 
   test("Developer view terminal: real-mapped commands, the sandbox line for the rest, audited; none for Viewers; Open PR", async ({ page }) => {
@@ -294,5 +294,34 @@ test.describe("M5.5", () => {
     expect(audit!.map((a) => (a.details as { to: string }).to).sort()).toEqual(["studio", "tool"]);
     // Clean up the real Studio agent this made.
     if (agent!.lyzr_agent_id && process.env.LYZR_API_KEY) await fetch(`${process.env.LYZR_BASE_URL ?? "https://agent-prod.studio.lyzr.ai"}/v3/agents/${agent!.lyzr_agent_id}`, { method: "DELETE", headers: { "x-api-key": process.env.LYZR_API_KEY } }).catch(() => {});
+  });
+
+  test("Recently deleted: a deleted project can be restored for 30 days; deleting permanently is the Owner's", async ({ page }) => {
+    await start(page);
+    const db = adminDb();
+    const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", user.id).eq("role", "owner").eq("workspaces.kind", "demo").single();
+    const ws = m!.workspace_id;
+    await page.goto("/projects", { waitUntil: "networkidle" });
+    for (const name of ["Lead scorer", "ticket-triage"]) {
+      await page.getByRole("button", { name: `Actions for ${name}` }).click();
+      await page.getByRole("menuitem", { name: "Delete" }).click();
+      await expect(page.getByRole("dialog")).toContainText("Recently deleted");
+      await page.getByRole("dialog").getByRole("button", { name: "Delete project" }).click();
+      await expect(page.getByRole("link", { name, exact: true })).toHaveCount(0);
+    }
+    await page.getByRole("button", { name: "Recently deleted" }).click();
+    const trash = page.getByRole("list", { name: "Recently deleted projects" });
+    const lead = trash.getByRole("listitem").filter({ hasText: "Lead scorer" });
+    await expect(lead).toContainText("30 days left to restore");
+    await lead.getByRole("button", { name: "Restore" }).click();
+    await expect(page.getByRole("region", { name: "Recently deleted" }).getByRole("alert")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Lead scorer", exact: true })).toBeVisible();
+    const tt = trash.getByRole("listitem").filter({ hasText: "ticket-triage" });
+    await tt.getByRole("button", { name: "Delete permanently…" }).click();
+    await tt.getByRole("button", { name: "Delete permanently" }).click();
+    await expect(trash.getByText("ticket-triage")).toHaveCount(0);
+    expect((await db.from("projects").select("id").eq("workspace_id", ws).eq("name", "ticket-triage")).data).toEqual([]);
+    const { data: audit } = await db.from("audit_log").select("action").eq("workspace_id", ws).in("action", ["project.deleted", "project.restored", "project.deleted_forever"]);
+    expect(audit!.map((a) => a.action).sort()).toEqual(["project.deleted", "project.deleted", "project.deleted_forever", "project.restored"]);
   });
 });

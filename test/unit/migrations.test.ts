@@ -529,3 +529,65 @@ describe("two workspaces per person, and how an imported agent runs (0021)", () 
     await expect(db.query("insert into agents (workspace_id, project_id, item_key, name, run_as) select workspace_id, id, 'x-run', 'X', 'elsewhere' from projects limit 1")).rejects.toThrow(/check/);
   });
 });
+
+describe("recently deleted projects (0022)", () => {
+  it("a deleted project is hidden from members' reads, its parts with it; restoring brings both back", async () => {
+    const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
+    const { id } = await one<{ id: string }>("select id from projects where workspace_id = $1 and name = 'Vendor tracker'", [ws]);
+    // Supabase grants read on public tables to signed-in users; RLS then decides which rows.
+    await db.exec("grant usage on schema public, auth to authenticated; grant select on all tables in schema public to authenticated; grant execute on all functions in schema public, auth to authenticated;");
+    // As on Supabase: new functions are executable by signed-in users unless a migration revoked it (as 0022 does for the purge).
+    await db.exec("revoke execute on function purge_deleted_projects(uuid) from authenticated;");
+    const asMorgan = async <T,>(sql: string, params: unknown[]) => {
+      await db.exec(`set role authenticated; set request.jwt.claim.sub = '${MORGAN}';`);
+      try {
+        return (await db.query<T>(sql, params)).rows;
+      } finally {
+        await db.exec("reset role;");
+      }
+    };
+    expect(await asMorgan("select id from projects where id = $1", [id])).toHaveLength(1);
+    await db.query("update projects set deleted_at = now(), deleted_by_name = 'Morgan' where id = $1", [id]);
+    expect(await asMorgan("select id from projects where id = $1", [id])).toHaveLength(0);
+    expect(await asMorgan("select id from items where project_id = $1", [id])).toHaveLength(0);
+    await db.query("update projects set deleted_at = null where id = $1", [id]);
+    expect((await asMorgan<{ id: string }>("select id from items where project_id = $1", [id])).length).toBeGreaterThan(0);
+  });
+
+  it("Recently deleted: listed for the person who deleted it and for Owners and Admins; restore checks who; permanent delete is Owner only; purge after 30 days", async () => {
+    const SAM = "00000000-0000-0000-0000-0000000000dd";
+    await db.query("insert into auth.users (id, email) values ($1, 'sam@x.com') on conflict do nothing", [SAM]);
+    const { ws } = await one<{ ws: string }>("select create_demo_workspace($1, 'morgan@example.com', 'Morgan Lee') as ws", [MORGAN]);
+    await db.query("insert into members (workspace_id, user_id, email, display_name, role, status) values ($1, $2, 'sam@x.com', 'Sam', 'builder', 'active') on conflict do nothing", [ws, SAM]);
+    const ids = await db.query<{ id: string; name: string }>("select id, name from projects where workspace_id = $1 and name in ('Lead scorer', 'Meeting Prep')", [ws]);
+    const lead = ids.rows.find((r) => r.name === "Lead scorer")!.id;
+    const prep = ids.rows.find((r) => r.name === "Meeting Prep")!.id;
+    await db.query("update projects set deleted_at = now(), deleted_by = $2, deleted_by_name = 'Sam' where id = $1", [lead, SAM]);
+    await db.query("update projects set deleted_at = now() - interval '31 days', deleted_by = $2 where id = $1", [prep, MORGAN]);
+    const as = async <T,>(user: string, sql: string, params: unknown[] = []) => {
+      await db.exec(`set role authenticated; set request.jwt.claim.sub = '${user}';`);
+      try {
+        return (await db.query<T>(sql, params)).rows;
+      } finally {
+        await db.exec("reset role;");
+      }
+    };
+    // The agents of a deleted project are hidden too (their policy reads by workspace).
+    await db.query("insert into agents (workspace_id, project_id, item_key, name) values ($1, $2, 'scorer-x', 'Scorer')", [ws, lead]);
+    expect(await as(MORGAN, "select id from agents where project_id = $1", [lead])).toHaveLength(0);
+    // Listed: Sam sees what he deleted; Morgan (Owner) sees it too; over 30 days isn't listed.
+    expect((await as<{ name: string }>(SAM, "select name from list_deleted_projects($1)", [ws])).map((r) => r.name)).toEqual(["Lead scorer"]);
+    expect((await as<{ name: string }>(MORGAN, "select name from list_deleted_projects($1)", [ws])).map((r) => r.name)).toEqual(["Lead scorer"]);
+    // Permanent delete: Owner only.
+    await expect(as(SAM, "select delete_project_forever($1)", [lead])).rejects.toThrow(/Only the workspace Owner/);
+    // Restore: Sam can (he deleted it); then it's back.
+    await as(SAM, "select restore_project($1)", [lead]);
+    expect(await as(MORGAN, "select id from projects where id = $1", [lead])).toHaveLength(1);
+    await expect(as(SAM, "select restore_project($1)", [prep])).rejects.toThrow(/can't be restored/);
+    // Purge removes what's past 30 days, and returns it.
+    const purged = await db.query<{ id: string }>("select id from purge_deleted_projects($1)", [ws]);
+    expect(purged.rows.map((r) => r.id)).toEqual([prep]);
+    expect(await count("select count(*) as n from projects where id = $1", [prep])).toBe(0);
+    await expect(as(SAM, "select * from purge_deleted_projects($1)", [ws])).rejects.toThrow(/permission denied/);
+  });
+});

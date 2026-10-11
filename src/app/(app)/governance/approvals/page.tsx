@@ -15,12 +15,15 @@ export default async function ApprovalsPage({ searchParams }: PageProps<"/govern
   const sp = await searchParams;
   const admin = createAdminDb();
   const ws = ctx.workspace.id;
-  const [{ data: rows }, { data: members }, { data: policies }, { data: rules }] = await Promise.all([
-    admin.from("approvals").select("id, kind, title, status, created_at, decided_at, decided_by_name, reason, payload, requested_by, project_id, projects(id, name)").eq("workspace_id", ws).order("created_at", { ascending: false }),
+  const [{ data: allRows }, { data: members }, { data: policies }, { data: allRules }] = await Promise.all([
+    admin.from("approvals").select("id, kind, title, status, created_at, decided_at, decided_by_name, reason, payload, requested_by, project_id, projects(id, name, deleted_at)").eq("workspace_id", ws).order("created_at", { ascending: false }),
     admin.from("members").select("user_id, display_name, email").eq("workspace_id", ws),
     admin.from("policies").select("kind, config").eq("workspace_id", ws),
-    admin.from("allow_rules").select("id, action, target, reason, created_by_name, created_at, removed_at, projects(name)").eq("workspace_id", ws).is("removed_at", null).order("created_at", { ascending: false }),
+    admin.from("allow_rules").select("id, action, target, reason, created_by_name, created_at, removed_at, projects(name, deleted_at)").eq("workspace_id", ws).is("removed_at", null).order("created_at", { ascending: false }),
   ]);
+  // A project in Recently deleted takes its requests and rules out of the queue (they come back if it's restored).
+  const rows = (allRows ?? []).filter((r) => !r.projects?.deleted_at);
+  const rules = (allRules ?? []).filter((r) => !r.projects?.deleted_at);
   const names = new Map((members ?? []).filter((m) => m.user_id).map((m) => [m.user_id!, m.display_name ?? m.email ?? "Someone"]));
   const egress = (policies ?? []).find((p) => p.kind === "egress")?.config as { hosts?: string[] } | undefined;
 

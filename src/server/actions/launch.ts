@@ -11,6 +11,7 @@ import { DEPLOY_STEPS, DOMAIN_CHECK_MS, DomainName, launchState, Listing, type A
 import { canBuild, canManageMembers } from "@/lib/permissions";
 import { createAdminDb, type AdminDb } from "../db";
 import { projectKeyRows } from "../keys";
+import { goOffline } from "../offline";
 import { allowRuleFor, externalCallHolds, liveDecisions, loadPolicies, projectFlows } from "../policy";
 import { getAppContext, type AppContext } from "../workspace";
 import type { ActionResult } from "./members";
@@ -372,18 +373,8 @@ export async function takeOffline(input: { projectId: string }): Promise<ActionR
   if (!uuid.safeParse(input.projectId).success) return { ok: false, message: "That project isn't in this workspace." };
   const { data: project } = await admin.from("projects").select("id, name, workspace_id, current_version").eq("id", input.projectId).maybeSingle();
   if (!project || project.workspace_id !== ctx.workspace.id) return { ok: false, message: "That project isn't in this workspace." };
-  const [{ data: live }, { data: env }] = await Promise.all([
-    admin.from("deployments").select("id, blueprint_version").eq("project_id", project.id).eq("environment", "production").eq("status", "live").maybeSingle(),
-    admin.from("environments").select("id, status").eq("project_id", project.id).eq("name", "production").maybeSingle(),
-  ]);
-  if (!live && env?.status !== "live") return { ok: false, message: "Nothing is live to take offline." };
-  const version = live?.blueprint_version ?? project.current_version ?? 1;
-  if (live) await admin.from("deployments").update({ status: "offline" }).eq("id", live.id);
-  // A seeded live app has no deployment history: record the version that was live, so it can come back.
-  else await admin.from("deployments").insert({ project_id: project.id, environment: "production", blueprint_version: version, status: "offline", created_by: ctx.user.id });
-  if (env) await admin.from("environments").update({ status: "offline" }).eq("id", env.id);
-  await admin.from("projects").update({ status: "built", updated_at: new Date().toISOString() }).eq("id", project.id);
-  await admin.from("audit_log").insert({ workspace_id: project.workspace_id, actor: ctx.name, action: "deploy.offline", target: project.name, details: { version, simulated: true } });
+  const r = await goOffline(admin, project, { name: ctx.name, userId: ctx.user.id });
+  if (!r.ok) return r;
   revalidatePath(`/p/${project.id}/launch`);
   revalidatePath(`/p/${project.id}`);
   revalidatePath("/projects");

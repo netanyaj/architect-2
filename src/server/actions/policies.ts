@@ -241,7 +241,7 @@ export async function saveBudgets(raw: z.input<typeof budgetInput>): Promise<Act
   if (problem) return { ok: false, message: problem };
   const admin = createAdminDb();
   const before = (await loadPolicies(admin, ctx.workspace.id)).stored.budget;
-  const { data: projects } = await admin.from("projects").select("id, name, budget_credits").eq("workspace_id", ctx.workspace.id);
+  const { data: projects } = await admin.from("projects").select("id, name, budget_credits").eq("workspace_id", ctx.workspace.id).is("deleted_at", null);
   const changed: string[] = [];
   for (const p of parsed.data.projects) {
     const row = (projects ?? []).find((x) => x.id === p.id);

@@ -1240,6 +1240,9 @@ export type Database = {
           budget_credits: number | null
           created_at: string
           current_version: number | null
+          deleted_at: string | null
+          deleted_by: string | null
+          deleted_by_name: string | null
           icon: string
           id: string
           launch_settings: Json
@@ -1261,6 +1264,9 @@ export type Database = {
           budget_credits?: number | null
           created_at?: string
           current_version?: number | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deleted_by_name?: string | null
           icon?: string
           id?: string
           launch_settings?: Json
@@ -1282,6 +1288,9 @@ export type Database = {
           budget_credits?: number | null
           created_at?: string
           current_version?: number | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deleted_by_name?: string | null
           icon?: string
           id?: string
           launch_settings?: Json
@@ -1787,11 +1796,32 @@ export type Database = {
         Returns: string
       }
       db_now: { Args: never; Returns: string }
+      delete_project_forever: { Args: { p_project: string }; Returns: string }
       is_member: { Args: { ws: string }; Returns: boolean }
+      list_deleted_projects: {
+        Args: { p_workspace: string }
+        Returns: {
+          deleted_at: string
+          deleted_by: string
+          deleted_by_name: string
+          id: string
+          name: string
+          status: string
+        }[]
+      }
+      project_not_deleted: { Args: { p_project: string }; Returns: boolean }
+      purge_deleted_projects: {
+        Args: { p_workspace?: string }
+        Returns: {
+          id: string
+          workspace_id: string
+        }[]
+      }
       reset_demo_workspace: {
         Args: { p_owner: string; p_workspace: string }
         Returns: undefined
       }
+      restore_project: { Args: { p_project: string }; Returns: string }
       seed_demo_workspace: {
         Args: { p_owner: string; p_workspace: string }
         Returns: undefined
