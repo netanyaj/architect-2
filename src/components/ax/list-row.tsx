@@ -13,7 +13,7 @@ export function Tray({ children, className, label, flat = false }: { children: R
       aria-label={label}
       className={cn(
         flat
-          ? "flex flex-col [&>li]:rounded-none [&>li]:border-0 [&>li]:border-b [&>li]:border-line [&>li]:px-2 [&>li:hover]:border-line [&>li:hover]:bg-tray [&>li:last-child]:border-b-0"
+          ? "flex flex-col [&>li]:rounded-none [&>li]:border-0 [&>li]:border-b [&>li]:border-line [&>li]:px-2 [&>li:hover]:border-line [&>li:hover]:bg-tray [&>li:hover]:[--btn:var(--button-fill-on-tray)] [&>li:hover]:[--btn-hover:var(--button-fill-on-tray-hover)] [&>li:last-child]:border-b-0"
           : "flex flex-col gap-1.5 rounded-pane border border-line bg-tray p-1.5",
         className,
       )}

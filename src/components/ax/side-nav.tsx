@@ -131,7 +131,7 @@ export function SideNav(props: SideNavProps) {
           aria-expanded={menuOpen}
           aria-controls="side-nav-items"
           onClick={() => setMenuOpen(!menuOpen)}
-          className="min-h-8 rounded-full border border-transparent bg-tray px-3 text-body font-[550] md:hidden"
+          className="min-h-8 rounded-full border border-transparent bg-(--btn) px-3 text-body font-[550] hover:bg-(--btn-hover) md:hidden"
         >
           {menuOpen ? "Close" : "Menu"}
         </button>

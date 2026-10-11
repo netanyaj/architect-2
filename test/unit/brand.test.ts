@@ -151,3 +151,43 @@ describe("small mosaics use the 4-column crop (M5.9)", () => {
     expect(src).toContain("crop ?? (size <= 34 ? 4 : undefined)");
   });
 });
+
+describe("buttons never blend into what's behind them (M5.9.1)", () => {
+  const lum = (hex: string) => {
+    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  };
+  const ratio = (a: string, b: string) => (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05);
+  const t = JSON.parse(readFileSync(join(root, "design-system/tokens.json"), "utf8"));
+  const value = (name: string, theme: "light" | "dark") => t.color.tokens.find((x: { name: string }) => x.name === name).value[theme] as string;
+
+  it("the fill and its hover step at least as far from each background as the tray steps from the surface, in both themes", () => {
+    for (const theme of ["light", "dark"] as const) {
+      for (const fill of ["button-fill", "button-fill-hover"]) expect(ratio(value(fill, theme), value("surface", theme))).toBeGreaterThanOrEqual(1.08);
+      for (const ground of ["tray", "canvas", "selected"])
+        for (const fill of ["button-fill-on-tray", "button-fill-on-tray-hover"]) expect(ratio(value(fill, theme), value(ground, theme))).toBeGreaterThanOrEqual(1.08);
+    }
+  });
+
+  it("every token name is unique across colour, size and the rest, so no CSS variable silently overrides another", () => {
+    const names: string[] = [];
+    const walk = (v: unknown): void => {
+      if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v === "object") {
+        const o = v as Record<string, unknown>;
+        if (typeof o.name === "string" && "value" in o) names.push(o.name);
+        Object.values(o).forEach(walk);
+      }
+    };
+    walk(t);
+    expect(names.filter((n, i) => names.indexOf(n) !== i)).toEqual([]);
+  });
+
+  it("each background sets its buttons' fill, and buttons use it rather than a fixed tray", () => {
+    const css = readFileSync(join(root, "src/app/globals.css"), "utf8");
+    expect(css).toMatch(/\.bg-surface,[\s\S]*?--btn: var\(--button-fill\);/);
+    expect(css).toMatch(/\.bg-tray,[\s\S]*?--btn: var\(--button-fill-on-tray\);/);
+    const offenders = files(join(root, "src")).filter((f) => /border-transparent bg-tray/.test(readFileSync(f, "utf8")));
+    expect(offenders).toEqual([]);
+  });
+});

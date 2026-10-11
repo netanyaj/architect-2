@@ -293,7 +293,7 @@ function AddMenu({ label, options, onPick, disabledReason, emptyNote }: { label:
   if (disabledReason) return <Pill icon="plus" disabledReason={disabledReason}>{label}</Pill>;
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-transparent bg-tray px-3 text-body font-[550] whitespace-nowrap text-ink hover:bg-selected">
+      <DropdownMenuTrigger className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-transparent bg-(--btn) px-3 text-body font-[550] whitespace-nowrap text-ink hover:bg-(--btn-hover)">
         <Icon name="plus" size="sm" />
         {label}
       </DropdownMenuTrigger>

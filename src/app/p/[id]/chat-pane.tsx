@@ -431,7 +431,7 @@ export function ChatPane({
                 key={n}
                 type="button"
                 onClick={() => setDraft(n)}
-                className="min-h-8 max-w-full truncate rounded-full border border-transparent bg-tray px-3 text-left text-small font-[550] hover:bg-selected"
+                className="min-h-8 max-w-full truncate rounded-full border border-transparent bg-(--btn) px-3 text-left text-small font-[550] hover:bg-(--btn-hover)"
               >
                 {n}
               </button>

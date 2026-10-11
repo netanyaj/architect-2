@@ -138,7 +138,8 @@ Pictures replace v3's "no illustrations" rule, in these places only. All are SVG
 - **v4.1 (11 Oct 2026):** a subtraction pass (doc 25).
   - the build loader is dotted, morphing between the parts' agent glyphs;
   - status words are ink-2; only the icon or dot is coloured;
-  - secondary buttons are quiet (tray fill, no outline); action pills are quiet icon and text; outlined pills stay for segments and status;
+  - secondary buttons are quiet (a fill, no outline); action pills are quiet icon and text; outlined pills stay for segments and status;
+  - a button's fill never matches what's behind it: `button-fill` on a surface, `button-fill-on-tray` on the tray, the canvas or a selected row. Each background sets `--btn` for the buttons inside it, so the nearest one wins;
   - one Simulated label per region (the preview frame, the chat, the agent panel, the Data tab), not on each message or field;
   - "Continue where you left off" and Projects sit on the pane with hairline dividers; Projects rows lose the connector letters;
   - headings are tracked −0.02em at 28px and up and −0.01em at 20px; controls use tabular figures; mosaics at 34px and below show 4 columns.

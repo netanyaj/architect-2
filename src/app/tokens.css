@@ -6,6 +6,10 @@
   --surface: #ffffff;
   --tray: #f6f5f2;
   --selected: #ecebe6;
+  --button-fill: #f6f5f2;
+  --button-fill-hover: #ecebe6;
+  --button-fill-on-tray: #ffffff;
+  --button-fill-on-tray-hover: #e3e2dc;
   --line: #e3e2dc;
   --line-ctl: #75746c;
   --ink: #1a1a19;
@@ -70,6 +74,10 @@
   --surface: #161615;
   --tray: #111110;
   --selected: #262624;
+  --button-fill: #262624;
+  --button-fill-hover: #31312e;
+  --button-fill-on-tray: #34342f;
+  --button-fill-on-tray-hover: #3e3e39;
   --line: #2d2d2a;
   --line-ctl: #7a7a73;
   --ink: #efeee9;
@@ -107,6 +115,10 @@
   --color-surface: var(--surface);
   --color-tray: var(--tray);
   --color-selected: var(--selected);
+  --color-button-fill: var(--button-fill);
+  --color-button-fill-hover: var(--button-fill-hover);
+  --color-button-fill-on-tray: var(--button-fill-on-tray);
+  --color-button-fill-on-tray-hover: var(--button-fill-on-tray-hover);
   --color-line: var(--line);
   --color-line-ctl: var(--line-ctl);
   --color-ink: var(--ink);

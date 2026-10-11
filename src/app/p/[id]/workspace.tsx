@@ -188,7 +188,7 @@ function MoreMenu({ project, items, canAct, dev, onToggleDev, onTransfer, onDele
   const roles = (["builder", "viewer"] as const).filter((r) => RANK[r] < RANK[realRole]);
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger aria-label="More for this project" className="grid size-[38px] place-items-center rounded-full border border-transparent bg-tray hover:bg-selected">
+      <DropdownMenuTrigger aria-label="More for this project" className="grid size-[38px] place-items-center rounded-full border border-transparent bg-(--btn) hover:bg-(--btn-hover)">
         <Icon name="more" size="sm" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" collisionPadding={12} className="w-72 rounded-card border border-line bg-surface p-1.5 shadow-pop">
@@ -285,7 +285,7 @@ function ChangesButton({ project }: { project: ProjectWorkspace }) {
   const openChanges = useUi((s) => s.openChanges);
   const { parts } = currentChange(project);
   return (
-    <button type="button" onClick={() => openChanges(true)} className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-transparent bg-tray px-3.5 font-[550] hover:bg-selected">
+    <button type="button" onClick={() => openChanges(true)} className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-transparent bg-(--btn) px-3.5 font-[550] hover:bg-(--btn-hover)">
       <Icon name="branch" size="sm" />
       Changes <span className="tabular-nums text-ink-2">({parts})</span>
     </button>
@@ -357,7 +357,7 @@ function PeopleMenu({ project }: { project: ProjectWorkspace }) {
       <DropdownMenuTrigger
         aria-label={`People and sharing: ${project.people.length} ${project.people.length === 1 ? "person" : "people"} in this workspace`}
         title="People and sharing"
-        className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-transparent bg-tray py-1 pr-3 pl-1.5 font-[550] hover:bg-selected"
+        className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-transparent bg-(--btn) py-1 pr-3 pl-1.5 font-[550] hover:bg-(--btn-hover)"
       >
         <span className="flex -space-x-1.5" aria-hidden="true">
           {shown.map((p) => (

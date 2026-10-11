@@ -32,7 +32,7 @@ export function ChatMoreMenu({ project, items }: { project: ProjectWorkspace; it
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger aria-label="More for messages" title="More for messages" className="grid size-8 flex-none place-items-center rounded-full border border-transparent bg-tray text-ink hover:bg-selected">
+        <DropdownMenuTrigger aria-label="More for messages" title="More for messages" className="grid size-8 flex-none place-items-center rounded-full border border-transparent bg-(--btn) text-ink hover:bg-(--btn-hover)">
           <Icon name="more" size="sm" />
         </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="start" collisionPadding={12} className="w-[300px] rounded-card border border-line bg-surface p-1.5 shadow-pop">

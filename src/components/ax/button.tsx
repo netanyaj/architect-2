@@ -10,15 +10,15 @@ const base =
 
 const variants: Record<Variant, string> = {
   primary: "bg-primary border-primary text-on-primary font-semibold hover:opacity-90",
-  // Quiet (M5.9, doc 25): a tray fill and no outline, so the one ink primary is the only loud control.
-  secondary: "bg-tray border-transparent text-ink hover:bg-selected",
-  quiet: "bg-transparent border-transparent text-ink hover:bg-selected",
+  // Quiet (M5.9, doc 25): a fill and no outline. The fill steps away from whatever is behind it (--btn, M5.9.1), so the one ink primary is the only loud control.
+  secondary: "bg-(--btn) border-transparent text-ink hover:bg-(--btn-hover)",
+  quiet: "bg-transparent border-transparent text-ink hover:bg-(--btn-hover)",
 };
 
 const disabledStyles: Record<Variant, string> = {
   // A disabled primary keeps its weight so the screen still has an anchor.
   primary: "bg-primary-disabled border-primary-disabled text-on-primary hover:opacity-100 cursor-not-allowed",
-  secondary: "bg-selected border-transparent text-ink-3 hover:bg-selected cursor-not-allowed",
+  secondary: "bg-(--btn) border-transparent text-ink-3 hover:bg-(--btn) cursor-not-allowed",
   quiet: "bg-transparent border-transparent text-ink-3 hover:bg-transparent cursor-not-allowed",
 };
 
@@ -117,8 +117,8 @@ export function IconButton({
       aria-label={label}
       title={label}
       className={cn(
-        "grid flex-none place-items-center rounded-full border text-ink transition-colors hover:bg-selected",
-        quiet ? "border-transparent bg-transparent" : "border-transparent bg-tray",
+        "grid flex-none place-items-center rounded-full border text-ink transition-colors hover:bg-(--btn-hover)",
+        quiet ? "border-transparent bg-transparent" : "border-transparent bg-(--btn)",
         size === 32 ? "size-8" : size === 36 ? "size-9" : "size-[38px]",
         className,
       )}

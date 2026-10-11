@@ -72,6 +72,31 @@
   }
 }
 
+/*
+ * Secondary and icon buttons never blend into what's behind them (M5.9.1). Each background sets the fill its buttons
+ * use, and the nearest one wins through inheritance: on a surface the fill is a step down (button-fill); on the tray, the
+ * canvas or a selected row it steps up (button-fill-on-tray).
+ */
+@layer base {
+  :root,
+  .bg-surface,
+  .bg-white,
+  .bg-card,
+  .bg-popover,
+  .bg-background {
+    --btn: var(--button-fill);
+    --btn-hover: var(--button-fill-hover);
+  }
+  body,
+  .bg-canvas,
+  .bg-tray,
+  .bg-muted,
+  .bg-selected {
+    --btn: var(--button-fill-on-tray);
+    --btn-hover: var(--button-fill-on-tray-hover);
+  }
+}
+
 /* Reduced motion stops the spinners (QA checklist). */
 @media (prefers-reduced-motion: reduce) {
   *,
