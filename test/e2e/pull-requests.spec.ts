@@ -30,8 +30,12 @@ test.describe("M4: Changes as pull requests", () => {
     const first = chat.getByRole("region", { name: "Pull request #12" });
     await expect(first).toContainText("PR #12 · Build:");
     await expect(first).toContainText("architect/repo-prep-v1 → main on netanyaj/ticket-triage");
-    await expect(first).toContainText("Talking points generator");
-    await expect(first).toContainText("Test:");
+    // The card is a summary; the parts and their tests are in Changes.
+    await first.getByRole("button", { name: "Review changes" }).click();
+    const review = page.getByRole("dialog", { name: "Changes" }).getByRole("region", { name: "Changed parts" });
+    await expect(review).toContainText("Talking points generator");
+    await expect(review).toContainText("Test:");
+    await page.keyboard.press("Escape");
 
     // The build has settled (only one run at a time), then a change, applied: its own branch and PR, listing only the part it adds.
     await expect.poll(async () => (await db.from("runs").select("status").eq("project_id", id).single()).data!.status, { timeout: 60_000 }).not.toBe("running");
@@ -57,9 +61,15 @@ test.describe("M4: Changes as pull requests", () => {
     await expect(pr).toBeVisible({ timeout: 30_000 });
     await expect(pr).toContainText("PR #13 · Change: Friday recap of the week's meetings");
     await expect(pr).toContainText("architect/repo-prep-v2 → main");
-    await expect(pr).toContainText("Test: Done when a recap arrives every Friday at 16:00");
-    await expect(pr).not.toContainText("Talking points generator");
     await expect(pr).toContainText("Ready to merge", { timeout: 90_000 });
+    // The card links to the one review home, Changes (M5.5 review).
+    await pr.getByRole("button", { name: "Review changes" }).click();
+    const changes = page.getByRole("dialog", { name: "Changes" });
+    await expect(changes).toContainText("PR #13");
+    await expect(changes.getByRole("region", { name: "Changed parts" })).toContainText("Test: Done when a recap arrives every Friday at 16:00");
+    await expect(changes.getByRole("region", { name: "Changed parts" })).not.toContainText("Talking points generator");
+    await expect(changes.getByRole("list", { name: "Where it stands" }).locator("[aria-current=step]")).toHaveText("Ready to merge");
+    await page.keyboard.press("Escape");
     expect((await db.from("pull_requests").select("number, status").eq("project_id", id).order("number")).data).toEqual([
       { number: 12, status: "open" },
       { number: 13, status: "open" },
@@ -72,10 +82,13 @@ test.describe("M4: Changes as pull requests", () => {
 
     // Merging is the push to main: it waits for the click and a confirmation.
     await page.goto(`/p/${id}`);
-    await pr.getByRole("button", { name: "Merge into main" }).click();
-    const confirm = page.getByRole("dialog", { name: "Merge PR #13 into main?" });
-    await expect(confirm).toContainText("This pushes architect/repo-prep-v2 to main on netanyaj/ticket-triage.");
-    await confirm.getByRole("button", { name: "Merge into main" }).click();
+    await page.getByRole("button", { name: /^Changes \(\d+\)$/ }).click();
+    const panel = page.getByRole("dialog", { name: "Changes" });
+    await panel.getByRole("button", { name: "Merge into main" }).click();
+    await expect(panel).toContainText("This pushes architect/repo-prep-v2 to main on netanyaj/ticket-triage.");
+    await panel.getByRole("button", { name: "Merge into main" }).click();
+    await expect(panel.getByRole("status")).toContainText("Merged into main.");
+    await page.keyboard.press("Escape");
     await expect(pr).toContainText("Merged · merged by you");
     expect((await db.from("pull_requests").select("status").eq("project_id", id).eq("number", 13).single()).data!.status).toBe("merged");
     await page.goto(`/p/${id}/launch`);

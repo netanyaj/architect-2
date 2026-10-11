@@ -59,7 +59,9 @@ test.describe("Code edits in Developer view", () => {
     // The pull request lists the edit.
     await page.goto(`/p/${id}`);
     const pr = page.getByRole("complementary", { name: "Chat" }).getByRole("region", { name: "Pull request #12" });
-    await expect(pr).toContainText("Code edits");
-    await expect(pr).toContainText("agents/talking-points-generator.py · Talking points generator");
+    await expect(pr).toContainText("code edits");
+    await pr.getByRole("button", { name: "Review changes" }).click();
+    const reviewed = page.getByRole("dialog", { name: "Changes" }).getByRole("region", { name: "Changed parts" }).getByRole("listitem").filter({ hasText: "Talking points generator" });
+    await expect(reviewed).toContainText("agents/talking-points-generator.py");
   });
 });

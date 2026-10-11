@@ -26,7 +26,6 @@ import type { LiveRun } from "@/lib/sim/replay";
 import { useUi } from "@/lib/ui-store";
 import { cn } from "@/lib/utils";
 import { loadRepoFile, loadRepoView, saveCodeEdit, type RepoView } from "@/server/actions/dev";
-import { openPullRequestNow } from "@/server/actions/pull-requests";
 import { runCommand } from "@/server/actions/terminal";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 
@@ -86,39 +85,19 @@ export function PrStatus({ project, items }: { project: ProjectWorkspace; items:
         <span aria-hidden="true">·</span>
         <span className={cn(info.status === "failing" && "text-failed", info.status === "running" && "text-building")}>{words}</span>
       </span>
-      {project.repo && canBuild(project.role) && <OpenPrButton project={project} openPr={pr?.status === "open" ? pr.number : null} />}
+      {project.repo && <ReviewChangesLink />}
       <SimTag title="Branches and pull requests are simulated in this prototype." />
     </span>
   );
 }
 
-/** Open PR (Simulated): one open pull request at a time, from the branch into main. */
-function OpenPrButton({ project, openPr }: { project: ProjectWorkspace; openPr: number | null }) {
-  const router = useRouter();
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string>();
+/** Code review has one home, the Changes panel (M5.5 review): Developer view links to it. */
+function ReviewChangesLink() {
+  const openChanges = useUi((s) => s.openChanges);
   return (
-    <>
-      <Button
-        size="sm"
-        disabledReason={openPr ? `PR #${openPr} is already open.` : pending ? "Opening…" : undefined}
-        onClick={() =>
-          start(async () => {
-            setError(undefined);
-            const r = await openPullRequestNow({ projectId: project.id });
-            if (!r.ok) return setError(r.message);
-            router.refresh();
-          })
-        }
-      >
-        Open PR
-      </Button>
-      {error && (
-        <span role="alert" className="text-small font-semibold text-failed">
-          {error}
-        </span>
-      )}
-    </>
+    <Button size="sm" onClick={() => openChanges(true)}>
+      Review changes
+    </Button>
   );
 }
 

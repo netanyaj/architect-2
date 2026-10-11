@@ -40,6 +40,7 @@ import { HandoffBanner, TransferDialog } from "./handoff";
 import { SyncBanner } from "./pr-card";
 import { AppPreview, BudgetBanner, BuildActivity, BuildPanel, TestTheApp } from "./build-stage";
 import { ChatPane } from "./chat-pane";
+import { ChangesPanel, currentChange } from "./changes-panel";
 import { LookAndFeel } from "./look-and-feel";
 import { PartDrawer } from "./part-drawer";
 import { LaunchView } from "./launch-view";
@@ -210,6 +211,18 @@ function MoreMenu({ project, items, canAct, dev, onToggleDev, onTransfer, onDele
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** "Changes (N)" in the header of a project from a repo: opens the review panel. */
+function ChangesButton({ project }: { project: ProjectWorkspace }) {
+  const openChanges = useUi((s) => s.openChanges);
+  const { parts } = currentChange(project);
+  return (
+    <button type="button" onClick={() => openChanges(true)} className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-line-ctl bg-surface px-3.5 font-[550] hover:bg-selected">
+      <Icon name="branch" size="sm" />
+      Changes <span className="tabular-nums text-ink-2">({parts})</span>
+    </button>
   );
 }
 
@@ -548,6 +561,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
               </span>
             </button>
           )}
+          {project.repo && <ChangesButton project={project} />}
           <ShareMenu project={project} />
           <MoreMenu project={project} items={items} canAct={canAct} dev={dev} onToggleDev={toggleDev} onTransfer={() => setTransferOpen(true)} onDelete={() => setDeleteOpen(true)} />
           {state.action.beside && <span className="max-w-[190px] text-right text-small leading-tight text-ink-2 max-md:hidden">{state.action.beside}</span>}
@@ -720,6 +734,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
 
       {!planStage && <PartDrawer project={project} items={items} />}
       <DeleteProjectDialog project={project} open={deleteOpen} onOpenChange={setDeleteOpen} />
+      <ChangesPanel project={project} />
       {transferOpen && <TransferDialog project={project} open={transferOpen} onOpenChange={setTransferOpen} />}
 
       {/* Switching models mid-project asks first (BL-3). */}

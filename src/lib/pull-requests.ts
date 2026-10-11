@@ -72,3 +72,20 @@ export function syncNotice(parts: { key: string; title: string; status: string }
     rerun: touched ? { key: touched.key, title: touched.title, result: "passed" as const } : null,
   };
 }
+
+/** The review states, in order (M5.5 review): where the project's current change is. */
+export const REVIEW_STEPS = ["Draft", "Checks running", "Ready to merge", "Needs approval", "Merged"] as const;
+export type ReviewStep = (typeof REVIEW_STEPS)[number];
+
+/**
+ * Where a change stands. No open PR yet (edits on the branch) is a Draft; an open PR is Checks running until its
+ * checks pass (failing checks stay at this step); then Ready to merge, or Needs approval when the person can't push to
+ * main themselves (a Builder under the push rule) or has asked; merged is Merged.
+ */
+export function reviewStep(pr: Pick<PullRequestView, "status" | "checks" | "pushRequested"> | null, canMergeThemselves: boolean): ReviewStep {
+  if (!pr || pr.status === "closed") return "Draft";
+  if (pr.status === "merged") return "Merged";
+  if (pr.checks !== "passing") return "Checks running";
+  if (pr.pushRequested || !canMergeThemselves) return "Needs approval";
+  return "Ready to merge";
+}

@@ -236,3 +236,16 @@ describe("How should this agent run? (an imported CrewAI or LangGraph agent)", (
     expect(db.tables.usage_ledger).toEqual([]);
   });
 });
+
+describe("Changes: the review states", () => {
+  it("Draft, Checks running, Ready to merge, Needs approval, Merged", async () => {
+    const { reviewStep } = await import("@/lib/pull-requests");
+    expect(reviewStep(null, true)).toBe("Draft");
+    expect(reviewStep({ status: "open", checks: "running", pushRequested: false }, true)).toBe("Checks running");
+    expect(reviewStep({ status: "open", checks: "failing", pushRequested: false }, true)).toBe("Checks running");
+    expect(reviewStep({ status: "open", checks: "passing", pushRequested: false }, true)).toBe("Ready to merge");
+    expect(reviewStep({ status: "open", checks: "passing", pushRequested: false }, false)).toBe("Needs approval");
+    expect(reviewStep({ status: "open", checks: "passing", pushRequested: true }, true)).toBe("Needs approval");
+    expect(reviewStep({ status: "merged", checks: "passing", pushRequested: false }, true)).toBe("Merged");
+  });
+});

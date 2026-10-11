@@ -22,6 +22,9 @@ type UiState = {
   agentKey: string | null;
   openAgent: (key: string | null) => void;
   setAgentChanges: (n: number) => void;
+  /** The Changes review panel (repo projects, M5.5 review). */
+  changesOpen: boolean;
+  openChanges: (open: boolean) => void;
 };
 
 export const useUi = create<UiState>((set) => ({
@@ -38,4 +41,6 @@ export const useUi = create<UiState>((set) => ({
   agentKey: null,
   openAgent: (key) => set({ agentKey: key }),
   setAgentChanges: (n) => set({ agentChanges: n }),
+  changesOpen: false,
+  openChanges: (open) => set({ changesOpen: open }),
 }));

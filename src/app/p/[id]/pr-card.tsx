@@ -1,46 +1,23 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { Button } from "@/components/ax/button";
+import { useState } from "react";
+import { Button, TextLink } from "@/components/ax/button";
 import { Icon } from "@/components/ax/icon";
 import { SimTag } from "@/components/ax/pill";
-import { StatusMark } from "@/components/ax/status-mark";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
-import { canBuild, canManageMembers } from "@/lib/permissions";
-import { mergeBlocker, syncNotice, type PullRequestView } from "@/lib/pull-requests";
-import { cn } from "@/lib/utils";
-import { mergePullRequest } from "@/server/actions/pull-requests";
+import { reviewStep, syncNotice, type PullRequestView } from "@/lib/pull-requests";
+import { useUi } from "@/lib/ui-store";
 import type { ProjectWorkspace } from "@/server/project";
-
-const STATE: Record<PullRequestView["checks"], string> = { running: "Checks running", passing: "Checks passing", failing: "Checks failing" };
+import { canMergeThemselves } from "./changes-panel";
 
 /**
- * A pull request (B-4, Simulated): the branch into main, the parts it implements with their tests, and Merge into
- * main, which is the push to main and always waits for the person's click (and, for a Builder under governance,
- * for an Owner or Admin).
+ * A pull request in chat (B-4, Simulated): what it is and where it stands. Reviewing and merging happen in one place,
+ * the Changes panel, which this links to (M5.5 review).
  */
-export function PrCard({ pr, project, governance }: { pr: PullRequestView; project: ProjectWorkspace; governance: boolean }) {
-  const router = useRouter();
-  const [asking, setAsking] = useState(false);
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string>();
-  const [notice, setNotice] = useState<string>();
-  const owner = !governance || canManageMembers(project.role) || pr.pushAllowed || !project.policy.permissions.push;
-  const viewer = canBuild(project.role) ? null : "Viewers can't merge pull requests.";
-  const blocked = viewer ?? mergeBlocker(pr, owner);
-  const word = pr.status === "merged" ? "Merged" : pr.status === "closed" ? "Closed" : pr.pushRequested ? "Waiting for approval" : pr.checks === "passing" ? "Ready to merge" : STATE[pr.checks];
-  const merge = () =>
-    start(async () => {
-      setError(undefined);
-      const r = await mergePullRequest({ prId: pr.id });
-      setAsking(false);
-      if (!r.ok) return setError(r.message);
-      if (r.requested) setNotice("Asked an Owner or Admin to approve the push to main.");
-      router.refresh();
-    });
+export function PrCard({ pr, project }: { pr: PullRequestView; project: ProjectWorkspace; governance?: boolean }) {
+  const openChanges = useUi((s) => s.openChanges);
+  const step = reviewStep(pr, canMergeThemselves(project, pr));
   return (
-    <section aria-label={`Pull request #${pr.number}`} className="flex flex-col gap-2.5 rounded-card border border-line bg-surface p-3.5">
+    <section aria-label={`Pull request #${pr.number}`} className="flex flex-col gap-2 rounded-card border border-line bg-surface p-3.5">
       <div className="flex flex-wrap items-center gap-2">
         <Icon name="branch" size="sm" />
         <h3 className="flex-1 font-[650]">
@@ -49,86 +26,13 @@ export function PrCard({ pr, project, governance }: { pr: PullRequestView; proje
         <SimTag title="Pull requests are simulated in this prototype: nothing is written to GitHub." />
       </div>
       <p className="text-small text-ink-2">
-        <code className="font-mono">{pr.branch}</code> → <code className="font-mono">{pr.base}</code> on {project.repo} ·{" "}
-        <span className={cn("font-semibold", pr.status === "merged" || pr.checks === "passing" ? "text-works" : pr.checks === "failing" && pr.status === "open" ? "text-failed" : pr.checks === "running" ? "text-building" : "text-ink-2")}>{word}</span>
-        {pr.mergedAt && ` · merged by ${pr.mergedBy ?? "someone"}`}
+        <code className="font-mono">{pr.branch}</code> → <code className="font-mono">{pr.base}</code> on {project.repo} · <span className="font-semibold text-ink">{pr.status === "open" && pr.checks === "failing" ? "Checks failing" : step}</span>
+        {pr.mergedAt && ` · merged by ${pr.mergedBy ?? "someone"}`} · {pr.parts.length} {pr.parts.length === 1 ? "part" : "parts"}
+        {project.codeEdits.edits.some((e) => e.prNumber === pr.number) ? " · code edits" : ""}
       </p>
-      {pr.status === "open" && !pr.pushRequested && pr.pushDecision && (
-        <p className="text-small text-ink-2">
-          {pr.pushDecision.status === "approved"
-            ? `${pr.pushDecision.by} approved the push to main. You can merge it.`
-            : `${pr.pushDecision.by} didn't approve the push: ${pr.pushDecision.reason ?? "no reason given"}. Fix that, then ask again.`}
-        </p>
-      )}
-      {project.codeEdits.edits.some((e) => e.prNumber === pr.number) && (
-        <div>
-          <h4 className="text-small font-semibold text-ink-2">Code edits</h4>
-          <ul className="mt-1 flex flex-col gap-1 text-small">
-            {project.codeEdits.edits
-              .filter((e) => e.prNumber === pr.number)
-              .map((e) => (
-                <li key={e.id}>
-                  <code className="font-mono">{e.path}</code> · {e.partTitle} · by {e.by}
-                </li>
-              ))}
-          </ul>
-        </div>
-      )}
-      <div>
-        <h4 className="text-small font-semibold text-ink-2">Implements</h4>
-        <ul className="mt-1 flex flex-col gap-1.5">
-          {pr.parts.map((p) => (
-            <li key={p.key} className="flex items-start gap-2">
-              <StatusMark status={p.status === "built" || p.status === "sample_data" ? "works" : p.status === "failed" ? "failed" : p.status === "paused" ? "blocked" : "todo"} />
-              <span className="flex min-w-0 flex-col">
-                <span>{p.title}</span>
-                {p.tests.map((t, i) => (
-                  <span key={i} className="text-small text-ink-2">
-                    Test: {t}
-                  </span>
-                ))}
-                {!p.tests.length && <span className="text-small text-ink-2">Its test is written when the build starts.</span>}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-      {pr.status === "open" && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" disabledReason={blocked ?? (pending ? "Merging…" : undefined)} onClick={() => setAsking(true)}>
-            {owner ? "Merge into main" : "Ask to merge"}
-          </Button>
-          <span className="text-small text-ink-2">{blocked ?? "Nothing reaches main until you merge."}</span>
-        </div>
-      )}
-      {notice && (
-        <p role="status" className="text-small font-semibold">
-          {notice}
-        </p>
-      )}
-      {error && (
-        <p role="alert" className="text-small font-semibold text-failed">
-          {error}
-        </p>
-      )}
-      <Dialog open={asking} onOpenChange={setAsking}>
-        <DialogContent className="rounded-pane border border-line bg-surface p-6 shadow-pop sm:max-w-[460px]" showCloseButton={false}>
-          <DialogTitle className="text-sub font-semibold">{owner ? `Merge PR #${pr.number} into main?` : `Ask to merge PR #${pr.number}?`}</DialogTitle>
-          <DialogDescription className="text-ink-2">
-            {owner
-              ? `This pushes ${pr.branch} to main on ${project.repo}. Live deploys from main after this. In this prototype nothing is written to GitHub.`
-              : "Pushing to main needs an Owner or Admin in this workspace. They'll see it in Approvals."}
-          </DialogDescription>
-          <DialogFooter className="mt-2 gap-2">
-            <Button variant="quiet" onClick={() => setAsking(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" disabledReason={pending ? "Merging…" : undefined} onClick={merge}>
-              {owner ? "Merge into main" : "Ask to merge"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <TextLink className="self-start text-small" onClick={() => openChanges(true)}>
+        Review changes
+      </TextLink>
     </section>
   );
 }

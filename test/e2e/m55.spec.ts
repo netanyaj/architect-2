@@ -184,9 +184,12 @@ test.describe("M5.5", () => {
     // A repo project: Open PR (Simulated).
     await db.from("projects").update({ repo_full_name: "netanyaj/ticket-triage" }).eq("id", mp!.id);
     await page.goto(`/p/${mp!.id}?dev=1`);
-    await page.getByRole("button", { name: "Open PR" }).click();
-    await expect(page.getByText(/PR #12/).first()).toBeVisible();
-    await expect(page.getByRole("button", { name: "Open PR" })).toHaveAttribute("aria-disabled", "true");
+    await page.getByRole("button", { name: "Review changes" }).click();
+    const changes = page.getByRole("dialog", { name: "Changes" });
+    await expect(changes.getByRole("list", { name: "Where it stands" }).locator("[aria-current=step]")).toHaveText("Draft");
+    await changes.getByRole("button", { name: "Open PR" }).click();
+    await expect(changes).toContainText("PR #12");
+    await expect(changes.getByRole("button", { name: "Open PR" })).toHaveCount(0);
 
     // Viewers: no terminal.
     await db.from("members").update({ role: "viewer" }).eq("workspace_id", ws).eq("user_id", user.id);
