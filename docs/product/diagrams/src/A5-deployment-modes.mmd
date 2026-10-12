@@ -1,0 +1,29 @@
+flowchart TB
+  subgraph M1["Lyzr Cloud (default)"]
+    direction TB
+    c1["Control plane: Lyzr"]
+    d1["Data plane: Lyzr"]
+  end
+  subgraph M1B["Dedicated"]
+    direction TB
+    c1b["Control plane: Lyzr"]
+    d1b["Data plane: Lyzr, single-tenant,<br/>customer's chosen region"]
+  end
+  subgraph M2["Customer's own cloud (VPC)"]
+    direction TB
+    c2["Control plane: Lyzr<br/>(no customer code, data or prompts)"]
+    d2["Data plane: customer's AWS account<br/>sandboxes · workers · model gateway<br/>project store · app runtime"]
+  end
+  subgraph M3["On-prem or air-gapped"]
+    direction TB
+    c3["Control plane: customer"]
+    d3["Data plane: customer"]
+  end
+  NOTE["Same container images and Helm charts in every mode.<br/>Models: commercial APIs, customer's own models, or self-hosted open-source, per policy"]
+  M1 --- NOTE
+  M1B --- NOTE
+  M2 --- NOTE
+  M3 --- NOTE
+  classDef l fill:#EEF2FF,stroke:#4F46E5;
+  classDef c fill:#FFF7ED,stroke:#EA580C;
+  class c1,d1,c2,c1b,d1b l; class d2,c3,d3 c;

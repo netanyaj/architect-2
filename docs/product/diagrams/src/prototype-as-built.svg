@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 860" width="1400" height="860" font-family="Helvetica, Arial, sans-serif">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8A8983"/></marker></defs>
+<rect width="1400" height="860" fill="#F6F5F2"/>
+<text x="40" y="48" font-size="24" font-weight="700" fill="#1A1A19">Architect 2.0 · the prototype as built</text>
+<text x="40" y="70" font-size="13.5" fill="#42413D">Vercel and Supabase, both in Mumbai. Badges say what is real.</text>
+<rect x="960" y="34" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="982.0" y="48" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<text x="1010" y="48" font-size="12.5" fill="#42413D">real</text>
+<rect x="1060" y="34" width="48" height="20" rx="10" fill="#FCEFDC" stroke="#8A4500" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="1084.0" y="48" font-size="11" font-weight="700" fill="#8A4500" text-anchor="middle">PART</text>
+<text x="1114" y="48" font-size="12.5" fill="#42413D">real records, simulated effects</text>
+<rect x="960" y="58" width="44" height="20" rx="10" fill="#FFFFFF" stroke="#5C5B56" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="982.0" y="72" font-size="11" font-weight="700" fill="#5C5B56" text-anchor="middle">SIM</text>
+<text x="1010" y="72" font-size="12.5" fill="#42413D">simulated</text>
+<rect x="40" y="96" width="250" height="340" rx="18" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.5"/>
+<text x="58" y="124" font-size="15" font-weight="700" fill="#1A1A19">Browser</text>
+<rect x="60" y="136" width="210" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="74" y="162" font-size="14" font-weight="700" fill="#1A1A19">Landing and sign-in</text>
+<text x="74" y="183" font-size="12" fill="#42413D">Try the demo · Google,</text>
+<text x="74" y="199" font-size="12" fill="#42413D">GitHub, email</text>
+<rect x="216" y="146" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="238.0" y="160" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<rect x="60" y="220" width="210" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="74" y="246" font-size="14" font-weight="700" fill="#1A1A19">Architect web app</text>
+<text x="74" y="267" font-size="12" fill="#42413D">plan, build, launch,</text>
+<text x="74" y="283" font-size="12" fill="#42413D">governance, ⌘K</text>
+<rect x="216" y="230" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="238.0" y="244" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<rect x="60" y="304" width="210" height="112" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="74" y="330" font-size="14" font-weight="700" fill="#1A1A19">Preview frame</text>
+<text x="74" y="351" font-size="12" fill="#42413D">a shell drawn from the</text>
+<text x="74" y="367" font-size="12" fill="#42413D">plan's parts, or the</text>
+<text x="74" y="383" font-size="12" fill="#42413D">Meeting Prep sample;</text>
+<text x="74" y="399" font-size="12" fill="#42413D">no app is running</text>
+<rect x="216" y="314" width="44" height="20" rx="10" fill="#FFFFFF" stroke="#5C5B56" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="238.0" y="328" font-size="11" font-weight="700" fill="#5C5B56" text-anchor="middle">SIM</text>
+<rect x="320" y="96" width="560" height="520" rx="18" fill="#EEF2FF" stroke="#A5B4FC" stroke-width="1.5"/>
+<text x="338" y="124" font-size="15" font-weight="700" fill="#1A1A19">Vercel · Mumbai (bom1) · Next.js 16</text>
+<rect x="340" y="136" width="250" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="354" y="162" font-size="14" font-weight="700" fill="#1A1A19">Server actions and routes</text>
+<text x="354" y="183" font-size="12" fill="#42413D">every write checks the role</text>
+<rect x="536" y="146" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="558.0" y="160" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<rect x="610" y="136" width="250" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="624" y="162" font-size="14" font-weight="700" fill="#1A1A19">Model gateway</text>
+<text x="624" y="183" font-size="12" fill="#42413D">Vercel AI SDK · quota</text>
+<text x="624" y="199" font-size="12" fill="#42413D">fallback to OpenRouter</text>
+<rect x="806" y="146" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="828.0" y="160" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<rect x="340" y="220" width="250" height="86" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="354" y="246" font-size="14" font-weight="700" fill="#1A1A19">Simulator</text>
+<text x="354" y="267" font-size="12" fill="#42413D">a precomputed event timeline</text>
+<text x="354" y="283" font-size="12" fill="#42413D">per run, replayed on the</text>
+<text x="354" y="299" font-size="12" fill="#42413D">clock: the build</text>
+<rect x="536" y="230" width="44" height="20" rx="10" fill="#FFFFFF" stroke="#5C5B56" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="558.0" y="244" font-size="11" font-weight="700" fill="#5C5B56" text-anchor="middle">SIM</text>
+<rect x="610" y="220" width="250" height="86" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="624" y="246" font-size="14" font-weight="700" fill="#1A1A19">Terminal</text>
+<text x="624" y="267" font-size="12" fill="#42413D">6 commands read project data</text>
+<text x="624" y="283" font-size="12" fill="#42413D">(npm test, pytest, git status,</text>
+<text x="624" y="299" font-size="12" fill="#42413D">git diff, ls, cat); nothing runs</text>
+<rect x="802" y="230" width="48" height="20" rx="10" fill="#FCEFDC" stroke="#8A4500" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="826.0" y="244" font-size="11" font-weight="700" fill="#8A4500" text-anchor="middle">PART</text>
+<rect x="340" y="320" width="250" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="354" y="346" font-size="14" font-weight="700" fill="#1A1A19">Lyzr Studio client</text>
+<text x="354" y="367" font-size="12" fill="#42413D">the workspace's own key;</text>
+<text x="354" y="383" font-size="12" fill="#42413D">demo agent on ours</text>
+<rect x="536" y="330" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="558.0" y="344" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<rect x="610" y="320" width="250" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="624" y="346" font-size="14" font-weight="700" fill="#1A1A19">MCP Test connection</text>
+<text x="624" y="367" font-size="12" fill="#42413D">initialize + tools/list;</text>
+<text x="624" y="383" font-size="12" fill="#42413D">no private addresses</text>
+<rect x="806" y="330" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="828.0" y="344" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<rect x="340" y="404" width="250" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="354" y="430" font-size="14" font-weight="700" fill="#1A1A19">Governance</text>
+<text x="354" y="451" font-size="12" fill="#42413D">policies and approvals stored;</text>
+<text x="354" y="467" font-size="12" fill="#42413D">their effects simulated</text>
+<rect x="532" y="414" width="48" height="20" rx="10" fill="#FCEFDC" stroke="#8A4500" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="556.0" y="428" font-size="11" font-weight="700" fill="#8A4500" text-anchor="middle">PART</text>
+<rect x="610" y="404" width="250" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="624" y="430" font-size="14" font-weight="700" fill="#1A1A19">Launch</text>
+<text x="624" y="451" font-size="12" fill="#42413D">Test → Team → Live and</text>
+<text x="624" y="467" font-size="12" fill="#42413D">domains are simulated</text>
+<rect x="806" y="414" width="44" height="20" rx="10" fill="#FFFFFF" stroke="#5C5B56" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="828.0" y="428" font-size="11" font-weight="700" fill="#5C5B56" text-anchor="middle">SIM</text>
+<rect x="340" y="488" width="250" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="354" y="514" font-size="14" font-weight="700" fill="#1A1A19">Daily cron</text>
+<text x="354" y="535" font-size="12" fill="#42413D">purges Trash; deletes demo</text>
+<text x="354" y="551" font-size="12" fill="#42413D">visitors after 7 days</text>
+<rect x="536" y="498" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="558.0" y="512" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<rect x="610" y="488" width="250" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="624" y="514" font-size="14" font-weight="700" fill="#1A1A19">Vercel Analytics</text>
+<text x="624" y="535" font-size="12" fill="#42413D">page views, no cookies</text>
+<rect x="806" y="498" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="828.0" y="512" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<text x="340" y="596" font-size="12.5" fill="#42413D">No sandbox: no code is written, run or deployed.</text>
+<rect x="910" y="96" width="450" height="520" rx="18" fill="#ECFEFF" stroke="#67E8F9" stroke-width="1.5"/>
+<text x="928" y="124" font-size="15" font-weight="700" fill="#1A1A19">Supabase · Mumbai (ap-south-1)</text>
+<rect x="930" y="136" width="410" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="944" y="162" font-size="14" font-weight="700" fill="#1A1A19">Postgres with row-level security</text>
+<text x="944" y="183" font-size="12" fill="#42413D">every table; members read their workspace only</text>
+<rect x="1286" y="146" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="1308.0" y="160" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<rect x="930" y="220" width="410" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="944" y="246" font-size="14" font-weight="700" fill="#1A1A19">Auth</text>
+<text x="944" y="267" font-size="12" fill="#42413D">Google, GitHub, email · anonymous demo sessions</text>
+<rect x="1286" y="230" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="1308.0" y="244" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<rect x="930" y="304" width="410" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="944" y="330" font-size="14" font-weight="700" fill="#1A1A19">Realtime</text>
+<text x="944" y="351" font-size="12" fill="#42413D">run events: parts turn Works as they happen</text>
+<rect x="1286" y="314" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="1308.0" y="328" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<rect x="930" y="388" width="410" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="944" y="414" font-size="14" font-weight="700" fill="#1A1A19">Vault</text>
+<text x="944" y="435" font-size="12" fill="#42413D">Lyzr keys, project keys, MCP auth headers</text>
+<rect x="1286" y="398" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="1308.0" y="412" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<rect x="930" y="472" width="200" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="944" y="498" font-size="14" font-weight="700" fill="#1A1A19">Storage</text>
+<text x="944" y="519" font-size="12" fill="#42413D">uploaded files</text>
+<rect x="1076" y="482" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="1098.0" y="496" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<rect x="1140" y="472" width="200" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="1154" y="498" font-size="14" font-weight="700" fill="#1A1A19">analytics_events</text>
+<text x="1154" y="519" font-size="12" fill="#42413D">insert-only, ours</text>
+<rect x="1286" y="482" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="1308.0" y="496" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<rect x="40" y="646" width="1320" height="180" rx="18" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.5"/>
+<text x="58" y="674" font-size="15" font-weight="700" fill="#1A1A19">Outside services</text>
+<rect x="60" y="686" width="250" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="74" y="712" font-size="14" font-weight="700" fill="#1A1A19">Gemini</text>
+<text x="74" y="733" font-size="12" fill="#42413D">writes plans and answers chat</text>
+<rect x="256" y="696" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="278.0" y="710" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<rect x="325" y="686" width="250" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="339" y="712" font-size="14" font-weight="700" fill="#1A1A19">OpenRouter (free)</text>
+<text x="339" y="733" font-size="12" fill="#42413D">a picker choice and the</text>
+<text x="339" y="749" font-size="12" fill="#42413D">fallback on Gemini quota</text>
+<rect x="521" y="696" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="543.0" y="710" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<rect x="590" y="686" width="250" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="604" y="712" font-size="14" font-weight="700" fill="#1A1A19">Claude and GPT</text>
+<text x="604" y="733" font-size="12" fill="#42413D">real with a key; otherwise</text>
+<text x="604" y="749" font-size="12" fill="#42413D">Gemini answers, labelled</text>
+<rect x="786" y="696" width="44" height="20" rx="10" fill="#FFFFFF" stroke="#5C5B56" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="808.0" y="710" font-size="11" font-weight="700" fill="#5C5B56" text-anchor="middle">SIM</text>
+<rect x="855" y="686" width="240" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="869" y="712" font-size="14" font-weight="700" fill="#1A1A19">Lyzr Studio</text>
+<text x="869" y="733" font-size="12" fill="#42413D">agents, Try it, sync</text>
+<rect x="1041" y="696" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="1063.0" y="710" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<rect x="1110" y="686" width="230" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="1124" y="712" font-size="14" font-weight="700" fill="#1A1A19">GitHub App</text>
+<text x="1124" y="733" font-size="12" fill="#42413D">read-only: repos, files</text>
+<rect x="1286" y="696" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="1308.0" y="710" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<rect x="60" y="766" width="515" height="44" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="74" y="792" font-size="14" font-weight="700" fill="#1A1A19">Your MCP servers · Test connection lists tools</text>
+<rect x="521" y="776" width="44" height="20" rx="10" fill="#E5F2E8" stroke="#1D6E30" stroke-width="1.2" stroke-dasharray="none"/>
+<text x="543.0" y="790" font-size="11" font-weight="700" fill="#1D6E30" text-anchor="middle">REAL</text>
+<rect x="590" y="766" width="750" height="44" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.3"/>
+<text x="604" y="792" font-size="14" font-weight="700" fill="#1A1A19">Apps your plans connect to (Gmail, Slack, HubSpot…): sign-in and keys simulated</text>
+<rect x="1286" y="776" width="44" height="20" rx="10" fill="#FFFFFF" stroke="#5C5B56" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="1308.0" y="790" font-size="11" font-weight="700" fill="#5C5B56" text-anchor="middle">SIM</text>
+<line x1="290" y1="171" x2="338" y2="171" stroke="#8A8983" stroke-width="1.6" marker-end="url(#a)"/>
+<line x1="880" y1="171" x2="928" y2="171" stroke="#8A8983" stroke-width="1.6" marker-end="url(#a)"/>
+<line x1="880" y1="423" x2="928" y2="423" stroke="#8A8983" stroke-width="1.6" marker-end="url(#a)"/>
+<line x1="600" y1="616" x2="600" y2="644" stroke="#8A8983" stroke-width="1.6" marker-end="url(#a)"/>
+<text x="612" y="636" font-size="12" fill="#42413D">model calls, Lyzr Studio, GitHub and MCP, from the server only</text>
+</svg>

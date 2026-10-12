@@ -1,0 +1,14 @@
+sequenceDiagram
+  autonumber
+  participant B as Browser
+  participant PX as Preview proxy
+  participant SB as Sandbox (dev server)
+  B->>PX: Open preview--project.app domain with a one-time code
+  PX->>PX: Exchange code for a session cookie (scoped to this project, short-lived)
+  PX-->>B: Set cookie, redirect (no token left in the URL)
+  B->>PX: Page and asset requests
+  PX->>SB: Forward to the running dev server
+  SB-->>PX: HTML
+  PX-->>B: HTML + element picker + console bridge injected
+  B-->>PX: Live-reload WebSocket
+  PX-->>SB: Passed through

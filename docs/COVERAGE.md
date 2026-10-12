@@ -1,6 +1,6 @@
 # Coverage: every Must in the PRD
 
-Every **Must** row in section 8 of `docs/product/08-PRD-architect-2.md`, checked against the prototype on 10 Oct 2026 (M5) and again on 11 Oct after the gap analysis (`reviews/m5-gap-analysis-2026-10-11.md`).
+Every **Must** row in section 8 of `docs/product/08-PRD-architect-2.md`, checked against the prototype on 10 Oct 2026 (M5) and again on 11 Oct after the gap analysis.
 
 - **Done**: it works for real.
 - **Simulated**: it works end to end in the interface, but the infrastructure behind it is scripted, and it carries the `Simulated` tag.

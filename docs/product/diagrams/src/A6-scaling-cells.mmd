@@ -1,0 +1,25 @@
+flowchart TB
+  G["Global layer<br/>API gateway · auth · billing · tenant directory"]
+  G --> C1 & C2 & C3
+  subgraph C1["Cell 1 (region A)"]
+    direction TB
+    w1["Workers (autoscale on queue depth)"]
+    s1["Sandbox fleet + warm pool"]
+    r1[("Cell database and cache")]
+  end
+  subgraph C2["Cell 2 (region A)"]
+    direction TB
+    w2["Workers"]
+    s2["Sandbox fleet + warm pool"]
+    r2[("Cell database and cache")]
+  end
+  subgraph C3["Cell N (region B or a customer VPC)"]
+    direction TB
+    w3["Workers"]
+    s3["Sandbox fleet + warm pool"]
+    r3[("Cell database and cache")]
+  end
+  N["Each tenant is pinned to one cell. A busy or failing cell affects only its tenants (NFR-6).<br/>Add capacity by adding cells, not by redesigning"]
+  C2 --- N
+  classDef g fill:#111827,color:#fff;
+  class G g;

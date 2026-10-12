@@ -1,0 +1,27 @@
+flowchart LR
+  subgraph W["Worker pool (outside the sandbox)"]
+    AA["Architect agent<br/>Claude Agent SDK-based harness<br/>state checkpointed after each step"]
+    VF["Verifier<br/>separate context · writes checks first"]
+  end
+  subgraph S["Sandbox · one per project"]
+    D["Sandbox daemon<br/>files · commands · ports"]
+    APP["User's stack<br/>Node or Python dev server"]
+    T["Check runner<br/>tests · headless browser"]
+  end
+  MG["Model gateway"]
+  PL["Policy check"]
+  PSX[("Project store")]
+  EG["Egress proxy"]
+  AA -- tool calls --> D
+  VF -- run checks --> T
+  D --> APP
+  AA --> MG
+  VF --> MG
+  AA -. every action leaving the sandbox .-> PL
+  AA --> PSX
+  VF --> PSX
+  APP -- outbound calls --> EG
+  T --> APP
+  classDef w fill:#EEF2FF,stroke:#4F46E5;
+  classDef s fill:#ECFEFF,stroke:#0891B2;
+  class AA,VF w; class D,APP,T s;

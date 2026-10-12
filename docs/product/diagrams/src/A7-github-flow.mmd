@@ -1,0 +1,13 @@
+flowchart LR
+  U["Sam installs the GitHub App<br/>on chosen repos only"] --> GA["GitHub App<br/>short-lived tokens per operation"]
+  GA --> GE["Git executor"]
+  GE -- import: clone and analyse --> AN["Stack · run command · tests · agents"]
+  AN --> PL["The plan from the repo<br/>parts that already work are kept"]
+  PL --> BLD["Build the changed parts<br/>in the sandbox"]
+  BLD -- after approval --> PR["Branch + pull request<br/>lists the plan's parts"]
+  PR --> REV["Review and merge on GitHub"]
+  REV -- webhook --> GE
+  GE --> SYNC["Pull the merge into the sandbox<br/>re-run the affected checks"]
+  POL["Governance: push to main needs an Admin"] -.-> PR
+  classDef g fill:#F0EAFA,stroke:#6236AD;
+  class POL g;
