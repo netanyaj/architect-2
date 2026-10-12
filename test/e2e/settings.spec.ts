@@ -20,7 +20,7 @@ test.describe("reset demo data", () => {
   });
 
   test("the Owner resets demo data after confirming, and the seeded projects come back", async ({ page }) => {
-    await signIn(page, owner, "/settings");
+    await signIn(page, owner, "/settings/demo");
     const db = adminDb();
     const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind)").eq("user_id", owner.id).eq("workspaces.kind", "demo").single();
     const ws = m!.workspace_id;
@@ -41,7 +41,7 @@ test.describe("reset demo data", () => {
   });
 
   test("if the session ended in another tab, Reset sends you to sign in instead of crashing", async ({ page, context }) => {
-    await signIn(page, owner, "/settings");
+    await signIn(page, owner, "/settings/demo");
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(String(e)));
 

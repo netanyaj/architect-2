@@ -65,7 +65,7 @@ export async function inviteMember(input: { email: string; role: string }): Prom
   await audit(ws, ctx.name, "member.invited", email, { role });
   const link = `${await origin()}/invite/${token}`;
   const emailed = await emailInvite(email, link);
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   return { ok: true, link, emailed };
 }
 
@@ -96,7 +96,7 @@ export async function resendInvite(input: { memberId: string }): Promise<ActionR
   const email = target.invited_email ?? target.email ?? "";
   const emailed = email ? await emailInvite(email, link) : false;
   await audit(ctx.workspace.id, ctx.name, "member.invite_resent", email || target.id, { role: target.role, emailed });
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   return { ok: true, link, emailed };
 }
 
@@ -131,7 +131,7 @@ export async function changeRole(input: { memberId: string; role: string }): Pro
     from: target.role,
     to: role.data,
   });
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   return { ok: true };
 }
 
@@ -152,7 +152,7 @@ export async function removeMember(input: { memberId: string }): Promise<ActionR
     target.display_name ?? target.email ?? target.invited_email ?? target.id,
     { role: target.role },
   );
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   return { ok: true };
 }
 

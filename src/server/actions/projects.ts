@@ -231,7 +231,7 @@ export async function setProjectBudget(input: { projectId: string; credits: numb
   const { error } = await createAdminDb().from("projects").update({ budget_credits: credits.data }).eq("id", project.id);
   if (error) return { ok: false, message: "The budget couldn't be saved. Try again." };
   await audit(ctx.workspace.id, ctx.name, "budget.changed", project.name, { from: project.budget_credits, to: credits.data });
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   revalidatePath("/projects");
   return { ok: true };
 }

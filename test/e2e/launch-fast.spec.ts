@@ -21,7 +21,7 @@ test.describe("M3: Launch, fast path and options", () => {
   test("governance off: Test → Go live, a failure keeps nothing broken, then live with options", async ({ page, browser }) => {
     await signIn(page, user);
     // Settings: turn governance off for this workspace.
-    await page.goto("/settings");
+    await page.goto("/settings/governance");
     const toggle = page.getByRole("switch", { name: "Approvals and a team version before Live" });
     await expect(toggle).toHaveAttribute("aria-checked", "true");
     await toggle.click();

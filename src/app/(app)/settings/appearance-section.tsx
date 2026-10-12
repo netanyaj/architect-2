@@ -8,7 +8,7 @@ import { setOpenInDev, setTheme } from "@/server/actions/projects";
 import { applyTheme } from "@/lib/theme-choice";
 
 /**
- * Settings › Preferences (M5.8): Theme and where projects open, both moved here from the account menu. Theme is also
+ * Settings › Appearance (M5.8): Theme and where projects open, both moved here from the account menu. Theme is also
  * the one-click cycle in Resources. Saved to the person's account.
  */
 export function AppearanceSection({ theme, openInDev, canBuild }: { theme: "system" | "light" | "dark"; openInDev: OpenInDev; canBuild: boolean }) {
@@ -17,7 +17,7 @@ export function AppearanceSection({ theme, openInDev, canBuild }: { theme: "syst
   return (
     <section id="preferences" aria-labelledby="preferences-title" className="flex scroll-mt-6 flex-col gap-3">
       <h2 id="preferences-title" className="text-heading font-[650]">
-        Preferences
+        Appearance
       </h2>
       <div className="flex flex-wrap items-center gap-4 rounded-card border border-line p-4">
         <p className="min-w-[220px] flex-1 text-ink-2">

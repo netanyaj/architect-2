@@ -68,11 +68,11 @@ test.describe("sign-in", () => {
   });
 
   test("signing in again reuses the same workspace, and sign out ends the session", async ({ page }) => {
-    await page.goto("/login?next=%2Fsettings");
+    await page.goto("/login?next=%2Fsettings%2Faccount");
     await page.getByLabel("Email").fill(user.email);
     await page.getByLabel("Password").fill(user.password);
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await expect(page).toHaveURL(/\/settings$/);
+    await expect(page).toHaveURL(/\/settings\/account$/);
     await expect(page.getByText("Acme Ops (Enterprise) · you're an Owner.", { exact: false })).toBeVisible();
 
     // Two workspaces: the seeded demo and an empty Personal (0021).

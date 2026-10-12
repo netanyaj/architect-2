@@ -10,7 +10,7 @@ import { createAdminDb, createServerDb } from "@/server/db";
 import { blockedServices, loadPolicies } from "@/server/policy";
 import { listProjects } from "@/server/queries";
 import { getAppContext } from "@/server/workspace";
-import { AddApiKey, ConnectionsList, type ConnectionRow } from "./connections-list";
+import { AppsSection, ConnectionsList, type ConnectionRow } from "./connections-list";
 import { EmptyMosaic } from "@/components/ax/MosaicThumb";
 import { lyzrKeyStatus } from "@/server/lyzr-key";
 import { LyzrCard } from "./lyzr-card";
@@ -81,16 +81,18 @@ export default async function ConnectionsPage() {
           <SimTag title="Apps connect for real in the product; here only Lyzr Studio does." />
         </p>
       </div>
+      {/* Three sections, in this order: Lyzr Studio, Apps, MCP servers. */}
       <LyzrCard status={lyzr} isAdmin={isAdmin} />
+      <AppsSection canAdd={canBuild(ctx.role)} refusal={connectRefusal(policies.apps, policies.governance, isAdmin)}>
+        {rows.length ? (
+          <ConnectionsList rows={rows} access={{ canConnect: canBuild(ctx.role), refusal: connectRefusal(policies.apps, policies.governance, isAdmin), isAdmin }} />
+        ) : (
+          <EmptyState icon="connections" picture={<EmptyMosaic seed="connections" />} title="No apps connected yet">
+            When a plan needs an app, it shows up here with what it&apos;s used for. Nothing connects without your click.
+          </EmptyState>
+        )}
+      </AppsSection>
       <McpServers servers={mcp} canAct={canBuild(ctx.role)} refusal={connectRefusal(policies.apps, policies.governance, isAdmin)} governance={policies.governance} allowed={policies.governance ? policies.apps.mcp : []} />
-      {canBuild(ctx.role) && <AddApiKey refusal={connectRefusal(policies.apps, policies.governance, isAdmin)} />}
-      {rows.length ? (
-        <ConnectionsList rows={rows} access={{ canConnect: canBuild(ctx.role), refusal: connectRefusal(policies.apps, policies.governance, isAdmin), isAdmin }} />
-      ) : (
-        <EmptyState icon="connections" picture={<EmptyMosaic seed="connections" />} title="No apps connected yet">
-          When a plan needs an app, it shows up here with what it&apos;s used for. Nothing connects without your click.
-        </EmptyState>
-      )}
     </div>
   );
 }

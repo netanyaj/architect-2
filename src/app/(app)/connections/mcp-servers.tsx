@@ -9,7 +9,8 @@ import { relativeTime } from "@/lib/project-status";
 import type { McpServer } from "@/lib/policies";
 import { addMcpServer, removeMcpServer, testMcpConnection } from "@/server/actions/mcp";
 
-const inputClasses = "min-h-[38px] w-full rounded-full border border-line-ctl bg-surface px-4 text-body text-ink placeholder:text-ink-3";
+// Name, URL and auth header all use the body font, for the text and the placeholders.
+const inputClasses = "min-h-[38px] w-full rounded-full border border-line-ctl bg-surface px-4 font-sans text-body text-ink placeholder:font-sans placeholder:text-ink-3";
 
 function ServerRow({ s, canAct }: { s: McpConnection; canAct: boolean }) {
   const router = useRouter();
@@ -101,6 +102,13 @@ export function McpServers({ servers, canAct, refusal, governance, allowed }: { 
     });
   };
   const addReason = !canAct ? "Viewers can't add MCP servers." : refusal;
+  const cancel = () => {
+    setName("");
+    setUrl("");
+    setHeader("");
+    setError(undefined);
+    setOpen(false);
+  };
   return (
     <section id="mcp" aria-labelledby="mcp-title" className="flex scroll-mt-6 flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
@@ -138,12 +146,12 @@ export function McpServers({ servers, canAct, refusal, governance, allowed }: { 
             </label>
             <label htmlFor={ids.url} className="flex flex-col gap-1.5 text-small font-semibold text-ink-2">
               URL
-              <input id={ids.url} value={url} onChange={(e) => setUrl(e.target.value)} type="url" inputMode="url" spellCheck={false} placeholder="https://mcp.example.com/mcp" className={`${inputClasses} font-mono`} />
+              <input id={ids.url} value={url} onChange={(e) => setUrl(e.target.value)} type="url" inputMode="url" spellCheck={false} placeholder="https://mcp.example.com/mcp" className={inputClasses} />
             </label>
           </div>
           <label htmlFor={ids.header} className="flex flex-col gap-1.5 text-small font-semibold text-ink-2">
             Auth header (optional)
-            <input id={ids.header} value={header} onChange={(e) => setHeader(e.target.value)} type="password" autoComplete="off" spellCheck={false} placeholder="Authorization: Bearer …" aria-describedby={error ? ids.error : undefined} className={`${inputClasses} font-mono`} />
+            <input id={ids.header} value={header} onChange={(e) => setHeader(e.target.value)} type="password" autoComplete="off" spellCheck={false} placeholder="Authorization: Bearer …" aria-describedby={error ? ids.error : undefined} className={inputClasses} />
           </label>
           <p className="text-small text-ink-2">HTTPS only. The header is stored encrypted and never shown again. Adding it runs one test.</p>
           {error && (
@@ -155,7 +163,7 @@ export function McpServers({ servers, canAct, refusal, governance, allowed }: { 
             <Button type="submit" disabledReason={pending ? "Adding and testing…" : !name.trim() || !url.trim() ? "Give it a name and a URL first." : undefined}>
               {pending ? "Adding and testing…" : "Add and test"}
             </Button>
-            <Button variant="quiet" onClick={() => setOpen(false)}>
+            <Button variant="quiet" onClick={cancel}>
               Cancel
             </Button>
           </div>

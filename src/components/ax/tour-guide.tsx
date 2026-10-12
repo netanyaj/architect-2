@@ -426,7 +426,7 @@ function FinishCard() {
           Explore on your own
         </button>
         {tour.canResetDemo && (
-          <button type="button" aria-disabled={pending || undefined} onClick={() => finish("reset", () => router.push("/settings#demo"))} className={buttonClasses({ size: "sm" })}>
+          <button type="button" aria-disabled={pending || undefined} onClick={() => finish("reset", () => router.push("/settings/demo"))} className={buttonClasses({ size: "sm" })}>
             Reset demo data
           </button>
         )}

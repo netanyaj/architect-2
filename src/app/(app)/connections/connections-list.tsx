@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useState, useTransition, type FormEvent } from "react";
+import { useId, useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { Button, TextLink } from "@/components/ax/button";
 import { ListRow, Tray } from "@/components/ax/list-row";
 import { Tag } from "@/components/ax/pill";
@@ -108,6 +108,13 @@ function KeyForm({ fixedName, onDone }: { fixedName?: string; onDone: () => void
   const ids = { name: useId(), value: useId() };
   const [pending, start] = useTransition();
   const [error, setError] = useState<string>();
+  const form = useRef<HTMLFormElement>(null);
+  // Cancel clears what was typed and any error, then closes.
+  const cancel = () => {
+    form.current?.reset();
+    setError(undefined);
+    onDone();
+  };
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -120,7 +127,7 @@ function KeyForm({ fixedName, onDone }: { fixedName?: string; onDone: () => void
     });
   };
   return (
-    <form onSubmit={submit} className="flex flex-col gap-2">
+    <form ref={form} onSubmit={submit} className="flex flex-col gap-2">
       <div className="flex flex-wrap items-end gap-2">
         {!fixedName && (
           <span className="flex flex-col gap-1">
@@ -139,7 +146,7 @@ function KeyForm({ fixedName, onDone }: { fixedName?: string; onDone: () => void
         <Button size="sm" type="submit" disabledReason={pending ? "Saving…" : undefined}>
           {pending ? "Saving…" : "Save key"}
         </Button>
-        <Button size="sm" variant="quiet" onClick={onDone}>
+        <Button size="sm" variant="quiet" onClick={cancel}>
           Cancel
         </Button>
       </div>
@@ -153,17 +160,34 @@ function KeyForm({ fixedName, onDone }: { fixedName?: string; onDone: () => void
   );
 }
 
-/** "Add an API key" above the list, for a service that has no row yet. */
-export function AddApiKey({ refusal }: { refusal?: string }) {
+/**
+ * Apps (M6): the sign-in and API-key apps your plans use, with "Add an API key" in the section's header for a service
+ * that has no row yet.
+ */
+export function AppsSection({ canAdd, refusal, children }: { canAdd: boolean; refusal?: string; children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  return open ? (
-    <div className="rounded-card border border-line bg-surface px-4 py-3.5">
-      <KeyForm onDone={() => setOpen(false)} />
-    </div>
-  ) : (
-    <Button icon="plus" className="self-start" disabledReason={refusal} onClick={() => setOpen(true)}>
-      Add an API key
-    </Button>
+  return (
+    <section id="apps" aria-labelledby="apps-title" className="flex scroll-mt-6 flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <h2 id="apps-title" className="text-sub font-semibold">
+            Apps
+          </h2>
+          <p className="text-small text-ink-2">Apps your plans sign in to, or use with an API key. Each shows what it&apos;s used for.</p>
+        </div>
+        {canAdd && !open && (
+          <Button icon="plus" disabledReason={refusal} onClick={() => setOpen(true)}>
+            Add an API key
+          </Button>
+        )}
+      </div>
+      {open && (
+        <div className="rounded-card border border-line bg-surface px-4 py-3.5">
+          <KeyForm onDone={() => setOpen(false)} />
+        </div>
+      )}
+      {children}
+    </section>
   );
 }
 

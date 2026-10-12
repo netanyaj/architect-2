@@ -61,6 +61,8 @@ test.describe("M5 follow-up", () => {
     await page.goto(`/p/${p!.id}`);
     const openBriefWriter = async () => {
       const more = page.getByRole("button", { name: /^Show \d+ more$/ });
+      // Wait for the parts list first: "Show N more" can appear after the first paint.
+      await more.or(page.getByRole("button", { name: /^Brief writer/ })).first().waitFor();
       if (await more.isVisible()) await more.click();
       await page.getByRole("button", { name: /^Brief writer/ }).first().click();
     };

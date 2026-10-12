@@ -109,7 +109,7 @@ test.describe("M4: Changes as pull requests", () => {
       { workspace_id: m!.workspace_id, installation_id: Number(process.env.E2E_GITHUB_INSTALLATION ?? 167616247), account_login: "netanyaj", account_type: "User", added_by: user.id },
       { onConflict: "workspace_id,installation_id" },
     );
-    await page.goto("/settings");
+    await page.goto("/settings/github");
     const panel = page.getByRole("region", { name: "GitHub" });
     const accounts = panel.getByRole("list", { name: "GitHub accounts" });
     await expect(accounts).toContainText("netanyaj");

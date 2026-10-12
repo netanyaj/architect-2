@@ -55,7 +55,7 @@ test.describe("M5.5", () => {
     await expect(amenu).toContainText(user.email);
     for (const name of ["Settings", "Invite people", "Governance", "New workspace", "Log out"]) await expect(amenu.getByRole("menuitem", { name })).toBeVisible();
     await expect(amenu.getByRole("menuitem").filter({ hasText: "Acme Ops (Enterprise)" }).getByLabel("Current")).toBeVisible();
-    // No inline switches in the menu any more: Theme and the Developer view default are in Settings › Preferences.
+    // No inline switches in the menu any more: Theme and the Developer view default are in Settings › Appearance.
     await expect(amenu.getByRole("radiogroup")).toHaveCount(0);
     await amenu.getByRole("menuitem", { name: "Invite people" }).click();
     const invite = page.getByRole("dialog", { name: /^Invite people to/ });
@@ -104,7 +104,7 @@ test.describe("M5.5", () => {
 
   test("People: members and pending invites apart; Resend link makes a new link and the old one stops working; Revoke", async ({ page }) => {
     await start(page);
-    await page.goto("/settings");
+    await page.goto("/settings/members");
     await expect(page.getByText("Invites are shared by link", { exact: false })).toBeVisible();
     const email = `invitee-${Date.now()}@example.com`;
     await page.getByLabel("Email", { exact: true }).fill(email);
@@ -118,7 +118,7 @@ test.describe("M5.5", () => {
     expect(second).not.toBe(first);
     await page.goto(first);
     await expect(page.getByText("This invite link doesn't work any more")).toBeVisible();
-    await page.goto("/settings");
+    await page.goto("/settings/members");
     await page.getByRole("list", { name: "Pending invites" }).getByRole("listitem").filter({ hasText: email }).getByRole("button", { name: "Revoke" }).click();
     await expect(page.getByRole("list", { name: "Pending invites" }).getByText(email)).toHaveCount(0);
     const { data: audit } = await adminDb().from("audit_log").select("action").eq("target", email);
@@ -168,7 +168,7 @@ test.describe("M5.5", () => {
     await expect(devSwitch).toBeVisible();
 
     // The personal setting: Always (after the page is interactive).
-    await page.goto("/settings", { waitUntil: "networkidle" });
+    await page.goto("/settings/appearance", { waitUntil: "networkidle" });
     const always = page.getByRole("group", { name: "Open projects in Developer view" }).getByRole("button", { name: "Always" });
     await always.click();
     await expect(always).toHaveAttribute("aria-pressed", "true");

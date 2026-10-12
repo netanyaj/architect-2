@@ -7,7 +7,7 @@ import { createServerDb } from "./db";
 export type ThemeChoice = "system" | "light" | "dark";
 
 /**
- * The person's theme (Resources › Theme, Settings › Preferences): System, Light or Dark. The cookie set when they choose it
+ * The person's theme (Resources › Theme, Settings › Appearance): System, Light or Dark. The cookie set when they choose it
  * is read first, so pages render without a round trip; a browser without it falls back to the account's saved setting
  * (read from the session, no network call). Light unless they chose otherwise.
  */

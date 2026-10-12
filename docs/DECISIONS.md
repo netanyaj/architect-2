@@ -308,6 +308,16 @@ From the M5.8 review notes (not in the repo). No migration: everything new is st
 | Copy | "A Live deploy waits for an Admin. You're one" | "Live waits for an Owner or Admin. You're the Owner: approve it yourself." | The demo user is an Owner; "deploy" isn't in the word list |
 | Events | | Migration 0026 adds `tour_minimised` and `tour_finished` to `analytics_events` | The analytics query shows where people leave the tour |
 
+## M6: Settings pages and Connections sections (12 Oct 2026)
+
+| Area | Before | We did | Why |
+|---|---|---|---|
+| Settings | One long page with eight sections | A page per topic, each with its own address (`/settings/members` and so on; `/settings` is General), grouped as Workspace (General, Members, Budgets, Governance, GitHub, Demo data where it applies) and You (Appearance, Account). A menu on the left on wide screens, at the top on a phone, as in GitHub's and Vercel's settings | Easier to find one thing, and each page can be linked to |
+| Links | `/settings#people`, `#github`, `#demo` | The project menu, ⌘K (one entry per page) and the tour's Reset demo data open the right page | Anchors on one long page no longer exist |
+| Budgets | The per-project editor in Settings, and the cap and per-project budgets in Governance › Budgets | With governance on, Settings › Budgets has no fields, only "Owners and Admins set budgets in Governance › Budgets"; with governance off (when the Governance pages don't exist), the per-project editor is here | The same budget never has two editors |
+| Connections | Lyzr Studio, MCP servers, then a loose "Add an API key" button above the apps | Three headed sections in order: Lyzr Studio, Apps (with "Add an API key" in its header), MCP servers (with "Add an MCP server" in its header) | Each kind of connection is found in one place |
+| MCP and API-key forms | URL and header in the code font; Cancel only closed the form | Name, URL and auth header use the body font, text and placeholders; Cancel clears every field and any error, in both forms | Form fields read as form fields; a cancelled form doesn't come back with old input |
+
 ## Numbers we set, and how we picked them
 
 | Number | Value | How we picked it |

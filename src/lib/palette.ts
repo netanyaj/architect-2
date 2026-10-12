@@ -18,14 +18,21 @@ export type PaletteItem = {
   tour?: boolean;
 };
 
-const PAGES: { label: string; href: string; admin?: boolean; keywords?: string }[] = [
+const PAGES: { label: string; href: string; admin?: boolean; demoData?: boolean; keywords?: string }[] = [
   { label: "Home", href: "/home", keywords: "start prompt" },
   { label: "Projects", href: "/projects", keywords: "apps" },
   { label: "Agents", href: "/agents" },
   { label: "Connections", href: "/connections", keywords: "apps keys lyzr studio" },
   { label: "Marketplace", href: "/marketplace", keywords: "templates" },
   { label: "Usage", href: "/usage", keywords: "credits billing" },
-  { label: "Settings", href: "/settings", keywords: "people members plan reset demo" },
+  { label: "Settings", href: "/settings", keywords: "general workspace name plan credits" },
+  { label: "Members", href: "/settings/members", keywords: "settings people invite roles" },
+  { label: "Budgets", href: "/settings/budgets", keywords: "settings credits limit" },
+  { label: "Governance settings", href: "/settings/governance", keywords: "settings governance on off" },
+  { label: "GitHub settings", href: "/settings/github", keywords: "settings repos install" },
+  { label: "Demo data", href: "/settings/demo", demoData: true, keywords: "settings reset demo" },
+  { label: "Appearance", href: "/settings/appearance", keywords: "settings theme dark light developer view" },
+  { label: "Account", href: "/settings/account", keywords: "settings sign out email" },
   { label: "What's new", href: "/whats-new", keywords: "changelog" },
   { label: "Approvals", href: "/governance/approvals", admin: true, keywords: "requests" },
   { label: "Governance", href: "/governance", admin: true, keywords: "policies rules audit log" },
@@ -59,7 +66,7 @@ export function paletteResults(index: SearchIndex, query: string, opts: { projec
   for (const p of index.projects) items.push({ id: `p-${p.id}`, group: "Projects", label: p.name, hint: p.status === "draft" ? "Plan" : p.status === "live" ? "Live" : "Built", href: `/p/${p.id}`, keywords: "project app" });
   for (const a of index.agents) items.push({ id: `g-${a.id}`, group: "Agents", label: a.name, hint: a.projectName, href: `/p/${a.projectId}?view=agents`, keywords: "agent" });
   for (const c of index.connections) items.push({ id: `c-${c.provider}`, group: "Connections", label: c.name, hint: c.connected ? "Connected" : "Not connected", href: "/connections", keywords: "connection app" });
-  for (const pg of PAGES) if (!pg.admin || index.admin) items.push({ id: `pg-${pg.href}`, group: "Pages", label: pg.label, href: pg.href, keywords: pg.keywords });
+  for (const pg of PAGES) if ((!pg.admin || index.admin) && (!pg.demoData || index.demoData)) items.push({ id: `pg-${pg.href}`, group: "Pages", label: pg.label, href: pg.href, keywords: pg.keywords });
   for (const w of index.workspaces) if (!w.current) items.push({ id: `w-${w.id}`, group: "Workspaces", label: `Switch to ${w.label}`, workspaceId: w.id, keywords: "workspace switch" });
 
   const shown = words.length

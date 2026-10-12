@@ -24,7 +24,7 @@ test.describe("M4: Hand-off", () => {
     // Morgan invites the teammate as a Builder.
     const morganPage = await (await browser.newContext()).newPage();
     await signIn(morganPage, morgan);
-    await morganPage.goto("/settings");
+    await morganPage.goto("/settings/members");
     await morganPage.getByLabel("Email", { exact: true }).fill(sam.email);
     await morganPage.getByLabel("Role", { exact: true }).selectOption("builder");
     await morganPage.getByRole("button", { name: "Create invite link" }).click();

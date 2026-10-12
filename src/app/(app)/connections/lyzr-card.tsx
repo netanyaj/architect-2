@@ -38,16 +38,18 @@ export function LyzrCard({ status, isAdmin }: { status: LyzrCardStatus; isAdmin:
       router.refresh();
     });
   return (
-    <section id="lyzr" aria-labelledby="lyzr-title" className="flex scroll-mt-6 flex-col gap-3 rounded-card border border-line bg-surface px-4 py-3.5">
+    <section id="lyzr" aria-labelledby="lyzr-title" className="flex scroll-mt-6 flex-col gap-3">
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <h2 id="lyzr-title" className="text-sub font-semibold">
+          Lyzr Studio
+        </h2>
+        <p className="text-small text-ink-2">
+          Agents in your plans are made and run in this workspace&apos;s own Lyzr Studio, when their part is built. Each workspace uses its own Lyzr account; nobody else&apos;s agents or data are shared.
+        </p>
+      </div>
+      <div className="flex flex-col gap-3 rounded-card border border-line bg-surface px-4 py-3.5">
       <div className="flex flex-wrap items-start gap-3">
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <h2 id="lyzr-title" className="font-semibold">
-            Lyzr Studio
-          </h2>
-          <p className="text-small text-ink-2">
-            Agents in your plans are made and run in this workspace&apos;s own Lyzr Studio, when their part is built. Each workspace uses its own Lyzr account; nobody else&apos;s agents or data are shared.
-          </p>
-        </div>
+        <span className="flex-1 font-semibold">Your Lyzr key</span>
         {status.connected ? (
           <StatusLine status="works">Connected</StatusLine>
         ) : (
@@ -97,6 +99,7 @@ export function LyzrCard({ status, isAdmin }: { status: LyzrCardStatus; isAdmin:
           {error}
         </p>
       )}
+      </div>
     </section>
   );
 }

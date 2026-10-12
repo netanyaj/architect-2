@@ -24,7 +24,7 @@ test.describe("roles and invites", () => {
   test("an Owner invites a Viewer by link; the Viewer joins with read-only rights", async ({ browser }) => {
     // Owner: invite as Viewer from Settings.
     const ownerPage = await (await browser.newContext()).newPage();
-    await signIn(ownerPage, owner, "/settings");
+    await signIn(ownerPage, owner, "/settings/members");
     await expect(ownerPage.getByRole("heading", { name: "People in Acme Ops (Enterprise)" })).toBeVisible();
     // The seeded teammates are pending invites, apart from the members.
     await expect(ownerPage.getByRole("list", { name: "Pending invites" }).getByText("Jordan (IT)", { exact: true })).toBeVisible();
@@ -68,10 +68,11 @@ test.describe("roles and invites", () => {
     await viewerPage.keyboard.press("Escape");
     await expect(nav.getByRole("link", { name: "Approvals" })).toHaveCount(0); // admin-only section hidden
 
-    await viewerPage.goto("/settings");
+    await viewerPage.goto("/settings/members");
     await expect(viewerPage.getByText("Only Owners and Admins can invite people or change roles.")).toBeVisible();
     await expect(viewerPage.getByRole("button", { name: "Create invite link" })).toHaveCount(0);
     await expect(viewerPage.getByRole("button", { name: "Reset demo data" })).toHaveCount(0);
+    await expect(viewerPage.getByRole("navigation", { name: "Settings" }).getByRole("link", { name: "Demo data" })).toHaveCount(0);
 
     await nav.getByRole("button", { name: /^Account and workspace: / }).click();
     await viewerPage.getByRole("menuitem").filter({ hasText: "Acme Ops (Enterprise)" }).filter({ hasNotText: "·" }).click();

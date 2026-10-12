@@ -1,6 +1,6 @@
 "use server";
 
-import { canBuild, canManageMembers } from "@/lib/permissions";
+import { canBuild, canManageMembers, canResetDemo } from "@/lib/permissions";
 import { providerName } from "@/lib/providers";
 import { createServerDb } from "../db";
 import { getAppContext } from "../workspace";
@@ -12,6 +12,8 @@ export type SearchIndex = {
   workspaces: { id: string; label: string; current: boolean }[];
   canBuild: boolean;
   admin: boolean;
+  /** Settings › Demo data applies: the Owner of a team workspace. */
+  demoData: boolean;
 };
 
 /** What ⌘K searches (M5.10): this workspace's projects, agents and connections, read with the person's own access. */
@@ -31,5 +33,6 @@ export async function searchIndex(): Promise<SearchIndex> {
     workspaces: ctx.memberships.map((m) => ({ id: m.workspaceId, label: m.label, current: m.workspaceId === ctx.workspace.id })),
     canBuild: canBuild(ctx.role),
     admin: canManageMembers(ctx.role) && ctx.workspace.governanceEnabled,
+    demoData: canResetDemo(ctx.role) && ctx.workspace.kind !== "personal",
   };
 }

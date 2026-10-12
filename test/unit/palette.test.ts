@@ -16,6 +16,7 @@ const index = {
   ],
   canBuild: true,
   admin: true,
+  demoData: true,
 };
 
 describe("command palette", () => {
@@ -24,6 +25,12 @@ describe("command palette", () => {
     expect([...new Set(r.map((i) => i.group))]).toEqual(["Actions", "Projects", "Pages"]);
     expect(r.filter((i) => i.group === "Actions").map((i) => i.label)).toEqual(["New project", "Open Trash", "View as Viewer", "Switch workspace", "Take the tour"]);
     expect(r.find((i) => i.label === "View as Viewer")).toMatchObject({ disabled: true, hint: "Open a project first" });
+  });
+
+  it("each Settings page has its own entry; Demo data only where it applies", () => {
+    expect(paletteResults(index, "members", { projectId: null }).map((i) => i.href)).toContain("/settings/members");
+    expect(paletteResults(index, "reset demo", { projectId: null }).map((i) => i.href)).toEqual(["/settings/demo"]);
+    expect(paletteResults({ ...index, demoData: false }, "reset demo", { projectId: null })).toEqual([]);
   });
 
   it("Take the tour: runs in a team workspace, and says where otherwise", () => {

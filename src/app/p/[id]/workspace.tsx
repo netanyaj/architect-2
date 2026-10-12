@@ -225,7 +225,7 @@ function MoreMenu({ project, items, canAct, dev, onToggleDev, onTransfer, onDele
           <span className="flex-1">{project.repo ? "Download code from GitHub" : "Download code"}</span>
           {!project.repo && <SimTag title="Architect's code is simulated in this prototype; the .zip says so." />}
         </DropdownMenuItem>
-        <DropdownMenuItem className={item} onSelect={() => (project.repo ? window.open(`https://github.com/${project.repo}`, "_blank", "noopener") : router.push("/settings#github"))}>
+        <DropdownMenuItem className={item} onSelect={() => (project.repo ? window.open(`https://github.com/${project.repo}`, "_blank", "noopener") : router.push("/settings/github"))}>
           <Icon name="repo" size="sm" className="text-ink-2" />
           <span className="truncate">{project.repo ? `GitHub · ${project.repo}` : "GitHub settings"}</span>
         </DropdownMenuItem>
@@ -387,7 +387,7 @@ function PeopleMenu({ project }: { project: ProjectWorkspace }) {
             <span className="text-small text-ink-2">{ROLE_INFO[p.role].label}</span>
           </div>
         ))}
-        <DropdownMenuItem className={item} onSelect={() => router.push("/settings#people")}>
+        <DropdownMenuItem className={item} onSelect={() => router.push("/settings/members")}>
           <Icon name="invite" size="sm" className="text-ink-2" />
           Invite people
         </DropdownMenuItem>
