@@ -91,7 +91,7 @@ test.describe("Governance policies", () => {
     await expect(settings.getByText("This model is no longer allowed ·")).toBeVisible();
   });
 
-  test("apps: admins-only connecting, an allowed MCP server in agent tools, and Builders see the reason", async ({ page }) => {
+  test("apps: admins-only connecting, an allowed MCP server added in Connections before agents can use it, and Builders see the reason", async ({ page }) => {
     await signInAndFind(page);
     await page.goto("/governance?section=apps");
     await policy(page).getByRole("radio", { name: /Owners and Admins only/ }).check();
@@ -101,16 +101,21 @@ test.describe("Governance policies", () => {
     await policy(page).getByLabel("Name").fill("Acme CRM tools");
     await policy(page).getByLabel("URL (https)").fill("https://mcp.acme.internal");
     await policy(page).getByRole("button", { name: "Add server" }).click();
-    await expect(policy(page).getByRole("list", { name: "Allowed MCP servers" })).toContainText("Acme CRM tools");
-
-    // Agent tools offer the allowed server.
+    const allowed = policy(page).getByRole("list", { name: "Allowed MCP servers" });
+    await expect(allowed).toContainText("Acme CRM tools");
+    // M6: the allowed list links to Connections, where the server is added and tested; agents pick connected ones.
+    await expect(allowed.getByRole("link", { name: "Add in Connections" })).toHaveAttribute("href", "/connections#mcp");
+    await page.goto("/connections");
+    const mcp = page.getByRole("region", { name: "MCP servers" });
+    await mcp.getByRole("button", { name: "Add an MCP server" }).click();
+    await expect(mcp.getByRole("button", { name: "Acme CRM tools" })).toBeVisible();
     const tt = await project("ticket-triage");
     await page.goto(`/p/${tt}?view=agents`);
     await page.getByRole("group", { name: "How the agents connect" }).getByRole("button", { name: "Urgency and team label: open its settings" }).click();
     const settings = page.getByRole("complementary", { name: "Urgency and team label settings" });
-    await expect(settings.getByText("MCP servers your organisation allows: Acme CRM tools.")).toBeVisible();
+    await expect(settings.getByText("No MCP servers connected yet.")).toBeVisible();
     await settings.getByRole("button", { name: "Tool or MCP server" }).click();
-    await expect(page.getByRole("menuitem", { name: "MCP: Acme CRM tools" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "MCP: Acme CRM tools" })).toHaveCount(0);
     await page.keyboard.press("Escape");
 
     // As a Builder: Connections says only Owners and Admins connect apps here, and Gmail is read only.

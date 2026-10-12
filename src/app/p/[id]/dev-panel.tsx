@@ -69,7 +69,14 @@ const stamp = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "num
  */
 function TerminalTab({ project, prompt }: { project: ProjectWorkspace; prompt: string }) {
   const router = useRouter();
-  const [lines, setLines] = useState<TerminalLine[]>([]);
+  const [lines, setLinesState] = useState<TerminalLine[]>([]);
+  // Commands can overlap (the input never waits), so every update appends to the latest lines, never to a stale copy.
+  const linesRef = useRef<TerminalLine[]>([]);
+  const setLines = (next: TerminalLine[]) => {
+    linesRef.current = next;
+    setLinesState(next);
+  };
+  const append = (more: TerminalLine[]) => setLines([...linesRef.current, ...more]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<TerminalSessionSummary[]>([]);
   const [viewing, setViewing] = useState<{ id: string; label: string; lines: TerminalLine[] } | null>(null);
@@ -92,14 +99,12 @@ function TerminalTab({ project, prompt }: { project: ProjectWorkspace; prompt: s
     setRunning((n) => n + 1);
     setCommand("");
     setHistory((h) => [line, ...h].slice(0, 20));
-    const before = [...lines, { kind: "cmd" as const, text: line }];
-    setLines(before);
+    append([{ kind: "cmd", text: line }]);
     try {
       const r = await runCommand({ projectId: project.id, command: line });
-      const next = !r.ok ? [...before, { kind: "fail" as const, text: r.message }] : r.clear ? [] : [...before, ...r.lines];
-      setLines(next);
       if (r.ok && r.clear) return clear();
-      const saved = await saveTerminalSession({ projectId: project.id, sessionId, lines: next });
+      append(r.ok ? r.lines : [{ kind: "fail", text: r.message }]);
+      const saved = await saveTerminalSession({ projectId: project.id, sessionId, lines: linesRef.current });
       if (saved.ok && saved.sessionId !== sessionId) {
         setSessionId(saved.sessionId);
         refreshSessions();
@@ -107,7 +112,7 @@ function TerminalTab({ project, prompt }: { project: ProjectWorkspace; prompt: s
       // A re-run of the checks writes proofs: let the rest of the page catch up.
       if (/^(npm (run )?test|pytest)$/.test(line)) router.refresh();
     } catch {
-      setLines((m) => [...m, { kind: "fail", text: "The command didn't reach Architect. Try again." }]);
+      append([{ kind: "fail", text: "The command didn't reach Architect. Try again." }]);
     } finally {
       setRunning((n) => n - 1);
     }

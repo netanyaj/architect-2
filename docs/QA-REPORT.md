@@ -21,6 +21,8 @@ What was checked before the hand-in, how, and what was found. Production is [tic
 | F8 Hand-off | Morgan → Sam ownership | `handoff.spec` | Pass |
 | F9 Move a 1.0 app to 2.0 | The legacy app, Move to 2.0 | `move-and-more.spec` (3), `workspace.spec` (3) | Pass |
 
+**The M6 code, on a local production build:** the full suite, 80 tests. The first run lost its network part-way (13 tests couldn't reach Supabase to make their account); rerun one file at a time, every test passes except the rate-limit test, which needs a development-only hook and passes on the dev server. The run found two things, both fixed: a governance test still expected the old MCP line in agent tools (updated for M6), and a real bug in the Developer panel's terminal (below). One plan came back invalid twice from the model and passed on rerun.
+
 **M6 additions, on a local production build:** MCP servers: adding DeepWiki's public server ran a real `initialize` and `tools/list` and listed its 3 tools in 2.3 s; the allowed list in Governance links to the row; an agent picks "MCP: DeepWiki" ([connections](qa/after-mcp-connections.png), [governance](qa/after-mcp-governance.png), [agent](qa/after-mcp-agent-tools.png)). Guards: 5 unit tests (private, loopback, link-local and mapped addresses refused, including a host that resolves to one), 3 action tests (allowed list, the header kept in Vault, 10 tests an hour, every test audited). The landing page: [light](qa/after-landing-1440-light.png), [dark](qa/after-landing-1440-dark.png), [390 px](qa/after-landing-390-light.png).
 
 ## 2. UX and UI review
@@ -48,6 +50,7 @@ A fresh demo account on production, reviewed with the checklist of the third-par
 | 🔴 | axe: the preview's group headings were 3.2:1 contrast | The preview shell | **Fixed** (now 6.4:1) |
 | 🔴 | axe: tool initials had a label on an element with no role | Agents list | **Fixed** (`role="img"`) |
 | 🔴 | Keyboard: the preview frame took focus with no visible ring | Every project's App view | **Fixed**: CSS `:focus` doesn't match a frame once focus is inside it, so the ring follows the page's own blur; re-checked by tabbing into it (a 2 px ring) |
+| 🔴 | The terminal lost a command's output when a second command was typed before the first answered | Developer view › Terminal & logs | **Fixed**: every result appends to the latest lines (found by `m55.spec`) |
 | 🟡 | At 1024 px with Parts and Chat open, the preview is narrow | Project App view | Open: auto-collapse Parts below 1100 px until the person touches it |
 | 🟡 | Research agent (the demo agent) shows "Claude Sonnet · Sim" in its read-only model picker, though it runs on Gemini 3.1 Flash Lite | Meeting Prep › Agents | Open: show Studio's model for the demo agent |
 | 🟡 | The landing page's Video link says "soon" until the video is published | `/` | Open: set `NEXT_PUBLIC_VIDEO_URL` |
