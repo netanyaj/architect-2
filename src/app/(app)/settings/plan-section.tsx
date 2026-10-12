@@ -11,7 +11,7 @@ import { PLANS, TOP_UPS, type WorkspacePlan } from "@/lib/plans";
 import { setWorkspacePlan, topUpCredits } from "@/server/actions/launch";
 
 /**
- * Settings › Plan (simulated: no payment is taken). Today's Architect plans, Free, Starter, Pro and Custom, with
+ * Settings › General (simulated: no payment is taken). Today's Architect plans, Free, Starter, Pro and Custom, with
  * monthly or yearly prices, credits, what each includes and what's coming; a credit top-up; and the Enterprise extras
  * 2.0 adds. Owners and Admins switch plans and buy credits.
  */

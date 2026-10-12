@@ -262,7 +262,7 @@ export async function setBadge(input: { projectId: string; on: boolean }): Promi
   return { ok: true };
 }
 
-/** Settings › Plan, simulated: no payment is taken. Owners and Admins change it. */
+/** Settings › General, simulated: no payment is taken. Owners and Admins change it. */
 export async function setWorkspacePlan(input: { plan: string }): Promise<ActionResult> {
   const ctx = await getAppContext();
   if (!canManageMembers(ctx.role)) return { ok: false, message: "Only Owners and Admins can change the plan." };
@@ -284,7 +284,7 @@ export async function setWorkspacePlan(input: { plan: string }): Promise<ActionR
   return { ok: true };
 }
 
-/** Top up credits (Settings › Plan, simulated: no payment). Owners and Admins; the credits join this month's allowance. */
+/** Top up credits (Settings › General, simulated: no payment). Owners and Admins; the credits join this month's allowance. */
 export async function topUpCredits(input: { credits: number }): Promise<ActionResult<{ total: number }>> {
   const ctx = await getAppContext();
   if (!canManageMembers(ctx.role)) return { ok: false, message: "Only Owners and Admins can buy credits." };

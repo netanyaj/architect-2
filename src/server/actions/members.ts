@@ -227,7 +227,7 @@ export async function switchWorkspace(workspaceId: string): Promise<ActionResult
   return { ok: true };
 }
 
-/** Settings › Reset demo data (Owner only): restores the seeded demo, removing projects' uploaded files. People and tickets are kept. */
+/** Settings › Demo data (Owner only): restores the seeded demo, removing projects' uploaded files. People and tickets are kept. */
 export async function resetDemoData(): Promise<ActionResult> {
   const ctx = await getAppContext();
   if (!canResetDemo(ctx.role)) return { ok: false, message: "Only the workspace Owner can reset demo data." };

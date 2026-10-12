@@ -198,7 +198,7 @@ test.describe("M5 follow-up", () => {
     const badge = page.getByRole("switch", { name: "Show “Built with Architect”" });
     await expect(badge).toHaveAttribute("aria-checked", "true");
     await expect(badge).toHaveAttribute("aria-disabled", "true");
-    await expect(page.getByText("The Free plan always shows it. Starter and up can hide it, in Settings › Plan.").first()).toBeVisible();
+    await expect(page.getByText("The Free plan always shows it. Starter and up can hide it, in Settings › General.").first()).toBeVisible();
 
     await page.goto("/settings#plan");
     await plans.getByRole("button", { name: "Switch to Pro" }).click();

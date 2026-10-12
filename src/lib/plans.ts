@@ -53,4 +53,4 @@ export function canHideBadge(plan: WorkspacePlan): boolean {
   return plan !== "free";
 }
 
-export const BADGE_FREE = "The Free plan always shows it. Starter and up can hide it, in Settings › Plan.";
+export const BADGE_FREE = "The Free plan always shows it. Starter and up can hide it, in Settings › General.";

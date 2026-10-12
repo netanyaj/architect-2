@@ -301,7 +301,7 @@ describe("plans and the Built with Architect badge (simulated billing)", () => {
     const { setBadge } = await import("@/server/actions/launch");
     role = "builder";
     plan = "free";
-    expect(await setBadge({ projectId: P, on: false })).toEqual({ ok: false, message: "The Free plan always shows it. Starter and up can hide it, in Settings › Plan." });
+    expect(await setBadge({ projectId: P, on: false })).toEqual({ ok: false, message: "The Free plan always shows it. Starter and up can hide it, in Settings › General." });
     plan = "starter";
     expect(await setBadge({ projectId: P, on: false })).toEqual({ ok: true });
     expect(db.tables.projects[0].launch_settings).toEqual({ analytics: true, badge: false });

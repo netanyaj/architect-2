@@ -264,7 +264,7 @@ describe("New workspace (the workspace menu)", () => {
   });
 });
 
-describe("Settings › Plan: today's Architect plans and a top-up (simulated)", () => {
+describe("Settings › General: today's Architect plans and a top-up (simulated)", () => {
   it("the plans mirror today's Architect; a top-up adds to the month's allowance, Owners and Admins only", async () => {
     const { PLANS } = await import("@/lib/plans");
     expect(PLANS.map((p) => [p.label, p.monthly, p.annual])).toEqual([

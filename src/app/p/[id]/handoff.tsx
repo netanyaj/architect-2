@@ -186,7 +186,7 @@ export function HandoffBanner({ project, items, onOpenPlan }: { project: Project
       <section aria-label="Ownership offer sent" className={`${box} border-line`}>
         <p>
           <b className="font-semibold">Waiting for {h.outgoing.toName} to accept ownership.</b>{" "}
-          <span className="text-ink-2">{h.outgoing.invited ? `${h.outgoing.toName} accepts with their invite link (Settings › People).` : "They'll see it when they open the project."}</span>
+          <span className="text-ink-2">{h.outgoing.invited ? `${h.outgoing.toName} accepts with their invite link (Settings › Members).` : "They'll see it when they open the project."}</span>
         </p>
         <div>
           <Button size="sm" variant="quiet" disabledReason={pending ? "Saving…" : undefined} onClick={() => act(() => cancelTransfer({ transferId: h.outgoing!.id }))}>
