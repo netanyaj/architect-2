@@ -78,4 +78,4 @@ Each workspace's agents live in its own Studio account, editable from Architect 
 
 ---
 
-Built by Netanya as a prototype for Lyzr's Architect · [GitHub](https://github.com/netanyaj/architect-2)
+Built by Netanya Jaison as a prototype for Lyzr's Architect · not an official Lyzr product · [GitHub](https://github.com/netanyaj/architect-2)

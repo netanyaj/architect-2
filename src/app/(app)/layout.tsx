@@ -27,9 +27,10 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const { data: raise } = budget.level === "stopped" ? await admin.from("approvals").select("id").eq("workspace_id", ctx.workspace.id).eq("kind", "budget").eq("status", "waiting").limit(1) : { data: [] };
   const isAdmin = ctx.role === "owner" || ctx.role === "admin";
 
-  // The bottom strip (pb-[64px]) keeps the Help button's corner clear, so it never covers a page's own buttons.
+  // The bottom strip (pb-[64px]) keeps the Help button's corner clear, so it never covers a page's own buttons. On a phone,
+  // Help sits in its own bar instead (HelpLauncher).
   return (
-    <div className="flex min-h-dvh gap-2.5 bg-canvas p-2.5 pb-[64px] max-md:flex-col">
+    <div className="flex min-h-dvh gap-2.5 bg-canvas p-2.5 pb-[64px] max-md:flex-col max-md:pb-2.5">
       <SideNav
         workspaceName={ctx.workspace.name}
         currentWorkspaceId={ctx.workspace.id}

@@ -1,9 +1,13 @@
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"sequence":{"mirrorActors":false,"actorMargin":36,"wrap":true,"width":150}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#FFFFFF","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#FFFFFF","noteBorderColor":"#D6D4CC","noteTextColor":"#1A1A19","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF","textColor":"#1A1A19","titleColor":"#1A1A19","nodeTextColor":"#1A1A19"},"sequence":{"mirrorActors":false,"actorMargin":36,"wrap":true,"width":150}}}%%
 sequenceDiagram
   autonumber
-  participant B as Browser
-  participant PX as Preview proxy
-  participant SB as Sandbox dev server
+  box rgb(255, 255, 255) People
+    participant B as Browser
+  end
+  box rgb(230, 245, 246) The cell
+    participant PX as Preview proxy
+    participant SB as Sandbox dev server
+  end
   %% A white card, so ink lines read on GitHub's dark theme too
   rect rgb(255, 255, 255)
     B->>PX: Open preview--project.app domain with a one-time code

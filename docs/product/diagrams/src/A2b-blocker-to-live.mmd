@@ -1,12 +1,20 @@
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"sequence":{"mirrorActors":false,"actorMargin":36,"wrap":true,"width":150}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#FFFFFF","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#FFFFFF","noteBorderColor":"#D6D4CC","noteTextColor":"#1A1A19","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF","textColor":"#1A1A19","titleColor":"#1A1A19","nodeTextColor":"#1A1A19"},"sequence":{"mirrorActors":false,"actorMargin":36,"wrap":true,"width":150}}}%%
 sequenceDiagram
-  participant M as Morgan
-  participant OR as Run orchestrator
-  participant LS as Lyzr Studio
-  participant EV as Egress proxy and vault
-  participant RP as Realtime and preview
-  participant PA as Policy and approvals
-  participant RT as App runtime
+  box rgb(255, 255, 255) People
+    participant M as Morgan
+  end
+  box rgb(240, 234, 250) Approvals
+    participant PA as Policy and approvals
+  end
+  box rgb(230, 245, 246) The cell
+    participant OR as Run orchestrator
+    participant EV as Egress proxy and vault
+    participant RP as Realtime and preview
+    participant RT as App runtime
+  end
+  box rgb(232, 241, 230) Lyzr Studio
+    participant LS as Lyzr Studio
+  end
   %% A white card, so ink lines read on GitHub's dark theme too
   rect rgb(255, 255, 255)
     Note over OR,LS: 8 · Agents into Lyzr Studio

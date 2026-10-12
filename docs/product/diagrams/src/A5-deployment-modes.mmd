@@ -1,4 +1,4 @@
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"flowchart":{"curve":"basis","padding":14,"nodeSpacing":36,"rankSpacing":44}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#FFFFFF","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#FFFFFF","noteBorderColor":"#D6D4CC","noteTextColor":"#1A1A19","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF","textColor":"#1A1A19","titleColor":"#1A1A19","nodeTextColor":"#1A1A19"},"flowchart":{"curve":"basis","padding":14,"nodeSpacing":36,"rankSpacing":44}}}%%
 flowchart TB
   %% A white card, so ink lines read on GitHub's dark theme too
   subgraph CARD[" "]
@@ -33,4 +33,17 @@ flowchart TB
     c4 ~~~ d4 ~~~ s4
     M1 ~~~ M2 ~~~ M3 ~~~ M4
   end
-  style CARD fill:#FFFFFF,stroke:#D6D4CC
+  classDef people fill:#FFFFFF,stroke:#D6D4CC,stroke-width:1.5px,color:#1A1A19
+  classDef control fill:#EEEAFB,stroke:#C9BEF2,stroke-width:1.5px,color:#1A1A19
+  classDef cell fill:#E6F5F6,stroke:#A9DCE0,stroke-width:1.5px,color:#1A1A19
+  classDef studio fill:#E8F1E6,stroke:#B7D3B0,stroke-width:1.5px,color:#1A1A19
+  classDef outside fill:#F1F0EC,stroke:#D6D4CC,stroke-width:1.5px,color:#1A1A19
+  classDef approval fill:#F0EAFA,stroke:#6236AD,stroke-width:1.5px,color:#1A1A19
+  class c1,c2,c3,c4 control
+  class d1,d2,d3,d4 cell
+  class s1,s2,s3,s4 studio
+  style M1 fill:#FFFFFF,stroke:#D6D4CC,stroke-width:1.5px,color:#1A1A19
+  style M2 fill:#FFFFFF,stroke:#D6D4CC,stroke-width:1.5px,color:#1A1A19
+  style M3 fill:#FFFFFF,stroke:#D6D4CC,stroke-width:1.5px,color:#1A1A19
+  style M4 fill:#FFFFFF,stroke:#D6D4CC,stroke-width:1.5px,color:#1A1A19
+  style CARD fill:#FFFFFF,stroke:#D6D4CC,color:#1A1A19

@@ -49,7 +49,7 @@ for (const file of sources.filter((f) => f.endsWith(".mmd"))) {
   const name = file.replace(/\.mmd$/, "");
   const code = fs.readFileSync(path.join(SRC, file), "utf8").trimEnd();
   // The block's body may not contain another fence, so the match never spans two blocks.
-  const block = new RegExp("```mermaid\\n(?:(?!```)[\\s\\S])*?\\n```\\n((?:_[^\\n]*_ )?\\[PNG\\]\\(diagrams/" + name + "\\.png\\))");
+  const block = new RegExp("```mermaid\\n(?:(?!```)[\\s\\S])*?\\n```\\n((?:_[^\\n]*_\\n\\n)?\\[PNG\\]\\(diagrams/" + name + "\\.png\\))");
   if (block.test(doc)) doc = doc.replace(block, (_, link) => "```mermaid\n" + code + "\n```\n" + link);
   else console.log("no block in ARCHITECTURE.md for", name);
 }

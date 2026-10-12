@@ -107,3 +107,11 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* On a phone, Help (and the tour guide) sit in a solid bar along the bottom; the page gets that bar's height as extra
+   room at its end, so it can always scroll its last controls clear of it. */
+@media (width < 48rem) {
+  body:has([data-corner-bar]) {
+    padding-bottom: 60px;
+  }
+}

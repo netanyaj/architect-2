@@ -251,7 +251,7 @@ From the M5.5 review's decisions.
 
 ## M5.8: fixes after M5.6, and Base44 parity (11 Oct 2026)
 
-From `docs/product/24-m58-fixes-and-parity.md`. No migration: everything new is stored in existing columns (noted per row).
+From the M5.8 review notes (not in the repo). No migration: everything new is stored in existing columns (noted per row).
 
 | Area | The spec said | We did | Why |
 |---|---|---|---|

@@ -39,15 +39,21 @@ Based on our network captures and tests of today's Architect ([`docs/research/03
 The numbers match the hero diagram above. Steps 1 to 7, from the prompt to parts that work:
 
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"sequence":{"mirrorActors":false,"actorMargin":36,"wrap":true,"width":150}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#FFFFFF","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#FFFFFF","noteBorderColor":"#D6D4CC","noteTextColor":"#1A1A19","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF","textColor":"#1A1A19","titleColor":"#1A1A19","nodeTextColor":"#1A1A19"},"sequence":{"mirrorActors":false,"actorMargin":36,"wrap":true,"width":150}}}%%
 sequenceDiagram
-  participant M as Morgan
-  participant PL as Plan service
-  participant PA as Policy and approvals
-  participant OR as Run orchestrator
-  participant V as Verifier
-  participant AA as Architect agent
-  participant SB as Sandbox
+  box rgb(255, 255, 255) People
+    participant M as Morgan
+  end
+  box rgb(240, 234, 250) Approvals
+    participant PA as Policy and approvals
+  end
+  box rgb(230, 245, 246) The cell
+    participant PL as Plan service
+    participant OR as Run orchestrator
+    participant V as Verifier
+    participant AA as Architect agent
+    participant SB as Sandbox
+  end
   %% A white card, so ink lines read on GitHub's dark theme too
   rect rgb(255, 255, 255)
     Note over M,PL: 1 · Prompt
@@ -78,15 +84,23 @@ sequenceDiagram
 Steps 8 to 12, from agents in Lyzr Studio to the live app:
 
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"sequence":{"mirrorActors":false,"actorMargin":36,"wrap":true,"width":150}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#FFFFFF","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#FFFFFF","noteBorderColor":"#D6D4CC","noteTextColor":"#1A1A19","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF","textColor":"#1A1A19","titleColor":"#1A1A19","nodeTextColor":"#1A1A19"},"sequence":{"mirrorActors":false,"actorMargin":36,"wrap":true,"width":150}}}%%
 sequenceDiagram
-  participant M as Morgan
-  participant OR as Run orchestrator
-  participant LS as Lyzr Studio
-  participant EV as Egress proxy and vault
-  participant RP as Realtime and preview
-  participant PA as Policy and approvals
-  participant RT as App runtime
+  box rgb(255, 255, 255) People
+    participant M as Morgan
+  end
+  box rgb(240, 234, 250) Approvals
+    participant PA as Policy and approvals
+  end
+  box rgb(230, 245, 246) The cell
+    participant OR as Run orchestrator
+    participant EV as Egress proxy and vault
+    participant RP as Realtime and preview
+    participant RT as App runtime
+  end
+  box rgb(232, 241, 230) Lyzr Studio
+    participant LS as Lyzr Studio
+  end
   %% A white card, so ink lines read on GitHub's dark theme too
   rect rgb(255, 255, 255)
     Note over OR,LS: 8 · Agents into Lyzr Studio
@@ -140,7 +154,7 @@ sequenceDiagram
 
 ### 3.3 Run orchestrator and the Architect agent
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"flowchart":{"curve":"basis","padding":14,"nodeSpacing":36,"rankSpacing":44}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#FFFFFF","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#FFFFFF","noteBorderColor":"#D6D4CC","noteTextColor":"#1A1A19","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF","textColor":"#1A1A19","titleColor":"#1A1A19","nodeTextColor":"#1A1A19"},"flowchart":{"curve":"basis","padding":14,"nodeSpacing":36,"rankSpacing":44}}}%%
 flowchart TB
   %% A white card, so ink lines read on GitHub's dark theme too
   subgraph CARD[" "]
@@ -172,7 +186,18 @@ flowchart TB
     W -. "actions leaving the sandbox" .-> PA
     W -. "state and proofs" .-> ST
   end
-  style CARD fill:#FFFFFF,stroke:#D6D4CC
+  classDef people fill:#FFFFFF,stroke:#D6D4CC,stroke-width:1.5px,color:#1A1A19
+  classDef control fill:#EEEAFB,stroke:#C9BEF2,stroke-width:1.5px,color:#1A1A19
+  classDef cell fill:#E6F5F6,stroke:#A9DCE0,stroke-width:1.5px,color:#1A1A19
+  classDef studio fill:#E8F1E6,stroke:#B7D3B0,stroke-width:1.5px,color:#1A1A19
+  classDef outside fill:#F1F0EC,stroke:#D6D4CC,stroke-width:1.5px,color:#1A1A19
+  classDef approval fill:#F0EAFA,stroke:#6236AD,stroke-width:1.5px,color:#1A1A19
+  class AA,VF,D,T,APP,MG,ST,EG cell
+  class PA approval
+  style W fill:#FFFFFF,stroke:#A9DCE0,stroke-width:1.5px,color:#1A1A19
+  style S fill:#FFFFFF,stroke:#A9DCE0,stroke-width:1.5px,color:#1A1A19
+  style C fill:#FFFFFF,stroke:#A9DCE0,stroke-width:1.5px,color:#1A1A19
+  style CARD fill:#FFFFFF,stroke:#D6D4CC,color:#1A1A19
 ```
 [PNG](diagrams/A3-run-loop.png)
 
@@ -235,12 +260,16 @@ flowchart TB
 
 ### 3.7 Live preview and the preview proxy
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"sequence":{"mirrorActors":false,"actorMargin":36,"wrap":true,"width":150}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#FFFFFF","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#FFFFFF","noteBorderColor":"#D6D4CC","noteTextColor":"#1A1A19","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF","textColor":"#1A1A19","titleColor":"#1A1A19","nodeTextColor":"#1A1A19"},"sequence":{"mirrorActors":false,"actorMargin":36,"wrap":true,"width":150}}}%%
 sequenceDiagram
   autonumber
-  participant B as Browser
-  participant PX as Preview proxy
-  participant SB as Sandbox dev server
+  box rgb(255, 255, 255) People
+    participant B as Browser
+  end
+  box rgb(230, 245, 246) The cell
+    participant PX as Preview proxy
+    participant SB as Sandbox dev server
+  end
   %% A white card, so ink lines read on GitHub's dark theme too
   rect rgb(255, 255, 255)
     B->>PX: Open preview--project.app domain with a one-time code
@@ -277,7 +306,7 @@ sequenceDiagram
 
 ### 3.10 GitHub, the git executor, and users' coding agents
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"flowchart":{"curve":"basis","padding":14,"nodeSpacing":36,"rankSpacing":44}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#FFFFFF","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#FFFFFF","noteBorderColor":"#D6D4CC","noteTextColor":"#1A1A19","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF","textColor":"#1A1A19","titleColor":"#1A1A19","nodeTextColor":"#1A1A19"},"flowchart":{"curve":"basis","padding":14,"nodeSpacing":36,"rankSpacing":44}}}%%
 flowchart TB
   %% A white card, so ink lines read on GitHub's dark theme too
   subgraph CARD[" "]
@@ -293,7 +322,17 @@ flowchart TB
     POL["Governance on: merging to main<br/>needs an Owner or Admin approval"] -.-> MRG
     MRG -- "webhook" --> SYNC["Git executor pulls the merge into the sandbox<br/>and re-runs the affected checks"]
   end
-  style CARD fill:#FFFFFF,stroke:#D6D4CC
+  classDef people fill:#FFFFFF,stroke:#D6D4CC,stroke-width:1.5px,color:#1A1A19
+  classDef control fill:#EEEAFB,stroke:#C9BEF2,stroke-width:1.5px,color:#1A1A19
+  classDef cell fill:#E6F5F6,stroke:#A9DCE0,stroke-width:1.5px,color:#1A1A19
+  classDef studio fill:#E8F1E6,stroke:#B7D3B0,stroke-width:1.5px,color:#1A1A19
+  classDef outside fill:#F1F0EC,stroke:#D6D4CC,stroke-width:1.5px,color:#1A1A19
+  classDef approval fill:#F0EAFA,stroke:#6236AD,stroke-width:1.5px,color:#1A1A19
+  class U people
+  class GE,AN,PL,BLD,SYNC cell
+  class PR,REV,MRG outside
+  class POL approval
+  style CARD fill:#FFFFFF,stroke:#D6D4CC,color:#1A1A19
 ```
 [PNG](diagrams/A7-github-flow.png)
 
@@ -322,7 +361,7 @@ flowchart TB
 
 ## 4. Governance, security and where it runs
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"flowchart":{"curve":"basis","padding":14,"nodeSpacing":36,"rankSpacing":44}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#FFFFFF","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#FFFFFF","noteBorderColor":"#D6D4CC","noteTextColor":"#1A1A19","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF","textColor":"#1A1A19","titleColor":"#1A1A19","nodeTextColor":"#1A1A19"},"flowchart":{"curve":"basis","padding":14,"nodeSpacing":36,"rankSpacing":44}}}%%
 flowchart TB
   %% A white card, so ink lines read on GitHub's dark theme too
   subgraph CARD[" "]
@@ -357,9 +396,24 @@ flowchart TB
     c4 ~~~ d4 ~~~ s4
     M1 ~~~ M2 ~~~ M3 ~~~ M4
   end
-  style CARD fill:#FFFFFF,stroke:#D6D4CC
+  classDef people fill:#FFFFFF,stroke:#D6D4CC,stroke-width:1.5px,color:#1A1A19
+  classDef control fill:#EEEAFB,stroke:#C9BEF2,stroke-width:1.5px,color:#1A1A19
+  classDef cell fill:#E6F5F6,stroke:#A9DCE0,stroke-width:1.5px,color:#1A1A19
+  classDef studio fill:#E8F1E6,stroke:#B7D3B0,stroke-width:1.5px,color:#1A1A19
+  classDef outside fill:#F1F0EC,stroke:#D6D4CC,stroke-width:1.5px,color:#1A1A19
+  classDef approval fill:#F0EAFA,stroke:#6236AD,stroke-width:1.5px,color:#1A1A19
+  class c1,c2,c3,c4 control
+  class d1,d2,d3,d4 cell
+  class s1,s2,s3,s4 studio
+  style M1 fill:#FFFFFF,stroke:#D6D4CC,stroke-width:1.5px,color:#1A1A19
+  style M2 fill:#FFFFFF,stroke:#D6D4CC,stroke-width:1.5px,color:#1A1A19
+  style M3 fill:#FFFFFF,stroke:#D6D4CC,stroke-width:1.5px,color:#1A1A19
+  style M4 fill:#FFFFFF,stroke:#D6D4CC,stroke-width:1.5px,color:#1A1A19
+  style CARD fill:#FFFFFF,stroke:#D6D4CC,color:#1A1A19
 ```
-_The same container images and Helm charts run in every mode. Models: commercial APIs, the customer's own, or self-hosted open-source ones, per policy._ [PNG](diagrams/A5-deployment-modes.png)
+_The same container images and Helm charts in every mode. Models: commercial APIs, the customer's own, or self-hosted, as policy allows._
+
+[PNG](diagrams/A5-deployment-modes.png)
 
 
 | Mode | Control plane | Data plane | Who it's for |
@@ -392,7 +446,7 @@ _The same container images and Helm charts run in every mode. Models: commercial
 
 ## 5. Scaling to thousands of users
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"flowchart":{"curve":"basis","padding":14,"nodeSpacing":36,"rankSpacing":44}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#FFFFFF","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#FFFFFF","noteBorderColor":"#D6D4CC","noteTextColor":"#1A1A19","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF","textColor":"#1A1A19","titleColor":"#1A1A19","nodeTextColor":"#1A1A19"},"flowchart":{"curve":"basis","padding":14,"nodeSpacing":36,"rankSpacing":44}}}%%
 flowchart TB
   %% A white card, so ink lines read on GitHub's dark theme too
   subgraph CARD[" "]
@@ -423,9 +477,22 @@ flowchart TB
     G --> C2
     G --> C3
   end
-  style CARD fill:#FFFFFF,stroke:#D6D4CC
+  classDef people fill:#FFFFFF,stroke:#D6D4CC,stroke-width:1.5px,color:#1A1A19
+  classDef control fill:#EEEAFB,stroke:#C9BEF2,stroke-width:1.5px,color:#1A1A19
+  classDef cell fill:#E6F5F6,stroke:#A9DCE0,stroke-width:1.5px,color:#1A1A19
+  classDef studio fill:#E8F1E6,stroke:#B7D3B0,stroke-width:1.5px,color:#1A1A19
+  classDef outside fill:#F1F0EC,stroke:#D6D4CC,stroke-width:1.5px,color:#1A1A19
+  classDef approval fill:#F0EAFA,stroke:#6236AD,stroke-width:1.5px,color:#1A1A19
+  class G control
+  class w1,s1,r1,w2,s2,r2,w3,s3,r3 cell
+  style C1 fill:#FFFFFF,stroke:#A9DCE0,stroke-width:1.5px,color:#1A1A19
+  style C2 fill:#FFFFFF,stroke:#A9DCE0,stroke-width:1.5px,color:#1A1A19
+  style C3 fill:#FFFFFF,stroke:#A9DCE0,stroke-width:1.5px,color:#1A1A19
+  style CARD fill:#FFFFFF,stroke:#D6D4CC,color:#1A1A19
 ```
-_Each tenant is pinned to one cell, so a busy or failing cell affects only its own tenants (NFR-6). Capacity grows by adding cells._ [PNG](diagrams/A6-scaling-cells.png)
+_Each workspace is pinned to one cell, so a busy or failing cell affects only its own workspaces. Capacity grows by adding cells._
+
+[PNG](diagrams/A6-scaling-cells.png)
 
 
 - **Cells.** The system is split into cells. Each cell has its own workers, sandbox fleet, workflow engine, realtime hub, Postgres and Redis, and serves a set of tenants. Lyzr's control plane (gateway, identity, tenant directory, billing) routes each tenant to its cell. A noisy or failing cell affects only its tenants (NFR-6), and capacity grows by adding cells.
