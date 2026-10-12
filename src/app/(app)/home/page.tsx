@@ -19,7 +19,7 @@ import { displayNameFor, getAppContext } from "@/server/workspace";
 import { HomeComposer } from "./home-composer";
 import { IdeaCards } from "./idea-cards";
 import { PersonalStart } from "./personal-start";
-import { TourCard } from "./tour-card";
+import { TourCard, TourWelcome } from "./tour-card";
 import { LogoMark } from "@/components/ax/logo-mark";
 import { MosaicThumb } from "@/components/ax/MosaicThumb";
 
@@ -59,11 +59,19 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
   const [projects, { options: models, architect, blocked }, pref, tour] = await Promise.all([listProjects(ctx), modelSetupFor(ctx.workspace.id), userOpenInDev(), tourFor(createAdminDb(), ctx)]);
   // Things that need the person first, then the most recently changed.
   const recent = [...projects].sort((a, b) => Number(b.summary.needsYou) - Number(a.summary.needsYou)).slice(0, 3);
+  // The tour (Tour v2): before it's started, a demo visitor's welcome card (its button is the page's one primary) or
+  // everyone else's compact card. Once started, the guide at the bottom left takes over.
+  const welcome = tour && !tour.started && tour.demoVisitor;
 
   return (
     <div className="mx-auto flex w-full max-w-[880px] flex-col gap-9 px-8 pt-14 pb-10 max-sm:px-4 max-sm:pt-8">
       <DemoSetupDone />
+      {welcome && <TourWelcome />}
+      {tour?.started && tour.demoVisitor && (
+        <p className="-mb-5 text-small text-ink-2">You&apos;re in the demo as Morgan, an Owner. This workspace is deleted after 7 days.</p>
+      )}
       <HomeComposer
+        secondarySubmit={Boolean(welcome)}
         signedIn
         firstName={displayNameFor(user).split(" ")[0]}
         startBlockedReason={buildBlockedReason(ctx.role)}
@@ -73,7 +81,7 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
         defaultModel={architect}
       />
 
-      {tour && <TourCard tour={tour} />}
+      {tour && !tour.started && !tour.demoVisitor && <TourCard tour={tour} />}
 
       {ctx.workspace.kind === "personal" && projects.length === 0 && (
         <PersonalStart demoId={ctx.memberships.find((m) => m.role === "owner" && m.kind === "demo")?.workspaceId ?? null} />

@@ -291,6 +291,23 @@ From the M5.8 review notes (not in the repo). No migration: everything new is st
 | Tour | None | A card on Home in the demo workspace: write a plan (prefilled with a Gmail prompt, so step 3 has a blocker), build, connect the app, approve the waiting Live deploy as an Admin, then Governance and the audit log. A step is done when you do it (read from your own product events); dismissing is saved per person | U2 |
 | Analytics | None | Vercel Analytics (page views) plus `analytics_events` in our own database: plan written, build started, blocker resolved, launch, view as role, tour step, demo reset, and demo started (added: did reviewers use the demo link?). Insert-only from the server, unreadable through the API; `docs/analytics.sql` reads it | For us only; no in-app card |
 
+## M6: Tour v2 (12 Oct 2026)
+
+**Guide, don't drive: once started, the tour stays on screen on every app page, never as a modal, and never over a control.**
+
+| Area | Before | We did | Why |
+|---|---|---|---|
+| Where it shows | A card on Home only | Once started, a guide at the bottom left of every app page: "Tour · 2 of 5 · Next: Fix a blocker →". Its text opens the five steps; the arrow goes to the next one | Leaving Home lost the thread |
+| Where the guide sits | | In the page's own flow: the side nav (above Credits), the Parts pane's foot, or a dot in the Parts rail. On a phone, in the solid bottom bar beside Help; on Project settings and Import, the bottom-left corner | A floating pill covers whatever scrolls under it |
+| Starting | The card was the only way in | A demo visitor gets a welcome card above the composer ("You're in the demo as Morgan, an Owner. This workspace is deleted after 7 days."); its Start the tour is the page's one primary, so Write the plan is secondary until then. Everyone else gets a compact card under the composer | The first two minutes decide whether a reviewer explores |
+| × | Hid the tour for good | Minimises it: the card to the guide (`tour_minimised`, detail `card`), the guide to a dot (`guide`), saved per person. "Don't show again" is in the steps; Take the tour in Resources and ⌘K brings it back | Hiding by accident had no way back |
+| Progress | Ticks only on Home | "Step 2 done · Next: fix a blocker", with a button to go there, once per step | Feedback where the step happens |
+| The end | The card disappeared | A finish card: "You've seen the whole story", the video (once published), the README and the architecture, Explore on your own, and Reset demo data for the Owner. Closing it ends the tour (`tour_finished`) | A tour needs an ending and a next step |
+| Hints | None | One per step, pointing at Build, the waiting part's Connect, Approve on the Live request, and the audit log. It goes once the step is done, the control is clicked, or "Got it" | Recognition over recall |
+| Which steps count | Any workspace | Only steps done in the current workspace | A plan written elsewhere isn't this demo's story |
+| Copy | "A Live deploy waits for an Admin. You're one" | "Live waits for an Owner or Admin. You're the Owner: approve it yourself." | The demo user is an Owner; "deploy" isn't in the word list |
+| Events | | Migration 0026 adds `tour_minimised` and `tour_finished` to `analytics_events` | The analytics query shows where people leave the tour |
+
 ## Numbers we set, and how we picked them
 
 | Number | Value | How we picked it |

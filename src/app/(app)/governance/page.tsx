@@ -41,7 +41,7 @@ export default async function GovernancePage({ searchParams }: PageProps<"/gover
   const section = SECTIONS.includes(sp.section as Section) ? (sp.section as Section) : "location";
   // The tour's last step (M5.10) is done once Governance has been seen.
   after(async () => {
-    if (!(await tourDone(admin, ctx.user.id)).includes("governance")) await track("tour_step", { user: ctx.user, workspaceId: ctx.workspace.id, detail: "governance_seen" });
+    if (!(await tourDone(admin, ctx.user.id, ctx.workspace.id)).includes("governance")) await track("tour_step", { user: ctx.user, workspaceId: ctx.workspace.id, detail: "governance_seen" });
   });
   return (
     <GovernanceView

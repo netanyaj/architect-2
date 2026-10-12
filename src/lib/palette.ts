@@ -14,6 +14,8 @@ export type PaletteItem = {
   fill?: string;
   disabled?: boolean;
   keywords?: string;
+  /** Take the tour: puts the guide back on screen. */
+  tour?: boolean;
 };
 
 const PAGES: { label: string; href: string; admin?: boolean; keywords?: string }[] = [
@@ -38,7 +40,7 @@ function matches(item: PaletteItem, words: string[]): boolean {
   return words.every((w) => hay.includes(w));
 }
 
-export function paletteResults(index: SearchIndex, query: string, opts: { projectId: string | null }): PaletteItem[] {
+export function paletteResults(index: SearchIndex, query: string, opts: { projectId: string | null; tourAvailable?: boolean }): PaletteItem[] {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   const items: PaletteItem[] = [];
   if (index.canBuild) items.push({ id: "a-new", group: "Actions", label: "New project", hint: "Describe it on Home", href: "/home", keywords: "create start plan" });
@@ -49,6 +51,11 @@ export function paletteResults(index: SearchIndex, query: string, opts: { projec
       : { id: "a-viewer", group: "Actions", label: "View as Viewer", hint: "Open a project first", disabled: true, keywords: "role preview" },
   );
   if (index.workspaces.length > 1) items.push({ id: "a-switch", group: "Actions", label: "Switch workspace", hint: `${index.workspaces.length - 1} more`, keywords: "workspace change", fill: "switch to " });
+  items.push(
+    opts.tourAvailable
+      ? { id: "a-tour", group: "Actions", label: "Take the tour", hint: "Five steps, about 5 minutes", tour: true, keywords: "guide walkthrough help start demo" }
+      : { id: "a-tour", group: "Actions", label: "Take the tour", hint: "In a team workspace, like Acme Ops", disabled: true, keywords: "guide walkthrough help start demo" },
+  );
   for (const p of index.projects) items.push({ id: `p-${p.id}`, group: "Projects", label: p.name, hint: p.status === "draft" ? "Plan" : p.status === "live" ? "Live" : "Built", href: `/p/${p.id}`, keywords: "project app" });
   for (const a of index.agents) items.push({ id: `g-${a.id}`, group: "Agents", label: a.name, hint: a.projectName, href: `/p/${a.projectId}?view=agents`, keywords: "agent" });
   for (const c of index.connections) items.push({ id: `c-${c.provider}`, group: "Connections", label: c.name, hint: c.connected ? "Connected" : "Not connected", href: "/connections", keywords: "connection app" });

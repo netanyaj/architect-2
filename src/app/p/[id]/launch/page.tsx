@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { HelpHost } from "@/components/ax/help-host";
 import { HelpLauncher } from "@/components/ax/help-launcher";
+import { TourHost } from "@/components/ax/tour-host";
 import { ToastHost } from "@/components/ax/toast";
 import { getProjectWorkspace, viewingAs } from "@/server/project";
 import { getHelpContext, getNavData } from "@/server/queries";
@@ -25,12 +26,12 @@ export default async function LaunchPage({ params, searchParams }: PageProps<"/p
   // isn't built yet; sharing and going live wait for it (M5.5 review: the Launch button is navigation).
   if (!project.plan?.agreedAt) redirect(`/p/${project.id}`);
   return (
-    <>
+    <TourHost>
       <Workspace project={viewingAs(project, as)} page="launch" />
       <HelpHost context={help} />
       <HelpLauncher projectId={project.id} />
       <ToastHost />
       <CommandPalette />
-    </>
+    </TourHost>
   );
 }

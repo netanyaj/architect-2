@@ -770,7 +770,7 @@ function AuditView({ entries }: { entries: AuditEntry[] }) {
         </Button>
       }
     >
-      <DetailHead kicker={<>Audit log <SimTag title="The log is real; the runs and deploys it records are simulated." /></>} title="Everything that happened">
+      <DetailHead data-tour-hint="governance" kicker={<>Audit log <SimTag title="The log is real; the runs and deploys it records are simulated." /></>} title="Everything that happened">
         Every run, change, approval, policy change and deploy, newest first: the latest {entries.length}.
       </DetailHead>
       <div className="flex flex-wrap items-end gap-2.5">

@@ -8,6 +8,7 @@ import { RELEASE_NOTES } from "@/lib/release-notes";
 import { applyTheme } from "@/lib/theme-choice";
 import { setTheme } from "@/server/actions/projects";
 import { Icon, type IconName } from "./icon";
+import { useTourGuide } from "./tour-guide";
 
 const item = "flex min-h-10 items-center gap-2.5 rounded-tile px-2.5";
 type ThemeChoice = "system" | "light" | "dark";
@@ -21,7 +22,7 @@ export const RESOURCES = {
 };
 
 /**
- * Resources (M5.8), the icon button beside the account chip: Documentation, Join Discord, Keyboard shortcuts, Trash
+ * Resources (M5.8), the icon button beside the account chip: Take the tour, Documentation, Join Discord, Keyboard shortcuts, Trash
  * (with its count), the three latest release notes and View all, and a footer with Theme (System → Light → Dark).
  * Getting help (ask, Contact support) is the Help button's job, not this menu's.
  */
@@ -30,6 +31,7 @@ export function ResourcesMenu({ theme, trashCount, canSeeTrash }: { theme: Theme
   const [, start] = useTransition();
   const [shownTheme, setShownTheme] = useState(theme);
   const [shortcuts, setShortcuts] = useState(false);
+  const guide = useTourGuide();
   const cycleTheme = () => {
     const t = NEXT_THEME[shownTheme];
     setShownTheme(t);
@@ -47,6 +49,15 @@ export function ResourcesMenu({ theme, trashCount, canSeeTrash }: { theme: Theme
           {trashCount > 0 && <span className="absolute top-2 right-2 size-1.5 rounded-full bg-ink-2" aria-hidden="true" />}
         </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="end" collisionPadding={12} className="w-[284px] rounded-card border border-line bg-surface p-1.5 shadow-pop">
+          <DropdownMenuItem
+            className={item}
+            disabled={!guide.available}
+            title={guide.available ? undefined : "The tour runs in a team workspace, like Acme Ops."}
+            onSelect={() => start(() => guide.take())}
+          >
+            <Icon name="sparkle" size="sm" className="text-ink-2" />
+            Take the tour
+          </DropdownMenuItem>
           <DropdownMenuItem className={item} onSelect={() => window.open(RESOURCES.docs, "_blank", "noopener")}>
             <Icon name="book" size="sm" className="text-ink-2" />
             <span className="flex-1">Documentation</span>

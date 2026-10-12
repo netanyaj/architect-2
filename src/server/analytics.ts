@@ -7,7 +7,7 @@ import { createAdminDb } from "./db";
  * First-party product events (M5.10), for us only: did reviewers use the features? Insert-only with the service role;
  * nobody reads them through the API (docs/analytics.sql reads them in Supabase). Never prompt text, names or emails.
  */
-export type AnalyticsEvent = "plan_written" | "build_started" | "blocker_resolved" | "launch" | "view_as_role" | "tour_step" | "demo_reset" | "demo_started";
+export type AnalyticsEvent = "plan_written" | "build_started" | "blocker_resolved" | "launch" | "view_as_role" | "tour_step" | "tour_minimised" | "tour_finished" | "demo_reset" | "demo_started";
 
 export function isDemoUser(user: Pick<User, "is_anonymous"> | null | undefined): boolean {
   return Boolean(user?.is_anonymous);

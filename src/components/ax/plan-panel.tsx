@@ -13,6 +13,7 @@ export function PlanPanel({
   progress,
   collapsed = false,
   onToggleCollapsed,
+  footer,
   children,
 }: {
   title?: string;
@@ -23,6 +24,8 @@ export function PlanPanel({
   progress?: { value: number; label: string };
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
+  /** Under the parts, outside their scroll (the tour guide). */
+  footer?: ReactNode;
   children?: ReactNode;
 }) {
   if (collapsed) {
@@ -71,6 +74,7 @@ export function PlanPanel({
         )}
       </div>
       <div className="min-h-0 flex-1 overflow-auto pb-1">{children}</div>
+      {footer}
     </aside>
   );
 }

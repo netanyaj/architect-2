@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { HelpHost } from "@/components/ax/help-host";
 import { HelpLauncher } from "@/components/ax/help-launcher";
+import { TourHost } from "@/components/ax/tour-host";
 import { ToastHost } from "@/components/ax/toast";
 import { canBuild } from "@/lib/permissions";
 import { createServerDb } from "@/server/db";
@@ -46,12 +47,12 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   const shown = viewingAs(project, as);
   if (shown.viewingAs) after(() => track("view_as_role", { user: ctx.user, workspaceId: ctx.workspace.id, projectId: project.id, detail: shown.viewingAs!.role }));
   return (
-    <>
+    <TourHost>
       <Workspace project={shown} />
       <HelpHost context={help} />
       <HelpLauncher projectId={project.id} />
       <ToastHost />
       <CommandPalette />
-    </>
+    </TourHost>
   );
 }

@@ -9,6 +9,7 @@ import { useUi } from "@/lib/ui-store";
 import { cn } from "@/lib/utils";
 import { switchWorkspace } from "@/server/actions/members";
 import { searchIndex, type SearchIndex } from "@/server/actions/search";
+import { useTourGuide } from "./tour-guide";
 
 const ICON: Record<PaletteItem["group"], IconName> = {
   Actions: "sparkle",
@@ -34,6 +35,7 @@ export function CommandPalette() {
   const [error, setError] = useState<string>();
   const listId = useId();
   const list = useRef<HTMLDivElement>(null);
+  const guide = useTourGuide();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -59,7 +61,7 @@ export function CommandPalette() {
   }, [open]);
 
   const projectId = /^\/p\/([0-9a-f-]{36})/.exec(pathname)?.[1] ?? null;
-  const results = useMemo(() => (index ? paletteResults(index, query, { projectId }) : []), [index, query, projectId]);
+  const results = useMemo(() => (index ? paletteResults(index, query, { projectId, tourAvailable: guide.available }) : []), [index, query, projectId, guide.available]);
   const close = () => {
     setOpen(false);
     setQuery("");
@@ -71,6 +73,11 @@ export function CommandPalette() {
     if (item.fill) {
       setQuery(item.fill);
       setActive(0);
+      return;
+    }
+    if (item.tour) {
+      close();
+      await guide.take();
       return;
     }
     if (item.workspaceId) {

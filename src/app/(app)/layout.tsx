@@ -10,6 +10,7 @@ import { getHelpContext, getNavData } from "@/server/queries";
 import { userTheme } from "@/server/theme";
 import { getAppContext } from "@/server/workspace";
 import { CommandPalette } from "@/components/ax/command-palette";
+import { TourHost } from "@/components/ax/tour-host";
 
 /** Pages outside a project: the tray side nav plus the white main surface. */
 export default async function AppLayout({ children }: LayoutProps<"/">) {
@@ -30,6 +31,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   // The bottom strip (pb-[64px]) keeps the Help button's corner clear, so it never covers a page's own buttons. On a phone,
   // Help sits in its own bar instead (HelpLauncher).
   return (
+    <TourHost>
     <div className="flex min-h-dvh gap-2.5 bg-canvas p-2.5 pb-[64px] max-md:flex-col max-md:pb-2.5">
       <SideNav
         workspaceName={ctx.workspace.name}
@@ -61,5 +63,6 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       <ToastHost />
       <CommandPalette />
     </div>
+    </TourHost>
   );
 }

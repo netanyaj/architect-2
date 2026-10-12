@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { HelpHost } from "@/components/ax/help-host";
 import { HelpLauncher } from "@/components/ax/help-launcher";
+import { TourHost } from "@/components/ax/tour-host";
 import { createServerDb } from "@/server/db";
 import { getHelpContext } from "@/server/queries";
 import { importPageData } from "@/server/import";
@@ -36,10 +37,10 @@ export default async function ImportPage({ searchParams }: PageProps<"/import">)
     if (legacy?.legacy_repo && !legacy.moved_to && legacy.workspace_id === ctx.workspace.id) move = { projectId: legacy.id, name: legacy.name, repo: legacy.legacy_repo };
   }
   return (
-    <>
+    <TourHost corner>
       <ImportFlow data={data} notice={notice} move={move} />
       <HelpHost context={await getHelpContext(ctx)} />
       <HelpLauncher />
-    </>
+    </TourHost>
   );
 }

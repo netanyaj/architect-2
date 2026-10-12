@@ -1,78 +1,73 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { buttonClasses, IconButton } from "@/components/ax/button";
-import { Icon } from "@/components/ax/icon";
-import { nextStep, TOUR_COPY, TOUR_STEPS, type TourView } from "@/lib/tour";
+import { useTourGuide } from "@/components/ax/tour-guide";
+import { TOUR_STEPS, type TourView } from "@/lib/tour";
 import { cn } from "@/lib/utils";
-import { dismissTour, openTourStep } from "@/server/actions/tour";
+import { minimiseTour } from "@/server/actions/tour";
 
-/** The guided tour (M5.10): five steps that deep-link, done as you do them. Dismissible; progress is saved. */
-export function TourCard({ tour }: { tour: TourView }) {
+/*
+ * The tour on Home (M5.10, v2 in M6), before it's started. A demo visitor gets a welcome card above the composer, whose
+ * Start the tour is the page's one primary. Everyone else gets a compact card under the composer. × puts the tour
+ * away to the guide at the bottom left (it doesn't hide it for good: that's "Don't show again", in the guide).
+ */
+
+function useCardActions() {
   const router = useRouter();
+  const { start: startTour, reload } = useTourGuide();
   const [pending, start] = useTransition();
-  const next = nextStep(tour.done);
+  return {
+    pending,
+    begin: () => start(() => startTour()),
+    putAway: () =>
+      start(async () => {
+        const r = await minimiseTour("card");
+        if (!r.ok) return;
+        await reload();
+        router.refresh();
+      }),
+  };
+}
+
+/** A demo visitor's welcome, above the composer. */
+export function TourWelcome() {
+  const { pending, begin, putAway } = useCardActions();
   return (
-    <section aria-labelledby="tour" className="flex flex-col gap-3 rounded-card border border-line bg-surface p-5">
+    <section aria-labelledby="tour" className="flex flex-col gap-3 rounded-card border border-line-ctl bg-tray p-5">
       <div className="flex items-start gap-3">
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
           <h2 id="tour" className="text-sub font-semibold">
-            Take the tour · {tour.done.length} of {TOUR_STEPS.length}
+            Take the tour
           </h2>
-          <p className="text-ink-2">
-            The whole story in five steps, about 5 minutes.
-            {tour.demoVisitor && " You're in the demo as Morgan, an Owner. This workspace is deleted after 7 days."}
-          </p>
+          <p>You&apos;re in the demo as Morgan, an Owner. This workspace is deleted after 7 days.</p>
+          <p className="text-ink-2">The tour shows the whole story in five steps, about 5 minutes: a plan, a build, a blocker, a launch, and the audit log.</p>
         </div>
-        <IconButton
-          icon="close"
-          label="Hide the tour"
-          quiet
-          size={32}
-          aria-disabled={pending || undefined}
-          onClick={() =>
-            start(async () => {
-              const r = await dismissTour();
-              if (r.ok) router.refresh();
-            })
-          }
-        />
+        <IconButton icon="close" label="Minimise the tour" quiet size={32} aria-disabled={pending || undefined} onClick={putAway} />
       </div>
-      <ol className="flex flex-col">
-        {TOUR_STEPS.map((s, i) => {
-          const done = tour.done.includes(s);
-          const isNext = s === next;
-          return (
-            <li key={s} className="flex items-center gap-3 border-b border-line py-2.5 last:border-b-0">
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "grid size-6 flex-none place-items-center rounded-full text-small font-semibold",
-                  done ? "bg-works-bg text-works" : isNext ? "bg-primary text-on-primary" : "bg-selected text-ink-2",
-                )}
-              >
-                {done ? <Icon name="check" size="sm" /> : i + 1}
-              </span>
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className={cn("font-semibold", done && "text-ink-2")}>
-                  {TOUR_COPY[s].title}
-                  {done && <span className="sr-only"> · done</span>}
-                </span>
-                <span className="text-small text-ink-2">{TOUR_COPY[s].line}</span>
-              </div>
-              <Link
-                href={tour.links[s]}
-                onClick={() => void openTourStep(s)}
-                className={isNext ? buttonClasses({ size: "sm" }) : "min-h-6 flex-none text-small font-semibold text-ink underline decoration-line-ctl underline-offset-[3px]"}
-              >
-                {isNext ? TOUR_COPY[s].action : done ? "Again" : "Open"}
-              </Link>
-            </li>
-          );
-        })}
-      </ol>
+      <button type="button" aria-disabled={pending || undefined} onClick={begin} className={cn(buttonClasses({ variant: "primary" }), "self-start")}>
+        {pending ? "Starting…" : "Start the tour"}
+      </button>
+    </section>
+  );
+}
+
+/** Everyone else: a compact card under the composer. */
+export function TourCard({ tour }: { tour: TourView }) {
+  const { pending, begin, putAway } = useCardActions();
+  return (
+    <section aria-labelledby="tour" className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-card border border-line bg-surface py-3 pr-3 pl-5">
+      <div className="flex min-w-[220px] flex-1 flex-col">
+        <h2 id="tour" className="font-semibold">
+          Take the tour · {tour.done.length} of {TOUR_STEPS.length}
+        </h2>
+        <p className="text-small text-ink-2">The whole story in five steps, about 5 minutes.</p>
+      </div>
+      <button type="button" aria-disabled={pending || undefined} onClick={begin} className={buttonClasses({ size: "sm" })}>
+        {pending ? "Starting…" : tour.done.length ? "Carry on" : "Start the tour"}
+      </button>
+      <IconButton icon="close" label="Minimise the tour" quiet size={32} aria-disabled={pending || undefined} onClick={putAway} />
     </section>
   );
 }

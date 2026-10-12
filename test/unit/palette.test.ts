@@ -22,8 +22,13 @@ describe("command palette", () => {
   it("with nothing typed: the actions first, then projects and pages", () => {
     const r = paletteResults(index, "", { projectId: null });
     expect([...new Set(r.map((i) => i.group))]).toEqual(["Actions", "Projects", "Pages"]);
-    expect(r.filter((i) => i.group === "Actions").map((i) => i.label)).toEqual(["New project", "Open Trash", "View as Viewer", "Switch workspace"]);
+    expect(r.filter((i) => i.group === "Actions").map((i) => i.label)).toEqual(["New project", "Open Trash", "View as Viewer", "Switch workspace", "Take the tour"]);
     expect(r.find((i) => i.label === "View as Viewer")).toMatchObject({ disabled: true, hint: "Open a project first" });
+  });
+
+  it("Take the tour: runs in a team workspace, and says where otherwise", () => {
+    expect(paletteResults(index, "tour", { projectId: null, tourAvailable: true })[0]).toMatchObject({ label: "Take the tour", tour: true });
+    expect(paletteResults(index, "tour", { projectId: null, tourAvailable: false })[0]).toMatchObject({ disabled: true, hint: "In a team workspace, like Acme Ops" });
   });
 
   it("finds projects, agents, connections and pages by any words, grouped", () => {

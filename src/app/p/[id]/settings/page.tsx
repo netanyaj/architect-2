@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HelpHost } from "@/components/ax/help-host";
 import { HelpLauncher } from "@/components/ax/help-launcher";
+import { TourHost } from "@/components/ax/tour-host";
 import { Icon } from "@/components/ax/icon";
 import { getHelpContext } from "@/server/queries";
 import { canBuild, canManageMembers } from "@/lib/permissions";
@@ -36,6 +37,7 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[id]
   const when = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   const rows: TokenRow[] = (tokens ?? []).map((t) => ({ id: t.id, name: t.name, scopes: t.scopes, last4: t.last4, status: t.status as TokenRow["status"], createdAt: t.created_at, rejected: t.approvals?.status === "rejected" && t.approvals.decided_by_name ? { by: t.approvals.decided_by_name, reason: t.approvals.reason } : null }));
   return (
+    <TourHost corner>
     <div className="min-h-dvh bg-canvas p-2.5 pb-[64px] max-md:pb-2.5">
       <header className="flex min-h-[66px] items-center gap-3 px-1 py-2">
         <Link href={`/p/${project.id}`} aria-label={`Back to ${project.name}`} className="grid size-[38px] place-items-center rounded-full hover:bg-selected">
@@ -105,5 +107,6 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[id]
       <HelpHost context={await getHelpContext(ctx)} />
       <HelpLauncher projectId={project.id} />
     </div>
+    </TourHost>
   );
 }

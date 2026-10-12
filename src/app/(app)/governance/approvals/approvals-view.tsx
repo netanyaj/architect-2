@@ -247,7 +247,14 @@ function Detail({ request: r, onDecided }: { request: Request; onDecided: (note:
       {waiting && (
         <div className="flex flex-wrap items-center gap-2 border-t border-line px-6 py-3.5 max-sm:px-4">
           {r.actions.map((a, i) => (
-            <Button key={a.scope} variant={i === 0 ? "primary" : "secondary"} title={a.consequence} disabledReason={busy} onClick={() => act("approve", a.scope)}>
+            <Button
+              key={a.scope}
+              data-tour-hint={i === 0 && r.kind === "deploy" ? "launch" : undefined}
+              variant={i === 0 ? "primary" : "secondary"}
+              title={a.consequence}
+              disabledReason={busy}
+              onClick={() => act("approve", a.scope)}
+            >
               {a.label}
             </Button>
           ))}

@@ -63,6 +63,7 @@ import { fromStreamed, GROUP_LABEL, GROUP_ORDER, PlanDocument } from "./plan-doc
 import { usePlanWriter } from "./use-plan-writer";
 import { savePane } from "@/server/actions/preferences";
 import { DevPanel } from "./dev-panel";
+import { TourGuide } from "@/components/ax/tour-guide";
 
 type View = "app" | "agents" | "data" | "files" | "code" | "terminal";
 const VIEWS: View[] = ["app", "agents", "data", "files"];
@@ -161,10 +162,11 @@ function StageBody({
   );
 }
 
-function Rail({ label, icon, onOpen }: { label: string; icon: "panelLeft" | "panelRight"; onOpen: () => void }) {
+function Rail({ label, icon, onOpen, children }: { label: string; icon: "panelLeft" | "panelRight"; onOpen: () => void; children?: ReactNode }) {
   return (
     <aside aria-label={label} className="flex w-14 flex-none flex-col items-center rounded-pane border border-line bg-tray py-3 shadow-pane max-md:hidden">
       <IconButton icon={icon} label={`Open ${label.toLowerCase()}`} quiet onClick={onOpen} />
+      {children}
     </aside>
   );
 }
@@ -641,6 +643,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
           : undefined
       }
       onToggleCollapsed={() => setPlanOpen(false)}
+      footer={<TourGuide placement="pane" />}
     >
       {planStage ? (
         <PlanStagePanel project={project} items={streamedItems} writing={writing} failed={failed} />
@@ -651,7 +654,9 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
       )}
     </PlanPanel>
   ) : (
-    <Rail label="Parts" icon="panelLeft" onOpen={() => setPlanOpen(true)} />
+    <Rail label="Parts" icon="panelLeft" onOpen={() => setPlanOpen(true)}>
+      <TourGuide placement="rail" />
+    </Rail>
   );
 
   return (
@@ -736,6 +741,8 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
           <MoreMenu project={project} items={items} canAct={canAct} dev={dev} onToggleDev={toggleDev} onTransfer={() => setTransferOpen(true)} onDelete={() => setDeleteOpen(true)} />
           {state.action.beside && <span className="max-w-[190px] text-right text-small leading-tight text-ink-2 max-md:hidden">{state.action.beside}</span>}
           <Button
+            // The tour's Build hint points here, while the stage action is Build.
+            data-tour-hint={planStage ? "build" : undefined}
             // The stage action is the primary only when nothing on screen needs the person first (BUILD-SPEC section 2).
             variant={
               (view === "agents" && !onLaunch && (agentOpen || agentsWaiting))

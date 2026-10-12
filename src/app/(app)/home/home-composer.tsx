@@ -32,6 +32,7 @@ export function HomeComposer({
   models,
   defaultModel = DEFAULT_MODEL,
   blockedModels = [],
+  secondarySubmit = false,
 }: {
   signedIn: boolean;
   firstName?: string;
@@ -45,6 +46,8 @@ export function HomeComposer({
   blockedModels?: ModelOption[];
   /** The model Auto uses (M5.8): the policy's Architect model (C-2), else Gemini. */
   defaultModel?: ModelChoice;
+  /** A demo visitor who hasn't started the tour: Start the tour is the page's one primary, so Write the plan steps back. */
+  secondarySubmit?: boolean;
 }) {
   const router = useRouter();
   const { prompt, setPrompt, templatesOpen, setTemplatesOpen } = useHomePrompt();
@@ -149,6 +152,7 @@ export function HomeComposer({
       <div className="flex flex-col gap-2">
         <Composer
           variant="home"
+          secondarySubmit={secondarySubmit}
           value={prompt}
           onChange={setPrompt}
           onSubmit={submit}

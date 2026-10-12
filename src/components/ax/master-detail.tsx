@@ -92,9 +92,9 @@ export function DetailBody({ children, footer }: { children: ReactNode; footer?:
 }
 
 /** The detail's heading: a small line above (kind, rule), the title, and one sentence. */
-export function DetailHead({ kicker, title, children }: { kicker: ReactNode; title: string; children?: ReactNode }) {
+export function DetailHead({ kicker, title, children, "data-tour-hint": hint }: { kicker: ReactNode; title: string; children?: ReactNode; "data-tour-hint"?: string }) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div data-tour-hint={hint} className="flex flex-col gap-1.5">
       <span className="flex flex-wrap items-center gap-2 text-small font-semibold text-ink-2">{kicker}</span>
       <h2 className="text-title font-[650]">{title}</h2>
       {children && <div className="text-ink-2">{children}</div>}

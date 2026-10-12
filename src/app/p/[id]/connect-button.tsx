@@ -42,7 +42,7 @@ export function ConnectButton({
   const scope = provider && policy?.governance ? policy.scopes[provider] : undefined;
   return (
     <>
-      <Button variant={variant} size={size} disabledReason={disabledReason ?? policy?.connectRefusal ?? undefined} onClick={() => setOpen(true)}>
+      <Button data-tour-hint="blocker" variant={variant} size={size} disabledReason={disabledReason ?? policy?.connectRefusal ?? undefined} onClick={() => setOpen(true)}>
         {label ?? `Connect ${providerAccount(provider)}`}
       </Button>
       {!disabledReason && policy?.connectRefusal && <span className="text-small text-ink-2">{policy.connectRefusal}</span>}

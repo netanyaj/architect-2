@@ -1,6 +1,7 @@
 -- Usage per person (M5.10). Run in Supabase › SQL Editor. Reads analytics_events, which nobody can read through the API.
 -- One row per person: their first and last event, demo or not, and how far into the story they got.
--- Events: plan_written, build_started, blocker_resolved, launch, view_as_role, tour_step, demo_reset, demo_started.
+-- Events: plan_written, build_started, blocker_resolved, launch, view_as_role, tour_step, tour_minimised, tour_finished,
+-- demo_reset, demo_started.
 -- No personal content is stored: users are ids (anonymous demo users included), details are short labels.
 
 select
@@ -14,6 +15,8 @@ select
   count(*) filter (where e.event = 'launch')                             as launches,
   count(*) filter (where e.event = 'view_as_role')                       as viewed_as_role,
   count(distinct e.detail) filter (where e.event = 'tour_step')          as tour_steps_opened,
+  count(*) filter (where e.event = 'tour_minimised')                     as tour_minimised,
+  bool_or(e.event = 'tour_finished')                                     as tour_finished,
   count(*) filter (where e.event = 'demo_reset')                         as demo_resets,
   -- The three success metrics (README): time to first plan, plans built, blockers resolved before Launch.
   extract(epoch from (min(e.created_at) filter (where e.event = 'plan_written') - min(e.created_at))) / 60

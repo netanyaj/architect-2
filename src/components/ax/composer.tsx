@@ -24,6 +24,7 @@ export function Composer({
   submitDisabledReason,
   pending = false,
   label = "Describe what to build",
+  secondarySubmit = false,
   className,
 }: {
   variant: "home" | "chat";
@@ -44,6 +45,8 @@ export function Composer({
   submitDisabledReason?: string;
   pending?: boolean;
   label?: string;
+  /** Home only: Send as a secondary button, when something else on the page is the one primary (the demo's tour card). */
+  secondarySubmit?: boolean;
   className?: string;
 }) {
   const id = useId();
@@ -110,8 +113,10 @@ export function Composer({
             aria-disabled={blockedReason || pending ? true : undefined}
             title={blockedReason}
             className={cn(
-              "inline-flex min-h-[38px] items-center gap-[7px] rounded-full border border-primary bg-primary px-4 font-semibold text-on-primary",
-              (blockedReason || pending) && "cursor-not-allowed border-primary-disabled bg-primary-disabled",
+              "inline-flex min-h-[38px] items-center gap-[7px] rounded-full border px-4 font-semibold",
+              secondarySubmit
+                ? cn("border-transparent bg-(--btn) text-ink hover:bg-(--btn-hover)", (blockedReason || pending) && "cursor-not-allowed text-ink-3 hover:bg-(--btn)")
+                : cn("border-primary bg-primary text-on-primary", (blockedReason || pending) && "cursor-not-allowed border-primary-disabled bg-primary-disabled"),
             )}
           >
             {pending ? "Writing…" : submitLabel}

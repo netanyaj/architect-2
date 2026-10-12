@@ -25,7 +25,7 @@ test.describe("M5.10: fixes before M6", () => {
     if (user) await deleteTestUser(user);
   });
 
-  test("Try the demo: an anonymous visitor gets their own seeded workspace and the tour; the tour can be hidden", async ({ page }) => {
+  test("Try the demo: an anonymous visitor gets their own seeded workspace and a welcome card that starts the tour", async ({ page }) => {
     const started = new Date().toISOString();
     await page.goto("/login");
     await page.getByRole("button", { name: "Try the demo" }).click();
@@ -33,18 +33,19 @@ test.describe("M5.10: fixes before M6", () => {
     await expect(page.getByRole("status").filter({ hasText: "Setting up your demo workspace…" })).toBeVisible();
     await page.waitForURL(/\/home/, { timeout: 60_000 }).catch(() => {});
     test.skip(page.url().includes("/login"), "Anonymous sign-ins aren't turned on in Supabase yet.");
+    // Tour v2: a welcome card above the composer, whose Start the tour is the page's one primary.
     const tour = page.getByRole("region", { name: /^Take the tour/ });
-    await expect(tour).toContainText("Take the tour · 0 of 5");
-    await expect(tour).toContainText("You're in the demo as Morgan");
-    // Step 1 opens Home with the tour's prompt filled in (it uses Gmail, so step 3 has a blocker).
-    await tour.getByRole("link", { name: "Write it" }).click();
+    await expect(tour).toContainText("You're in the demo as Morgan, an Owner. This workspace is deleted after 7 days.");
+    await expect(tour.getByRole("button", { name: "Start the tour" })).toHaveClass(/bg-primary/);
+    await expect(page.getByRole("button", { name: /^Write the plan/ })).not.toHaveClass(/bg-primary/);
+    // Starting goes to step 1: Home with the tour's prompt filled in (it uses Gmail, so step 3 has a blocker).
+    await tour.getByRole("button", { name: "Start the tour" }).click();
     await page.waitForURL(/\/home\?tour=plan/);
     await expect(page.getByLabel("Describe your app")).toHaveValue(/Gmail/);
-    // Hidden for good, per person.
-    await page.getByRole("button", { name: "Hide the tour" }).click();
     await expect(page.getByRole("region", { name: /^Take the tour/ })).toHaveCount(0);
-    await page.reload();
-    await expect(page.getByRole("region", { name: /^Take the tour/ })).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "Tour" })).toContainText("Tour · 0 of 5");
+    await expect(page.getByRole("button", { name: /^Write the plan/ })).toHaveClass(/bg-primary/);
+    await expect(page.getByText("You're in the demo as Morgan, an Owner.")).toBeVisible();
 
     // Recorded as a demo user, and cleaned up here (the daily cron does it after 7 days).
     const db = adminDb();
