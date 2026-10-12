@@ -113,13 +113,13 @@ export async function signOut() {
 }
 
 /**
- * Try the demo (M5.10): an anonymous Supabase session with its own seeded Acme Ops workspace, signed in as Priya.
+ * Try the demo (M5.10): an anonymous Supabase session with its own seeded Acme Ops workspace, signed in as Morgan.
  * The sign-in page links here now; M6's landing page reuses it. Demo visitors write up to 5 plans a day, and the
  * daily cron deletes them and their workspaces after 7 days.
  */
 export async function startDemo() {
   const db = await createServerDb();
-  const { data, error } = await db.auth.signInAnonymously({ options: { data: { full_name: "Priya Shah" } } });
+  const { data, error } = await db.auth.signInAnonymously({ options: { data: { full_name: "Morgan Lee" } } });
   if (error || !data.user) redirect(`/login?error=${encodeURIComponent(await friendlyAuthError(error?.message ?? "", error?.code))}`);
   const workspaceId = await ensureWorkspace(createAdminDb(), data.user);
   (await cookies()).set(WORKSPACE_COOKIE, workspaceId, { path: "/", sameSite: "lax", httpOnly: true, maxAge: 60 * 60 * 24 * 7 });

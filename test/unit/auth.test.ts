@@ -127,8 +127,8 @@ describe("pickWorkspace", () => {
     expect(pickWorkspace(two, "personal")?.workspaceId).toBe("personal");
   });
   it("labels someone else's workspace with its owner, since names repeat", () => {
-    expect(workspaceLabel("Acme Ops (Enterprise)", "Morgan Lee", false)).toBe("Acme Ops (Enterprise) · Morgan's");
-    expect(workspaceLabel("Personal", "Morgan Lee", false)).toBe("Personal · Morgan's");
+    expect(workspaceLabel("Acme Ops (Enterprise)", "Alex Kim", false)).toBe("Acme Ops (Enterprise) · Alex's");
+    expect(workspaceLabel("Personal", "Alex Kim", false)).toBe("Personal · Alex's");
     expect(workspaceLabel("Acme Ops (Enterprise)", "Morgan Lee", true)).toBe("Acme Ops (Enterprise)");
   });
 });

@@ -39,13 +39,13 @@ export type Membership = {
   workspaceId: string;
   workspaceName: string;
   role: Role;
-  /** What the switcher shows: the name, plus the owner's when it isn't yours ("Acme Ops (Enterprise) · Morgan's"). */
+  /** What the switcher shows: the name, plus the owner's when it isn't yours ("Acme Ops (Enterprise) · Alex's"). */
   label: string;
   /** The seeded demo, or a Personal workspace (0021). */
   kind?: "demo" | "personal";
 };
 
-/** "Acme Ops (Enterprise)" for your own; "Acme Ops (Enterprise) · Morgan's" for someone else's (names repeat). */
+/** "Acme Ops (Enterprise)" for your own; "Acme Ops (Enterprise) · Alex's" for someone else's (names repeat). */
 export function workspaceLabel(name: string, ownerName: string | null, mine: boolean): string {
   if (mine || !ownerName) return name;
   return `${name} · ${ownerName.split(" ")[0]}'s`;

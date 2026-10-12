@@ -26,7 +26,7 @@ function rng(seed: string) {
 }
 const pick = <T,>(r: () => number, list: readonly T[]) => list[Math.floor(r() * list.length)];
 
-const PEOPLE = ["Dana Whitfield", "Marco Reyes", "Lena Brooks", "Sam Ortiz", "Morgan Lee", "Priya Nair", "Tom Hale", "Ana Lima", "Jordan Park", "Riley Chen", "Noah Grant", "Ava Patel"];
+const PEOPLE = ["Dana Whitfield", "Marco Reyes", "Lena Brooks", "Sam Ortiz", "Morgan Lee", "Maya Nair", "Tom Hale", "Ana Lima", "Jordan Park", "Riley Chen", "Noah Grant", "Ava Patel"];
 const COMPANIES = ["Northwind", "Acme", "Brightline Logistics", "Globex", "Initech", "Umbrella Health", "Stark Supply", "Wayne Retail"];
 const DAYS = ["Today", "Yesterday", "Mon", "Tue", "Wed", "Thu", "Fri"];
 const time = (r: () => number) => `${pick(r, DAYS)} ${String(8 + Math.floor(r() * 10)).padStart(2, "0")}:${pick(r, ["00", "15", "30", "45"])}`;

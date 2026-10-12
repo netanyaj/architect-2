@@ -1,6 +1,6 @@
 # PRD: Architect 2.0
 
-_Owner: Netanya Jaison · Draft v5 · 2026-10-03. Live prototype: [ticket-triage-gamma.vercel.app](https://ticket-triage-gamma.vercel.app) · Repo: [github.com/netanyaj/architect-2](https://github.com/netanyaj/architect-2) · Architecture: [`ARCHITECTURE.md`](ARCHITECTURE.md). Supporting material: Appendix E._
+_Owner: Netanya Jaison · Draft v5 · 2026-10-03. Live prototype: [architect2-netanya.vercel.app](https://architect2-netanya.vercel.app) · Repo: [github.com/netanyaj/architect-2](https://github.com/netanyaj/architect-2) · Architecture: [`ARCHITECTURE.md`](ARCHITECTURE.md). Supporting material: Appendix E._
 
 **At a glance**
 1. **One prompt becomes a full Blueprint (the app's PRD), and one click builds all of it.** The Blueprint always comes first, with defaults filled in and costs shown; nothing is built until the user clicks Build.

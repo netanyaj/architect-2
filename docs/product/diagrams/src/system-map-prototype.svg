@@ -68,7 +68,7 @@
 </g>
 <rect x="40" y="315.0" width="1290" height="234.0" rx="16" fill="#EEEAFB" stroke="#C9BEF2"/>
 <text x="52.0" y="337.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Lyzr control plane</text>
-<text x="198.8" y="337.0" font-size="12.2" font-weight="400" fill="#5C5B56" text-anchor="start">global, run by Lyzr · holds no prompts, code or app data</text>
+<text x="198.8" y="337.0" font-size="12.2" font-weight="400" fill="#5C5B56" text-anchor="start">global, run by Lyzr · holds no prompts, plans, code or app data</text>
 <g>
 <rect x="52.0" y="349.0" width="416.6666666666667" height="90.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
 <text x="62.0" y="371.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">CDN</text>
@@ -81,8 +81,8 @@
 <g>
 <rect x="476.6666666666667" y="349.0" width="416.6666666666667" height="90.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
 <text x="486.7" y="371.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">API gateway</text>
-<rect x="841.3" y="358.0" width="42.0" height="18" rx="9" fill="#E3F2E8" stroke="none"/>
-<text x="862.3" y="371.0" font-size="10.5" font-weight="600" fill="#1D6B3A" text-anchor="middle" font-family="Menlo, monospace">REAL</text>
+<rect x="841.3" y="358.0" width="42.0" height="18" rx="9" fill="#FBEFD9" stroke="none"/>
+<text x="862.3" y="371.0" font-size="10.5" font-weight="600" fill="#9A5B00" text-anchor="middle" font-family="Menlo, monospace">PART</text>
 <rect x="486.6666666666667" y="378.0" width="18" height="18" rx="9" fill="#1A1A19"/>
 <text x="495.7" y="391.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
 <text x="486.7" y="414.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">No separate gateway: Next.js server actions and routes on</text>
@@ -91,8 +91,8 @@
 <g>
 <rect x="901.3333333333334" y="349.0" width="416.6666666666667" height="90.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
 <text x="911.3" y="371.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Identity and SSO</text>
-<rect x="1266.0" y="358.0" width="42.0" height="18" rx="9" fill="#E3F2E8" stroke="none"/>
-<text x="1287.0" y="371.0" font-size="10.5" font-weight="600" fill="#1D6B3A" text-anchor="middle" font-family="Menlo, monospace">REAL</text>
+<rect x="1266.0" y="358.0" width="42.0" height="18" rx="9" fill="#FBEFD9" stroke="none"/>
+<text x="1287.0" y="371.0" font-size="10.5" font-weight="600" fill="#9A5B00" text-anchor="middle" font-family="Menlo, monospace">PART</text>
 <rect x="911.3333333333334" y="378.0" width="18" height="18" rx="9" fill="#1A1A19"/>
 <text x="920.3" y="391.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
 <text x="911.3" y="414.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Supabase Auth: Google, GitHub, email and anonymous demo</text>
@@ -117,7 +117,8 @@
 <text x="495.7" y="489.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
 <rect x="507.6666666666667" y="476.0" width="24" height="18" rx="9" fill="#1A1A19"/>
 <text x="519.7" y="489.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">12</text>
-<text x="486.7" y="512.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Credit ledger with real numbers; plans and payment simulated</text>
+<text x="486.7" y="512.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Credit ledger with real numbers; subscription tiers and payment</text>
+<text x="486.7" y="527.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">simulated</text>
 </g>
 <g>
 <rect x="901.3333333333334" y="447.0" width="416.6666666666667" height="90.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>

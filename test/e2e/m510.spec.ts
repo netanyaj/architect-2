@@ -33,7 +33,7 @@ test.describe("M5.10: fixes before M6", () => {
     test.skip(page.url().includes("/login"), "Anonymous sign-ins aren't turned on in Supabase yet.");
     const tour = page.getByRole("region", { name: /^Take the tour/ });
     await expect(tour).toContainText("Take the tour · 0 of 5");
-    await expect(tour).toContainText("You're in the demo as Priya");
+    await expect(tour).toContainText("You're in the demo as Morgan");
     // Step 1 opens Home with the tour's prompt filled in (it uses Gmail, so step 3 has a blocker).
     await tour.getByRole("link", { name: "Write it" }).click();
     await page.waitForURL(/\/home\?tour=plan/);

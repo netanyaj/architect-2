@@ -2,7 +2,7 @@
 
 **Architect 2.0: describe an agentic app, see the plan and its cost, and launch it through your company's rules.**
 
-[Live demo](https://ticket-triage-gamma.vercel.app) · Video (coming) · [Architecture](docs/product/ARCHITECTURE.md) · [Diagram](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/hero-architecture.png) · [PRD](docs/product/08-PRD-architect-2.md)
+[Live demo](https://architect2-netanya.vercel.app) · Video (coming) · [Architecture](docs/product/ARCHITECTURE.md) · [Diagram](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/hero-architecture.png) · [PRD](docs/product/08-PRD-architect-2.md)
 
 ![Plan, then build, then launch](https://github.com/netanyaj/architect-2/raw/main/docs/media/plan-build-launch.png)
 
@@ -19,7 +19,7 @@ From our own audit of today's Architect ([`docs/research/`](docs/research/)):
 | VPC and on-prem live in an FAQ; the builder loads about 15 trackers | A governance layer you can see: where it runs, policies, approvals and an audit log |
 
 ## Try it in 3 minutes
-On the [live demo](https://ticket-triage-gamma.vercel.app), click **Try the demo**: you get your own seeded workspace as Priya, an Owner, with no sign-up. The tour card on Home has the same five steps:
+On the [live demo](https://architect2-netanya.vercel.app), click **Try the demo**: you get your own seeded workspace as Morgan, an Owner, with no sign-up. The tour card on Home has the same five steps:
 1. **Write a plan.** Click **Write it**, then **Write the plan**. The prompt asks for Gmail, which this workspace hasn't connected.
 2. **Build it.** Click **Build · ~N credits** and watch each part turn **Works**.
 3. **Fix a blocker.** The Gmail part says **Needs you**: connect it, and it carries on.

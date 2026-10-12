@@ -79,7 +79,7 @@ node(410, 132, 470, 70, "Developers and their coding agents", "Sam, with Claude 
 node(900, 132, 240, 70, "Builders", "Morgan types the prompt in the web app", 1)
 node(1160, 132, 420, 70, "People who use the built app", "Sign in to the app on its own domain")
 
-# Lyzr control plane (full width): global, holds no prompts, code or app data
+# Lyzr control plane (full width): global, holds no prompts, plans, code or app data
 band(40, 236, 1560, 120, "Lyzr control plane", "global, run by Lyzr · holds no prompts, plans, code or app data", "#EEEAFB", "#C9BEF2")
 cw, cx0 = 236, 60
 cp = [
@@ -87,7 +87,7 @@ cp = [
     ("Identity and SSO", "Google, GitHub, email; Keycloak single sign-on"),
     ("Tenant directory", "Which workspace lives in which cell; feature flags"),
     ("API gateway", "One entry: checks sign-in, routes to the cell, rate limits"),
-    ("Billing and credits", "Credits, plans and invoices from usage counts"),
+    ("Billing and credits", "Credits, subscription tiers and invoices from usage counts"),
     ("Policy authoring", "Admins write org policy; it is pushed to every cell"),
 ]
 for i, (t, s) in enumerate(cp):
@@ -175,7 +175,7 @@ arrow(X[1] + BW / 2, R[0] + BH, X[1] + BW / 2, R[1] - 2)  # 4 → 5
 arrow(X[1] + BW, c[1], X[2] - 2, c[1])           # 5 → 6
 arrow(X[2] + BW, c[1], X[3] - 2, c[1])           # 6 → 7
 arrow(X[3] + BW, c[1], 1198, c[1])               # 7 → 8
-arrow(1214, R[1] + BH, X[3] + BW + 2, c[2] - 12) # 8 → 9
+arrow(1214, R[1] + BH, X[3] + BW + 2, c[2] - 12, dashed=True)  # 8 then 9 (dashed: "then", not a call)
 arrow(X[3], c[2], X[2] + BW + 2, c[2])           # 9 → 10
 arrow(X[2] + BW / 2, R[2] + BH, X[2] + BW / 2, R[3] - 2)  # 10 → 11
 arrow(X[2] + BW, c[3], X[3] - 2, c[3])           # 11 → 12

@@ -1,6 +1,6 @@
 # Architect 2.0: architecture
 
-_Owner: Netanya Jaison · Draft 2 · 2026-10-12. Companion to the PRD ([`08-PRD-architect-2.md`](08-PRD-architect-2.md)). Diagrams are in [`diagrams/`](diagrams/): PNG and SVG at 2×, with editable sources in `diagrams/src/` (render with `node scripts/render-diagrams.mjs`). The live prototype: [ticket-triage-gamma.vercel.app](https://ticket-triage-gamma.vercel.app)._
+_Owner: Netanya Jaison · Draft 2 · 2026-10-12. Companion to the PRD ([`08-PRD-architect-2.md`](08-PRD-architect-2.md)). Diagrams are in [`diagrams/`](diagrams/): PNG and SVG at 2×, with editable sources in `diagrams/src/` (render with `node scripts/render-diagrams.mjs`). The live prototype: [architect2-netanya.vercel.app](https://architect2-netanya.vercel.app)._
 
 _Code names keep two older words: `blueprint` is the plan and `item` is a part (as in `architect/blueprint.yaml` and `update_item`)._
 
@@ -334,8 +334,8 @@ At a 2.5× markup (about 60% gross margin) that build sells for about $7. Today'
 |---|---|
 | **The prototype, now** | Row-level security on every table; keys and passwords encrypted in Supabase Vault and never returned to the browser; model and provider keys only in server code; a read-only GitHub App; MCP tests refuse private and local addresses, even after DNS; demo caps and a 7-day cleanup; an append-only audit log of every governance decision |
 | **v1** | Keycloak SSO; the policy service checked before anything leaves a sandbox; the egress proxy injecting secrets; short-lived GitHub tokens per operation; approvals for Live, new apps and keys; repos, documents and tool output treated as untrusted data, with prompt-injection defences |
-| **v2** | The data plane in the customer's own cloud with its own models; the data-flow view enforced at the proxy; no third-party trackers in sovereign tenants; new services stay in scope of Lyzr's existing compliance programme |
-| **v3** | On-prem and air-gapped installs from signed releases; customer-held keys; new services stay in scope of Lyzr's existing compliance programme |
+| **v2** | The data plane in the customer's own cloud with its own models; the data-flow view enforced at the proxy; no third-party trackers in sovereign tenants; new services enter the audit scope of Lyzr's existing SOC 2 Type II, ISO 27001:2022 and ISO 42001 programmes (listed on Lyzr's Trust Center, security.lyzr.ai) before general availability |
+| **v3** | On-prem and air-gapped installs from signed releases; customer-held keys; new services enter the audit scope of Lyzr's existing SOC 2 Type II, ISO 27001:2022 and ISO 42001 programmes (listed on Lyzr's Trust Center, security.lyzr.ai) before general availability |
 
 ## 16. Sources
 - Our own research, in [`docs/research/`](../research/): [today's Architect, audited](../research/02-architect-today.md); [how today's system works](../research/03-architect-architecture-today.md), from our network captures and a DNS check on 2026-10-03; [the import audit](../research/04-import-audit.md); [the product comparison](../research/06-competitor-matrix.md) (Lovable, Replit, v0, Cursor, Emergent and others); [forum and survey research](../research/07-secondary-research.md).

@@ -65,7 +65,7 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
   }
 
   const role = ROLE_INFO[invite.role as Role];
-  // Everyone's demo has the same name, so an invite says whose it is ("Acme Ops (Enterprise) · Morgan's").
+  // Everyone's demo has the same name, so an invite says whose it is ("Acme Ops (Enterprise) · Alex's").
   const workspace = workspaceLabel(invite.workspaces.name, inviter === "Someone" ? null : inviter, false);
   const db = await createServerDb();
   const {

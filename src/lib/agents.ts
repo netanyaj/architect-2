@@ -67,7 +67,7 @@ const sentence = (s: string) => {
 /** What a part sends when there's a sample for its service (Try it starts from this). */
 const SAMPLE_BY_PROVIDER: Record<string, string> = {
   zendesk:
-    'New ticket from Priya Shah (VIP, Northwind): "Our export has failed three times since this morning and the board pack is due at 4pm. Please help."',
+    'New ticket from Nina Shah (VIP, Northwind): "Our export has failed three times since this morning and the board pack is due at 4pm. Please help."',
   hubspot: "New lead: Dana Ortiz, Head of Operations at Brightline Logistics (420 employees). Opened 3 pricing emails this week and booked a demo.",
   google_calendar: "Meeting at 14:00 today: Renewal check-in with Dana Ortiz and Sam Lee (Acme). Agenda: usage review, pricing for year two, open support tickets.",
   gmail: 'Email from Dana Ortiz: "Can we move the renewal call to Thursday and include our finance lead? We have questions on year-two pricing."',

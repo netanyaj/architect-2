@@ -1,6 +1,6 @@
 # QA report (M6, 12 Oct 2026)
 
-What was checked before the hand-in, how, and what was found. Production is [ticket-triage-gamma.vercel.app](https://ticket-triage-gamma.vercel.app) at commit `4a5c4e8` (M5.10). The M6 changes (MCP servers in Connections, the landing page, the fixes below) were checked on a local production build against the same database, and are recorded as such. Screenshots are in [`qa/`](qa/).
+What was checked before the hand-in, how, and what was found. Production is [architect2-netanya.vercel.app](https://architect2-netanya.vercel.app) at commit `4a5c4e8` (M5.10). The M6 changes (MCP servers in Connections, the landing page, the fixes below) were checked on a local production build against the same database, and are recorded as such. Screenshots are in [`qa/`](qa/).
 
 **Summary:** every PRD Must has a coverage row; F1–F9 pass on production; no 🔴 is left open. Two migrations ship with M6: `0024` (MCP servers) is applied, `0025` (the seed's checks) is waiting for approval.
 

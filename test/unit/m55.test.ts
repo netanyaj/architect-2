@@ -162,10 +162,10 @@ describe("uploaded data: CSV parsed for real", () => {
     const { parseCsv, tableFromCsv, csvLine } = await import("@/lib/csv");
     expect(parseCsv('﻿name,note\r\n"Acme, Inc.","said ""hi""\nthen left"\r\nGlobex,ok\r\n')).toEqual([["name", "note"], ["Acme, Inc.", 'said "hi"\nthen left'], ["Globex", "ok"]]);
     expect(parseCsv("a;b\n1;2")).toEqual([["a", "b"], ["1", "2"]]);
-    const t = tableFromCsv("renewals-2026.csv", "vendor,renewal_date,owner,annual_cost,contact\nAcme Hosting,2026-11-02,Priya,12000,p@acme.com\nFigma,2026-12-01,Jordan,4800,j@figma.com\n")!;
+    const t = tableFromCsv("renewals-2026.csv", "vendor,renewal_date,owner,annual_cost,contact\nAcme Hosting,2026-11-02,Morgan,12000,p@acme.com\nFigma,2026-12-01,Jordan,4800,j@figma.com\n")!;
     expect(t).toMatchObject({ key: "file-renewals-2026", name: "renewals-2026", total: 2, sample: false });
     expect(t.columns.map((c) => [c.label, c.type])).toEqual([["vendor", "text"], ["renewal_date", "time"], ["owner", "text"], ["annual_cost", "number"], ["contact", "email"]]);
-    expect(t.rows[0]).toEqual({ vendor: "Acme Hosting", renewal_date: "2026-11-02", owner: "Priya", annual_cost: "12000", contact: "p@acme.com" });
+    expect(t.rows[0]).toEqual({ vendor: "Acme Hosting", renewal_date: "2026-11-02", owner: "Morgan", annual_cost: "12000", contact: "p@acme.com" });
     expect(csvLine(["a,b", 3, null, new Date("2026-01-02T00:00:00Z")])).toBe('"a,b",3,,2026-01-02');
   });
 });

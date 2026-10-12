@@ -32,10 +32,10 @@ B = {
     ],
     "cp": [
         ("CDN", "Serves the builder's front end worldwide", "Vercel's edge network", "real", [1]),
-        ("API gateway", "One entry point: sign-in check, tenant routing to the right cell, rate limits", "No separate gateway: Next.js server actions and routes on Vercel (bom1)", "real", [1]),
-        ("Identity and SSO", "Google, GitHub and email; Keycloak single sign-on for enterprises", "Supabase Auth: Google, GitHub, email and anonymous demo sessions. SSO itself is simulated", "real", [1]),
-        ("Tenant directory", "Which workspace lives in which cell, feature flags, plans", "Workspaces and members tables with row-level security; one region, no cells", "real", [1]),
-        ("Billing and credits", "Credits, plans and invoices from usage counts", "Credit ledger with real numbers; plans and payment simulated", "part", [3, 12]),
+        ("API gateway", "One entry point: sign-in check, tenant routing to the right cell, rate limits", "No separate gateway: Next.js server actions and routes on Vercel (bom1)", "part", [1]),
+        ("Identity and SSO", "Google, GitHub and email; Keycloak single sign-on for enterprises", "Supabase Auth: Google, GitHub, email and anonymous demo sessions. SSO itself is simulated", "part", [1]),
+        ("Tenant directory", "Which workspace lives in which cell, feature flags, subscription tiers", "Workspaces and members tables with row-level security; one region, no cells", "real", [1]),
+        ("Billing and credits", "Credits, subscription tiers and invoices from usage counts", "Credit ledger with real numbers; subscription tiers and payment simulated", "part", [3, 12]),
         ("Policy authoring", "Admins write org policy; pushed down to every cell", "Governance settings stored in Postgres", "part", [3]),
     ],
     "services": [
@@ -203,7 +203,7 @@ class Map:
 
         y = 150
         y = self.band(MX, y, MW, "People", "", C["surface"], C["line"], lambda yy: self.grid(MX + 12, yy, MW - 24, B["people"], 4)) + 12
-        y = self.band(MX, y, MW, "Lyzr control plane", "global, run by Lyzr · holds no prompts, code or app data", C["cp"], C["cp_line"],
+        y = self.band(MX, y, MW, "Lyzr control plane", "global, run by Lyzr · holds no prompts, plans, code or app data", C["cp"], C["cp_line"],
                       lambda yy: self.grid(MX + 12, yy, MW - 24, B["cp"], 6 if not self.proto else 3)) + 10
         # the boundary
         o.append(f'<line x1="{MX + 8}" y1="{y + 10}" x2="{MX + MW - 8}" y2="{y + 10}" stroke="{C["cp_line"]}" stroke-width="1.5" stroke-dasharray="6 5"/>')

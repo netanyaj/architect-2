@@ -85,7 +85,8 @@ test.describe("M6: landing page and MCP servers", () => {
       await o.getByLabel("Lyzr API key").fill(process.env.LYZR_API_KEY!);
       await o.getByRole("button", { name: "Connect with your Lyzr API key" }).click();
       await expect(o.locator("#lyzr").getByText("Connected", { exact: true })).toBeVisible({ timeout: 30_000 });
-      await o.screenshot({ path: "docs/qa/governance-off-owner-connections.png", fullPage: true });
+      // The key's last characters are blurred in the saved screenshot, since the repo will be public.
+      await o.screenshot({ path: "docs/qa/governance-off-owner-connections.png", fullPage: true, style: "#lyzr .font-mono { filter: blur(6px); }" });
 
       const { data: audit } = await db.from("audit_log").select("action").eq("workspace_id", ws);
       expect(audit!.map((a) => a.action)).toEqual(expect.arrayContaining(["mcp.added", "connection.api_key_set"]));

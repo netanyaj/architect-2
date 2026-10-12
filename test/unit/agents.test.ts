@@ -56,7 +56,7 @@ describe("agentGraph: any plan", () => {
     const g = agentGraph({ projectName: "ticket-triage", prompt: null, parts, uploads: [] });
     expect(g.trigger).toMatchObject({ title: "Zendesk", detail: "New tickets read", edge: "New ticket" });
     expect(g.delivery).toMatchObject({ title: "Slack", detail: "Slack alert to the team" });
-    expect(g.agents[0].sample).toMatch(/^New ticket from Priya Shah/);
+    expect(g.agents[0].sample).toMatch(/^New ticket from Nina Shah/);
   });
 
   it("without services: a schedule or a person starts it, and results show in the app", () => {

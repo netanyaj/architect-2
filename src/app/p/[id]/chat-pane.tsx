@@ -180,7 +180,7 @@ function ChangeCardView({ card, canChange, onEdit }: { card: ChangeCardData; can
   );
 }
 
-/** A Viewer's change request (M5.8): "Suggested by Priya · Turn into a change", for an Owner, Admin or Builder. */
+/** A Viewer's change request (M5.8): "Suggested by Jordan · Turn into a change", for an Owner, Admin or Builder. */
 function SuggestionCard({ card, canChange }: { card: ChangeCardData; canChange: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();

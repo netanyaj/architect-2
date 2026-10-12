@@ -23,7 +23,7 @@ export function TourCard({ tour }: { tour: TourView }) {
           </h2>
           <p className="text-ink-2">
             The whole story in five steps, about 5 minutes.
-            {tour.demoVisitor && " You're in the demo as Priya, an Owner. This workspace is deleted after 7 days."}
+            {tour.demoVisitor && " You're in the demo as Morgan, an Owner. This workspace is deleted after 7 days."}
           </p>
         </div>
         <IconButton

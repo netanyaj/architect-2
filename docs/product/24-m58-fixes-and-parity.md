@@ -69,7 +69,7 @@ BL-4 is still met, and no capability is removed.
 >    - A question gets an answer, with no change card and no new version.
 >    - A change request gets the existing change card with its estimate and Apply.
 >    - A change card from an unclear message shows "Just answer instead", which discards the card and answers.
->    - For Viewers, change requests become a suggestion card ("Suggested by Priya · Turn into a change", owner or Builder only).
+>    - For Viewers, change requests become a suggestion card ("Suggested by Jordan · Turn into a change", owner or Builder only).
 >    Keep the message queue unchanged. Update COVERAGE.md for BL-4 to say intent replaces the switch, and keep the behaviour in the tests.
 >
 > **E. Preview theme**

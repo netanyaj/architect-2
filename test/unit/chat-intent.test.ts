@@ -8,7 +8,7 @@ let db: FakeDb;
 let role: Role;
 vi.mock("@/server/db", () => ({ createAdminDb: () => db, createServerDb: async () => db }));
 vi.mock("@/server/workspace", () => ({
-  getAppContext: async () => ({ user: { id: "me" }, name: role === "viewer" ? "Priya" : "Morgan", role, workspace: { id: "ws-1", name: "Acme" }, memberships: [] }),
+  getAppContext: async () => ({ user: { id: "me" }, name: role === "viewer" ? "Jordan" : "Morgan", role, workspace: { id: "ws-1", name: "Acme" }, memberships: [] }),
 }));
 vi.mock("@/server/blueprint/write-plan", () => ({ allowedModels: async () => ["gemini", "claude"], stepModel: async (_a: unknown, _w: string, raw: string | null) => (raw === "auto" ? "gemini" : (raw ?? "gemini")) }));
 const ask = vi.fn();
@@ -86,7 +86,7 @@ describe("sendMessage reads intent", () => {
     expect(await sendMessage({ projectId: P, content: "Add a Slack step" })).toMatchObject({ ok: true, intent: "suggestion" });
     expect(askObject).not.toHaveBeenCalled(); // no change card was written for a Viewer
     const s = db.tables.change_proposals[0];
-    expect(s.diff).toMatchObject({ suggestion: { text: "Add a Slack step", by: "Priya" } });
+    expect(s.diff).toMatchObject({ suggestion: { text: "Add a Slack step", by: "Jordan" } });
     s.id = CARD;
     expect(await turnIntoChange({ proposalId: CARD })).toMatchObject({ ok: false, message: expect.stringContaining("Owner, Admin or Builder") });
     // A Viewer's questions still get answers.
@@ -97,6 +97,6 @@ describe("sendMessage reads intent", () => {
     expect(await turnIntoChange({ proposalId: CARD })).toMatchObject({ ok: true, intent: "change" });
     expect(s).toMatchObject({ status: "discarded", diff: expect.objectContaining({ turned_by: "Morgan" }) });
     expect(db.tables.change_proposals.at(-1)).toMatchObject({ status: "proposed" });
-    expect(askObject.mock.calls.at(-1)![0].prompt).toContain("Add a Slack step (suggested by Priya)");
+    expect(askObject.mock.calls.at(-1)![0].prompt).toContain("Add a Slack step (suggested by Jordan)");
   });
 });

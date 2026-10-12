@@ -287,7 +287,7 @@ From `docs/product/24-m58-fixes-and-parity.md`. No migration: everything new is 
 | The demo agent | Research agent was "your Studio agent, reused" | The one shared, read-only demo agent on the platform key (`LYZR_AGENT_ID`): Try it only, labelled "Demo agent", 10 runs per person per day | Reviewers see a real Lyzr call without a key |
 | Model on Studio | "Model used on Studio: …" next to a truncated picker | The picker shows its full name; the line under it says Studio runs Gemini 3.1 Flash Lite (Lyzr's built-in model, free for test runs) and that the picked model is what the built app uses | Doc 26 suggested "this changes it on Save", but Studio agents stay on Lyzr's built-in credential (no provider key of ours goes to Studio), so Save doesn't change Studio's model; saying it would be false |
 | Project keys | Value checked and thrown away | Stored encrypted in Vault, never read back or shown; "Demo environment: use test values, not real secrets." | Doc 26 step 1 |
-| Demo access | Sign up first | `startDemo()`: a Supabase anonymous sign-in with its own seeded Acme Ops, as Priya. Linked from the sign-in page ("Just looking? Try the demo"); M6's landing page reuses it. 5 plans a day; deleted with their workspaces after 7 days by the daily cron | Reviewers start in one click |
+| Demo access | Sign up first | `startDemo()`: a Supabase anonymous sign-in with its own seeded Acme Ops, as Morgan. Linked from the sign-in page ("Just looking? Try the demo"); M6's landing page reuses it. 5 plans a day; deleted with their workspaces after 7 days by the daily cron | Reviewers start in one click |
 | Tour | None | A card on Home in the demo workspace: write a plan (prefilled with a Gmail prompt, so step 3 has a blocker), build, connect the app, approve the waiting Live deploy as an Admin, then Governance and the audit log. A step is done when you do it (read from your own product events); dismissing is saved per person | U2 |
 | Analytics | None | Vercel Analytics (page views) plus `analytics_events` in our own database: plan written, build started, blocker resolved, launch, view as role, tour step, demo reset, and demo started (added: did reviewers use the demo link?). Insert-only from the server, unreadable through the API; `docs/analytics.sql` reads it | For us only; no in-app card |
 
@@ -333,7 +333,7 @@ Browser acceptance on the same day: 15 of 15 (plans within 60 s, the Build gate,
 
 ## M4 acceptance (10 Oct 2026, production)
 
-Run against https://ticket-triage-gamma.vercel.app with `E2E_BASE_URL` set.
+Run against https://architect2-netanya.vercel.app with `E2E_BASE_URL` set.
 
 | Flow | Test | Result |
 |---|---|---|
@@ -358,7 +358,7 @@ Model-dependent steps are tested on rules, not exact output: the import test che
 
 ## M5 acceptance (11 Oct 2026, production)
 
-Run against https://ticket-triage-gamma.vercel.app with `E2E_BASE_URL` set, one browser at a time.
+Run against https://architect2-netanya.vercel.app with `E2E_BASE_URL` set, one browser at a time.
 
 | Flow | Test | Result |
 |---|---|---|

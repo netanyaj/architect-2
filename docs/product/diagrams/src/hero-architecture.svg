@@ -48,8 +48,8 @@
 <text x="842" y="334.5" font-size="12" font-weight="400" fill="#42413D" text-anchor="start">routes to the cell, rate limits</text>
 <rect x="1084" y="272" width="236" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.2"/>
 <text x="1098" y="299" font-size="14" font-weight="700" fill="#1A1A19" text-anchor="start">Billing and credits</text>
-<text x="1098" y="319.0" font-size="12" font-weight="400" fill="#42413D" text-anchor="start">Credits, plans and invoices from</text>
-<text x="1098" y="334.5" font-size="12" font-weight="400" fill="#42413D" text-anchor="start">usage counts</text>
+<text x="1098" y="319.0" font-size="12" font-weight="400" fill="#42413D" text-anchor="start">Credits, subscription tiers and</text>
+<text x="1098" y="334.5" font-size="12" font-weight="400" fill="#42413D" text-anchor="start">invoices from usage counts</text>
 <rect x="1340" y="272" width="236" height="70" rx="12" fill="#FFFFFF" stroke="#D6D4CC" stroke-width="1.2"/>
 <text x="1354" y="299" font-size="14" font-weight="700" fill="#1A1A19" text-anchor="start">Policy authoring</text>
 <text x="1354" y="319.0" font-size="12" font-weight="400" fill="#42413D" text-anchor="start">Admins write org policy; it is</text>
@@ -220,7 +220,7 @@
 <line x1="580" y1="621.0" x2="618" y2="621.0" stroke="#1A1A19" stroke-width="2.2" marker-end="url(#p)"/>
 <line x1="860" y1="621.0" x2="898" y2="621.0" stroke="#1A1A19" stroke-width="2.2" marker-end="url(#p)"/>
 <line x1="1140" y1="621.0" x2="1198" y2="621.0" stroke="#1A1A19" stroke-width="2.2" marker-end="url(#p)"/>
-<line x1="1214" y1="666" x2="1142" y2="733.0" stroke="#1A1A19" stroke-width="2.2" marker-end="url(#p)"/>
+<line x1="1214" y1="666" x2="1142" y2="733.0" stroke="#1A1A19" stroke-width="2.2" stroke-dasharray="6 5" marker-end="url(#p)"/>
 <line x1="900" y1="745.0" x2="862" y2="745.0" stroke="#1A1A19" stroke-width="2.2" marker-end="url(#p)"/>
 <line x1="740.0" y1="790" x2="740.0" y2="822" stroke="#1A1A19" stroke-width="2.2" marker-end="url(#p)"/>
 <line x1="860" y1="869.0" x2="898" y2="869.0" stroke="#1A1A19" stroke-width="2.2" marker-end="url(#p)"/>
