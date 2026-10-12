@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { signIn } from "./build.spec.seed";
-import { adminDb, createTestUser, deleteTestUser, demoWorkspace, type TestUser } from "./helpers";
+import { adminDb, createTestUser, deleteTestUser, demoWorkspace, sessionUserId, type TestUser } from "./helpers";
 
 /* M5.10 (doc 26): the demo link and the tour, ⌘K, panes that stay as you left them, the way back to Build, labels that
    say what's simulated, and the Developer panel. */
@@ -43,15 +43,17 @@ test.describe("M5.10: fixes before M6", () => {
     await page.waitForURL(/\/home\?tour=plan/);
     await expect(page.getByLabel("Describe your app")).toHaveValue(/Gmail/);
     await expect(page.getByRole("region", { name: /^Take the tour/ })).toHaveCount(0);
-    await expect(page.getByRole("group", { name: "Tour" })).toContainText("Tour · 0 of 5");
+    await expect(page.getByRole("region", { name: "Tour" })).toContainText("Step 1 of 5 · Write a plan");
     await expect(page.getByRole("button", { name: /^Write the plan/ })).toHaveClass(/bg-primary/);
     await expect(page.getByText("You're in the demo as Morgan, an Owner.")).toBeVisible();
 
     // Recorded as a demo user, and cleaned up here (the daily cron does it after 7 days).
     const db = adminDb();
-    const { data: ev } = await db.from("analytics_events").select("user_id, is_demo").eq("event", "demo_started").gte("created_at", started).order("created_at", { ascending: false }).limit(1).single();
+    // This test's own demo user (from its session), so a test running alongside keeps its own.
+    const me = await sessionUserId(page);
+    const { data: ev } = await db.from("analytics_events").select("user_id, is_demo").eq("event", "demo_started").eq("user_id", me!).gte("created_at", started).single();
     expect(ev!.is_demo).toBe(true);
-    await deleteTestUser({ id: ev!.user_id!, email: "", password: "" });
+    await deleteTestUser({ id: me!, email: "", password: "" });
   });
 
   test("⌘K finds a project and opens it; panes stay as you left them across tabs, projects and reloads", async ({ page }) => {

@@ -110,6 +110,8 @@ export function Composer({
         {home ? (
           <button
             type="submit"
+            // The tour's step 1 hint points here (Tour v3).
+            data-tour-hint="plan"
             aria-disabled={blockedReason || pending ? true : undefined}
             title={blockedReason}
             className={cn(

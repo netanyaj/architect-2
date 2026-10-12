@@ -46,3 +46,19 @@ export async function connectLyzr(workspaceId: string, user: TestUser) {
   const { error } = await adminDb().rpc("set_workspace_secret", { p_workspace: workspaceId, p_name: "lyzr_api_key", p_value: key, p_by: user.id, p_by_name: "Tester" });
   if (error) throw new Error(`connectLyzr: ${error.message}`);
 }
+
+/**
+ * The signed-in user's id, read from the page's Supabase session cookie (sb-<ref>-auth-token, maybe split into .0, .1).
+ * Tests that use Try the demo delete exactly their own anonymous user with it, even when tests run side by side.
+ */
+export async function sessionUserId(page: import("@playwright/test").Page): Promise<string | null> {
+  const parts = (await page.context().cookies()).filter((c) => /^sb-.+-auth-token(\.\d+)?$/.test(c.name)).sort((a, b) => a.name.localeCompare(b.name, "en", { numeric: true }));
+  if (!parts.length) return null;
+  let raw = decodeURIComponent(parts.map((c) => c.value).join(""));
+  if (raw.startsWith("base64-")) raw = Buffer.from(raw.slice(7), "base64").toString("utf8");
+  try {
+    return (JSON.parse(raw) as { user?: { id?: string } }).user?.id ?? null;
+  } catch {
+    return null;
+  }
+}

@@ -10,7 +10,6 @@ import { ResourcesMenu } from "./resources-menu";
 import type { WorkspaceOption } from "./workspace-switcher";
 import type { WorkspacePlan } from "@/lib/plans";
 import { LogoMark } from "./logo-mark";
-import { TourGuide } from "./tour-guide";
 import { useUi } from "@/lib/ui-store";
 
 type NavItem = { href: string; label: string; icon: IconName; count?: number };
@@ -169,7 +168,6 @@ export function SideNav(props: SideNavProps) {
         </>
       )}
       <div className="flex-1" />
-      <TourGuide placement="nav" />
       <CreditsCard {...props.credits} />
       {/* Two controls side by side (Notion's pattern): the account chip, and Resources. */}
       <div className="flex items-center gap-1 pt-1">

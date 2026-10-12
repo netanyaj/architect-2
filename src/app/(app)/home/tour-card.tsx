@@ -43,6 +43,7 @@ export function TourWelcome() {
           </h2>
           <p>You&apos;re in the demo as Morgan, an Owner. This workspace is deleted after 7 days.</p>
           <p className="text-ink-2">The tour shows the whole story in five steps, about 5 minutes: a plan, a build, a blocker, a launch, and the audit log.</p>
+          <p className="text-small text-ink-2 md:hidden">Best on a laptop: the tour shows the plan, the build and the preview side by side.</p>
         </div>
         <IconButton icon="close" label="Minimise the tour" quiet size={32} aria-disabled={pending || undefined} onClick={putAway} />
       </div>

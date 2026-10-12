@@ -115,3 +115,51 @@
     padding-bottom: 60px;
   }
 }
+
+/* Motion (M6, Tour v3): one easing (--ease-out) and three durations from tokens.css; nothing over 400ms. Only opacity
+   and transform move, so it stays smooth. With reduced motion, the fades stay and the movement, scaling and pulses go. */
+@keyframes ax-fade-in { from { opacity: 0; } }
+@keyframes ax-fade-out { to { opacity: 0; } }
+@keyframes ax-rise-in { from { opacity: 0; transform: translateY(6px); } }
+@keyframes ax-rise-out { to { opacity: 0; transform: translateY(-6px); } }
+@keyframes ax-pop-in { from { opacity: 0; transform: scale(0.96); } }
+@keyframes ax-slide-from-left { from { opacity: 0; transform: translateX(-16px); } }
+@keyframes ax-slide-from-right { from { opacity: 0; transform: translateX(16px); } }
+@keyframes ax-pulse { from { opacity: 0.55; transform: scale(1); } to { opacity: 0; transform: scale(1.18); } }
+@keyframes ax-tick { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+
+.ax-fade-in { animation: ax-fade-in var(--motion-base) var(--ease-out) both; }
+.ax-rise-in { animation: ax-rise-in var(--motion-base) var(--ease-out) both; }
+.ax-rise-out { animation: ax-rise-out var(--motion-base) var(--ease-out) both; }
+.ax-pop-in { animation: ax-pop-in var(--motion-base) var(--ease-out) both; }
+.ax-slide-from-left { animation: ax-slide-from-left var(--motion-slow) var(--ease-out) both; }
+.ax-slide-from-right { animation: ax-slide-from-right var(--motion-slow) var(--ease-out) both; }
+/* Two soft pulses, then still. */
+.ax-pulse { animation: ax-pulse 400ms var(--ease-out) 2 both; }
+/* A part's tick draws in when it turns Works during a build. */
+.ax-tick path, .ax-tick polyline { stroke-dasharray: 24; animation: ax-tick var(--motion-slow) var(--ease-out) both; }
+/* A hint glides to its control when the control moves. */
+.ax-glide { transition: transform var(--motion-base) var(--ease-out), opacity var(--motion-base) var(--ease-out); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-rise-in, .ax-pop-in, .ax-slide-from-left, .ax-slide-from-right { animation-name: ax-fade-in !important; animation-duration: var(--motion-base) !important; }
+  .ax-rise-out { animation-name: ax-fade-out !important; animation-duration: var(--motion-base) !important; }
+  .ax-fade-in { animation-duration: var(--motion-base) !important; }
+  .ax-pulse { display: none; }
+  .ax-tick path, .ax-tick polyline { animation: none !important; stroke-dasharray: none; }
+  .ax-glide { transition: opacity var(--motion-base) var(--ease-out) !important; }
+}
+@keyframes ax-slide-to-left { to { opacity: 0; transform: translateX(-16px); } }
+@keyframes ax-slide-to-right { to { opacity: 0; transform: translateX(16px); } }
+.ax-slide-to-left { animation: ax-slide-to-left var(--motion-slow) var(--ease-out) both; }
+.ax-slide-to-right { animation: ax-slide-to-right var(--motion-slow) var(--ease-out) both; }
+@media (prefers-reduced-motion: reduce) {
+  .ax-slide-to-left, .ax-slide-to-right { animation-name: ax-fade-out !important; animation-duration: var(--motion-base) !important; }
+}
+
+/* Tour v3: pages leave room at their end for the coach card (its height, --coach-h), so it never hides their last
+   controls. On a phone the card is a bottom sheet above the Help bar. */
+body:has([data-coach]) { padding-bottom: calc(var(--coach-h, 0px) + 24px); }
+@media (width < 48rem) {
+  body:has([data-coach]) { padding-bottom: calc(var(--coach-h, 0px) + 72px); }
+}

@@ -37,7 +37,7 @@ export default async function ImportPage({ searchParams }: PageProps<"/import">)
     if (legacy?.legacy_repo && !legacy.moved_to && legacy.workspace_id === ctx.workspace.id) move = { projectId: legacy.id, name: legacy.name, repo: legacy.legacy_repo };
   }
   return (
-    <TourHost corner>
+    <TourHost>
       <ImportFlow data={data} notice={notice} move={move} />
       <HelpHost context={await getHelpContext(ctx)} />
       <HelpLauncher />

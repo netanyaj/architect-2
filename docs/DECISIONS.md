@@ -308,6 +308,22 @@ From the M5.8 review notes (not in the repo). No migration: everything new is st
 | Copy | "A Live deploy waits for an Admin. You're one" | "Live waits for an Owner or Admin. You're the Owner: approve it yourself." | The demo user is an Owner; "deploy" isn't in the word list |
 | Events | | Migration 0026 adds `tour_minimised` and `tour_finished` to `analytics_events` | The analytics query shows where people leave the tour |
 
+## M6: Tour v3 (12 Oct 2026)
+
+**One coach card in one place, a hint on every step's control, and a screen that doesn't change by itself.**
+
+| Area | Before (v2) | We did | Why |
+|---|---|---|---|
+| Where the tour is | A guide in the side nav, the Parts pane or the Parts rail, depending on the page | One coach card, bottom left (past the side nav on app pages, at the edge on project pages), a bottom sheet above the Help bar on a phone. "Step N of 5 · title", one line on why, and the action. Only × minimises it, to a small pill | A guide that moves between three places is hard to follow; inside a pane it folded with the pane |
+| Hints | Steps 2 to 5; none for step 1 | Every step: Write the plan, Build, the waiting part's Connect, Approve on the Live request (the step's link now opens that request), and the audit log. When the control is off screen or under the card, the card offers "Show me": it opens the pane, scrolls smoothly to the control and points at it | Step 1 left people guessing what to press |
+| Panes | Full-width tabs folded Parts and Chat, including the Plan tab after Build | While the tour is on, the panes never fold by themselves. Outside the tour too, Build from the Plan tab goes to the App view with Parts and Chat open | The most convincing moment, parts turning Works, happened behind folded panes |
+| The build | Nothing on the guide | "Building · 3 of 5 parts work" on the card, the same numbers as Parts, counting up; when a part waits for an app, the card points at its Connect | Visibility of system status |
+| Moving on | A separate "Step done" message above the guide, which spilled over the credits meter | The card shows "Done ✓" for about 1.2 seconds, then the next step, in place | No popover outside the card; nothing over the credits or the nav |
+| Popovers | Could leave the screen | Hints try below, above, right and left of the control, stay inside the screen, and never sit on the card, the side nav or the control; if nothing fits, no hint | Layout |
+| Motion | None | `--motion-fast` 150 ms, `--motion-base` 220 ms, `--motion-slow` 300 ms and `--ease-out` cubic-bezier(0.2, 0, 0, 1) in tokens.css (from tokens.json). Step text fades out and up and the next fades in from below; dots animate; hints fade and scale in and glide when the control moves, with two soft pulses on it; panes slide open and closed; a part's status cross-fades and its tick draws in. Only opacity and transform move (the tick's stroke is the one exception, on a 12px icon). With reduced motion the fades stay and movement, scaling and pulses go | One continuous movement, never a jump |
+| No flash between pages | Each page had its own guide | The tour lives in a client store that outlives page changes, and the project loading screen draws the same card, so moving between pages never makes it disappear and reappear | |
+| Phone | | The welcome card adds "Best on a laptop: the tour shows the plan, the build and the preview side by side." | |
+
 ## M6: Settings pages and Connections sections (12 Oct 2026)
 
 | Area | Before | We did | Why |

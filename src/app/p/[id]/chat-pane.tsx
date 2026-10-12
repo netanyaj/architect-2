@@ -18,6 +18,7 @@ import type { ChangeCardData, ProjectWorkspace } from "@/server/project";
 import { ChatAddMenu, useAttachments } from "./chat-add-menu";
 import { ChatMoreMenu } from "./chat-more-menu";
 import { CodeEditCard } from "./code-edit-card";
+import { cn } from "@/lib/utils";
 import { PrCard } from "./pr-card";
 import { QuestionCard } from "./question-card";
 
@@ -254,9 +255,12 @@ export function ChatPane({
   onCollapse,
   onPickModel,
   onOpenDesign,
+  className,
 }: {
   project: ProjectWorkspace;
   writing: boolean;
+  /** Its slide in or out (Tour v3 motion). */
+  className?: string;
   /** What the build is doing (after Build), at the end of the conversation. */
   activity?: React.ReactNode;
   /** Developer view: Activity takes the conversation's place, above the same composer (screen 8). */
@@ -335,7 +339,7 @@ export function ChatPane({
   // The intro is about the first plan: it carries that version's time.
   const introAt = [...project.versions].sort((a, b) => a.version - b.version)[0]?.createdAt ?? null;
   return (
-    <aside aria-label={title} className="flex min-h-0 flex-col overflow-hidden rounded-pane border border-line bg-surface shadow-pane lg:w-[344px] lg:flex-none">
+    <aside aria-label={title} className={cn("flex min-h-0 flex-col overflow-hidden rounded-pane border border-line bg-surface shadow-pane lg:w-[344px] lg:flex-none", className)}>
       <div className="flex items-center gap-2 px-4 pt-3.5 pb-2.5">
         <h2 className="flex-1 text-sub font-semibold">{title}</h2>
         <IconButton icon="panelRight" label={`Collapse ${title.toLowerCase()}`} quiet size={32} onClick={onCollapse} />

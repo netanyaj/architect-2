@@ -63,7 +63,8 @@ import { fromStreamed, GROUP_LABEL, GROUP_ORDER, PlanDocument } from "./plan-doc
 import { usePlanWriter } from "./use-plan-writer";
 import { savePane } from "@/server/actions/preferences";
 import { DevPanel } from "./dev-panel";
-import { TourGuide } from "@/components/ax/tour-guide";
+import { publishTourLive, useTourStore } from "@/components/ax/tour-guide";
+import { guideActive } from "@/lib/tour";
 
 type View = "app" | "agents" | "data" | "files" | "code" | "terminal";
 const VIEWS: View[] = ["app", "agents", "data", "files"];
@@ -160,6 +161,11 @@ function StageBody({
       <AppPreview project={project} items={items} live={live} />
     </>
   );
+}
+
+/** Room at the foot of the Parts pane for the tour's coach card (Tour v3), the card's own height. */
+function CoachRoom() {
+  return <div aria-hidden="true" className="flex-none max-md:hidden" style={{ height: "calc(var(--coach-h, 0px) + 16px)" }} />;
 }
 
 function Rail({ label, icon, onOpen, children }: { label: string; icon: "panelLeft" | "panelRight"; onOpen: () => void; children?: ReactNode }) {
@@ -442,18 +448,44 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   // (full-width tabs fold the panes) no longer applies to it, on any tab or project, after reloads too.
   const [planOpen, setPlanOpenState] = useState<boolean | null>(project.panes.parts ?? null);
   const [chatOpen, setChatOpenState] = useState<boolean | null>(project.panes.chat ?? null);
-  const setPlanOpen = (open: boolean) => {
-    setPlanOpenState(open);
-    void savePane({ pane: "parts", open });
+  // Toggled on this page (Tour v3): during the tour, only these count, so the panes never fold by themselves.
+  const [touched, setTouched] = useState<{ parts?: boolean; chat?: boolean }>({});
+  // Panes slide open and closed once the page is showing (never on first paint). Closing slides out, then folds.
+  const [paneMotion, setPaneMotion] = useState<{ parts?: "in" | "out"; chat?: "in" | "out" }>({});
+  const reduced = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const togglePane = (pane: "parts" | "chat", open: boolean) => {
+    const apply = () => {
+      (pane === "parts" ? setPlanOpenState : setChatOpenState)(open);
+      setTouched((t) => ({ ...t, [pane]: open }));
+      setPaneMotion((m) => ({ ...m, [pane]: open ? "in" : undefined }));
+      void savePane({ pane, open });
+    };
+    if (open || reduced) return apply();
+    setPaneMotion((m) => ({ ...m, [pane]: "out" }));
+    window.setTimeout(apply, 300);
   };
-  const setChatOpen = (open: boolean) => {
-    setChatOpenState(open);
-    void savePane({ pane: "chat", open });
-  };
+  const setPlanOpen = (open: boolean) => togglePane("parts", open);
+  const setChatOpen = (open: boolean) => togglePane("chat", open);
+  const tourOn = guideActive(useTourStore((s) => s.tour));
   // Launch keeps the plan open and folds chat to a rail (screen 4).
   // Agents keeps the plan open too, listing the agents and the apps they connect to (screen 9).
-  const showPlan = planOpen ?? (onLaunch || !fullWidth || (!planStage && view === "agents") || dev);
-  const showChat = chatOpen ?? (!fullWidth || (dev && !onLaunch));
+  // While the tour is on, both stay open unless the person folds one here.
+  const showPlan = tourOn ? (touched.parts ?? true) : (planOpen ?? (onLaunch || !fullWidth || (!planStage && view === "agents") || dev));
+  const showChat = tourOn ? (touched.chat ?? true) : (chatOpen ?? (!fullWidth || (dev && !onLaunch)));
+  const paneClass = (pane: "parts" | "chat") =>
+    paneMotion[pane] === "out" ? (pane === "parts" ? "ax-slide-to-left" : "ax-slide-to-right") : paneMotion[pane] === "in" ? (pane === "parts" ? "ax-slide-from-left" : "ax-slide-from-right") : undefined;
+
+  // "Show me" (Tour v3): open the pane that holds the step's control, so the card can scroll to it.
+  useEffect(() => {
+    const onReveal = (e: Event) => {
+      const step = (e as CustomEvent<string>).detail;
+      if (step === "blocker" || step === "build") {
+        if (!showPlan) togglePane("parts", true);
+      }
+    };
+    window.addEventListener("tour:reveal", onReveal);
+    return () => window.removeEventListener("tour:reveal", onReveal);
+  });
   const canAct = canBuild(project.role);
 
   const writingId = project.plan?.generation === "writing" ? project.plan.id : null;
@@ -524,6 +556,12 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
 
   const counted = items.filter((i) => i.status !== "deferred" && i.status !== "dropped");
   const worksNow = counted.filter((i) => i.status === "built" || i.status === "sample_data").length;
+  // The coach card shows the build as the Parts pane does: "Building · 3 of 5 parts work" (Tour v3).
+  const waitingPart = counted.some((i) => i.status === "needs_connection");
+  useEffect(() => {
+    publishTourLive(planStage ? null : { projectId: project.id, running, works: worksNow, total: counted.length, waiting: waitingPart });
+  }, [project.id, planStage, running, worksNow, counted.length, waitingPart]);
+  useEffect(() => () => publishTourLive(null), []);
   const budgetPaused = Boolean(live.budgetPause) && (running || (project.status === "paused" && project.run?.status === "paused_budget" && items.some((i) => i.status === "agreed")));
 
   const blockingOpen = project.plan?.questions.filter((q) => q.blocking && !q.answer).length ?? 0;
@@ -643,7 +681,9 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
           : undefined
       }
       onToggleCollapsed={() => setPlanOpen(false)}
-      footer={<TourGuide placement="pane" />}
+      className={paneClass("parts")}
+      // Room under the parts for the tour's coach card, which sits over the pane's bottom-left corner.
+      footer={tourOn ? <CoachRoom /> : undefined}
     >
       {planStage ? (
         <PlanStagePanel project={project} items={streamedItems} writing={writing} failed={failed} />
@@ -654,9 +694,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
       )}
     </PlanPanel>
   ) : (
-    <Rail label="Parts" icon="panelLeft" onOpen={() => setPlanOpen(true)}>
-      <TourGuide placement="rail" />
-    </Rail>
+    <Rail label="Parts" icon="panelLeft" onOpen={() => setPlanOpen(true)} />
   );
 
   return (
@@ -775,8 +813,18 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
               start(async () => {
                 // ?sim=paused, ?sim=budget, ?sim=fast: the demo variants (docs/build/SIMULATOR.md).
                 const r = await buildPlan({ blueprintId: project.plan!.id, sim: params.get("sim") ?? undefined });
-                if (!r.ok) setActionError(r.message);
-                else router.refresh();
+                if (!r.ok) return setActionError(r.message);
+                // Build from the Plan tab goes to the App view, the live preview, with Parts and Chat open, rather than
+                // leaving a full-width tab that folds the panes.
+                if (!dev && view !== "app") {
+                  setPlanOpenState(true);
+                  setChatOpenState(true);
+                  setTouched({ parts: true, chat: true });
+                  const next = new URLSearchParams(params);
+                  next.delete("view");
+                  router.replace(`${pathname}${next.size ? `?${next}` : ""}`, { scroll: false });
+                }
+                router.refresh();
               });
             }}
           >
@@ -857,6 +905,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
         {showChat ? (
           <ChatPane
             project={project}
+            className={paneClass("chat")}
             writing={writing}
             activity={
               planStage ? null : (

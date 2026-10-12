@@ -2,29 +2,70 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, useTransition, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { create } from "zustand";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ARCHITECTURE_URL, README_URL, VIDEO_URL } from "@/lib/links";
-import { guideActive, nextStep, stepPhrase, TOUR_COPY, TOUR_STEPS, type TourStep, type TourView } from "@/lib/tour";
+import { guideActive, nextStep, TOUR_COPY, TOUR_CUE, TOUR_STEPS, type TourLive, type TourStep, type TourView } from "@/lib/tour";
 import { cn } from "@/lib/utils";
 import { closeHint, dismissTour, expandTour, finishTour, markCelebrated, minimiseTour, openTourStep, startTour, takeTour, tourState } from "@/server/actions/tour";
 import { buttonClasses, IconButton } from "./button";
 import { Icon } from "./icon";
 
 /*
- * The tour guide (M6, Tour v2). Once the tour is started, a small guide sits at the bottom left of every app page:
- * "Tour · 2 of 5 · Next: Fix a blocker →". The text opens the five steps; the arrow goes straight to the next one.
- * It shrinks to a dot, says when a step is done, and ends with a finish card. It's never modal: it sits in the page's
- * own flow where it can (the side nav, the Parts pane), and in the bottom bar beside Help on a phone.
+ * The tour (M6, Tour v3). Once started, one coach card stays in one place, bottom left (a bottom sheet on a phone):
+ * "Step 2 of 5 · Build it", one line on why, and the action. A hint points at the control for every step; when the
+ * control is off screen the card offers "Show me". The card follows a running build ("Building · 3 of 5 parts work"),
+ * moves on by itself when a step's event lands (with a short "Done ✓"), and only × minimises it.
+ *
+ * The state lives in a client store that outlives page changes, so moving between pages never makes the card flash:
+ * each page's provider only refreshes it, and loading screens render the same card from the store.
  */
+
+type Store = {
+  tour: TourView | null;
+  available: boolean;
+  /** The project build the Parts pane shows, published by the project workspace. */
+  live: TourLive | null;
+  /** A step just done: the card shows "Done ✓" for it until `until`, then moves on. Any card, on any page, ends it on time. */
+  doneFlash: { step: TourStep; until: number } | null;
+  stepsOpen: boolean;
+  /** A page's provider has handed over the server's copy. Until then the card shows that copy directly. */
+  seeded: boolean;
+};
+
+export const useTourStore = create<Store>(() => ({ tour: null, available: false, live: null, doneFlash: null, stepsOpen: false, seeded: false }));
+
+/** The tour as the card shows it: the store once seeded, else the page's server copy (so the first paint has it). */
+function useShownTour(initial: TourView | null): TourView | null {
+  const seeded = useTourStore((s) => s.seeded);
+  const tour = useTourStore((s) => s.tour);
+  return seeded ? tour : initial;
+}
+
+const setTour = (tour: TourView | null) => useTourStore.setState({ tour });
+
+/** Steps whose "Done ✓" this tab has shown, so a slow save never shows one twice. */
+const flashed = new Set<TourStep>();
+
+/** The project workspace reports its build here, so the card can show it. */
+export function publishTourLive(live: TourLive | null) {
+  const prev = useTourStore.getState().live;
+  if (JSON.stringify(prev) !== JSON.stringify(live)) useTourStore.setState({ live });
+}
+
+async function refresh() {
+  try {
+    setTour(await tourState());
+  } catch {
+    // Keep what's on screen; the next check tries again.
+  }
+}
 
 type Guide = {
   tour: TourView | null;
-  /** The tour can run here (a team workspace, not a Viewer): Take the tour is offered. */
   available: boolean;
   reload: () => Promise<void>;
-  popoverOpen: boolean;
-  setPopoverOpen: (open: boolean) => void;
   /** Take the tour (Resources, ⌘K): back on screen, with its steps open. */
   take: () => Promise<void>;
   /** Start the tour (Home's card), then go to the next step. */
@@ -32,237 +73,351 @@ type Guide = {
   setTour: (t: TourView | null) => void;
 };
 
-const GuideContext = createContext<Guide>({
-  tour: null,
-  available: false,
-  reload: async () => {},
-  popoverOpen: false,
-  setPopoverOpen: () => {},
-  take: async () => {},
-  start: async () => {},
-  setTour: () => {},
-});
+const GuideContext = createContext<{ start: () => Promise<void> }>({ start: async () => {} });
 
-export const useTourGuide = () => useContext(GuideContext);
-
-/** Holds the tour for the page, and keeps it fresh: after each page change, and every 8 seconds while it's on. */
-export function TourProvider({ initial, available, children }: { initial: TourView | null; available: boolean; children: ReactNode }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [tour, setTour] = useState(initial);
-  const [popoverOpen, setPopoverOpen] = useState(false);
-  const active = guideActive(tour);
-
-  const reload = useCallback(async () => {
-    try {
-      setTour(await tourState());
-    } catch {
-      // Keep what's on screen; the next check tries again.
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!active) return;
-    let stale = false;
-    tourState()
-      .then((t) => !stale && setTour(t))
-      .catch(() => {});
-    return () => {
-      stale = true;
-    };
-  }, [pathname, active]);
-
-  useEffect(() => {
-    if (!active) return;
-    const id = window.setInterval(() => document.visibilityState === "visible" && void reload(), 8000);
-    return () => window.clearInterval(id);
-  }, [active, reload]);
-
-  const value = useMemo<Guide>(
+export function useTourGuide(): Guide {
+  const tour = useTourStore((s) => s.tour);
+  const available = useTourStore((s) => s.available);
+  const { start } = useContext(GuideContext);
+  return useMemo(
     () => ({
       tour,
       available,
-      reload,
-      popoverOpen,
-      setPopoverOpen,
+      reload: refresh,
       setTour,
+      start,
       take: async () => {
         const r = await takeTour();
         if (!r.ok) return;
-        await reload();
-        setPopoverOpen(true);
-      },
-      start: async () => {
-        const r = await startTour();
-        if (!r.ok) return;
-        const fresh = await tourState();
-        setTour(fresh);
-        const next = fresh && nextStep(fresh.done);
-        if (fresh && next) {
-          void openTourStep(next);
-          router.push(fresh.links[next]);
-        }
-        router.refresh();
+        await refresh();
+        useTourStore.setState({ stepsOpen: true });
       },
     }),
-    [tour, available, reload, popoverOpen, router],
+    [tour, available, start],
   );
+}
 
+/**
+ * Refreshes the tour for the page: from the server's copy when the page opens, after each page change, every 3 seconds while
+ * it's on, and as soon as a build starts, a part waits or a build ends.
+ */
+export function TourProvider({ initial, available, children }: { initial: TourView | null; available: boolean; children: ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  // The server's copy is the freshest when the page opens; hand it over before the first paint.
+  useLayoutEffect(() => {
+    useTourStore.setState({ tour: initial, available, seeded: true });
+  }, [initial, available]);
+  const tour = useShownTour(initial);
+  const live = useTourStore((s) => s.live);
+  const active = guideActive(tour);
+
+  useEffect(() => {
+    if (!active) return;
+    void refresh();
+  }, [pathname, active, live?.running, live?.waiting]);
+
+  useEffect(() => {
+    if (!active) return;
+    const id = window.setInterval(() => document.visibilityState === "visible" && void refresh(), 3000);
+    return () => window.clearInterval(id);
+  }, [active]);
+
+  const start = useCallback(async () => {
+    const r = await startTour();
+    if (!r.ok) return;
+    const fresh = await tourState();
+    setTour(fresh);
+    const next = fresh && nextStep(fresh.done);
+    if (fresh && next) {
+      void openTourStep(next);
+      router.push(fresh.links[next]);
+    }
+    router.refresh();
+  }, [router]);
+
+  return <GuideContext.Provider value={useMemo(() => ({ start }), [start])}>{children}</GuideContext.Provider>;
+}
+
+/** The control a step points at ([data-tour-hint]), and whether it's on screen. Checked as the page changes. */
+function useTarget(step: TourStep | null) {
+  // `settled`: found, or still missing a second after the page arrived (so a page that's still drawing doesn't flash "Show me").
+  const [state, setState] = useState<{ found: boolean; visible: boolean; settled: boolean }>({ found: false, visible: false, settled: false });
+  const pathname = usePathname();
+  useEffect(() => {
+    if (!step) return;
+    const since = Date.now();
+    const check = () => {
+      const el = [...document.querySelectorAll(`[data-tour-hint="${step}"]`)].find((e) => e.getBoundingClientRect().width > 0);
+      const r = el?.getBoundingClientRect();
+      const found = Boolean(el && r);
+      const coach = document.querySelector("[data-coach]")?.getBoundingClientRect();
+      const underCoach = Boolean(r && coach && r.left < coach.right && r.right > coach.left && r.top < coach.bottom && r.bottom > coach.top);
+      const visible = Boolean(found && r && r.top >= 0 && r.bottom <= window.innerHeight && r.left >= 0 && r.right <= window.innerWidth && !underCoach);
+      const settled = found || Date.now() - since > 1000;
+      setState((s) => (s.found === found && s.visible === visible && s.settled === settled ? s : { found, visible, settled }));
+    };
+    check();
+    const id = window.setInterval(check, 400);
+    window.addEventListener("scroll", check, true);
+    window.addEventListener("resize", check);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("scroll", check, true);
+      window.removeEventListener("resize", check);
+    };
+  }, [step, pathname]);
+  return step ? state : { found: false, visible: false, settled: false };
+}
+
+const prefersReducedMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** "Show me": the page opens the pane that holds the control (it listens for tour:reveal), then the control scrolls into view. */
+function revealTarget(step: TourStep) {
+  window.dispatchEvent(new CustomEvent("tour:reveal", { detail: step }));
+  window.setTimeout(() => {
+    document.querySelector(`[data-tour-hint="${step}"]`)?.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "center", inline: "nearest" });
+  }, 320);
+}
+
+/** A number that counts up a step at a time when it grows ("3 of 5 parts work"). */
+function CountUp({ value }: { value: number }) {
+  const [shown, setShown] = useState(value);
+  useEffect(() => {
+    if (shown === value) return;
+    const id = window.setTimeout(() => setShown((n) => (n < value ? n + 1 : value)), prefersReducedMotion() ? 0 : 60);
+    return () => window.clearTimeout(id);
+  }, [shown, value]);
   return (
-    <GuideContext.Provider value={value}>
-      {children}
-      <TourHint />
-      <FinishCard />
-    </GuideContext.Provider>
+    <span key={shown} className="inline-block ax-rise-in tabular-nums">
+      {shown}
+    </span>
   );
 }
 
-/** Where the guide sits: in the side nav or the Parts pane (in flow), a Parts rail (a dot), a page corner, or a phone's bottom bar. */
-type Placement = "nav" | "pane" | "rail" | "corner" | "bar";
-
-const WRAP: Record<Placement, string> = {
-  nav: "relative pb-2 max-md:hidden",
-  pane: "relative px-3 pt-1 pb-3 max-md:hidden",
-  rail: "relative mt-auto pt-2 max-md:hidden",
-  corner: "fixed bottom-3 left-4 z-40 max-w-[calc(100vw-84px)] md:bottom-4",
-  bar: "fixed bottom-3 left-4 z-40 max-w-[calc(100vw-84px)] md:hidden",
-};
-
-/** Below 768px (Tailwind's md): the phone's bottom bar holds the guide instead of the side nav or Parts pane. */
-const PHONE = "(width < 48rem)";
-function usePhone(): boolean {
-  return useSyncExternalStore(
-    (on) => {
-      const m = window.matchMedia(PHONE);
-      m.addEventListener("change", on);
-      return () => m.removeEventListener("change", on);
-    },
-    () => window.matchMedia(PHONE).matches,
-    () => false,
+/**
+ * Text that changes in place: the old text fades out and up while the new one fades in from below. Nothing animates on
+ * the first render, so a page change with the same step shows no movement at all.
+ */
+function Swap({ id, children }: { id: string; children: ReactNode }) {
+  const [layers, setLayers] = useState<{ id: string; node: ReactNode; leaving: boolean; fresh: boolean }[]>([{ id, node: children, leaving: false, fresh: false }]);
+  const current = layers[layers.length - 1];
+  if (current.id !== id) {
+    setLayers([...layers.filter((l) => !l.leaving).map((l) => ({ ...l, leaving: true })), { id, node: children, leaving: false, fresh: true }]);
+  } else if (current.node !== children) {
+    setLayers(layers.map((l, i) => (i === layers.length - 1 ? { ...l, node: children } : l)));
+  }
+  useEffect(() => {
+    if (!layers.some((l) => l.leaving)) return;
+    const t = window.setTimeout(() => setLayers((ls) => ls.filter((l) => !l.leaving)), 230);
+    return () => window.clearTimeout(t);
+  }, [layers]);
+  return (
+    <div className="relative">
+      {layers.map((l) => (
+        <div key={l.id} aria-hidden={l.leaving || undefined} className={cn(l.leaving ? "pointer-events-none absolute inset-x-0 top-0 ax-rise-out" : l.fresh && "ax-rise-in")}>
+          {l.node}
+        </div>
+      ))}
+    </div>
   );
 }
 
-export function TourGuide({ placement }: { placement: Placement }) {
-  const { tour, setTour, popoverOpen, setPopoverOpen } = useTourGuide();
+/** Five dots: done ones filled, the current one wider. Only opacity and transform change. */
+function Dots({ done, current }: { done: TourStep[]; current: TourStep | null }) {
+  return (
+    <span aria-hidden="true" className="flex items-center gap-1">
+      {TOUR_STEPS.map((s) => (
+        <span key={s} className="relative block size-1.5">
+          <span className="absolute inset-0 rounded-full bg-line-ctl/40" />
+          <span
+            className="absolute inset-0 rounded-full bg-works transition-[opacity,transform] duration-(--motion-base) ease-(--ease-out)"
+            style={{ opacity: done.includes(s) ? 1 : s === current ? 1 : 0, transform: s === current && !done.includes(s) ? "scale(1.35)" : "scale(1)", background: s === current && !done.includes(s) ? "var(--ink)" : undefined }}
+          />
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/**
+ * The coach card. `inset` is where bottom-left is on this page: past the side nav on app pages, the page's edge on a
+ * project or a settings page. On a phone it's a bottom sheet above the Help bar.
+ */
+export function CoachCard({ inset = "edge", initial = null }: { inset?: "nav" | "edge"; initial?: TourView | null }) {
+  const tour = useShownTour(initial);
+  const live = useTourStore((s) => s.live);
+  const flash = useTourStore((s) => s.doneFlash);
+  const doneFlash = flash?.step ?? null;
+  const stepsOpen = useTourStore((s) => s.stepsOpen);
+  const pathname = usePathname();
+  const router = useRouter();
   const [, start] = useTransition();
-  const phone = usePhone();
-  // Two guides can be on a page (one for wide screens, one for a phone), but only the shown one opens its steps.
-  const shown = placement === "corner" || (placement === "bar") === phone;
-  if (!guideActive(tour)) return null;
-  const next = nextStep(tour.done);
-  // After step 5, the finish card takes over.
-  if (!next) return null;
-  const count = `${tour.done.length} of ${TOUR_STEPS.length}`;
-  const floating = placement === "corner" || placement === "bar";
+  const card = useRef<HTMLElement>(null);
+  const active = guideActive(tour);
+  const next = active ? nextStep(tour.done) : null;
+  const target = useTarget(active && !tour.minimised ? next : null);
 
-  const steps = (
-    <PopoverContent
-      side="top"
-      align="start"
-      sideOffset={8}
-      collisionPadding={12}
-      className="w-[min(380px,calc(100vw-24px))] gap-0 rounded-card border border-line bg-surface p-0 text-body text-ink shadow-pop ring-0"
-    >
-      <TourSteps tour={tour} onGo={() => setPopoverOpen(false)} />
-    </PopoverContent>
-  );
-  const dotClasses = cn(
-    "grid size-9 place-items-center rounded-full border border-line-ctl bg-surface text-small font-semibold tabular-nums hover:bg-selected",
-    floating && "shadow-pop",
+  // A step that's newly done shows "Done ✓" for about 1.2 seconds, then the card moves on (saved, so it shows once).
+  const fresh = active ? tour.done.filter((s) => !tour.celebrated.includes(s)) : [];
+  const justDone = fresh.length ? [...fresh].sort((a, b) => TOUR_STEPS.indexOf(b) - TOUR_STEPS.indexOf(a))[0] : null;
+  useEffect(() => {
+    const current = useTourStore.getState().tour;
+    if (!justDone || !current || flashed.has(justDone)) return;
+    flashed.add(justDone);
+    // Counted as seen straight away, here and on the server, so the same step never flashes twice.
+    useTourStore.setState({ doneFlash: { step: justDone, until: Date.now() + 1200 }, tour: { ...current, celebrated: [...new Set([...current.celebrated, ...current.done])] } });
+    void markCelebrated(current.done);
+  }, [justDone]);
+  useEffect(() => {
+    if (!flash) return;
+    const t = window.setTimeout(() => useTourStore.setState({ doneFlash: null }), Math.max(0, flash.until - Date.now()));
+    return () => window.clearTimeout(t);
+  }, [flash]);
+
+  // Its height, for the room pages leave at their end (globals.css), so the card never hides their last controls.
+  useLayoutEffect(() => {
+    const el = card.current;
+    if (!el) return;
+    const set = () => document.documentElement.style.setProperty("--coach-h", `${Math.ceil(el.getBoundingClientRect().height)}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
+
+  if (!active) return null;
+  const count = tour.done.length;
+  const place = cn(
+    "fixed z-40 max-md:inset-x-0 max-md:bottom-[60px] max-md:rounded-b-none md:bottom-4 md:w-[360px]",
+    inset === "nav" ? "md:left-[284px]" : "md:left-4",
   );
 
-  // Minimised: a dot that opens back into the guide.
   if (tour.minimised) {
     return (
-      <div className={WRAP[placement]}>
+      <div data-coach className={cn(place, "max-md:inset-x-auto max-md:bottom-3 max-md:left-4 md:w-auto")}>
         <button
           type="button"
-          aria-label={`Show the tour · ${count}`}
-          title={`Tour · ${count}`}
+          aria-label={`Show the tour · ${count} of ${TOUR_STEPS.length}`}
           onClick={() => {
             setTour({ ...tour, minimised: false });
             start(async () => void (await expandTour()));
           }}
-          className={dotClasses}
+          className="ax-fade-in flex min-h-9 items-center gap-2 rounded-full border border-line-ctl bg-surface px-3.5 text-small font-semibold shadow-pop hover:bg-selected"
         >
-          {tour.done.length}/{TOUR_STEPS.length}
+          Tour · {count} of {TOUR_STEPS.length}
+          <Dots done={tour.done} current={next} />
         </button>
       </div>
     );
   }
 
-  // The Parts rail is 56px wide: the guide is a dot there, opening the steps.
-  if (placement === "rail") {
-    return (
-      <div className={WRAP[placement]}>
-        <Popover open={popoverOpen && shown} onOpenChange={setPopoverOpen}>
-          <PopoverTrigger asChild>
-            <button type="button" aria-label={`Tour · ${count} · Next: ${TOUR_COPY[next].title}. Show the steps`} title={`Tour · ${count}`} className={dotClasses}>
-              {tour.done.length}/{TOUR_STEPS.length}
-            </button>
-          </PopoverTrigger>
-          {steps}
-        </Popover>
+  const shown = doneFlash ?? next;
+  const building = live && live.running && live.projectId && pathname.startsWith(`/p/${live.projectId}`);
+  const onStepPage = next ? pathname === tour.links[next].split("?")[0] : false;
+  const minimise = () => {
+    setTour({ ...tour, minimised: true });
+    start(async () => void (await minimiseTour("guide")));
+  };
+
+  let body: ReactNode;
+  let swapKey: string;
+  if (!next && !doneFlash) {
+    swapKey = "finish";
+    body = <Finish tour={tour} onDone={() => router.refresh()} />;
+  } else if (doneFlash) {
+    swapKey = `done-${doneFlash}`;
+    body = (
+      <div className="flex items-center gap-2 py-3">
+        <span className="grid size-7 place-items-center rounded-full bg-works-bg text-works">
+          <Icon name="check" size="sm" className="ax-tick" />
+        </span>
+        <span className="text-sub font-semibold">Done ✓</span>
+        <span className="text-ink-2">{TOUR_COPY[doneFlash].title}</span>
+      </div>
+    );
+  } else {
+    const s = next!;
+    swapKey = s;
+    const waitingForBlocker = s === "blocker" && building && !target.found;
+    body = (
+      <div className="flex flex-col gap-2">
+        <p className="text-ink-2">{TOUR_COPY[s].line}</p>
+        {building && (
+          <p role="status" className="flex items-center gap-2 font-semibold">
+            <span className="size-2 rounded-full bg-building" aria-hidden="true" />
+            Building · <CountUp value={live!.works} /> of {live!.total} parts work
+          </p>
+        )}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          {s === "plan" && pathname.startsWith("/p/") ? (
+            // The plan is being written on its project page: nothing to click, the card moves on when it's ready.
+            <span role="status" className="inline-flex min-h-8 items-center gap-2 font-semibold">
+              <span className="size-2 rounded-full bg-building" aria-hidden="true" />
+              Writing the plan…
+            </span>
+          ) : !target.settled ? (
+            // Holding the line's place while the page draws the control.
+            <span aria-hidden="true" className="invisible inline-flex min-h-8 items-center">
+              {TOUR_CUE[s].click}
+            </span>
+          ) : waitingForBlocker ? (
+            <span className="text-small text-ink-2">When a part waits for an app, this points at its Connect button.</span>
+          ) : target.visible ? (
+            <span className="inline-flex items-center gap-1.5 font-semibold">
+              <Icon name="pointer" size="sm" />
+              {TOUR_CUE[s].click}
+            </span>
+          ) : target.found || (onStepPage && s !== "blocker") ? (
+            <>
+              <span className="text-small text-ink-2">It&apos;s off screen.</span>
+              <button type="button" onClick={() => revealTarget(s)} className={buttonClasses({ size: "sm", variant: "primary" })}>
+                Show me
+              </button>
+            </>
+          ) : (
+            <Link href={tour.links[s]} onClick={() => void openTourStep(s)} className={buttonClasses({ size: "sm", variant: "primary" })}>
+              {TOUR_COPY[s].action}
+            </Link>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className={WRAP[placement]}>
-      <StepDone tour={tour} placement={placement} />
-      <div
-        role="group"
-        aria-label="Tour"
-        className={cn(
-          "flex items-center gap-0.5 border border-line-ctl bg-surface py-0.5 pr-0.5 pl-1",
-          placement === "nav" ? "rounded-card" : "rounded-full",
-          floating && "shadow-pop",
-        )}
-      >
-        <Popover open={popoverOpen && shown} onOpenChange={setPopoverOpen}>
+    <section
+      ref={card}
+      data-coach
+      aria-label="Tour"
+      className={cn(place, "flex flex-col gap-1.5 rounded-card border border-line bg-surface px-4 pt-3 pb-3.5 shadow-pop max-md:border-x-0 max-md:border-b-0")}
+    >
+      <div className="flex items-center gap-2">
+        <h2 className="min-w-0 flex-1 font-semibold">
+          <Swap id={swapKey === "finish" ? "finish" : `h-${shown}`}>
+            <span className="block text-balance">{shown ? `Step ${TOUR_STEPS.indexOf(shown) + 1} of ${TOUR_STEPS.length} · ${TOUR_COPY[shown].title}` : "The tour"}</span>
+          </Swap>
+        </h2>
+        <Dots done={tour.done} current={next} />
+        <Popover open={stepsOpen} onOpenChange={(o) => useTourStore.setState({ stepsOpen: o })}>
           <PopoverTrigger asChild>
-            <button
-              type="button"
-              aria-label={`Tour · ${count} · Next: ${TOUR_COPY[next].title}. Show the steps`}
-              className={cn(
-                "flex min-h-8 min-w-0 flex-1 items-center rounded-full px-2 text-left text-small hover:bg-selected",
-                placement === "nav" && "flex-col items-start gap-0 rounded-tile py-1",
-              )}
-            >
-              <span className="flex-none font-semibold tabular-nums">Tour · {count}</span>
-              {placement !== "nav" && <span className="flex-none px-1 text-ink-3">·</span>}
-              <span className="min-w-0 truncate text-ink-2">Next: {TOUR_COPY[next].title}</span>
-            </button>
+            <IconButton icon="lines" label="All steps" quiet size={32} />
           </PopoverTrigger>
-          {steps}
+          <PopoverContent side="top" align="end" sideOffset={8} collisionPadding={12} className="w-[min(380px,calc(100vw-24px))] gap-0 rounded-card border border-line bg-surface p-0 text-body text-ink shadow-pop ring-0">
+            <TourSteps tour={tour} onGo={() => useTourStore.setState({ stepsOpen: false })} />
+          </PopoverContent>
         </Popover>
-        <Link
-          href={tour.links[next]}
-          onClick={() => void openTourStep(next)}
-          aria-label={`Go to the next step: ${TOUR_COPY[next].title}`}
-          title={`Next: ${TOUR_COPY[next].title}`}
-          className="grid size-8 flex-none place-items-center rounded-full bg-primary text-on-primary hover:opacity-90"
-        >
-          <Icon name="arrowRight" size="sm" />
-        </Link>
-        <IconButton
-          icon="minus"
-          label="Minimise the tour"
-          quiet
-          size={32}
-          onClick={() => {
-            setTour({ ...tour, minimised: true });
-            start(async () => void (await minimiseTour("guide")));
-          }}
-        />
+        <IconButton icon="close" label="Minimise the tour" quiet size={32} onClick={minimise} />
       </div>
-    </div>
+      <Swap id={swapKey}>{body}</Swap>
+      {/* Opening the audit log is step 5 itself, so its hint stays through "Done ✓" and the finish. */}
+      <TourHint step={doneFlash === "governance" || !next ? "governance" : !doneFlash ? next : null} card={card} />
+    </section>
   );
 }
 
-/** The five steps, in the guide's popover: done ones ticked, the next one with its action, and Don't show again. */
+/** The five steps, from the card's "All steps": done ones ticked, the next one with its action, and Don't show again. */
 function TourSteps({ tour, onGo }: { tour: TourView; onGo: () => void }) {
-  const { setTour } = useTourGuide();
   const [pending, start] = useTransition();
   const next = nextStep(tour.done);
   return (
@@ -332,74 +487,29 @@ function TourSteps({ tour, onGo }: { tour: TourView; onGo: () => void }) {
   );
 }
 
-/** "Step 2 done · Next: fix a blocker", once per step, just above the guide. */
-function StepDone({ tour, placement }: { tour: TourView; placement: Placement }) {
-  const { setTour } = useTourGuide();
-  const fresh = tour.done.filter((s) => !tour.celebrated.includes(s));
-  const next = nextStep(tour.done);
-  const last = [...fresh].sort((a, b) => TOUR_STEPS.indexOf(b) - TOUR_STEPS.indexOf(a))[0];
-  const seen = () => {
-    setTour({ ...tour, celebrated: tour.done });
-    void markCelebrated(tour.done);
-  };
-  if (!last || !next) return null;
-  return (
-    <div
-      role="status"
-      className={cn(
-        "absolute bottom-full left-0 mb-2 flex w-max max-w-[min(340px,calc(100vw-32px))] flex-col gap-2 rounded-card border border-line bg-surface p-3 shadow-pop",
-        placement === "pane" && "left-3",
-      )}
-    >
-      <div className="flex items-start gap-2">
-        <Icon name="checkCircle" size="sm" className="mt-0.5 flex-none text-works" />
-        <p className="min-w-0 flex-1 font-semibold">
-          Step {TOUR_STEPS.indexOf(last) + 1} done · Next: {stepPhrase(next)}
-        </p>
-        <IconButton icon="close" label="Close" quiet size={32} className="-mt-1.5 -mr-1.5" onClick={seen} />
-      </div>
-      <Link
-        href={tour.links[next]}
-        onClick={() => {
-          void openTourStep(next);
-          seen();
-        }}
-        className={cn(buttonClasses({ size: "sm" }), "self-start")}
-      >
-        {TOUR_COPY[next].action}
-      </Link>
-    </div>
-  );
-}
-
-/** After step 5: the whole story's been seen. Closing it, any way, ends the tour. */
-function FinishCard() {
-  const { tour, setTour } = useTourGuide();
+/** After step 5, in the card itself: the whole story's been seen. Closing it, any way, ends the tour. */
+function Finish({ tour, onDone }: { tour: TourView; onDone: () => void }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  if (!guideActive(tour) || nextStep(tour.done)) return null;
   const finish = (how: "explore" | "reset" | "close", then?: () => void) =>
     start(async () => {
       const r = await finishTour(how);
       if (!r.ok) return;
       setTour(null);
       then?.();
+      onDone();
     });
   const link = "inline-flex min-h-6 items-center gap-1 font-semibold underline decoration-line-ctl underline-offset-[3px] hover:decoration-ink";
   return (
-    <section
-      aria-labelledby="tour-finished"
-      className="fixed bottom-[72px] left-4 z-50 flex w-[min(380px,calc(100vw-32px))] flex-col gap-3 rounded-card border border-line bg-surface p-4 shadow-pop md:bottom-4"
-    >
+    <section aria-labelledby="tour-finished" className="flex flex-col gap-3">
       <div className="flex items-start gap-2">
         <Icon name="checkCircle" className="mt-0.5 flex-none text-works" />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h2 id="tour-finished" className="text-sub font-semibold">
+          <h3 id="tour-finished" className="text-sub font-semibold">
             You&apos;ve seen the whole story
-          </h2>
+          </h3>
           <p className="text-ink-2">A plan before any build, a part proved by its check, a blocker fixed, an approved launch, and the audit log.</p>
         </div>
-        <IconButton icon="close" label="Close the tour" quiet size={32} aria-disabled={pending || undefined} onClick={() => finish("close")} />
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-small">
         {VIDEO_URL ? (
@@ -430,48 +540,69 @@ function FinishCard() {
             Reset demo data
           </button>
         )}
+        <button type="button" aria-disabled={pending || undefined} onClick={() => finish("close")} className="min-h-8 px-2 text-small font-semibold text-ink-2 hover:text-ink">
+          Close the tour
+        </button>
       </div>
     </section>
   );
 }
 
-const HINT: Partial<Record<TourStep, string>> = {
-  build: "Click Build. Each part is built, then proved by its own check.",
-  blocker: "Connect the app here, and the waiting part carries on.",
-  launch: "Live waits for an Owner or Admin. You're the Owner: approve it here.",
-  governance: "Everything that happened, who did it and when.",
-};
+type Rect = { top: number; left: number; right: number; bottom: number };
+const overlaps = (a: Rect, b: Rect) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 
 /**
- * One hint per step, pointing at the exact control (marked data-tour-hint="<step>"). It goes once the step is done,
- * the control is clicked, or "Got it". Placed below the control, or above it near the bottom of the screen.
+ * The hint for the current step, beside its control: it fades and scales in, the control gets two soft pulses, and the
+ * hint glides when the control moves. It stays inside the screen and off the coach card, the side nav and the control.
+ * It goes once the control is clicked or "Got it"; the step being done moves it to the next step's control.
  */
-function TourHint() {
-  const { tour, setTour } = useTourGuide();
-  const next = guideActive(tour) ? nextStep(tour.done) : null;
-  const step = next && HINT[next] && !tour?.hints.includes(next) && !tour?.minimised ? next : null;
-  const [box, setBox] = useState<{ top: number; left: number; above: boolean } | null>(null);
+function TourHint({ step, card }: { step: TourStep | null; card: React.RefObject<HTMLElement | null> }) {
+  const tour = useTourStore((s) => s.tour);
+  const [pos, setPos] = useState<{ x: number; y: number; ring: Rect } | null>(null);
   const [clicked, setClicked] = useState<TourStep | null>(null);
+  const [pulseKey, setPulseKey] = useState(0);
+  const hint = useRef<HTMLDivElement>(null);
+  const on = Boolean(step && tour && !tour.hints.includes(step) && clicked !== step);
 
-  useLayoutEffect(() => {
-    if (!step || clicked === step) return;
+  useEffect(() => {
+    if (!on || !step) return;
     let el: Element | null = null;
     const onClick = () => setClicked(step);
     const place = () => {
-      const found = document.querySelector(`[data-tour-hint="${step}"]`);
+      const found = [...document.querySelectorAll(`[data-tour-hint="${step}"]`)].find((e) => e.getBoundingClientRect().width > 0) ?? null;
       if (found !== el) {
         el?.removeEventListener("click", onClick);
         el = found;
         el?.addEventListener("click", onClick);
+        if (found) setPulseKey((k) => k + 1);
       }
       const r = el?.getBoundingClientRect();
-      if (!r || !r.width || r.bottom < 0 || r.top > window.innerHeight) return setBox(null);
-      const above = r.bottom + 120 > window.innerHeight;
-      const left = Math.max(12, Math.min(r.left, window.innerWidth - 292));
-      setBox({ top: above ? r.top - 8 : r.bottom + 8, left, above });
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      if (!r || !r.width || r.bottom < 0 || r.top > vh || r.right < 0 || r.left > vw) return setPos(null);
+      const w = hint.current?.offsetWidth ?? 280;
+      const h = hint.current?.offsetHeight ?? 110;
+      const avoid: Rect[] = [card.current?.getBoundingClientRect(), document.querySelector('nav[aria-label="Workspace"]')?.getBoundingClientRect()].filter((x): x is DOMRect => Boolean(x && x.width));
+      const clampX = (x: number) => Math.max(12, Math.min(x, vw - w - 12));
+      const clampY = (y: number) => Math.max(12, Math.min(y, vh - h - 12));
+      const options = [
+        { x: clampX(r.left), y: r.bottom + 10 },
+        { x: clampX(r.left), y: r.top - h - 10 },
+        { x: r.right + 10, y: clampY(r.top) },
+        { x: r.left - w - 10, y: clampY(r.top) },
+      ];
+      const fits = (o: { x: number; y: number }) => {
+        const box = { left: o.x, top: o.y, right: o.x + w, bottom: o.y + h };
+        return box.left >= 8 && box.top >= 8 && box.right <= vw - 8 && box.bottom <= vh - 8 && !avoid.some((a) => overlaps(box, a)) && !overlaps(box, r);
+      };
+      // Nowhere clear of the card, the nav and the control (or the control is under the card): no hint rather than one
+      // that covers something. The card's "Show me" brings the control into view.
+      const best = options.find(fits);
+      if (!best || avoid.some((a) => overlaps(r, a))) return setPos(null);
+      setPos({ x: best.x, y: best.y, ring: { top: r.top, left: r.left, right: r.right, bottom: r.bottom } });
     };
     place();
-    const id = window.setInterval(place, 700);
+    const id = window.setInterval(place, 300);
     window.addEventListener("scroll", place, true);
     window.addEventListener("resize", place);
     return () => {
@@ -480,30 +611,36 @@ function TourHint() {
       window.removeEventListener("resize", place);
       el?.removeEventListener("click", onClick);
     };
-  }, [step, clicked]);
+  }, [on, step, card]);
 
-  if (!step || clicked === step || !box || !tour) return null;
+  if (!on || !step || !pos || !tour) return null;
+  const pad = 4;
   return (
-    <div
-      role="note"
-      aria-label={`Tour hint: ${TOUR_COPY[step].title}`}
-      style={{ top: box.top, left: box.left, transform: box.above ? "translateY(-100%)" : undefined }}
-      className="fixed z-40 flex w-[280px] flex-col gap-2 rounded-card bg-primary p-3 text-small text-on-primary shadow-pop"
-    >
-      <span className="font-semibold">
-        Step {TOUR_STEPS.indexOf(step) + 1} · {TOUR_COPY[step].title}
-      </span>
-      <span>{HINT[step]}</span>
-      <button
-        type="button"
-        onClick={() => {
-          setTour({ ...tour, hints: [...tour.hints, step] });
-          void closeHint(step, tour.hints);
-        }}
-        className="min-h-6 self-end font-semibold underline underline-offset-[3px]"
-      >
-        Got it
-      </button>
-    </div>
+    <>
+      <span
+        key={`ring-${step}-${pulseKey}`}
+        aria-hidden="true"
+        className="ax-pulse pointer-events-none fixed z-40 rounded-full border-2 border-focus"
+        style={{ left: pos.ring.left - pad, top: pos.ring.top - pad, width: pos.ring.right - pos.ring.left + pad * 2, height: pos.ring.bottom - pos.ring.top + pad * 2 }}
+      />
+      <div ref={hint} role="note" aria-label={`Tour hint: ${TOUR_COPY[step].title}`} className="ax-glide fixed top-0 left-0 z-40" style={{ transform: `translate3d(${pos.x}px, ${pos.y}px, 0)` }}>
+        <div key={step} className="ax-pop-in flex w-[280px] flex-col gap-2 rounded-card bg-primary p-3 text-small text-on-primary shadow-pop">
+          <span className="font-semibold">
+            Step {TOUR_STEPS.indexOf(step) + 1} · {TOUR_COPY[step].title}
+          </span>
+          <span>{TOUR_CUE[step].hint}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setTour({ ...tour, hints: [...tour.hints, step] });
+              void closeHint(step, tour.hints);
+            }}
+            className="min-h-6 self-end font-semibold underline underline-offset-[3px]"
+          >
+            Got it
+          </button>
+        </div>
+      </div>
+    </>
   );
 }

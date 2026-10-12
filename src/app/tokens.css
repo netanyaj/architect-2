@@ -48,6 +48,10 @@
   --rail: 56px;
   --plan-panel: 340px;
   --chat-panel: 344px;
+  --motion-fast: 150ms;
+  --motion-base: 220ms;
+  --motion-slow: 300ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
   --ax-shadow-pane: 0 1px 2px rgba(20,20,20,0.04), 0 6px 20px rgba(20,20,20,0.05);
   --ax-shadow-hero: 0 12px 32px rgba(20,20,20,0.07);
   --ax-shadow-pop: 0 18px 48px rgba(0,0,0,0.18);

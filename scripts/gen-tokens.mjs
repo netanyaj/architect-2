@@ -24,6 +24,8 @@ const lines = [
   ...t.spacing.tokens.map((s) => `  --${s.name}: ${s.value};`),
   ...t.radius.tokens.map((r) => `  --${r.name}: ${r.value};`),
   ...t.size.tokens.map((s) => `  --${s.name}: ${s.value};`),
+  // Motion (M6): one easing and three durations, nothing over 400ms.
+  ...(t.motion?.tokens ?? []).map((m) => `  --${m.name}: ${m.value};`),
   `  --ax-shadow-pane: ${shadows["shadow-pane"]};`,
   `  --ax-shadow-hero: ${shadows["shadow-hero"]};`,
   `  --ax-shadow-pop: ${shadows["shadow-pop"]};`,

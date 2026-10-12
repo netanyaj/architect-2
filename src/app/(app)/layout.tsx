@@ -31,7 +31,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   // The bottom strip (pb-[64px]) keeps the Help button's corner clear, so it never covers a page's own buttons. On a phone,
   // Help sits in its own bar instead (HelpLauncher).
   return (
-    <TourHost>
+    <TourHost inset="nav">
     <div className="flex min-h-dvh gap-2.5 bg-canvas p-2.5 pb-[64px] max-md:flex-col max-md:pb-2.5">
       <SideNav
         workspaceName={ctx.workspace.name}

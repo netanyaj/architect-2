@@ -66,6 +66,8 @@ export async function tourFor(admin: AdminDb, ctx: AppContext): Promise<TourView
   const waitingIds = new Set((waitingRows ?? []).map((w) => w.project_id));
   const waiting = list.find((p) => p.owner_id === ctx.user.id && waitingIds.has(p.id)) ?? list.find((p) => waitingIds.has(p.id));
   const built = list.find((p) => p.owner_id === ctx.user.id && p.status !== "draft");
+  // Step 4: the waiting Live request itself, so Approve is on screen when the page opens.
+  const { data: live } = await admin.from("approvals").select("id").eq("workspace_id", ws).eq("kind", "deploy").eq("status", "waiting").order("created_at").limit(1);
   return {
     done,
     demoVisitor: Boolean(ctx.user.is_anonymous),
@@ -79,7 +81,7 @@ export async function tourFor(admin: AdminDb, ctx: AppContext): Promise<TourView
       plan: "/home?tour=plan",
       build: mine ? `/p/${mine.id}?view=plan` : "/projects",
       blocker: waiting ? `/p/${waiting.id}` : built ? `/p/${built.id}` : "/connections",
-      launch: "/governance/approvals",
+      launch: live?.[0] ? `/governance/approvals?id=${live[0].id}` : "/governance/approvals",
       governance: "/governance?section=audit",
     },
   };

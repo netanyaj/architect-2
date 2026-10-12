@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -76,9 +78,18 @@ export function StatusMark({
   label?: string;
   className?: string;
 }) {
+  // A status that changes while on screen (a part going Building → Works in a build) cross-fades, and a new Works tick
+  // draws in. Nothing animates on first paint.
+  const [prev, setPrev] = useState(status);
+  const [changed, setChanged] = useState(false);
+  if (prev !== status) {
+    setPrev(status);
+    setChanged(true);
+  }
   return (
     <span
-      className={cn("mt-px grid size-5 flex-none place-items-center rounded-full", tone[status], className)}
+      key={changed ? status : "first"}
+      className={cn("mt-px grid size-5 flex-none place-items-center rounded-full", tone[status], changed && "ax-fade-in", className)}
       role={label ? "img" : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}
@@ -86,7 +97,7 @@ export function StatusMark({
       <svg
         viewBox="0 0 16 16"
         aria-hidden="true"
-        className="size-3 fill-none stroke-current [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:2.4]"
+        className={cn("size-3 fill-none stroke-current [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:2.4]", changed && status === "works" && "ax-tick")}
       >
         {icons[icon ?? defaultIcon[status]]}
       </svg>

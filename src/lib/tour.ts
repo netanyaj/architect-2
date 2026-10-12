@@ -18,6 +18,18 @@ export const TOUR_COPY: Record<TourStep, { title: string; line: string; action: 
   governance: { title: "See Governance and the audit log", line: "The organisation's rules, and everything that happened.", action: "Open the audit log" },
 };
 
+/** Tour v3's coach card: what to click when the control is on screen, and the hint beside the control. */
+export const TOUR_CUE: Record<TourStep, { click: string; hint: string }> = {
+  plan: { click: "Click Write the plan", hint: "The tour's prompt is filled in. Write the plan to see its parts, checks and cost." },
+  build: { click: "Click Build", hint: "Click Build. Each part is built, then proved by its own check." },
+  blocker: { click: "Click Connect on the waiting part", hint: "Connect the app here, and the waiting part carries on." },
+  launch: { click: "Click Approve on the Live request", hint: "Live waits for an Owner or Admin. You're the Owner: approve it here." },
+  governance: { click: "Read the audit log", hint: "Everything that happened, who did it and when." },
+};
+
+/** A project's build, as the Parts pane shows it, for the coach card's "Building · 3 of 5 parts work". */
+export type TourLive = { projectId: string; running: boolean; works: number; total: number; waiting: boolean };
+
 /** What the person chose about the tour (user_preferences.tour). */
 export type TourPrefs = {
   /** "Don't show again". Take the tour (Resources, ⌘K) brings it back. */

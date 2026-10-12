@@ -14,6 +14,7 @@ export function PlanPanel({
   collapsed = false,
   onToggleCollapsed,
   footer,
+  className,
   children,
 }: {
   title?: string;
@@ -26,6 +27,7 @@ export function PlanPanel({
   onToggleCollapsed?: () => void;
   /** Under the parts, outside their scroll (the tour guide). */
   footer?: ReactNode;
+  className?: string;
   children?: ReactNode;
 }) {
   if (collapsed) {
@@ -45,7 +47,7 @@ export function PlanPanel({
   return (
     <aside
       aria-label="Parts"
-      className="flex h-full min-h-0 flex-col overflow-hidden rounded-pane border border-line bg-tray shadow-pane md:w-[340px] md:flex-none"
+      className={cn("flex h-full min-h-0 flex-col overflow-hidden rounded-pane border border-line bg-tray shadow-pane md:w-[340px] md:flex-none", className)}
     >
       <div className="flex flex-col gap-2 px-4 pt-3.5 pb-2.5">
         <div className="flex items-center gap-2">

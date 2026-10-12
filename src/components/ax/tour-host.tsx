@@ -4,20 +4,19 @@ import type { ReactNode } from "react";
 import { createAdminDb } from "@/server/db";
 import { tourAvailable, tourFor } from "@/server/tour";
 import { getAppContext } from "@/server/workspace";
-import { TourGuide, TourProvider } from "./tour-guide";
+import { CoachCard, TourProvider } from "./tour-guide";
 
 /**
- * The tour for a page (M6, Tour v2): read on the server, kept fresh in the browser. `corner` pages have no side nav or
- * Parts pane to hold the guide, so it sits in the bottom-left corner; elsewhere it's in their flow, and in the phone's
- * bottom bar beside Help.
+ * The tour for a page (M6, Tour v3): read on the server, kept fresh in the browser. The coach card sits bottom left:
+ * past the side nav on app pages (`nav`), at the page's edge on project and settings pages; a bottom sheet on a phone.
  */
-export async function TourHost({ corner = false, children }: { corner?: boolean; children: ReactNode }) {
+export async function TourHost({ inset = "edge", children }: { inset?: "nav" | "edge"; children: ReactNode }) {
   const ctx = await getAppContext();
   const tour = await tourFor(createAdminDb(), ctx);
   return (
     <TourProvider initial={tour} available={tourAvailable(ctx)}>
       {children}
-      <TourGuide placement={corner ? "corner" : "bar"} />
+      <CoachCard inset={inset} initial={tour} />
     </TourProvider>
   );
 }
