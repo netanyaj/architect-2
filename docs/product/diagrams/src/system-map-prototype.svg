@@ -1,0 +1,554 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1700 1680" width="1700" height="1680" font-family="Helvetica, Arial, sans-serif"><rect width="1700" height="1680" fill="#EEEDE9"/>
+<text x="40.0" y="50.0" font-size="28" font-weight="700" fill="#1A1A19" text-anchor="start">Architect 2.0, one map</text>
+<text x="40.0" y="76.0" font-size="13.5" font-weight="400" fill="#5C5B56" text-anchor="start">What the prototype uses for each box: REAL works for real, PART real records with a simulated effect, SIM simulated, NOT BUILT design only. The</text>
+<text x="40.0" y="94.0" font-size="13.5" font-weight="400" fill="#5C5B56" text-anchor="start">numbers are the steps in ARCHITECTURE.md section 2.</text>
+<rect x="40" y="116" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="49.0" y="129.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="64.0" y="129.0" font-size="12.5" font-weight="400" fill="#5C5B56" text-anchor="start">step in the path</text>
+<rect x="180.0" y="116" width="42.0" height="18" rx="9" fill="#E3F2E8" stroke="none"/>
+<text x="201.0" y="129.0" font-size="10.5" font-weight="600" fill="#1D6B3A" text-anchor="middle" font-family="Menlo, monospace">REAL</text>
+<text x="228.0" y="129.0" font-size="12.5" font-weight="400" fill="#5C5B56" text-anchor="start">works for real</text>
+<rect x="339.6" y="116" width="42.0" height="18" rx="9" fill="#FBEFD9" stroke="none"/>
+<text x="360.6" y="129.0" font-size="10.5" font-weight="600" fill="#9A5B00" text-anchor="middle" font-family="Menlo, monospace">PART</text>
+<text x="387.6" y="129.0" font-size="12.5" font-weight="400" fill="#5C5B56" text-anchor="start">real records, simulated effect</text>
+<rect x="601.6" y="116" width="35.0" height="18" rx="9" fill="#FFFFFF" stroke="#5C5B56" stroke-dasharray="3 2"/>
+<text x="619.1" y="129.0" font-size="10.5" font-weight="600" fill="#5C5B56" text-anchor="middle" font-family="Menlo, monospace">SIM</text>
+<text x="642.6" y="129.0" font-size="12.5" font-weight="400" fill="#5C5B56" text-anchor="start">simulated</text>
+<rect x="722.2" y="116" width="77.0" height="18" rx="9" fill="#F9E5E2" stroke="none"/>
+<text x="760.7" y="129.0" font-size="10.5" font-weight="600" fill="#A33A2E" text-anchor="middle" font-family="Menlo, monospace">NOT BUILT</text>
+<text x="805.2" y="129.0" font-size="12.5" font-weight="400" fill="#5C5B56" text-anchor="start">design only</text>
+<text x="1660.0" y="50.0" font-size="13" font-weight="700" fill="#1A1A19" text-anchor="end">What the prototype uses</text>
+<rect x="40" y="150" width="1290" height="153.0" rx="16" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="52.0" y="172.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">People</text>
+<g>
+<rect x="52.0" y="184" width="310.5" height="107.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="62.0" y="206.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Builders</text>
+<rect x="310.5" y="193" width="42.0" height="18" rx="9" fill="#E3F2E8" stroke="none"/>
+<text x="331.5" y="206.0" font-size="10.5" font-weight="600" fill="#1D6B3A" text-anchor="middle" font-family="Menlo, monospace">REAL</text>
+<rect x="62.0" y="213" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="71.0" y="226.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<rect x="83.0" y="213" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="92.0" y="226.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<rect x="104.0" y="213" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="113.0" y="226.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">9</text>
+<rect x="125.0" y="213" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="137.0" y="226.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">10</text>
+<text x="62.0" y="249.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">The Architect web app in a browser</text>
+</g>
+<g>
+<rect x="370.5" y="184" width="310.5" height="107.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="380.5" y="206.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Developers and their coding</text>
+<text x="380.5" y="223.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">agents</text>
+<rect x="636.0" y="193" width="35.0" height="18" rx="9" fill="#FFFFFF" stroke="#5C5B56" stroke-dasharray="3 2"/>
+<text x="653.5" y="206.0" font-size="10.5" font-weight="600" fill="#5C5B56" text-anchor="middle" font-family="Menlo, monospace">SIM</text>
+<rect x="380.5" y="230" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="389.5" y="243.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<text x="380.5" y="266.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Project tokens are real records; no MCP server</text>
+<text x="380.5" y="281.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">accepts them</text>
+</g>
+<g>
+<rect x="689.0" y="184" width="310.5" height="107.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="699.0" y="206.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Org admins</text>
+<rect x="947.5" y="193" width="42.0" height="18" rx="9" fill="#FBEFD9" stroke="none"/>
+<text x="968.5" y="206.0" font-size="10.5" font-weight="600" fill="#9A5B00" text-anchor="middle" font-family="Menlo, monospace">PART</text>
+<rect x="699.0" y="213" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="708.0" y="226.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<rect x="720.0" y="213" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="732.0" y="226.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">11</text>
+<text x="699.0" y="249.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Governance pages, approvals and audit log</text>
+</g>
+<g>
+<rect x="1007.5" y="184" width="310.5" height="107.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="1017.5" y="206.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">People who use the built app</text>
+<rect x="1273.0" y="193" width="35.0" height="18" rx="9" fill="#FFFFFF" stroke="#5C5B56" stroke-dasharray="3 2"/>
+<text x="1290.5" y="206.0" font-size="10.5" font-weight="600" fill="#5C5B56" text-anchor="middle" font-family="Menlo, monospace">SIM</text>
+<rect x="1017.5" y="213" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="1029.5" y="226.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">12</text>
+<text x="1017.5" y="249.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Only the simulated preview exists</text>
+</g>
+<rect x="40" y="315.0" width="1290" height="234.0" rx="16" fill="#EEEAFB" stroke="#C9BEF2"/>
+<text x="52.0" y="337.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Lyzr control plane</text>
+<text x="198.8" y="337.0" font-size="12.2" font-weight="400" fill="#5C5B56" text-anchor="start">global, run by Lyzr · holds no prompts, code or app data</text>
+<g>
+<rect x="52.0" y="349.0" width="416.6666666666667" height="90.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="62.0" y="371.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">CDN</text>
+<rect x="416.7" y="358.0" width="42.0" height="18" rx="9" fill="#E3F2E8" stroke="none"/>
+<text x="437.7" y="371.0" font-size="10.5" font-weight="600" fill="#1D6B3A" text-anchor="middle" font-family="Menlo, monospace">REAL</text>
+<rect x="62.0" y="378.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="71.0" y="391.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="62.0" y="414.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Vercel's edge network</text>
+</g>
+<g>
+<rect x="476.6666666666667" y="349.0" width="416.6666666666667" height="90.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="486.7" y="371.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">API gateway</text>
+<rect x="841.3" y="358.0" width="42.0" height="18" rx="9" fill="#E3F2E8" stroke="none"/>
+<text x="862.3" y="371.0" font-size="10.5" font-weight="600" fill="#1D6B3A" text-anchor="middle" font-family="Menlo, monospace">REAL</text>
+<rect x="486.6666666666667" y="378.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="495.7" y="391.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="486.7" y="414.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">No separate gateway: Next.js server actions and routes on</text>
+<text x="486.7" y="429.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Vercel (bom1)</text>
+</g>
+<g>
+<rect x="901.3333333333334" y="349.0" width="416.6666666666667" height="90.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="911.3" y="371.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Identity and SSO</text>
+<rect x="1266.0" y="358.0" width="42.0" height="18" rx="9" fill="#E3F2E8" stroke="none"/>
+<text x="1287.0" y="371.0" font-size="10.5" font-weight="600" fill="#1D6B3A" text-anchor="middle" font-family="Menlo, monospace">REAL</text>
+<rect x="911.3333333333334" y="378.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="920.3" y="391.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="911.3" y="414.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Supabase Auth: Google, GitHub, email and anonymous demo</text>
+<text x="911.3" y="429.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">sessions. SSO itself is simulated</text>
+</g>
+<g>
+<rect x="52.0" y="447.0" width="416.6666666666667" height="90.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="62.0" y="469.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Tenant directory</text>
+<rect x="416.7" y="456.0" width="42.0" height="18" rx="9" fill="#E3F2E8" stroke="none"/>
+<text x="437.7" y="469.0" font-size="10.5" font-weight="600" fill="#1D6B3A" text-anchor="middle" font-family="Menlo, monospace">REAL</text>
+<rect x="62.0" y="476.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="71.0" y="489.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="62.0" y="512.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Workspaces and members tables with row-level security; one</text>
+<text x="62.0" y="527.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">region, no cells</text>
+</g>
+<g>
+<rect x="476.6666666666667" y="447.0" width="416.6666666666667" height="90.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="486.7" y="469.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Billing and credits</text>
+<rect x="841.3" y="456.0" width="42.0" height="18" rx="9" fill="#FBEFD9" stroke="none"/>
+<text x="862.3" y="469.0" font-size="10.5" font-weight="600" fill="#9A5B00" text-anchor="middle" font-family="Menlo, monospace">PART</text>
+<rect x="486.6666666666667" y="476.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="495.7" y="489.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<rect x="507.6666666666667" y="476.0" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="519.7" y="489.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">12</text>
+<text x="486.7" y="512.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Credit ledger with real numbers; plans and payment simulated</text>
+</g>
+<g>
+<rect x="901.3333333333334" y="447.0" width="416.6666666666667" height="90.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="911.3" y="469.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Policy authoring</text>
+<rect x="1266.0" y="456.0" width="42.0" height="18" rx="9" fill="#FBEFD9" stroke="none"/>
+<text x="1287.0" y="469.0" font-size="10.5" font-weight="600" fill="#9A5B00" text-anchor="middle" font-family="Menlo, monospace">PART</text>
+<rect x="911.3333333333334" y="476.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="920.3" y="489.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="911.3" y="512.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Governance settings stored in Postgres</text>
+</g>
+<line x1="48" y1="569.0" x2="1322" y2="569.0" stroke="#C9BEF2" stroke-width="1.5" stroke-dasharray="6 5"/>
+<rect x="395.0" y="559.0" width="580" height="20" fill="#EEEDE9"/>
+<text x="685.0" y="573.0" font-size="12.5" font-weight="600" fill="#1A1A19" text-anchor="middle">Only IDs, statuses, usage and health go up; policy, config and updates come down</text>
+<rect x="40" y="591.0" width="930" height="846.5" rx="16" fill="#E6F5F6" stroke="#A9DCE0"/>
+<text x="52.0" y="613.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">A cell: the data plane</text>
+<text x="229.2" y="613.0" font-size="12.2" font-weight="400" fill="#5C5B56" text-anchor="start">Lyzr Cloud, a dedicated region, the customer's VPC, or on-prem · about 500 running sandboxes per cell</text>
+<text x="52.0" y="635.0" font-size="10.5" font-weight="600" fill="#5C5B56" text-anchor="start">SERVICES</text>
+<g>
+<rect x="52.0" y="643.0" width="220.5" height="122.5" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="62.0" y="665.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Plan service and</text>
+<text x="62.0" y="682.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">estimator</text>
+<rect x="220.5" y="652.0" width="42.0" height="18" rx="9" fill="#E3F2E8" stroke="none"/>
+<text x="241.5" y="665.0" font-size="10.5" font-weight="600" fill="#1D6B3A" text-anchor="middle" font-family="Menlo, monospace">REAL</text>
+<rect x="62.0" y="689.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="71.0" y="702.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<rect x="83.0" y="689.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="92.0" y="702.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="62.0" y="725.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Real model calls through one</text>
+<text x="62.0" y="740.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">gateway (src/server/blueprint/)</text>
+</g>
+<g>
+<rect x="280.5" y="643.0" width="220.5" height="122.5" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="290.5" y="665.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Run orchestrator</text>
+<text x="290.5" y="682.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">(Temporal)</text>
+<rect x="456.0" y="652.0" width="35.0" height="18" rx="9" fill="#FFFFFF" stroke="#5C5B56" stroke-dasharray="3 2"/>
+<text x="473.5" y="665.0" font-size="10.5" font-weight="600" fill="#5C5B56" text-anchor="middle" font-family="Menlo, monospace">SIM</text>
+<rect x="290.5" y="689.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="299.5" y="702.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<rect x="311.5" y="689.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="320.5" y="702.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">7</text>
+<rect x="332.5" y="689.0" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="344.5" y="702.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">11</text>
+<text x="290.5" y="725.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">A precomputed event timeline per</text>
+<text x="290.5" y="740.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">run, replayed on the clock</text>
+</g>
+<g>
+<rect x="509.0" y="643.0" width="220.5" height="122.5" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="519.0" y="665.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Realtime hub</text>
+<rect x="677.5" y="652.0" width="42.0" height="18" rx="9" fill="#E3F2E8" stroke="none"/>
+<text x="698.5" y="665.0" font-size="10.5" font-weight="600" fill="#1D6B3A" text-anchor="middle" font-family="Menlo, monospace">REAL</text>
+<rect x="519.0" y="672.0" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="531.0" y="685.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">10</text>
+<text x="519.0" y="708.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Supabase Realtime on the events</text>
+<text x="519.0" y="723.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">table</text>
+</g>
+<g>
+<rect x="737.5" y="643.0" width="220.5" height="122.5" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="747.5" y="665.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Policy check and</text>
+<text x="747.5" y="682.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">approvals</text>
+<rect x="906.0" y="652.0" width="42.0" height="18" rx="9" fill="#FBEFD9" stroke="none"/>
+<text x="927.0" y="665.0" font-size="10.5" font-weight="600" fill="#9A5B00" text-anchor="middle" font-family="Menlo, monospace">PART</text>
+<rect x="747.5" y="689.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="756.5" y="702.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<rect x="768.5" y="689.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="777.5" y="702.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<rect x="789.5" y="689.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="798.5" y="702.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">9</text>
+<rect x="810.5" y="689.0" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="822.5" y="702.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">11</text>
+<text x="747.5" y="725.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">The app's own gates: model</text>
+<text x="747.5" y="740.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">allow-list, budget stop, Live</text>
+<text x="747.5" y="756.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">waits for an Owner or Admin</text>
+</g>
+<g>
+<rect x="52.0" y="773.5" width="220.5" height="90.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="62.0" y="795.5" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Audit log</text>
+<rect x="220.5" y="782.5" width="42.0" height="18" rx="9" fill="#E3F2E8" stroke="none"/>
+<text x="241.5" y="795.5" font-size="10.5" font-weight="600" fill="#1D6B3A" text-anchor="middle" font-family="Menlo, monospace">REAL</text>
+<rect x="62.0" y="802.5" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="74.0" y="815.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">11</text>
+<rect x="89.0" y="802.5" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="101.0" y="815.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">12</text>
+<text x="62.0" y="838.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Audit table, insert-only, with</text>
+<text x="62.0" y="854.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">CSV export</text>
+</g>
+<text x="52.0" y="885.5" font-size="10.5" font-weight="600" fill="#5C5B56" text-anchor="start">WORKERS AND SANDBOXES</text>
+<g>
+<rect x="52.0" y="893.5" width="220.5" height="107.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="62.0" y="915.5" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Architect agent</text>
+<text x="62.0" y="932.5" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">workers</text>
+<rect x="227.5" y="902.5" width="35.0" height="18" rx="9" fill="#FFFFFF" stroke="#5C5B56" stroke-dasharray="3 2"/>
+<text x="245.0" y="915.5" font-size="10.5" font-weight="600" fill="#5C5B56" text-anchor="middle" font-family="Menlo, monospace">SIM</text>
+<rect x="62.0" y="939.5" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="71.0" y="952.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<text x="62.0" y="975.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Not running; the timeline stands</text>
+<text x="62.0" y="991.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">in</text>
+</g>
+<g>
+<rect x="280.5" y="893.5" width="220.5" height="107.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="290.5" y="915.5" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Verifier workers</text>
+<rect x="456.0" y="902.5" width="35.0" height="18" rx="9" fill="#FFFFFF" stroke="#5C5B56" stroke-dasharray="3 2"/>
+<text x="473.5" y="915.5" font-size="10.5" font-weight="600" fill="#5C5B56" text-anchor="middle" font-family="Menlo, monospace">SIM</text>
+<rect x="290.5" y="922.5" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="299.5" y="935.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<rect x="311.5" y="922.5" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="320.5" y="935.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">7</text>
+<text x="290.5" y="958.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Checks and proofs come from the</text>
+<text x="290.5" y="974.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">timeline</text>
+</g>
+<g opacity="0.62">
+<rect x="509.0" y="893.5" width="220.5" height="107.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="519.0" y="915.5" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Sandbox fleet</text>
+<text x="519.0" y="932.5" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">(E2B microVMs)</text>
+<rect x="642.5" y="902.5" width="77.0" height="18" rx="9" fill="#F9E5E2" stroke="none"/>
+<text x="681.0" y="915.5" font-size="10.5" font-weight="600" fill="#A33A2E" text-anchor="middle" font-family="Menlo, monospace">NOT BUILT</text>
+<rect x="519.0" y="939.5" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="528.0" y="952.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<rect x="540.0" y="939.5" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="549.0" y="952.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<rect x="561.0" y="939.5" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="570.0" y="952.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">7</text>
+<text x="519.0" y="975.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">None. No code is written, run or</text>
+<text x="519.0" y="991.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">deployed</text>
+</g>
+<g>
+<rect x="737.5" y="893.5" width="220.5" height="107.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="747.5" y="915.5" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Preview proxy</text>
+<rect x="913.0" y="902.5" width="35.0" height="18" rx="9" fill="#FFFFFF" stroke="#5C5B56" stroke-dasharray="3 2"/>
+<text x="930.5" y="915.5" font-size="10.5" font-weight="600" fill="#5C5B56" text-anchor="middle" font-family="Menlo, monospace">SIM</text>
+<rect x="747.5" y="922.5" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="759.5" y="935.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">10</text>
+<text x="747.5" y="958.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">A shell drawn from the plan's</text>
+<text x="747.5" y="974.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">parts, or the Meeting Prep</text>
+<text x="747.5" y="989.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">sample</text>
+</g>
+<text x="52.0" y="1022.5" font-size="10.5" font-weight="600" fill="#5C5B56" text-anchor="start">WAYS OUT</text>
+<g>
+<rect x="52.0" y="1030.5" width="296.6666666666667" height="105.5" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="62.0" y="1052.5" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Model gateway</text>
+<rect x="296.7" y="1039.5" width="42.0" height="18" rx="9" fill="#E3F2E8" stroke="none"/>
+<text x="317.7" y="1052.5" font-size="10.5" font-weight="600" fill="#1D6B3A" text-anchor="middle" font-family="Menlo, monospace">REAL</text>
+<rect x="62.0" y="1059.5" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="71.0" y="1072.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<rect x="83.0" y="1059.5" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="92.0" y="1072.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<text x="62.0" y="1095.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Vercel AI SDK: Gemini and OpenRouter live,</text>
+<text x="62.0" y="1111.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">falls back on quota and says so; Claude and</text>
+<text x="62.0" y="1126.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">GPT with a key</text>
+</g>
+<g>
+<rect x="356.6666666666667" y="1030.5" width="296.6666666666667" height="105.5" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="366.7" y="1052.5" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Egress proxy and secrets vault</text>
+<rect x="601.3" y="1039.5" width="42.0" height="18" rx="9" fill="#FBEFD9" stroke="none"/>
+<text x="622.3" y="1052.5" font-size="10.5" font-weight="600" fill="#9A5B00" text-anchor="middle" font-family="Menlo, monospace">PART</text>
+<rect x="366.6666666666667" y="1059.5" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="375.7" y="1072.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">9</text>
+<text x="366.7" y="1095.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Vault is real (Supabase Vault). No proxy:</text>
+<text x="366.7" y="1111.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">nothing leaves a sandbox because there is</text>
+<text x="366.7" y="1126.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">none</text>
+</g>
+<g>
+<rect x="661.3333333333334" y="1030.5" width="296.6666666666667" height="105.5" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="671.3" y="1052.5" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Git executor</text>
+<rect x="906.0" y="1039.5" width="42.0" height="18" rx="9" fill="#FBEFD9" stroke="none"/>
+<text x="927.0" y="1052.5" font-size="10.5" font-weight="600" fill="#9A5B00" text-anchor="middle" font-family="Menlo, monospace">PART</text>
+<rect x="671.3333333333334" y="1059.5" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="680.3" y="1072.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<rect x="692.3333333333334" y="1059.5" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="704.3" y="1072.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">11</text>
+<text x="671.3" y="1095.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Read-only GitHub App: repos, files, the</text>
+<text x="671.3" y="1111.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">import analysis. PRs simulated</text>
+</g>
+<text x="52.0" y="1158.0" font-size="10.5" font-weight="600" fill="#5C5B56" text-anchor="start">STORES</text>
+<g>
+<rect x="52.0" y="1166.0" width="220.5" height="122.5" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="62.0" y="1188.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Postgres</text>
+<rect x="220.5" y="1175.0" width="42.0" height="18" rx="9" fill="#E3F2E8" stroke="none"/>
+<text x="241.5" y="1188.0" font-size="10.5" font-weight="600" fill="#1D6B3A" text-anchor="middle" font-family="Menlo, monospace">REAL</text>
+<rect x="62.0" y="1195.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="71.0" y="1208.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<rect x="83.0" y="1195.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="92.0" y="1208.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<rect x="104.0" y="1195.0" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="116.0" y="1208.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">12</text>
+<text x="62.0" y="1231.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Supabase Postgres (Mumbai), row-</text>
+<text x="62.0" y="1246.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">level security on every table</text>
+</g>
+<g opacity="0.62">
+<rect x="280.5" y="1166.0" width="220.5" height="122.5" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="290.5" y="1188.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Redis</text>
+<rect x="414.0" y="1175.0" width="77.0" height="18" rx="9" fill="#F9E5E2" stroke="none"/>
+<text x="452.5" y="1188.0" font-size="10.5" font-weight="600" fill="#A33A2E" text-anchor="middle" font-family="Menlo, monospace">NOT BUILT</text>
+<rect x="290.5" y="1195.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="299.5" y="1208.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="290.5" y="1231.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Not used</text>
+</g>
+<g>
+<rect x="509.0" y="1166.0" width="220.5" height="122.5" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="519.0" y="1188.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Object storage</text>
+<rect x="677.5" y="1175.0" width="42.0" height="18" rx="9" fill="#E3F2E8" stroke="none"/>
+<text x="698.5" y="1188.0" font-size="10.5" font-weight="600" fill="#1D6B3A" text-anchor="middle" font-family="Menlo, monospace">REAL</text>
+<rect x="519.0" y="1195.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="528.0" y="1208.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<rect x="540.0" y="1195.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="549.0" y="1208.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">7</text>
+<text x="519.0" y="1231.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Supabase Storage for uploads</text>
+</g>
+<g>
+<rect x="737.5" y="1166.0" width="220.5" height="122.5" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="747.5" y="1188.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Event log and</text>
+<text x="747.5" y="1205.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">analytics store</text>
+<rect x="906.0" y="1175.0" width="42.0" height="18" rx="9" fill="#E3F2E8" stroke="none"/>
+<text x="927.0" y="1188.0" font-size="10.5" font-weight="600" fill="#1D6B3A" text-anchor="middle" font-family="Menlo, monospace">REAL</text>
+<rect x="747.5" y="1212.0" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="759.5" y="1225.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">10</text>
+<rect x="774.5" y="1212.0" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="786.5" y="1225.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">12</text>
+<text x="747.5" y="1248.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">events and analytics_events</text>
+<text x="747.5" y="1263.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">tables; Vercel Analytics for</text>
+<text x="747.5" y="1279.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">page views</text>
+</g>
+<text x="52.0" y="1310.5" font-size="10.5" font-weight="600" fill="#5C5B56" text-anchor="start">BUILT APPS' RUNTIME</text>
+<g>
+<rect x="52.0" y="1318.5" width="220.5" height="107.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="62.0" y="1340.5" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">App runtime</text>
+<text x="62.0" y="1357.5" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">(Kubernetes)</text>
+<rect x="227.5" y="1327.5" width="35.0" height="18" rx="9" fill="#FFFFFF" stroke="#5C5B56" stroke-dasharray="3 2"/>
+<text x="245.0" y="1340.5" font-size="10.5" font-weight="600" fill="#5C5B56" text-anchor="middle" font-family="Menlo, monospace">SIM</text>
+<rect x="62.0" y="1364.5" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="74.0" y="1377.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">11</text>
+<rect x="89.0" y="1364.5" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="101.0" y="1377.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">12</text>
+<text x="62.0" y="1400.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Launch, environments and going</text>
+<text x="62.0" y="1416.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">back are simulated</text>
+</g>
+<g>
+<rect x="280.5" y="1318.5" width="220.5" height="107.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="290.5" y="1340.5" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Per-environment data</text>
+<text x="290.5" y="1357.5" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">and secrets</text>
+<rect x="456.0" y="1327.5" width="35.0" height="18" rx="9" fill="#FFFFFF" stroke="#5C5B56" stroke-dasharray="3 2"/>
+<text x="473.5" y="1340.5" font-size="10.5" font-weight="600" fill="#5C5B56" text-anchor="middle" font-family="Menlo, monospace">SIM</text>
+<rect x="290.5" y="1364.5" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="302.5" y="1377.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">12</text>
+<text x="290.5" y="1400.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Data tab with sample tables, or</text>
+<text x="290.5" y="1416.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">your uploaded CSV</text>
+</g>
+<g opacity="0.62">
+<rect x="509.0" y="1318.5" width="220.5" height="107.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="519.0" y="1340.5" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Queue and agent</text>
+<text x="519.0" y="1357.5" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">workers</text>
+<rect x="642.5" y="1327.5" width="77.0" height="18" rx="9" fill="#F9E5E2" stroke="none"/>
+<text x="681.0" y="1340.5" font-size="10.5" font-weight="600" fill="#A33A2E" text-anchor="middle" font-family="Menlo, monospace">NOT BUILT</text>
+<rect x="519.0" y="1364.5" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="531.0" y="1377.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">12</text>
+<text x="519.0" y="1400.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Not built</text>
+</g>
+<g>
+<rect x="737.5" y="1318.5" width="220.5" height="107.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="747.5" y="1340.5" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">CDN and domains</text>
+<rect x="913.0" y="1327.5" width="35.0" height="18" rx="9" fill="#FFFFFF" stroke="#5C5B56" stroke-dasharray="3 2"/>
+<text x="930.5" y="1340.5" font-size="10.5" font-weight="600" fill="#5C5B56" text-anchor="middle" font-family="Menlo, monospace">SIM</text>
+<rect x="747.5" y="1347.5" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="759.5" y="1360.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">11</text>
+<text x="747.5" y="1383.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Domains shown, simulated</text>
+</g>
+<rect x="982" y="591.0" width="348" height="262.0" rx="16" fill="#E8F1E6" stroke="#B7D3B0"/>
+<text x="994.0" y="613.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Lyzr Studio</text>
+<text x="994.0" y="627.0" font-size="12.2" font-weight="400" fill="#5C5B56" text-anchor="start">each workspace's own account; inside the</text>
+<text x="994.0" y="642.0" font-size="12.2" font-weight="400" fill="#5C5B56" text-anchor="start">customer's cell in VPC and on-prem modes</text>
+<g>
+<rect x="994.0" y="653.0" width="324.0" height="90.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="1004.0" y="675.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Agent registry</text>
+<rect x="1266.0" y="662.0" width="42.0" height="18" rx="9" fill="#E3F2E8" stroke="none"/>
+<text x="1287.0" y="675.0" font-size="10.5" font-weight="600" fill="#1D6B3A" text-anchor="middle" font-family="Menlo, monospace">REAL</text>
+<rect x="1004.0" y="682.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="1013.0" y="695.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">8</text>
+<text x="1004.0" y="718.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Real, in the workspace's own Studio with its own</text>
+<text x="1004.0" y="733.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Lyzr key (one-way sync on save)</text>
+</g>
+<g>
+<rect x="994.0" y="751.0" width="324.0" height="90.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="1004.0" y="773.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Agent runtime and evals</text>
+<rect x="1266.0" y="760.0" width="42.0" height="18" rx="9" fill="#FBEFD9" stroke="none"/>
+<text x="1287.0" y="773.0" font-size="10.5" font-weight="600" fill="#9A5B00" text-anchor="middle" font-family="Menlo, monospace">PART</text>
+<rect x="1004.0" y="780.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="1013.0" y="793.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">8</text>
+<rect x="1025.0" y="780.0" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="1037.0" y="793.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">12</text>
+<text x="1004.0" y="816.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Try it runs on Studio for real; the built app's</text>
+<text x="1004.0" y="831.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">agents don't run</text>
+</g>
+<rect x="982" y="865.0" width="348" height="399.0" rx="16" fill="#F1F0EC" stroke="#DDDBD4"/>
+<text x="994.0" y="887.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Outside services</text>
+<g>
+<rect x="994.0" y="899.0" width="324.0" height="90.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="1004.0" y="921.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Model providers</text>
+<rect x="1266.0" y="908.0" width="42.0" height="18" rx="9" fill="#E3F2E8" stroke="none"/>
+<text x="1287.0" y="921.0" font-size="10.5" font-weight="600" fill="#1D6B3A" text-anchor="middle" font-family="Menlo, monospace">REAL</text>
+<rect x="1004.0" y="928.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="1013.0" y="941.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<rect x="1025.0" y="928.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="1034.0" y="941.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<text x="1004.0" y="964.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Gemini and OpenRouter free models; Claude and GPT</text>
+<text x="1004.0" y="979.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">only with a key</text>
+</g>
+<g>
+<rect x="994.0" y="997.0" width="324.0" height="74.5" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="1004.0" y="1019.0" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">GitHub</text>
+<rect x="1266.0" y="1006.0" width="42.0" height="18" rx="9" fill="#FBEFD9" stroke="none"/>
+<text x="1287.0" y="1019.0" font-size="10.5" font-weight="600" fill="#9A5B00" text-anchor="middle" font-family="Menlo, monospace">PART</text>
+<rect x="1004.0" y="1026.0" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="1013.0" y="1039.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<rect x="1025.0" y="1026.0" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="1037.0" y="1039.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">11</text>
+<text x="1004.0" y="1062.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Read-only App on chosen repos</text>
+</g>
+<g>
+<rect x="994.0" y="1079.5" width="324.0" height="90.0" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="1004.0" y="1101.5" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Apps and MCP servers</text>
+<rect x="1266.0" y="1088.5" width="42.0" height="18" rx="9" fill="#FBEFD9" stroke="none"/>
+<text x="1287.0" y="1101.5" font-size="10.5" font-weight="600" fill="#9A5B00" text-anchor="middle" font-family="Menlo, monospace">PART</text>
+<rect x="1004.0" y="1108.5" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="1013.0" y="1121.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">9</text>
+<text x="1004.0" y="1144.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">MCP Test connection is real; app sign-in and keys</text>
+<text x="1004.0" y="1160.0" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">simulated</text>
+</g>
+<g opacity="0.62">
+<rect x="994.0" y="1177.5" width="324.0" height="74.5" rx="10" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="1004.0" y="1199.5" font-size="13.5" font-weight="700" fill="#1A1A19" text-anchor="start">Observability</text>
+<rect x="1231.0" y="1186.5" width="77.0" height="18" rx="9" fill="#F9E5E2" stroke="none"/>
+<text x="1269.5" y="1199.5" font-size="10.5" font-weight="600" fill="#A33A2E" text-anchor="middle" font-family="Menlo, monospace">NOT BUILT</text>
+<rect x="1004.0" y="1206.5" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="1016.0" y="1219.5" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">12</text>
+<text x="1004.0" y="1242.5" font-size="12.2" font-weight="400" fill="#1A1A19" text-anchor="start">Vercel logs only</text>
+</g>
+<rect x="1350" y="150" width="310" height="1209" rx="16" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="1364.0" y="176.0" font-size="14" font-weight="700" fill="#1A1A19" text-anchor="start">From prompt to a live app</text>
+<rect x="1364" y="194" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="1373.0" y="207.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="1394.0" y="207.0" font-size="13" font-weight="700" fill="#1A1A19" text-anchor="start">Prompt</text>
+<text x="1394.0" y="224.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">Morgan describes the app and attaches a</text>
+<text x="1394.0" y="239.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">file.</text>
+<text x="1394.0" y="254.0" font-size="12" font-weight="400" fill="#1A1A19" text-anchor="start">Prototype: Real: sign-in, workspace,</text>
+<text x="1394.0" y="269.0" font-size="12" font-weight="400" fill="#1A1A19" text-anchor="start">upload.</text>
+<rect x="1364" y="292" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="1373.0" y="305.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="1394.0" y="305.0" font-size="13" font-weight="700" fill="#1A1A19" text-anchor="start">Write the plan</text>
+<text x="1394.0" y="322.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">Parts with checks and costs, defaults</text>
+<text x="1394.0" y="337.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">and questions, through the model</text>
+<text x="1394.0" y="352.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">gateway.</text>
+<text x="1394.0" y="367.0" font-size="12" font-weight="400" fill="#1A1A19" text-anchor="start">Prototype: Real model call.</text>
+<rect x="1364" y="390" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="1373.0" y="403.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="1394.0" y="403.0" font-size="13" font-weight="700" fill="#1A1A19" text-anchor="start">Review, then Build</text>
+<text x="1394.0" y="420.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">Nothing runs until the click. Budget and</text>
+<text x="1394.0" y="435.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">allowed models are checked first.</text>
+<text x="1394.0" y="450.0" font-size="12" font-weight="400" fill="#1A1A19" text-anchor="start">Prototype: Real Build gate and budget.</text>
+<rect x="1364" y="473" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="1373.0" y="486.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="1394.0" y="486.0" font-size="13" font-weight="700" fill="#1A1A19" text-anchor="start">Start the run</text>
+<text x="1394.0" y="503.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">Durable workflow; resume the sandbox or</text>
+<text x="1394.0" y="518.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">take one from the warm pool.</text>
+<text x="1394.0" y="533.0" font-size="12" font-weight="400" fill="#1A1A19" text-anchor="start">Prototype: Timeline starts; no sandbox.</text>
+<rect x="1364" y="556" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="1373.0" y="569.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="1394.0" y="569.0" font-size="13" font-weight="700" fill="#1A1A19" text-anchor="start">Checks first</text>
+<text x="1394.0" y="586.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">The verifier writes and locks a check</text>
+<text x="1394.0" y="601.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">for every part before code exists.</text>
+<text x="1394.0" y="616.0" font-size="12" font-weight="400" fill="#1A1A19" text-anchor="start">Prototype: Simulated.</text>
+<rect x="1364" y="639" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="1373.0" y="652.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<text x="1394.0" y="652.0" font-size="13" font-weight="700" fill="#1A1A19" text-anchor="start">Build each part</text>
+<text x="1394.0" y="669.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">Agent workers code through the daemon's</text>
+<text x="1394.0" y="684.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">tools; anything leaving the sandbox is</text>
+<text x="1394.0" y="699.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">policy-checked.</text>
+<text x="1394.0" y="714.0" font-size="12" font-weight="400" fill="#1A1A19" text-anchor="start">Prototype: Simulated.</text>
+<rect x="1364" y="737" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="1373.0" y="750.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">7</text>
+<text x="1394.0" y="750.0" font-size="13" font-weight="700" fill="#1A1A19" text-anchor="start">Prove each part</text>
+<text x="1394.0" y="767.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">The verifier runs the check; a pass</text>
+<text x="1394.0" y="782.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">marks it Works; up to 3 fixes, then it</text>
+<text x="1394.0" y="797.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">waits.</text>
+<text x="1394.0" y="812.0" font-size="12" font-weight="400" fill="#1A1A19" text-anchor="start">Prototype: Simulated.</text>
+<rect x="1364" y="835" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="1373.0" y="848.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">8</text>
+<text x="1394.0" y="848.0" font-size="13" font-weight="700" fill="#1A1A19" text-anchor="start">Agents into Lyzr Studio</text>
+<text x="1394.0" y="865.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">Each agent part that works is created in</text>
+<text x="1394.0" y="880.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">the workspace's own Studio.</text>
+<text x="1394.0" y="895.0" font-size="12" font-weight="400" fill="#1A1A19" text-anchor="start">Prototype: Real with the workspace's</text>
+<text x="1394.0" y="910.0" font-size="12" font-weight="400" fill="#1A1A19" text-anchor="start">Lyzr key.</text>
+<rect x="1364" y="933" width="18" height="18" rx="9" fill="#1A1A19"/>
+<text x="1373.0" y="946.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">9</text>
+<text x="1394.0" y="946.0" font-size="13" font-weight="700" fill="#1A1A19" text-anchor="start">Fix a blocker</text>
+<text x="1394.0" y="963.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">Connect the app (sign-in, key or MCP</text>
+<text x="1394.0" y="978.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">server); keys go to the vault; the proxy</text>
+<text x="1394.0" y="993.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">injects them.</text>
+<text x="1394.0" y="1008.0" font-size="12" font-weight="400" fill="#1A1A19" text-anchor="start">Prototype: Vault and MCP test real; app</text>
+<text x="1394.0" y="1023.0" font-size="12" font-weight="400" fill="#1A1A19" text-anchor="start">sign-in simulated.</text>
+<rect x="1364" y="1046" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="1376.0" y="1059.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">10</text>
+<text x="1394.0" y="1059.0" font-size="13" font-weight="700" fill="#1A1A19" text-anchor="start">Live preview</text>
+<text x="1394.0" y="1076.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">The app through the preview proxy; every</text>
+<text x="1394.0" y="1091.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">status change pushed live.</text>
+<text x="1394.0" y="1106.0" font-size="12" font-weight="400" fill="#1A1A19" text-anchor="start">Prototype: Real Realtime; preview</text>
+<text x="1394.0" y="1121.0" font-size="12" font-weight="400" fill="#1A1A19" text-anchor="start">simulated.</text>
+<rect x="1364" y="1144" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="1376.0" y="1157.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">11</text>
+<text x="1394.0" y="1157.0" font-size="13" font-weight="700" fill="#1A1A19" text-anchor="start">Launch</text>
+<text x="1394.0" y="1174.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">Governance off: Test to Live. On: Test,</text>
+<text x="1394.0" y="1189.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">Team, then Live after an Owner or Admin</text>
+<text x="1394.0" y="1204.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">approves.</text>
+<text x="1394.0" y="1219.0" font-size="12" font-weight="400" fill="#1A1A19" text-anchor="start">Prototype: Approvals real; deploy</text>
+<text x="1394.0" y="1234.0" font-size="12" font-weight="400" fill="#1A1A19" text-anchor="start">simulated.</text>
+<rect x="1364" y="1257" width="24" height="18" rx="9" fill="#1A1A19"/>
+<text x="1376.0" y="1270.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">12</text>
+<text x="1394.0" y="1270.0" font-size="13" font-weight="700" fill="#1A1A19" text-anchor="start">Run and watch</text>
+<text x="1394.0" y="1287.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">The app runs per environment; its agents</text>
+<text x="1394.0" y="1302.0" font-size="12" font-weight="400" fill="#5C5B56" text-anchor="start">on Studio; audit, metering and metrics.</text>
+<text x="1394.0" y="1317.0" font-size="12" font-weight="400" fill="#1A1A19" text-anchor="start">Prototype: Audit and events real;</text>
+<text x="1394.0" y="1332.0" font-size="12" font-weight="400" fill="#1A1A19" text-anchor="start">runtime simulated.</text>
+<rect x="40" y="1455.5" width="1620" height="190.0" rx="16" fill="#FFFFFF" stroke="#DDDBD4"/>
+<text x="54.0" y="1481.5" font-size="14" font-weight="700" fill="#1A1A19" text-anchor="start">How to read it</text>
+<text x="64.0" y="1505.5" font-size="13" font-weight="700" fill="#1A1A19" text-anchor="start">•</text>
+<text x="78" y="1505.5" font-size="13" fill="#5C5B56"><tspan font-weight="700" fill="#1A1A19">Control plane vs cell.</tspan> Lyzr's control plane is global: sign-in, tenants, billing and policy authoring. Everything that touches prompts, plans, code or data runs inside a cell, so a whole cell can sit in a customer's</text>
+<text x="78.0" y="1523.5" font-size="13" font-weight="400" fill="#5C5B56" text-anchor="start">own cloud while only IDs, statuses, usage and health cross to Lyzr.</text>
+<text x="64.0" y="1543.5" font-size="13" font-weight="700" fill="#1A1A19" text-anchor="start">•</text>
+<text x="78" y="1543.5" font-size="13" fill="#5C5B56"><tspan font-weight="700" fill="#1A1A19">Cells are the unit of scale.</tspan> One cell handles about 500 running sandboxes. Lyzr adds cells as load grows, and a customer's VPC or on-prem install is just another cell.</text>
+<text x="64.0" y="1563.5" font-size="13" font-weight="700" fill="#1A1A19" text-anchor="start">•</text>
+<text x="78" y="1563.5" font-size="13" fill="#5C5B56"><tspan font-weight="700" fill="#1A1A19">Lyzr Studio sits beside the cell.</tspan> In Lyzr Cloud it's Lyzr's shared Studio, with each workspace's own account. In VPC and on-prem modes the Studio runtime and registry run inside the customer's cell, so agent traffic</text>
+<text x="78.0" y="1581.5" font-size="13" font-weight="400" fill="#5C5B56" text-anchor="start">stays there.</text>
+<text x="64.0" y="1601.5" font-size="13" font-weight="700" fill="#1A1A19" text-anchor="start">•</text>
+<text x="78" y="1601.5" font-size="13" fill="#5C5B56"><tspan font-weight="700" fill="#1A1A19">The prototype</tspan> collapses the whole thing onto Vercel and Supabase in Mumbai. There's no sandbox, no worker and no egress proxy: the run is a precomputed timeline, and the boxes marked NOT BUILT exist only in the</text>
+<text x="78.0" y="1619.5" font-size="13" font-weight="400" fill="#5C5B56" text-anchor="start">design.</text>
+</svg>

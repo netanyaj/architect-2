@@ -417,7 +417,7 @@ function PeopleMenu({ project }: { project: ProjectWorkspace }) {
   );
 }
 
-/** The project workspace: header on the canvas, Plan panel, stage, Chat (BUILD-SPEC §2, screens 2, 3, 16). */
+/** The project workspace: header on the canvas, Plan panel, stage, Chat (BUILD-SPEC section 2, screens 2, 3, 16). */
 export function Workspace({ project, page = "workspace" }: { project: ProjectWorkspace; page?: "workspace" | "launch" }) {
   const onLaunch = page === "launch" && project.launch !== null;
   const router = useRouter();
@@ -560,7 +560,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
       ? { works: worksNow, total: counted.length, blocked: counted.filter((i) => i.status === "paused").length, eta: etaWords(live.etaSeconds), playing: live.playing, budgetPaused }
       : undefined,
   });
-  // On Launch the stage action is Share with your team, disabled until the checklist is clear (BUILD-SPEC §2).
+  // On Launch the stage action is Share with your team, disabled until the checklist is clear (BUILD-SPEC section 2).
   // Without governance it's Go live (the team version is optional); with it, Share first, then Go live.
   const launchAction = launch ? (launch.fast || launch.team.current ? { ...launch.goLive, kind: "live" as const } : { ...launch.share, kind: "share" as const }) : null;
   const stageState = launch
@@ -736,7 +736,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
           <MoreMenu project={project} items={items} canAct={canAct} dev={dev} onToggleDev={toggleDev} onTransfer={() => setTransferOpen(true)} onDelete={() => setDeleteOpen(true)} />
           {state.action.beside && <span className="max-w-[190px] text-right text-small leading-tight text-ink-2 max-md:hidden">{state.action.beside}</span>}
           <Button
-            // The stage action is the primary only when nothing on screen needs the person first (BUILD-SPEC §2).
+            // The stage action is the primary only when nothing on screen needs the person first (BUILD-SPEC section 2).
             variant={
               (view === "agents" && !onLaunch && (agentOpen || agentsWaiting))
                 ? "secondary"

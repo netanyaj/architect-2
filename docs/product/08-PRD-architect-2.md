@@ -136,7 +136,7 @@ Priority: **Must** (v1 isn't viable without it) · **Should** (fast follow) · *
 |---|---|---|---|---|
 | BL-1 | Sign in (Google, GitHub, email); workspaces and roles | All three sign-ins work; sessions last 7 days; roles as in section 9 | Must | Real |
 | BL-2 | Home: one composer (prompt, files, repo import, template, "Help me decide") | Every way of starting a project begins from one composer; recent projects listed | Must | Real |
-| BL-3 | Model choice upfront, bring your own key | Runs use the selected model; only allowed models listed; never switched without asking | Must | Real |
+| BL-3 | Model choice upfront, bring your own key | Runs use the selected model; only allowed models listed; failover goes only to models the organisation's policy pre-approves as fallbacks, and is always announced | Must | Real |
 | BL-4 | Chat with plan and execute modes; message queue | Plan mode can't write or deploy; queued messages run in order and can be edited | Must (plan mode running tests: Should) | Real (chat → proposed changes) / Sim (execution) |
 | BL-5 | Live build view | Every step names its blueprint item; updates within 2 s | Must | Sim |
 | BL-6 | Live preview: device sizes, click-to-edit, console | Element selection attaches to chat; console errors shown within 2 s | Must | Sim |
@@ -255,7 +255,7 @@ A small build of 6 items, using a mid-tier model at an assumed list price of $3 
 | Architect agent | 1.0M input tokens (80% cached) and 80k output tokens | ≈ $2.04 |
 | Verifier | Assumed 25% of the Architect agent's cost: deterministic checks are cheap, rubric reviews are not | ≈ $0.51 |
 | Sandbox | About 20 active minutes; idle time is paused | ≈ $0.05 |
-| Fixes | 2 of 6 items need one fix, each about 30% of that item's cost | ≈ $0.20 |
+| Fixes | 2 of 6 parts need one fix, each about 30% of that part's Architect agent cost: 2 × 0.3 × ($2.04 ÷ 6) | ≈ $0.20 |
 | **Total cost** | | **≈ $2.80** |
 
 At a 2.5× markup (about 60% gross margin) that build is priced at about $7. Today Architect charged about $2.88 for a comparable small build, so either today's builds use far fewer tokens than assumed, or verification forces a price rise or cheaper models for checks. Metering in the beta settles this before pricing is fixed. Enterprise pricing carries the operating cost of deployments in the customer's own cloud.

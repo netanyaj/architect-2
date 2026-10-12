@@ -23,13 +23,13 @@ On the [live demo](https://ticket-triage-gamma.vercel.app), click **Try the demo
 1. **Write a plan.** Click **Write it**, then **Write the plan**. The prompt asks for Gmail, which this workspace hasn't connected.
 2. **Build it.** Click **Build · ~N credits** and watch each part turn **Works**.
 3. **Fix a blocker.** The Gmail part says **Needs you**: connect it, and it carries on.
-4. **Launch with approval.** Open **Approvals** and approve the waiting Live deploy; you're an Admin.
+4. **Launch with approval.** Open **Approvals** and approve the waiting Live deploy; you're an Owner.
 5. **See Governance and the audit log.** Every decision you just made is there.
 
 Also try ⌘K, **Developer view** › **Terminal & logs**, and Meeting Prep › **Agents** › Research agent › **Try it**: a real run on Lyzr Studio.
 
 ## Real vs simulated
-**The prototype has no sandbox.** The build is a precomputed event timeline, the preview is a shell drawn from the plan, and the terminal matches six safe commands and never executes anything. Every simulated surface says **Simulated**. Part by part: [ARCHITECTURE.md §9](docs/product/ARCHITECTURE.md#9-what-the-assignment-prototype-implements).
+**The prototype has no sandbox.** The build is a precomputed event timeline, the preview is a shell drawn from the plan, and the terminal matches six safe commands and never executes anything. Every simulated surface says **Simulated**. Part by part: [ARCHITECTURE.md section 9](docs/product/ARCHITECTURE.md#9-what-the-assignment-prototype-implements).
 
 | Part | Real or simulated | Where |
 |---|---|---|
@@ -53,7 +53,7 @@ Also try ⌘K, **Developer view** › **Terminal & logs**, and Meeting Prep › 
 - **Email and billing.** Invites are a link to copy; plans and credits are simulated.
 
 ## How we'd measure it
-From [PRD §10](docs/product/08-PRD-architect-2.md#10-success-metrics); the prototype records the first steps in its own events table ([`docs/analytics.sql`](docs/analytics.sql)).
+From [PRD section 10](docs/product/08-PRD-architect-2.md#10-success-metrics); the prototype records the first steps in its own events table ([`docs/analytics.sql`](docs/analytics.sql)).
 - **North Star:** of the plans confirmed in a week, the share with at least 90% of their parts working within 7 days (target 60%).
 - **Leading:** time from the plan shown to Build clicked (under 3 minutes) · plans abandoned before Build (under 30%) · time from prompt to first preview (under 8 minutes).
 - **Guardrails:** parts dropped without a recorded decision, and Live deploys with sample data or open security findings (both 0) · check strength: a weekly human audit of parts marked Works (at least 95% really work).

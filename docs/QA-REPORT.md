@@ -25,6 +25,13 @@ What was checked before the hand-in, how, and what was found. Production is [tic
 
 **M6 additions, on a local production build:** MCP servers: adding DeepWiki's public server ran a real `initialize` and `tools/list` and listed its 3 tools in 2.3 s; the allowed list in Governance links to the row; an agent picks "MCP: DeepWiki" ([connections](qa/after-mcp-connections.png), [governance](qa/after-mcp-governance.png), [agent](qa/after-mcp-agent-tools.png)). Guards: 5 unit tests (private, loopback, link-local and mapped addresses refused, including a host that resolves to one), 3 action tests (allowed list, the header kept in Vault, 10 tests an hour, every test audited). The landing page: [light](qa/after-landing-1440-light.png), [dark](qa/after-landing-1440-dark.png), [390 px](qa/after-landing-390-light.png).
 
+**Governance off: who can connect what.** In a Personal workspace (governance off), Connections is where things get connected, and governance adds no rules on top:
+- **A Builder** added an MCP server (Context7: a real Test connection listed its 2 tools) and an API-key app (Clearbit, recorded as set by the Builder). The Lyzr Studio card tells a Builder that "An Owner or Admin connects the workspace's Lyzr key" ([screenshot](qa/governance-off-builder-connections.png)).
+- **The Owner** added the workspace's Lyzr key, checked with Lyzr, and the card shows Connected with only its last 4 characters ([screenshot](qa/governance-off-owner-connections.png)).
+- With governance on, only allowed apps and servers can be added, and an admin rule can limit connecting to Owners and Admins (`governance.spec`). The check is the e2e test "governance off (Personal)" in `m6.spec`, run on a local production build: it passes, and its accounts are deleted afterwards.
+
+![A Builder's Connections in a Personal workspace: two MCP servers connected and an API key set](qa/governance-off-builder-connections.png)
+
 ## 2. UX and UI review
 A fresh demo account on production, reviewed with the checklist of the third-party `review-ux-ui` skill (Nielsen's 10 heuristics, WCAG 2.1 AA, keyboard, flows, forms), read first and applied by hand, plus axe-core for contrast, names and roles.
 

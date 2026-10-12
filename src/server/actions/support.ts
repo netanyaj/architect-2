@@ -53,7 +53,7 @@ export async function askSupport(input: { question: string; history?: { role: "u
 
 /**
  * "Talk to a person": saves a ticket with the conversation and returns its number.
- * SIMULATED in this prototype (BUILD-SPEC §1): the ticket is real, but nobody is staffing tickets and no email is sent.
+ * SIMULATED in this prototype (BUILD-SPEC section 1): the ticket is real, but nobody is staffing tickets and no email is sent.
  */
 export async function createSupportTicket(input: {
   question?: string;

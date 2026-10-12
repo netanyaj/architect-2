@@ -39,7 +39,7 @@ export type BuildProgress = {
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /**
- * Where the project is (the stepper) and its one stage action (BUILD-SPEC §2).
+ * Where the project is (the stepper) and its one stage action (BUILD-SPEC section 2).
  * Build is the only way a build starts, and only once the plan is written and every blocking question answered.
  */
 export function workspaceState(input: {

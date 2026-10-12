@@ -1,6 +1,6 @@
 // Renders the architecture diagrams from their editable sources in docs/product/diagrams/src/:
 //   *.mmd  Mermaid, rendered in Chromium with mermaid (from jsDelivr) and the shared _config.json
-//   *.svg  hand-made SVG (from the hero.py / prototype.py generators), copied and rasterised
+//   *.svg  hand-made SVG (from the hero.py, prototype.py and system_map.py generators), copied and rasterised
 // Writes <name>.svg and <name>.png (2×) beside the sources' folder. Usage: node scripts/render-diagrams.mjs [name…]
 import { chromium } from "@playwright/test";
 import fs from "node:fs";
@@ -13,7 +13,7 @@ const config = JSON.parse(fs.readFileSync(path.join(SRC, "_config.json"), "utf8"
 const sources = fs.readdirSync(SRC).filter((f) => /\.(mmd|svg)$/.test(f) && (!wanted.length || wanted.some((w) => f.startsWith(w))));
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: 1600, height: 1200 } });
+const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: 2000, height: 1600 } });
 await page.setContent(`<!doctype html><html><body style="margin:0;background:#fff"><div id="out"></div><script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script></body></html>`);
 await page.waitForFunction(() => "mermaid" in window);
 await page.evaluate((cfg) => window.mermaid.initialize({ startOnLoad: false, ...cfg }), config);

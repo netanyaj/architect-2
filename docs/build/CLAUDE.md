@@ -18,7 +18,7 @@ Product documents (PRD, architecture, flows) are in `docs/product/`. When this f
 - Vercel AI SDK. All model calls go through `src/lib/gateway.ts`, never a provider SDK directly.
   - Real providers: Google (Gemini, required) and OpenRouter (optional, free models, via `@openrouter/ai-sdk-provider`).
   - Claude and GPT: real only if `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` is set. Otherwise the gateway routes them to Gemini and the picker shows them with a `SimTag`. Never hide that a model is simulated.
-  - On a free-tier rate limit (429), retry with backoff, then show the paused banner with "Switch model". Never fail over silently.
+  - Failover goes only to models the organisation's policy pre-approves as fallbacks, and is always announced. In the prototype, Gemini out of quota falls back to OpenRouter and says so in chat; any other free-tier rate limit (429) retries with backoff, then shows the paused banner with "Switch model".
 - GitHub App (read-only contents and metadata) via Octokit, for repo listing and import analysis.
 - Playwright for the smoke test; Vitest for unit tests.
 
@@ -39,6 +39,7 @@ Product documents (PRD, architecture, flows) are in `docs/product/`. When this f
 7. **Never push, deploy or publish** without Netanya's explicit OK in the session.
 8. **Accessibility:** real `<button>` and `<a>` elements, labels on inputs, a visible focus ring (`focus` token), hit areas of at least 24×24px, 4.5:1 text contrast. Use `line-ctl` for control outlines.
 9. **Nothing about other people's work.** Never commit anything about other people's take-home work: no names, repo links, scores or comparisons, in any file, commit message or PR text. Compare only against products (Lovable, Replit, v0, Base44, Cursor, today's Architect). A local pre-commit hook enforces the wording.
+10. **Never use the section sign character.** Write "section 2", or link the heading. The local pre-commit hook blocks it.
 
 ## Code conventions
 - Folders:

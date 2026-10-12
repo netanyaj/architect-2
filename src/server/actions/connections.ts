@@ -12,7 +12,7 @@ import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
 
 /**
- * Connect an app. SIMULATED in this prototype (BUILD-SPEC §1): there is no real OAuth, the status just
+ * Connect an app. SIMULATED in this prototype (BUILD-SPEC section 1): there is no real OAuth, the status just
  * flips to connected. The UI labels it with the Simulated tag. Refuses apps the connector policy blocks.
  */
 export async function connectProvider(input: { connectionId: string }): Promise<ActionResult> {

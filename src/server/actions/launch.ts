@@ -17,7 +17,7 @@ import { getAppContext, type AppContext } from "../workspace";
 import type { ActionResult } from "./members";
 import { track } from "../analytics";
 
-/* Launch (screen 4, reviews/deploy-flow-review-2026-10-05.md): Test → (Team) → Live, simulated (BUILD-SPEC §1).
+/* Launch (screen 4): Test → (Team) → Live, simulated (BUILD-SPEC section 1).
    Each step is a deployment row; going back deploys an earlier version again. The checklist and the workspace's
    governance setting are read here, so the browser can't skip them. */
 

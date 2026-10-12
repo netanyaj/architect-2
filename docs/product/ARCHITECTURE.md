@@ -2,18 +2,20 @@
 
 _Owner: Netanya Jaison · Draft 2 · 2026-10-12. Companion to the PRD ([`08-PRD-architect-2.md`](08-PRD-architect-2.md)). Diagrams are in [`diagrams/`](diagrams/): PNG and SVG at 2×, with editable sources in `diagrams/src/` (render with `node scripts/render-diagrams.mjs`). The live prototype: [ticket-triage-gamma.vercel.app](https://ticket-triage-gamma.vercel.app)._
 
-> **Words used here.** This document began before the product's words settled; the older sections keep some engineering words. They mean the same as the product's: **Blueprint** = plan · **item** = part · **Built ✓** = Works · **Preview / Staging / Production** = Test version / Team version / Live · **Deploy** = Launch. New text uses the product words.
+_Code names keep two older words: `blueprint` is the plan and `item` is a part (as in `architect/blueprint.yaml` and `update_item`)._
 
-![Architect 2.0 from prompt to a live app: numbered steps, with what the prototype does for real](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/hero-architecture.png)
+![How Architect 2.0 works in production: the twelve steps from prompt to a live app](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/hero-architecture.png)
+_How Architect 2.0 works in production. The numbers are the steps in [section 2](#2-from-prompt-to-live-app). What the prototype runs is in [section 9](#9-what-the-assignment-prototype-implements)._
 
 ## At a glance
 - **An evolution, not a rewrite.** Today's Architect already has the right foundations: per-project sandboxes (E2B), an agent harness based on the Claude Agent SDK, a WebSocket stream, a preview proxy, multi-tenant configuration and Lyzr Studio's model catalogue and agent registry. 2.0 keeps them and changes what blocks trust, developers, scale and enterprise use.
-- **Control plane and data plane are split.** The control plane (accounts, policy, billing, Blueprint IDs and statuses) can stay in Lyzr Cloud while the data plane (sandboxes, agents, models, code, data, deployed apps) runs in the customer's own cloud. This one decision makes the sovereign offer possible.
+- **Control plane and data plane are split.** The control plane (accounts, policy, billing, plan IDs and statuses) can stay in Lyzr Cloud while the data plane (sandboxes, agents, models, code, data, launched apps) runs in the customer's own cloud. This one decision makes the sovereign offer possible.
 - **The agent loop moves out of the sandbox.** The Architect agent and the verifier run as workers that reach into the sandbox through a small daemon. A crashed sandbox no longer loses work, and keys never sit inside it.
 - **Every agent uses the same tool surface.** The sandbox daemon exposes its tools over MCP (Model Context Protocol), so the Architect agent and a user's own coding agent (Claude Code, Cursor) call exactly the same tools under the same policy.
-- **One runtime for deployed apps everywhere.** Apps move from today's Netlify hosting to a container runtime that runs the same way in Lyzr Cloud, a customer's cloud or on-prem, and supports Python back ends, agent workers and autoscaling.
+- **One runtime for launched apps everywhere.** Apps move from today's Netlify hosting to a container runtime that runs the same way in Lyzr Cloud, a customer's cloud or on-prem, and supports Python back ends, agent workers and autoscaling.
 
-![System overview](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/A1-system-overview.png)
+![The system map in production: people, Lyzr's control plane, the boundary, a cell, Lyzr Studio and outside services](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/system-map-production.png)
+_The system map. Lyzr's control plane is global and holds no prompts, code or app data; everything else runs in a cell, in Lyzr Cloud or the customer's own cloud. The same map with what the prototype uses for each box opens [section 9](#9-what-the-assignment-prototype-implements)._
 
 ## 1. Starting point: what exists today, and what changes
 Based on our network captures and tests of today's Architect ([`docs/research/03-architect-architecture-today.md`](../research/03-architect-architecture-today.md), [`docs/research/04-import-audit.md`](../research/04-import-audit.md)) and a DNS check on 2026-10-03.
@@ -21,15 +23,15 @@ Based on our network captures and tests of today's Architect ([`docs/research/03
 | Area | Today | 2.0 | Why |
 |---|---|---|---|
 | Builder front end | Next.js on Vercel; the browser calls three back ends directly (Architect API, Studio, billing) | **Change:** one API gateway in front of everything | Simpler auth, tenant isolation, and a clean boundary for the customer's-cloud mode |
-| Realtime | WebSocket for chat; credits and build status polled (about 52 and 95 times in one session) | **Keep** the WebSocket; **change** polling to pushed events | Items must turn green as they happen (NFR-3) |
+| Realtime | WebSocket for chat; credits and build status polled (about 52 and 95 times in one session) | **Keep** the WebSocket; **change** polling to pushed events | Parts must turn Works as they happen (NFR-3) |
 | Sandboxes | One E2B microVM per app, started at planning and kept alive with keepalive pings | **Keep** E2B; **add** pause and resume, warm pools, Node and Python images, and a provider interface | Cost tracks active work; self-hostable in customer clouds |
 | Agent harness | "Lyra", built on or compatible with the Claude Agent SDK (it reports an SDK version), runs **inside** the sandbox in no-approval mode (`bypassPermissions`) | **Keep** the harness; **change** where it runs (workers outside the sandbox) and how it acts (policy-checked) | No lost work (NFR-5), no keys in sandboxes, approvals (C-10) |
 | Verification | A QA agent runs code and self-repairs | **Add** a separate verifier that writes checks before code (A-7) | The builder can't grade its own work |
-| Models | Studio's catalogue (54 models), chosen per agent after planning | **Keep** the catalogue; **add** a model gateway with policy routing, metering and private endpoints | Model choice upfront, own models, cost per item |
+| Models | Studio's catalogue (54 models), chosen per agent after planning | **Keep** the catalogue; **add** a model gateway with policy routing, metering and private endpoints | Model choice upfront, own models, cost per part |
 | Preview | nginx proxy; a JWT in the URL query string; injects an element picker and console bridge | **Keep** the proxy and injection; **change** the token to a cookie | Tokens in URLs leak into logs and Referer headers |
 | Secrets | API keys passed into the sandbox as environment variables (including a `VITE_` one) | **Change:** an egress proxy injects credentials; sandboxes hold none | Keys can't leak into generated code |
 | GitHub | OAuth app with full `repo` scope; app repos reserved in Lyzr's `Lyzr-Apps` org; "Push to GitHub" can only create a new repo; the agent can't push to an existing repo | **Change:** GitHub App per repo, git executor service, PRs to the user's repo | Least privilege; Sam's workflow |
-| Deployed apps | `*.architect.space`, a wildcard pointing to one Netlify site | **Change:** container runtime with environments and autoscaling | Python back ends, agent workers, same runtime in every deployment mode |
+| Launched apps | `*.architect.space`, a wildcard pointing to one Netlify site | **Change:** container runtime with environments and autoscaling | Python back ends, agent workers, same runtime in every deployment mode |
 | Tenancy | Tenant config with per-tenant feature flags and Keycloak SSO fields | **Keep**, and build the governance layer on it | Enterprise foundations already exist |
 | Trackers | About 15 third-party trackers in the builder | **Change:** none in customer-cloud and on-prem tenants | Sovereign promise (C-8) |
 
@@ -37,7 +39,7 @@ Based on our network captures and tests of today's Architect ([`docs/research/03
 The numbers match the hero diagram above. ![Prompt to live app](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/A2-prompt-to-live.png)
 
 1. **Prompt.** Morgan describes the app and attaches a PDF in the web app, which sends it through the API gateway. Attachments go to the project store; PDFs become a knowledge base.
-2. **Write the plan.** The plan service asks the model gateway to turn the prompt into parts, each with its check and its cost, plus defaults and questions; the estimator prices each part (PRD section 11). Parts stream to the browser as they're written. If the chosen model refuses on quota, the gateway falls back to a model the organisation allows and says so.
+2. **Write the plan.** The plan service asks the model gateway to turn the prompt into parts, each with its check and its cost, plus defaults and questions; the estimator prices each part (PRD section 11). Parts stream to the browser as they're written. If the chosen model refuses on quota, the gateway follows the failover rule: failover goes only to models the organisation's policy pre-approves as fallbacks, and is always announced.
 3. **Review, then click Build.** Nothing runs until Morgan clicks **Build · ~N credits**, after answering any question that holds Build. Governance checks the budget and the allowed models first. The plan is saved as version 1.
 4. **Start the run.** The run orchestrator starts a durable workflow, resumes the project's sandbox or takes one from the warm pool, and mounts the project's files.
 5. **Checks first.** The verifier writes a check for every part and locks it before any code exists.
@@ -53,12 +55,12 @@ The numbers match the hero diagram above. ![Prompt to live app](https://github.c
 
 ### 3.1 Web app, API gateway and realtime
 - **Web app:** Next.js. It talks to **one** API gateway instead of three back ends. The gateway handles sign-in, tenant routing and rate limits, and forwards to Architect services, Studio and billing.
-- **Realtime:** one WebSocket per open project, as today. Workers publish events (item status, logs, cost so far) to a realtime hub, which pushes them to the browser. Credits and build status are no longer polled.
+- **Realtime:** one WebSocket per open project, as today. Workers publish events (part status, logs, cost so far) to a realtime hub, which pushes them to the browser. Credits and build status are no longer polled.
 - **Auth:** Google, GitHub and email sign-in for individuals; the tenant config's existing Keycloak support provides enterprise single sign-on.
 
-### 3.2 Blueprint service
-- Stores blueprints, items, versions, checks and proofs in Postgres, and mirrors each version to `architect/blueprint.yaml` in the project (and the repo, if the user chooses).
-- Drafts blueprints and questions through the model gateway, applies the conflict guard (A-3) as a diff between versions, and runs the estimator: item classification, historical medians per item class, fix allowance, and a 50th–90th percentile range.
+### 3.2 Plan service
+- Stores plans, parts, versions, checks and proofs in Postgres, and mirrors each version to `architect/blueprint.yaml` in the project (and the repo, if the user chooses).
+- Drafts plans and questions through the model gateway, applies the conflict guard (A-3) as a diff between versions, and runs the estimator: part classification, historical medians per part class, fix allowance, and a 50th–90th percentile range.
 - Every build's actual tokens and sandbox minutes flow back from metering to update the estimator.
 
 ### 3.3 Run orchestrator and the Architect agent
@@ -68,30 +70,30 @@ The numbers match the hero diagram above. ![Prompt to live app](https://github.c
 
 | Step | What happens |
 |---|---|
-| **Plan** | The agreed Blueprint is the plan. The orchestrator builds items in dependency order (data before features, connections before the agents that use them), and the agent writes a short per-item plan into the transcript before touching code |
-| **Write code** | The agent edits files through the daemon's file tools (read, write, apply patch, search), one item at a time, so every change maps to an item |
+| **Plan** | The agreed plan sets the order. The orchestrator builds parts in dependency order (data before features, connections before the agents that use them), and the agent writes a short per-part plan into the transcript before touching code |
+| **Write code** | The agent edits files through the daemon's file tools (read, write, apply patch, search), one part at a time, so every change maps to a part |
 | **Run tools** | It installs packages, runs the dev server, tests and type checks through the daemon's command tools, and reads the output and the preview's console to decide its next step |
 | **Recover from errors** | Recovery happens in layers, each with its own owner (below) |
 
 | Failure | Who handles it | What happens |
 |---|---|---|
 | A command or test fails | The Architect agent, in the same turn | It reads the error and retries; this is normal work and is in the estimate |
-| An item's check fails | The orchestrator's fix loop (A-9) | A billed "Fix" run with the failure attached; after 3 failed attempts the item pauses and the user can edit or defer it |
+| A part's check fails | The orchestrator's fix loop (A-9) | A billed "Fix" run with the failure attached; after 3 failed attempts the part pauses and the user can edit or defer it |
 | A worker dies | The workflow engine | Another worker resumes from the last saved turn |
 | The sandbox crashes or is lost | The orchestrator | A new sandbox is created from the project store; at most one step is repeated |
-| The model is down or rate-limited | The model gateway | Retries with backoff, then fails over only to a model the user pre-approved; otherwise the run pauses and asks (BL-3) |
-| The budget runs out | The orchestrator | The build pauses, finished items stay, and the remaining estimate is shown |
+| The model is down or rate-limited | The model gateway | Retries with backoff. Failover goes only to models the organisation's policy pre-approves as fallbacks, and is always announced. With no approved fallback, the run pauses and asks (BL-3) |
+| The budget runs out | The orchestrator | The build pauses, finished parts stay, and the remaining estimate is shown |
 
-- **Durable workflows.** Each build, fix, test or deploy is a workflow in a durable workflow engine (Temporal, which is open source and self-hostable, so it also runs in customer clouds). Each turn of the agent (one model response plus its tool calls) is one workflow step, and the session transcript is saved to the project store after every turn. If a worker dies, a new worker resumes the session from the last saved turn.
+- **Durable workflows.** Each build, fix, test or launch is a workflow in a durable workflow engine (Temporal, which is open source and self-hostable, so it also runs in customer clouds). Each turn of the agent (one model response plus its tool calls) is one workflow step, and the session transcript is saved to the project store after every turn. If a worker dies, a new worker resumes the session from the last saved turn.
 - **The agent loop runs in workers, outside the sandbox.** Today the harness runs inside the sandbox, so a sandbox crash or out-of-memory error kills the agent and its progress, and the sandbox needs keys to call models. In 2.0, the Claude Agent SDK-based harness runs in a worker pool. The SDK's built-in file and shell tools are turned off, so the agent can only act through the sandbox daemon's tools; nothing touches the worker's own disk.
-- **No lost files.** The daemon commits the project's files to the project store after every tool call that changes them, so losing a sandbox costs at most one step (NFR-5). Each item that reaches Built ✓ is also a git commit, which is what checkpoints restore (BL-7).
+- **No lost files.** The daemon commits the project's files to the project store after every tool call that changes them, so losing a sandbox costs at most one step (NFR-5). Each part that reaches Works is also a git commit, which is what checkpoints restore (BL-7).
 - **Same tools for every agent.** The sandbox daemon exposes file, command and port tools as an MCP server. The Architect agent uses them, and so does a user's own coding agent through Architect's public MCP server, under the same policy and audit. One tool surface means one set of permissions to get right.
-- **Permission modes instead of blanket bypass (C-10).** Inside the sandbox the agent acts freely, since the sandbox is disposable. Anything that leaves it (git push, deploy, external calls with credentials, new connectors) goes through the policy service: allowed by rule, sent for approval, or refused.
+- **Permission modes instead of blanket bypass (C-10).** Inside the sandbox the agent acts freely, since the sandbox is disposable. Anything that leaves it (git push, launch, external calls with credentials, new connectors) goes through the policy service: allowed by rule, sent for approval, or refused.
 - **Trade-off.** Every tool call now crosses the network to the sandbox. With hosted E2B, workers run in the cloud region nearest to E2B's, adding roughly 10–40 ms per call; a model response takes seconds, so this is small. In self-hosted cells, workers and sandboxes share a cluster and the hop is shorter still.
 
 ### 3.4 Verifier
 - A separate worker type with its own context and no access to the Architect agent's reasoning.
-- Writes each item's check from the blueprint item before the build starts. Checks are stored and locked; the Architect agent can't edit them.
+- Writes each part's check from the plan before the build starts. Checks are stored and locked; the Architect agent can't edit them.
 - Prefers deterministic checks: unit and API tests, HTTP status, type checks, and headless-browser runs with screenshots. A rubric review by a model is used only for qualities no test can capture, and is labelled as such.
 - Runs checks in the sandbox's check runner and writes the proof (result, logs, screenshot) to the project store.
 
@@ -114,11 +116,11 @@ The numbers match the hero diagram above. ![Prompt to live app](https://github.c
 
 ### 3.6 Model gateway: model-agnostic by design
 - **One gateway for all models.** Every model call from every service goes through the gateway, which builds on Studio's existing model catalogue. It exposes both an Anthropic-compatible API (which the Claude Agent SDK harness speaks) and an OpenAI-compatible API, and translates between them, so a non-Claude model can drive the Architect agent if it passes the capability check below.
-- **Routing by role and policy.** Each call is tagged with its role: Architect agent, verifier, blueprint drafting, estimation, or an app agent at run time. The gateway picks the model the user or org chose for that role, limited to the org's allowed list (C-2).
+- **Routing by role and policy.** Each call is tagged with its role: Architect agent, verifier, plan drafting, estimation, or an app agent at run time. The gateway picks the model the user or org chose for that role, limited to the org's allowed list (C-2).
 - **Any provider, including the customer's own.** Commercial APIs (Anthropic Claude, OpenAI GPT, Google Gemini and others), the customer's own keys, cloud-hosted models (Bedrock, Azure, Vertex in the customer's account), and self-hosted open-source or in-house models registered as private endpoints.
 - **Capability check.** Before a model can be the Architect agent, it must pass a minimum bar for tool use and context length, measured on the benchmark set. This protects build quality on-prem.
-- **No silent switching.** If the chosen model is down, the run pauses and asks (BL-3). Failover only happens to models the user has pre-approved.
-- **Metering.** Every call is logged with project, item, run, role, model, tokens and cost. This feeds per-item actual cost, budgets and the estimator.
+- **No silent switching.** Failover goes only to models the organisation's policy pre-approves as fallbacks, and is always announced. With no approved fallback, the run pauses and asks (BL-3).
+- **Metering.** Every call is logged with project, part, run, role, model, tokens and cost. This feeds per-part actual cost, budgets and the estimator.
 
 ### 3.7 Live preview and the preview proxy
 ![Preview path](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/A4-preview-path.png)
@@ -130,10 +132,10 @@ The numbers match the hero diagram above. ![Prompt to live app](https://github.c
 
 ### 3.8 Developer view: editor and terminal
 - The code editor and terminal in Developer view connect through the API gateway to the sandbox daemon over a WebSocket (a terminal session for the shell, file APIs for the editor), with the same permissions as the Architect agent.
-- Per-item diffs come from the git commits made when each item reaches Built ✓.
+- Per-part diffs come from the git commits made when each part reaches Works.
 
 ### 3.9 Egress proxy and secrets
-- All traffic leaving a sandbox or a deployed app goes through the egress proxy.
+- All traffic leaving a sandbox or a launched app goes through the egress proxy.
 - **Secrets over HTTP(S):** code refers to a placeholder (for example `SLACK_TOKEN`); the proxy, which the sandbox trusts as an intercepting proxy, swaps in the real credential from the secrets vault on the way out. Generated code, logs and sandboxes never contain real keys.
 - **Other credentials:** database connections and signed requests (for example AWS-signed calls) can't be rewritten in flight, so they get short-lived credentials issued per workload instead of long-lived keys.
 - **Personal data:** the org's redaction rules (C-4) are applied at the proxy before data leaves.
@@ -145,26 +147,26 @@ The numbers match the hero diagram above. ![Prompt to live app](https://github.c
 ![GitHub flow](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/A7-github-flow.png)
 
 - **GitHub App, per repo.** Users install the Architect GitHub App on chosen repos only. The git executor service mints short-lived installation tokens per operation; tokens never enter the sandbox.
-- **Import:** clone, analyse (stack, run command, tests, agents), and copy the code into the sandbox. The analysis produces the blueprint from the repo (B-2).
-- **Changes as PRs:** after the user approves a push, the git executor pushes a branch and opens a PR whose description lists the blueprint items. Nothing is committed to the default branch.
+- **Import:** clone, analyse (stack, run command, tests, agents), and copy the code into the sandbox. The analysis produces the plan from the repo (B-2).
+- **Changes as PRs:** after the user approves a push, the git executor pushes a branch and opens a PR whose description lists the plan's parts. Nothing is committed to the default branch.
 - **Two-way sync:** GitHub webhooks tell the git executor about merges and outside commits; it pulls them into the sandbox and re-runs the affected checks.
 - **Users' coding agents:** Architect's public MCP server and CLI expose the same tools (`get_blueprint`, `update_item`, `run_in_sandbox`, `run_tests`, `open_pr`, `request_approval`, `get_preview_url`) with a scoped project token. Calls go through the API gateway and the same policy checks as the Architect agent.
 
 ### 3.11 Data: project store and event log
-- **Postgres** (per cell): projects, blueprints, items, checks, runs, policies, approvals, audit log.
+- **Postgres** (per cell): projects, plans, parts, checks, runs, policies, approvals, audit log.
 - **Object storage:** files, attachments, proofs (screenshots, logs), sandbox snapshots and agent checkpoints.
 - **Redis** (per cell, as today): sandbox state, sessions, realtime fan-out.
 - **Event log:** every run, model call, approval and data-flow event is written once, then used by metering, the audit log, the analytics behind the success metrics, and the estimator.
 
-### 3.12 Deploying users' apps
-- **Two launch paths.** With governance off (a personal or small-team workspace), Launch is one step, **Test → Live**, and sharing a Team version first is optional. With governance on, it's **Test → Team → Live**, and Live waits for an Owner or Admin's approval (C-6). Both keep every earlier version, so going back is one click.
+### 3.12 Launching users' apps
+- **Two launch paths.** With governance off (a personal or small-team workspace), Launch is one step, **Test → Live**, and sharing a Team version first is optional. With governance on, it's **Test → Team → Live**, and Live waits for an Owner or Admin's approval (C-5). Both keep every earlier version, so going back is one click.
 - **Build:** the orchestrator builds a container image from the project's code with standard Node and Python build packs, on an isolated build runner, then runs the pre-publish checks (tests, security and personal-data scan, secrets, sample data, and the stateless check in NFR-7).
-- **Run:** a Kubernetes-based app runtime with scale-to-zero for Preview and an autoscaling range for Production (at least 2 copies; NFR-8). Front-end assets are served from a CDN.
-- **Per environment:** each of Preview, Staging and Production gets its own database (managed Postgres), object storage bucket, secrets and URL. Agent calls from the app go through a queue and agent workers, so traffic spikes wait instead of crashing the app.
+- **Run:** a Kubernetes-based app runtime with scale-to-zero for Test versions and an autoscaling range for Live (at least 2 copies; NFR-8). Front-end assets are served from a CDN.
+- **Per environment:** each of Test, Team and Live gets its own database (managed Postgres), object storage bucket, secrets and URL. Agent calls from the app go through a queue and agent workers, so traffic spikes wait instead of crashing the app.
 - **App database changes:** the app's database migrations run as a gated step before each promote, and a failed migration stops the promote.
 - **Domains:** apps get `<app>.<apps domain>` on a domain separate from the builder's, by default, custom domains with automatic TLS certificates, and rollback to the previous image in under 2 minutes.
 - **App agents:** Lyzr agents run on Studio's runtime as today. CrewAI and LangGraph agents run as containers next to the app, behind the standard agent interface (inputs, outputs, tools, traces), and are registered in the shared Studio registry.
-- **Migration:** existing apps keep running on Netlify. "Move to 2.0" (flow F9) rebuilds and redeploys them on the new runtime, then moves the domain.
+- **Migration:** existing apps keep running on Netlify. "Move to 2.0" (flow F9) rebuilds and relaunches them on the new runtime, then moves the domain.
 
 ## 4. Governance, security and where it runs
 ![Deployment modes](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/A5-deployment-modes.png)
@@ -176,17 +178,18 @@ The numbers match the hero diagram above. ![Prompt to live app](https://github.c
 | **Customer's own cloud (VPC)** | Lyzr (stores no customer code, data or prompts) | Customer's AWS account first, then Azure and GCP | Regulated enterprises that want data in their account |
 | **On-prem or air-gapped** | Customer | Customer | Governments, defence, strict data-residency |
 
-- **What stays in the data plane:** code, files, prompts, model calls, app data, secrets, logs and Blueprint content (item titles and descriptions come from prompts, so they can be sensitive).
+- **What stays in the data plane:** code, files, prompts, model calls, app data, secrets, logs and plan content (part titles and descriptions come from prompts, so they can be sensitive).
 - **What crosses to the control plane (customer-cloud mode), and nothing else:**
   - usage counts for billing;
   - health and version;
-  - Blueprint IDs, statuses and costs (for example "item 7 · Built ✓ · 12 credits"), with no titles;
+  - plan IDs, statuses and costs (for example "part 7 · Works · 12 credits"), with no titles;
   - policy, config and updates coming in.
 
   The data-plane agent rejects any message outside this schema, and every message that crosses is recorded in the customer's own audit log. The customer can cut the link at any time; see the next point for what keeps working.
-- **If the control plane is unreachable:** customer-cloud data planes keep running deployed apps and in-progress builds; new sign-ins use the customer's own identity provider through the data plane, and policy is cached locally, so only billing and new projects wait.
+- **If the control plane is unreachable:** customer-cloud data planes keep running launched apps and in-progress builds; new sign-ins use the customer's own identity provider through the data plane, and policy is cached locally, so only billing and new projects wait.
 - **Same images everywhere:** every service ships as the same container images with Helm charts, so the modes differ in configuration, not code. A data-plane agent connects outward to the control plane, so customers don't open inbound ports.
 - **Models in sovereign modes:** the model gateway runs in the data plane, so the Architect agent and app agents can use the customer's own or self-hosted models without data leaving.
+- **Lyzr Studio in sovereign modes:** in VPC and on-prem modes, the Studio runtime and agent registry run inside the customer's cell, next to the model gateway, so agent prompts and data stay in the customer's cloud too.
 - **Security controls:**
   - tenant isolation by cell and by namespace;
   - sandboxes with no secrets and forced egress through the proxy;
@@ -200,7 +203,7 @@ The numbers match the hero diagram above. ![Prompt to live app](https://github.c
 ![Scaling with cells](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/A6-scaling-cells.png)
 
 - **Cells.** The system is split into cells. Each cell has its own workers, sandbox fleet, workflow engine, realtime hub, Postgres and Redis, and serves a set of tenants. A thin global layer (gateway, auth, billing, tenant directory) routes each tenant to its cell. A noisy or failing cell affects only its tenants (NFR-6), and capacity grows by adding cells.
-- **Stateless services scale horizontally.** The gateway, blueprint service and realtime hub run as multiple copies behind load balancers. Workers scale on queue depth.
+- **Stateless services scale horizontally.** The gateway, plan service and realtime hub run as multiple copies behind load balancers. Workers scale on queue depth.
 - **Sandboxes scale with active work, not users.** Paused sandboxes cost storage only.
 
 **Capacity sketch (assumptions, for sizing):**
@@ -225,8 +228,8 @@ The numbers match the hero diagram above. ![Prompt to live app](https://github.c
 - **Customer clouds and on-prem:** releases ship as versioned Helm charts. Customers on their own cloud receive updates from the control plane in maintenance windows they approve; on-prem customers pull signed releases on their own schedule.
 
 ## 7. Observability and cost metering
-- **Traces:** OpenTelemetry traces follow each run across gateway, orchestrator, workers, sandbox and model calls, tagged with project and item.
-- **Metrics per item and run:** tokens, sandbox minutes, fix attempts and duration, which power the estimator, budgets, the fix-spend metric and readiness.
+- **Traces:** OpenTelemetry traces follow each run across gateway, orchestrator, workers, sandbox and model calls, tagged with project and part.
+- **Metrics per part and run:** tokens, sandbox minutes, fix attempts and duration, which power the estimator, budgets, the fix-spend metric and readiness.
 - **Health:** per-cell dashboards for sandbox start times (NFR-2), event latency (NFR-3), availability (NFR-4) and model-gateway queueing.
 - **In customer clouds,** telemetry stays in the customer's account by default; only billing counters go to the control plane.
 
@@ -238,12 +241,16 @@ The numbers match the hero diagram above. ![Prompt to live app](https://github.c
 | Sandbox daemon speaks MCP | A private protocol | Architect agent and users' coding agents share one tool surface and one policy | MCP's evolving spec to track |
 | Keep E2B behind an interface | Build our own sandbox fleet now | Proven, already integrated, self-hostable | Vendor dependency in Lyzr Cloud (mitigated by the interface) |
 | Temporal for durable workflows | Queue plus hand-written retries | Resumable builds, visible history, runs on-prem | Another system to operate |
-| Own container runtime for deployed apps | Stay on Netlify | Python back ends, agent workers, autoscaling, same runtime in every mode | We now run hosting; mitigated by managed Kubernetes in Lyzr Cloud |
+| Own container runtime for launched apps | Stay on Netlify | Python back ends, agent workers, autoscaling, same runtime in every mode | We now run hosting; mitigated by managed Kubernetes in Lyzr Cloud |
 | Egress proxy injects secrets | Environment variables in sandboxes (today) | Keys can't leak into code or logs; enables the data-flow view | All outbound traffic goes through one more hop |
 | Cells for scale and isolation | One large shared cluster | Contained failures, predictable growth, a customer cloud is just another cell | More environments to operate and monitor |
 
 ## 9. What the assignment prototype implements
-![The prototype as built](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/prototype-as-built.png)
+![The system map with what the prototype uses for each box: REAL, PART, SIM or NOT BUILT](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/system-map-prototype.png)
+_The same system map as [At a glance](#at-a-glance), with what the prototype uses for each box: **REAL** works for real, **PART** real records with a simulated effect, **SIM** simulated, **NOT BUILT** design only._
+
+![What this repo runs, and on what: Vercel and Supabase in Mumbai](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/prototype-as-built.png)
+_What this repo runs, and on what._
 
 Part by part: the production design (sections 2–8), what the prototype does, and where. The [decisions log](../DECISIONS.md) records every place the prototype differs from the spec, and why. Every simulated surface carries the **Simulated** label in the product.
 
@@ -262,7 +269,7 @@ Part by part: the production design (sections 2–8), what the prototype does, a
 | Connections | OAuth, MCP servers and API keys, credentials injected by the egress proxy | MCP servers: a real Test connection (initialize + tools/list, guarded); calling their tools is simulated. Apps' sign-in and API keys are simulated | **Real** (MCP test, Lyzr key) · **Simulated** (apps) | `src/server/mcp-client.ts`, `src/server/actions/mcp.ts`, `src/app/(app)/connections/` |
 | Keys and passwords | Vault plus the egress proxy | Values stored encrypted in Supabase Vault and never shown again; no app uses them | **Real** storage | `supabase/migrations/0023_m510_pre_m6.sql`, `src/server/actions/keys.ts` |
 | GitHub | GitHub App per repo, git executor, PRs, two-way sync | Read-only GitHub App: install, repo, branch and folder lists, reading files, the import analysis. Branches, PRs and sync are simulated | **Real** (read) · **Simulated** (write) | `src/server/github.ts`, `src/server/import.ts`, `src/server/pull-requests.ts` |
-| Governance | Policy service checked before anything leaves a sandbox; approvals; append-only audit | Policies, approvals, allow-rules, budgets and the audit log are stored for real, and the app's own gates enforce them (a disallowed model, a stopped budget, a Live deploy waiting for an Admin). Their effects outside the app are simulated: no egress proxy, no real deploy | **Stored for real, effects simulated** | `src/server/policy.ts`, `src/server/approvals.ts`, `src/app/(app)/governance/` |
+| Governance | Policy service checked before anything leaves a sandbox; approvals; append-only audit | Policies, approvals, allow-rules, budgets and the audit log are stored for real, and the app's own gates enforce them (a disallowed model, a stopped budget, Live waiting for an Owner or Admin's approval). Their effects outside the app are simulated: no egress proxy, no real deploy | **Stored for real, effects simulated** | `src/server/policy.ts`, `src/server/approvals.ts`, `src/app/(app)/governance/` |
 | Launch | Container image, pre-publish checks, environments, domains, rollback | Test → Live (governance off) or Test → Team → Live with approval; checklist, domains and going back, all simulated | **Simulated** | `src/server/actions/launch.ts`, `src/lib/launch.ts` |
 | Data tab | The app's own database per environment | Sample tables seeded from the parts; your uploaded CSV or Excel becomes the Test version's data | **Simulated** | `src/lib/app-data.ts` |
 | Your coding agent over MCP | Architect's public MCP server and CLI | Project tokens are real records; the server is a spec page (`/docs/mcp`); sessions are scripted | **Simulated** | `src/lib/mcp.ts`, `src/app/docs/mcp/` |
@@ -276,6 +283,7 @@ Part by part: the production design (sections 2–8), what the prototype does, a
 - **Each workspace connects its own Lyzr key** (Connections › Lyzr Studio, Owners and Admins). It's checked with Lyzr, stored encrypted, and never returned to the browser. No workspace's agents or data go to another account.
 - **Agents are created in that Studio when their part is built.** When an agent part reaches Works, Architect creates it in the workspace's Studio with its name, instructions, model settings and tools, and keeps its Studio id. If Studio can't be reached, the part still works and the agent shows "Not in Studio yet · Retry".
 - **Saved edits sync both ways.** Saving an agent's settings in Architect updates it in Studio; in the product, an edit made in Studio comes back through the shared agent registry (the prototype syncs Architect → Studio on save).
+- **In VPC and on-prem modes, Studio runs inside the customer's cell.** The Studio runtime and agent registry are deployed into the customer's cell (section 4), so a built app's agents never send prompts or data out of the customer's cloud. In Lyzr Cloud and Dedicated, it's Lyzr's shared Studio with each workspace's own account.
 - **Imported CrewAI and LangGraph agents stay in their framework.** They run as containers behind the standard agent interface. Converting one to a Studio agent, or wrapping it as a tool other agents call, is optional and shows its cost first.
 - **Why this is the moat:**
   - **One runtime.** Every app's agents run on the same Studio runtime, so they're operated, scaled and observed one way.
@@ -291,7 +299,7 @@ The arithmetic from PRD section 11, for a small build of 6 parts on a mid-tier m
 | Architect agent | 1.0M input tokens: 0.2M fresh × $3 + 0.8M cached × $0.30 = $0.60 + $0.24; 80k output × $15 = $1.20 | ≈ $2.04 |
 | Verifier | 25% of the Architect agent's cost | ≈ $0.51 |
 | Sandbox | about 20 active minutes; idle time is paused | ≈ $0.05 |
-| Fixes | 2 of 6 parts need one fix, each about 30% of that part's cost: 2 × 0.3 × ($2.55 ÷ 6) | ≈ $0.20 |
+| Fixes | 2 of 6 parts need one fix, each about 30% of that part's cost: 2 × 0.3 × ($2.04 ÷ 6) | ≈ $0.20 |
 | **Total cost** | | **≈ $2.80** |
 
 At a 2.5× markup (about 60% gross margin) that build sells for about $7. Today's Architect charged about $2.88 for a comparable small build, so either today's builds use far fewer tokens than assumed, or verification forces a price rise or cheaper models for checks: metering in the beta decides it.
@@ -302,8 +310,9 @@ At a 2.5× markup (about 60% gross margin) that build sells for about $7. Today'
 | What breaks first | Why | Fix |
 |---|---|---|
 | **Sandboxes** | Hundreds of builds start at once; cold starts and idle sandboxes cost money and time | Pause after 10 idle minutes and resume from a snapshot; warm pools per image sized from the last hour's start rate; cells that add capacity without a redesign (section 5) |
-| **Model rate limits** | At peak, 25–50 calls a second through the gateway (section 5); free and even paid quotas run out | Spread load across provider regions and keys; queue bursts and show the wait; prompt caching; fall back only to models the organisation allows, and say so (the prototype already does this for Gemini → OpenRouter) |
+| **Model rate limits** | At peak, 25–50 calls a second through the gateway (section 5); free and even paid quotas run out | Spread load across provider regions and keys; queue bursts and show the wait; prompt caching. Failover goes only to models the organisation's policy pre-approves as fallbacks, and is always announced. (The prototype does this for Gemini → OpenRouter, said in chat.) |
 | **Verifier cost** | A second agent on every part can cost a quarter of the build (section 11) | Deterministic checks first (tests, HTTP, types, screenshots); a model rubric only where no test can judge; a cheaper model for checks; checks re-run only for the parts a change touches |
+| **Lyzr Studio availability** | Every built app's agents run on Studio, so a Studio outage stops them all, across every app | Agent calls go through a queue with retries, so a short outage delays answers instead of failing them; in sovereign modes Studio runs per cell, so an outage stays in one cell; Studio's status shows on each Live app and in the build view, and agent creation retries later ("Not in Studio yet · Retry") |
 | **The egress proxy** | Every outbound call from every sandbox and app passes through it | Run it on every node in a cell, not as one box; pool connections; cache allow-list decisions; let large package downloads go through a verified mirror instead |
 
 ## 13. Trade-offs: what we chose, and what we gave up
@@ -325,8 +334,8 @@ At a 2.5× markup (about 60% gross margin) that build sells for about $7. Today'
 |---|---|
 | **The prototype, now** | Row-level security on every table; keys and passwords encrypted in Supabase Vault and never returned to the browser; model and provider keys only in server code; a read-only GitHub App; MCP tests refuse private and local addresses, even after DNS; demo caps and a 7-day cleanup; an append-only audit log of every governance decision |
 | **v1** | Keycloak SSO; the policy service checked before anything leaves a sandbox; the egress proxy injecting secrets; short-lived GitHub tokens per operation; approvals for Live, new apps and keys; repos, documents and tool output treated as untrusted data, with prompt-injection defences |
-| **v2** | The data plane in the customer's own cloud with its own models; the data-flow view enforced at the proxy; no third-party trackers in sovereign tenants; SOC 2 Type II |
-| **v3** | On-prem and air-gapped installs from signed releases; customer-held keys; ISO 27001 |
+| **v2** | The data plane in the customer's own cloud with its own models; the data-flow view enforced at the proxy; no third-party trackers in sovereign tenants; new services stay in scope of Lyzr's existing compliance programme |
+| **v3** | On-prem and air-gapped installs from signed releases; customer-held keys; new services stay in scope of Lyzr's existing compliance programme |
 
 ## 16. Sources
 - Our own research, in [`docs/research/`](../research/): [today's Architect, audited](../research/02-architect-today.md); [how today's system works](../research/03-architect-architecture-today.md), from our network captures and a DNS check on 2026-10-03; [the import audit](../research/04-import-audit.md); [the product comparison](../research/06-competitor-matrix.md) (Lovable, Replit, v0, Cursor, Emergent and others); [forum and survey research](../research/07-secondary-research.md).

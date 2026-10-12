@@ -47,4 +47,50 @@ test.describe("M6: landing page and MCP servers", () => {
     const { data: audit } = await db.from("audit_log").select("action").eq("workspace_id", m!.workspace_id).like("action", "mcp.%");
     expect(audit!.map((a) => a.action).sort()).toEqual(["mcp.added", "mcp.tested"]);
   });
+
+  test("governance off (Personal): a Builder adds an MCP server and an API-key app; an Owner adds the Lyzr key", async ({ browser }) => {
+    const db = adminDb();
+    const builder = await createTestUser("builder");
+    try {
+      const { data: m } = await db.from("members").select("workspace_id, workspaces!inner(kind, governance_enabled)").eq("user_id", user.id).eq("workspaces.kind", "personal").single();
+      const ws = m!.workspace_id;
+      expect((m!.workspaces as unknown as { governance_enabled: boolean }).governance_enabled).toBe(false);
+      await db.from("members").insert({ workspace_id: ws, user_id: builder.id, role: "builder", status: "active" });
+      const open = async (who: TestUser) => {
+        const page = await (await browser.newContext({ viewport: { width: 1440, height: 1100 } })).newPage();
+        await signIn(page, who);
+        await page.context().addCookies([{ name: "ax_ws", value: ws, domain: new URL(page.url()).hostname, path: "/", httpOnly: true, sameSite: "Lax" }]);
+        await page.goto("/connections");
+        return page;
+      };
+
+      // The Builder: any HTTPS MCP server, and any API-key app; the Lyzr key is for Owners and Admins.
+      const b = await open(builder);
+      const mcp = b.getByRole("region", { name: "MCP servers" });
+      await mcp.getByRole("button", { name: "Add an MCP server" }).click();
+      await mcp.getByLabel("Name").fill("Context7");
+      await mcp.getByLabel("URL").fill("https://mcp.context7.com/mcp");
+      await mcp.getByRole("button", { name: "Add and test" }).click();
+      await expect(mcp.getByText(/Connected · \d+ tools/)).toBeVisible({ timeout: 30_000 });
+      await b.getByRole("button", { name: "Add an API key" }).click();
+      await b.getByLabel("Service").fill("Clearbit");
+      await b.getByLabel("API key", { exact: true }).fill("sk_test_clearbit_0000");
+      await b.getByRole("button", { name: "Save key" }).click();
+      await expect(b.getByText(/Set by Builder Tester/)).toBeVisible();
+      await expect(b.getByText("An Owner or Admin connects the workspace's Lyzr key.")).toBeVisible();
+      await b.screenshot({ path: "docs/qa/governance-off-builder-connections.png", fullPage: true });
+
+      // The Owner: the Lyzr key, checked with Lyzr.
+      const o = await open(user);
+      await o.getByLabel("Lyzr API key").fill(process.env.LYZR_API_KEY!);
+      await o.getByRole("button", { name: "Connect with your Lyzr API key" }).click();
+      await expect(o.locator("#lyzr").getByText("Connected", { exact: true })).toBeVisible({ timeout: 30_000 });
+      await o.screenshot({ path: "docs/qa/governance-off-owner-connections.png", fullPage: true });
+
+      const { data: audit } = await db.from("audit_log").select("action").eq("workspace_id", ws);
+      expect(audit!.map((a) => a.action)).toEqual(expect.arrayContaining(["mcp.added", "connection.api_key_set"]));
+    } finally {
+      await deleteTestUser(builder);
+    }
+  });
 });

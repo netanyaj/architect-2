@@ -43,7 +43,7 @@ def arrow(x1, y1, x2, y2, dashed=False):
 out.append(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" font-family="Helvetica, Arial, sans-serif">')
 out.append('<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8A8983"/></marker></defs>')
 out.append(f'<rect width="{W}" height="{H}" fill="#F6F5F2"/>')
-out.append(f'<text x="40" y="48" font-size="24" font-weight="700" fill="{INK}">Architect 2.0 · the prototype as built</text>')
+out.append(f'<text x="40" y="48" font-size="24" font-weight="700" fill="{INK}">What this repo runs, and on what</text>')
 out.append(f'<text x="40" y="70" font-size="13.5" fill="{INK2}">Vercel and Supabase, both in Mumbai. Badges say what is real.</text>')
 badge(960, 34, "REAL"); out.append(f'<text x="1010" y="48" font-size="12.5" fill="{INK2}">real</text>')
 badge(1060, 34, "PART"); out.append(f'<text x="1114" y="48" font-size="12.5" fill="{INK2}">real records, simulated effects</text>')

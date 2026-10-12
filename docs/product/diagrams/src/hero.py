@@ -1,13 +1,17 @@
 """Hero architecture diagram for README and ARCHITECTURE.md (editable source).
 
-Numbered steps match ARCHITECTURE.md section 2. Badges say what the prototype does today:
-REAL = works for real, PART = stored for real with simulated effects, SIM = simulated.
+How Architect 2.0 works in production: no prototype badges here (those are on the
+prototype diagram and the prototype system map). The numbered boxes are the twelve steps
+in ARCHITECTURE.md section 2, one box per step, joined by the path arrows in order.
+The control plane holds only the CDN, gateway, identity, tenant directory, billing and
+policy authoring; everything that touches prompts, plans, code or data runs in the cell.
 Run: python3 docs/product/diagrams/src/hero.py, then node scripts/render-diagrams.mjs hero-architecture
 """
 import os
+import textwrap
 
-W, H = 1600, 1000
-INK, INK2, LINE = "#1A1A19", "#42413D", "#D6D4CC"
+W, H = 1640, 1250
+INK, INK2, LINE, PATH = "#1A1A19", "#42413D", "#D6D4CC", "#1A1A19"
 out = []
 
 
@@ -15,108 +19,167 @@ def esc(t):
     return t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def band(x, y, w, h, title, fill, stroke):
+def text(x, y, t, size=12.5, weight=400, fill=INK2, anchor="start"):
+    out.append(f'<text x="{x}" y="{y}" font-size="{size}" font-weight="{weight}" fill="{fill}" text-anchor="{anchor}">{esc(t)}</text>')
+
+
+def band(x, y, w, h, title, note, fill, stroke):
     out.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="18" fill="{fill}" stroke="{stroke}" stroke-width="1.5"/>')
-    out.append(f'<text x="{x + 18}" y="{y + 28}" font-size="15" font-weight="700" fill="{INK}">{esc(title)}</text>')
+    text(x + 18, y + 28, title, 15, 700, INK)
+    if note:
+        text(x + 26 + len(title) * 8.1, y + 28, note, 12.5)
 
 
-BADGE = {"REAL": ("#E5F2E8", "#1D6E30", "none"), "PART": ("#FCEFDC", "#8A4500", "none"), "SIM": ("#FFFFFF", "#5C5B56", "4 3")}
+def label(x, y, t):
+    text(x, y, t.upper(), 10.5, 700, INK2)
 
 
-def badge(x, y, kind):
-    bg, fg, dash = BADGE[kind]
-    w = 44 if kind != "PART" else 48
-    out.append(f'<rect x="{x}" y="{y}" width="{w}" height="20" rx="10" fill="{bg}" stroke="{fg}" stroke-width="1.2" stroke-dasharray="{dash}"/>')
-    out.append(f'<text x="{x + w / 2}" y="{y + 14}" font-size="11" font-weight="700" fill="{fg}" text-anchor="middle">{kind}</text>')
+def step(cx, cy, n):
+    out.append(f'<circle cx="{cx}" cy="{cy}" r="12.5" fill="{PATH}"/>')
+    text(cx, cy + 4.5, str(n), 12.5, 700, "#FFFFFF", "middle")
 
 
-def step(x, y, n):
-    out.append(f'<circle cx="{x}" cy="{y}" r="13" fill="{INK}"/>')
-    out.append(f'<text x="{x}" y="{y + 5}" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">{n}</text>')
+def node(x, y, w, h, title, sub, n=None, chars=None):
+    out.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="12" fill="#FFFFFF" stroke="{INK if n else LINE}" stroke-width="{1.6 if n else 1.2}"/>')
+    tx = x + 14
+    if n:
+        step(x + 26, y + 22, n)
+        tx = x + 46
+    text(tx, y + 27, title, 14, 700, INK)
+    for i, line in enumerate(textwrap.wrap(sub, chars or int((w - 26) / 6.4))):
+        text(x + 14, y + 47 + i * 15.5, line, 12)
 
 
-def node(x, y, w, h, title, sub, kind, steps=()):
-    out.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="12" fill="#FFFFFF" stroke="{LINE}" stroke-width="1.3"/>')
-    # Step numbers sit inside the box, before its title, so they never cover a layer's name.
-    for i, n in enumerate(steps):
-        step(x + 24 + i * 30, y + 21, n)
-    tx = x + 14 + len(steps) * 30
-    out.append(f'<text x="{tx}" y="{y + 26}" font-size="14.5" font-weight="700" fill="{INK}">{esc(title)}</text>')
-    for i, line in enumerate(sub):
-        out.append(f'<text x="{x + 14}" y="{y + 48 + i * 17}" font-size="12.5" fill="{INK2}">{esc(line)}</text>')
-    badge(x + w - (58 if kind == "PART" else 54), y + 10, kind)
-
-
-def arrow(x1, y1, x2, y2, dashed=False, label=None):
+def arrow(x1, y1, x2, y2, dashed=False, color=PATH, width=2.2):
     d = ' stroke-dasharray="6 5"' if dashed else ""
-    out.append(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="#8A8983" stroke-width="1.6"{d} marker-end="url(#a)"/>')
-    if label:
-        out.append(f'<text x="{(x1 + x2) / 2 + 6}" y="{(y1 + y2) / 2 - 4}" font-size="11.5" fill="{INK2}">{esc(label)}</text>')
+    m = "p" if color == PATH else "g"
+    out.append(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{color}" stroke-width="{width}"{d} marker-end="url(#{m})"/>')
 
 
 out.append(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" font-family="Helvetica, Arial, sans-serif">')
-out.append('<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8A8983"/></marker></defs>')
+out.append(
+    '<defs>'
+    f'<marker id="p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="{PATH}"/></marker>'
+    '<marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8A8983"/></marker>'
+    '</defs>'
+)
 out.append(f'<rect width="{W}" height="{H}" fill="#F6F5F2"/>')
-out.append(f'<text x="40" y="48" font-size="24" font-weight="700" fill="{INK}">Architect 2.0 · from prompt to a live app</text>')
-out.append(f'<text x="40" y="70" font-size="13.5" fill="{INK2}">Numbers are the steps in ARCHITECTURE.md §2. Badges say what the prototype does today.</text>')
+text(40, 48, "How Architect 2.0 works in production", 24, 700, INK)
+text(40, 72, "From one prompt to a live app. Follow the numbers: they are the twelve steps in ARCHITECTURE.md section 2.", 13.5)
 # Legend
-lx = 1030
-badge(lx, 34, "REAL"); out.append(f'<text x="{lx + 50}" y="48" font-size="12.5" fill="{INK2}">works for real</text>')
-badge(lx + 150, 34, "PART"); out.append(f'<text x="{lx + 204}" y="48" font-size="12.5" fill="{INK2}">stored for real, effects simulated</text>')
-badge(lx, 58, "SIM"); out.append(f'<text x="{lx + 50}" y="72" font-size="12.5" fill="{INK2}">simulated</text>')
-step(lx + 162, 68, 1); out.append(f'<text x="{lx + 182}" y="72" font-size="12.5" fill="{INK2}">step in §2</text>')
+step(1192, 44, 1)
+text(1212, 48, "a step, in order")
+arrow(1180, 70, 1230, 70)
+text(1240, 74, "the path from prompt to a live app")
 
-# Layers (left) and the governance column (right)
-band(40, 92, 1110, 120, "People", "#FFFFFF", LINE)
-node(70, 132, 330, 66, "Architect web app", ["Parts panel · stage · chat · ⌘K"], "REAL", (1, 3))
-node(430, 132, 300, 66, "Live preview", ["the app as each part works"], "SIM", (10,))
-node(760, 132, 360, 66, "Your coding agent", ["Claude Code, Cursor · via MCP"], "SIM")
+# People (full width)
+band(40, 96, 1560, 120, "People", "", "#FFFFFF", LINE)
+node(60, 132, 330, 70, "Org admins", "Set where it runs and which models and apps are allowed; approve Live")
+node(410, 132, 470, 70, "Developers and their coding agents", "Sam, with Claude Code or Cursor, through Architect's MCP server and CLI: the same tools and policy")
+node(900, 132, 240, 70, "Builders", "Morgan types the prompt in the web app", 1)
+node(1160, 132, 420, 70, "People who use the built app", "Sign in to the app on its own domain")
 
-band(40, 232, 1110, 140, "Control plane", "#EEF2FF", "#A5B4FC")
-node(70, 272, 240, 82, "API gateway", ["one entry · sign-in", "workspaces · rate limits"], "REAL")
-node(330, 272, 250, 82, "Plan service", ["parts, checks, cost", "the conflict guard"], "REAL", (2,))
-node(600, 272, 260, 82, "Run orchestrator", ["durable workflows", "fix loop, up to 3"], "SIM", (4,))
-node(880, 272, 240, 82, "Realtime hub", ["parts turn Works live"], "REAL")
+# Lyzr control plane (full width): global, holds no prompts, code or app data
+band(40, 236, 1560, 120, "Lyzr control plane", "global, run by Lyzr · holds no prompts, plans, code or app data", "#EEEAFB", "#C9BEF2")
+cw, cx0 = 236, 60
+cp = [
+    ("CDN", "The builder's front end, served worldwide"),
+    ("Identity and SSO", "Google, GitHub, email; Keycloak single sign-on"),
+    ("Tenant directory", "Which workspace lives in which cell; feature flags"),
+    ("API gateway", "One entry: checks sign-in, routes to the cell, rate limits"),
+    ("Billing and credits", "Credits, plans and invoices from usage counts"),
+    ("Policy authoring", "Admins write org policy; it is pushed to every cell"),
+]
+for i, (t, s) in enumerate(cp):
+    node(cx0 + i * (cw + 20), 272, cw, 70, t, s)
 
-band(40, 392, 1110, 250, "Data plane · Lyzr Cloud or your own cloud", "#ECFEFF", "#67E8F9")
-node(70, 432, 250, 82, "Verifier", ["writes checks first", "proof per part"], "SIM", (5, 7))
-node(340, 432, 260, 82, "Architect agent", ["workers outside the sandbox", "tools over MCP"], "SIM", (6,))
-node(620, 432, 240, 82, "Sandbox per project", ["your stack + daemon", "no keys inside"], "SIM")
-node(880, 432, 240, 82, "Model gateway", ["Gemini, OpenRouter, Claude,", "GPT · quota fallback"], "REAL", (2,))
-node(70, 540, 250, 82, "Egress proxy", ["injects secrets", "allow-listed hosts"], "SIM", (9,))
-node(340, 540, 260, 82, "Git executor", ["GitHub App · import is", "real, PRs simulated"], "PART")
-node(620, 540, 500, 82, "App runtime", ["Test version → Team version → Live", "one runtime in every deployment mode"], "SIM", (11, 12))
+# The boundary
+out.append(f'<line x1="40" y1="376" x2="1600" y2="376" stroke="#9C8FE0" stroke-width="1.5" stroke-dasharray="7 6"/>')
+out.append('<rect x="60" y="366" width="640" height="20" fill="#F6F5F2"/>')
+text(70, 381, "The boundary: only IDs, statuses, usage and health go up; policy, config and updates come down", 12.5, 600, INK)
 
-band(40, 662, 1110, 132, "Lyzr Studio · each workspace's own account", "#E2E8DC", "#7DBA8A")
-node(70, 702, 360, 74, "Agents made when their part works", ["saved edits sync · Try it runs on Studio"], "REAL", (8,))
-node(450, 702, 330, 74, "Agent runtime for the built app", ["one runtime for every app's agents"], "SIM", (12,))
-node(800, 702, 320, 74, "Reuse across apps", ["Attach a Studio agent as a part"], "REAL")
+# A cell: the data plane
+band(40, 396, 1120, 662, "A cell: the data plane", "Lyzr Cloud, a dedicated region, the customer's VPC, or on-prem", "#E6F5F6", "#A9DCE0")
+X = [60, 340, 620, 900]
+BW, BH = 240, 90
+R = [452, 576, 700, 824, 948]
+label(60, R[0] - 10, "Services")
+node(X[0], R[0], BW, BH, "Audit log", "Append-only: every run, change, approval and data access")
+node(X[1], R[0], BW, BH, "Run orchestrator", "Durable workflows (Temporal) for build, fix and launch; resume after a crash", 4)
+node(X[2], R[0], BW, BH, "Policy and approvals", "Budget and allowed models before Build; anything leaving a sandbox: allow, ask or refuse", 3)
+node(X[3], R[0], BW, BH, "Plan service", "Parts, checks and costs through the model gateway; the estimator; versions", 2)
 
-band(40, 814, 1110, 150, "Outside services", "#FFFFFF", LINE)
-node(70, 854, 330, 82, "Model providers", ["Gemini and OpenRouter live;", "Claude, GPT with a key"], "REAL")
-node(420, 854, 330, 82, "Your apps and MCP servers", ["OAuth and keys simulated;", "MCP Test connection real"], "PART", (9,))
-node(770, 854, 350, 82, "GitHub", ["read-only App: repos, files,", "the import analysis"], "REAL")
+label(60, R[1] - 10, "Workers and sandboxes")
+node(X[0], R[1], BW, BH, "Warm pool", "Pre-booted sandboxes per image; paused after 10 idle minutes, resumed from a snapshot")
+node(X[1], R[1], BW, BH, "Verifier", "Writes and locks each part's check before any code exists", 5)
+node(X[2], R[1], BW, BH, "Architect agent", "Workers outside the sandbox (Claude Agent SDK); act only through the daemon's tools", 6)
+node(X[3], R[1], BW, BH, "Sandbox", "One per project (E2B). Code and checks run here; a pass marks the part Works; no keys inside", 7)
 
-band(1180, 92, 380, 872, "Governance layer · your organisation's rules", "#F0EAFA", "#C7AAFC")
-node(1205, 140, 330, 100, "Policies", ["models · apps and MCP servers", "data and egress · budgets", "where it runs"], "PART", (3,))
-node(1205, 262, 330, 100, "Approvals and allow-rules", ["Live deploys, new apps, keys", "for Live, push to main"], "PART", (11,))
-node(1205, 384, 330, 82, "Keys and passwords", ["encrypted in Vault, never shown", "again · your Lyzr key too"], "REAL", (9,))
-node(1205, 488, 330, 82, "Budgets and caps", ["cost before every paid action", "demo: 5 plans a day"], "PART", (3,))
-node(1205, 592, 330, 82, "Audit log", ["every decision, CSV export"], "REAL", (12,))
-out.append(f'<text x="1205" y="712" font-size="12.5" fill="{INK2}">Checked before anything leaves a sandbox:</text>')
-out.append(f'<text x="1205" y="729" font-size="12.5" fill="{INK2}">allowed by rule, sent for approval,</text>')
-out.append(f'<text x="1205" y="746" font-size="12.5" fill="{INK2}">or refused. Applies to the workers,</text>')
-out.append(f'<text x="1205" y="763" font-size="12.5" fill="{INK2}">your coding agent and the built app.</text>')
+label(60, R[2] - 10, "Ways out: to models, GitHub, apps and the browser")
+node(X[0], R[2], BW, BH, "Git executor", "Short-lived GitHub tokens; branches and PRs after approval")
+node(X[1], R[2], BW, BH, "Model gateway", "Every model call: routing by role and policy, private models, metering")
+node(X[2], R[2], BW, BH, "Realtime and preview", "Part status pushed live; the running app through the preview proxy", 10)
+node(X[3], R[2], BW, BH, "Egress proxy and vault", "A blocker fixed: keys go to the vault; the proxy injects them on the way out", 9)
 
-# Main flow: only arrows that cross nothing; the step numbers give the order.
-arrow(235, 198, 190, 272)
-arrow(310, 313, 330, 313)
-arrow(580, 313, 600, 313)
-arrow(600, 473, 620, 473)
-# Governance checks the control and data planes.
-arrow(1180, 300, 1152, 300, dashed=True)
-arrow(1180, 515, 1152, 515, dashed=True)
-arrow(1180, 728, 1152, 728, dashed=True)
+label(60, R[3] - 10, "Built apps' runtime (Kubernetes)")
+node(X[0], R[3], BW, BH, "Per-environment data", "Its own Postgres, bucket, secrets and URL for Test, Team and Live")
+node(X[1], R[3], BW, BH, "Queue and agent workers", "App agent calls wait in a queue instead of crashing the app")
+node(X[2], R[3], BW, BH, "Launch", "Image built and checked; Test, Team, then Live after approval when governance is on", 11)
+node(X[3], R[3], BW, BH, "Live app", "Runs per environment, at least 2 copies, autoscaling; audit and metering", 12)
+
+label(60, R[4] - 10, "Stores")
+node(X[0], R[4], BW, BH, "Postgres", "Projects, plans, parts, checks, runs, policies, approvals")
+node(X[1], R[4], BW, BH, "Redis", "Sandbox state, sessions, realtime fan-out")
+node(X[2], R[4], BW, BH, "Object storage", "Files, proofs, screenshots, sandbox snapshots")
+node(X[3], R[4], BW, BH, "Event log", "Every run, model call and approval once: metering, metrics, the estimator")
+
+# Right column: cells note, Lyzr Studio, ways out note
+for i, line in enumerate([
+    "Cells are the unit of scale: about 500",
+    "running sandboxes each. Lyzr adds cells as",
+    "load grows, and a customer's VPC or",
+    "on-prem install is just another cell.",
+]):
+    text(1190, 420 + i * 17, line)
+band(1180, R[1] - 44, 420, R[3] + BH + 22 - (R[1] - 44), "Lyzr Studio", "each workspace's own account", "#E8F1E6", "#B7D3B0")
+node(1200, R[1], 380, BH, "Agent registry", "Each agent part that works is created in the workspace's own Studio; edits sync both ways", 8)
+for i, line in enumerate([
+    "In VPC and on-prem modes, the Studio",
+    "runtime and registry run inside the",
+    "customer's cell, so agent prompts and",
+    "data stay in the customer's cloud.",
+]):
+    text(1200, R[2] + 14 + i * 17, line)
+node(1200, R[3], 380, BH, "Agent runtime and evals", "Runs every built app's agents one way; evals over time; reuse an agent in the next app")
+for i, line in enumerate([
+    "Only the model gateway, the egress proxy",
+    "and the git executor reach outside the",
+    "cell; each call is checked against policy.",
+]):
+    text(1190, R[4] + 20 + i * 17, line)
+
+# Outside services
+band(40, 1080, 1560, 132, "Outside services", "", "#F1F0EC", LINE)
+ow = (1520 - 40) / 3
+node(60, 1118, ow, 74, "Model providers", "Claude, GPT, Gemini, or the customer's own and self-hosted models", chars=70)
+node(60 + ow + 20, 1118, ow, 74, "GitHub", "The user's own repos: import, branches and pull requests", chars=70)
+node(60 + 2 * (ow + 20), 1118, ow, 74, "Apps and MCP servers", "Gmail, Slack, HubSpot, and the customer's own MCP servers", chars=70)
+
+# The path, 1 to 12 (drawn last so it sits on top)
+c = [r + BH / 2 for r in R]
+arrow(1020, 202, 1020, 270)                      # 1 → API gateway
+arrow(1020, 342, 1020, R[0] - 2)                 # API gateway → 2
+arrow(X[3], c[0], X[2] + BW + 2, c[0])           # 2 → 3
+arrow(X[2], c[0], X[1] + BW + 2, c[0])           # 3 → 4
+arrow(X[1] + BW / 2, R[0] + BH, X[1] + BW / 2, R[1] - 2)  # 4 → 5
+arrow(X[1] + BW, c[1], X[2] - 2, c[1])           # 5 → 6
+arrow(X[2] + BW, c[1], X[3] - 2, c[1])           # 6 → 7
+arrow(X[3] + BW, c[1], 1198, c[1])               # 7 → 8
+arrow(1214, R[1] + BH, X[3] + BW + 2, c[2] - 12) # 8 → 9
+arrow(X[3], c[2], X[2] + BW + 2, c[2])           # 9 → 10
+arrow(X[2] + BW / 2, R[2] + BH, X[2] + BW / 2, R[3] - 2)  # 10 → 11
+arrow(X[2] + BW, c[3], X[3] - 2, c[3])           # 11 → 12
+arrow(X[3] + BW, c[3], 1198, c[3], dashed=True, color="#8A8983", width=1.6)  # 12: the app's agents run on Studio
 out.append("</svg>")
 
 here = os.path.dirname(os.path.abspath(__file__))
