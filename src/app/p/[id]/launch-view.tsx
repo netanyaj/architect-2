@@ -198,7 +198,7 @@ function GoBackDialog({ target, notes, current, onClose }: { target: Deployment;
 }
 
 /**
- * Launch (screen 4 and reviews/deploy-flow-review-2026-10-05.md): Test → (Team) → Live, the checklist with inline
+ * Launch (screen 4 and the launch flow review): Test → (Team) → Live, the checklist with inline
  * fixes, the failed and success states, who can open it, domains, analytics, the Marketplace, history and go back.
  */
 export function LaunchView({ project, state }: { project: ProjectWorkspace; state: LaunchState }) {

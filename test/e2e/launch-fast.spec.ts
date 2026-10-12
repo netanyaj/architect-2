@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { seedPlan, signIn } from "./build.spec.seed";
 import { adminDb, createTestUser, deleteTestUser, type TestUser } from "./helpers";
 
-/* Launch without governance (reviews/deploy-flow-review-2026-10-05.md): Test → Go live, a failed deploy and its
+/* Launch without governance (from the launch flow review): Test → Go live, a failed deploy and its
    retry, the success state, who can open it, a custom domain, the Marketplace listing and the view-only test link. */
 
 const stepper = (page: Page) => page.getByRole("navigation", { name: "Project stage" });

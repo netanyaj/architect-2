@@ -1,8 +1,8 @@
-> **Superseded twice.** The final design is the Soft Tray system (design system v3, 4 Oct 2026): see `design-system/README.md` and `reviews/modern-direction-analysis-2026-10-03.md`.
+> **Superseded twice.** The final design is the Soft Tray system (design system v3, 4 Oct 2026): see `design-system/README.md` (and the design direction review of 3 Oct).
 
 # Architect 2.0: design brief for sample screens
 
-_Draft 1 · 2026-10-03. Superseded on the flow: there is no split Build button or Review-first mode; Send produces the Blueprint and the user always clicks Build (PRD A-0)._ _ Input to the Claude Design canvas. Sources: PRD (`08`), IA and flows (`10`), design system research (`reviews/design-system-research-2026-10-03.md`)._
+_Draft 1 · 2026-10-03. Superseded on the flow: there is no split Build button or Review-first mode; Send produces the Blueprint and the user always clicks Build (PRD A-0)._ _ Input to the Claude Design canvas. Sources: PRD (`08`), IA and flows (`10`), design system research._
 
 ## What we're designing
 Four screens of Architect 2.0, each in two visual directions, so we can pick one direction and derive a design system from it.

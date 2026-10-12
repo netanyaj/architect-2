@@ -192,7 +192,7 @@ Where the prototype differs from the spec, or fills a gap the spec left open. On
 
 ## M5 follow-up (gap analysis, 11 Oct 2026)
 
-From `reviews/m5-gap-analysis-2026-10-11.md`. One row per item, in the order built.
+From the gap analysis. One row per item, in the order built.
 
 | Area | The spec said | We did | Why |
 |---|---|---|---|
@@ -234,7 +234,7 @@ From `reviews/m5-gap-analysis-2026-10-11.md`. One row per item, in the order bui
 
 ## M5.5 review (11 Oct 2026)
 
-From `reviews/m55-review-decisions-2026-10-11.md`, its first table.
+From the M5.5 review's decisions.
 
 | Area | The spec said | We did | Why |
 |---|---|---|---|
