@@ -97,13 +97,6 @@
   }
 }
 
-/* The preview frame takes keyboard focus like any control, so it shows the focus ring too (M6 QA). */
-iframe:focus-visible,
-iframe:focus {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-
 /* Reduced motion stops the spinners (QA checklist). */
 @media (prefers-reduced-motion: reduce) {
   *,

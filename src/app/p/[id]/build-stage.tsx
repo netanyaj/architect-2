@@ -292,6 +292,19 @@ export function AppPreview({ project, items, live }: { project: ProjectWorkspace
   // The size and the Light / Dark view are switched in the project header (M5.8), beside the tabs.
   const size = useUi((s) => s.previewSize);
   const frame = useRef<HTMLIFrameElement>(null);
+  // CSS :focus doesn't match a frame once focus is inside it, and the frame gets no focus event: when this page loses
+  // focus to the frame, the frame shows the focus ring (M6 QA).
+  const [frameFocused, setFrameFocused] = useState(false);
+  useEffect(() => {
+    const onBlur = () => setTimeout(() => setFrameFocused(document.activeElement === frame.current), 0);
+    const onFocus = () => setFrameFocused(false);
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, []);
   const [pointing, setPointing] = useState(false);
   const [console_, setConsole] = useState(false);
   const preview = previewState(items, project.connected, { name: project.name });
@@ -385,6 +398,7 @@ export function AppPreview({ project, items, live }: { project: ProjectWorkspace
             post({ type: "point", on: pointing });
             if (selected) post({ type: "highlight", part: preview.highlight(selected), label: selected.title });
           }}
+          style={frameFocused ? { outline: "2px solid var(--focus)", outlineOffset: -2 } : undefined}
           className={size === "phone" ? "mx-auto block h-full w-[390px] border-x border-line" : "block h-full w-full"}
         />
       )}

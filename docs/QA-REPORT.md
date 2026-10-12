@@ -47,7 +47,7 @@ A fresh demo account on production, reviewed with the checklist of the third-par
 | 🔴 | Seeded parts read "Done when done when … passes its check" | The plan view of every seeded project ([before](qa/before-done-when.png), [after](qa/after-done-when-1440-light.png)) | **Fixed** in the view; the seed's wording is migration `0025` (each check says what it proves), waiting for approval |
 | 🔴 | axe: the preview's group headings were 3.2:1 contrast | The preview shell | **Fixed** (now 6.4:1) |
 | 🔴 | axe: tool initials had a label on an element with no role | Agents list | **Fixed** (`role="img"`) |
-| 🔴 | Keyboard: the preview frame took focus with no visible ring | Every project's App view | **Fixed** |
+| 🔴 | Keyboard: the preview frame took focus with no visible ring | Every project's App view | **Fixed**: CSS `:focus` doesn't match a frame once focus is inside it, so the ring follows the page's own blur; re-checked by tabbing into it (a 2 px ring) |
 | 🟡 | At 1024 px with Parts and Chat open, the preview is narrow | Project App view | Open: auto-collapse Parts below 1100 px until the person touches it |
 | 🟡 | Research agent (the demo agent) shows "Claude Sonnet · Sim" in its read-only model picker, though it runs on Gemini 3.1 Flash Lite | Meeting Prep › Agents | Open: show Studio's model for the demo agent |
 | 🟡 | The landing page's Video link says "soon" until the video is published | `/` | Open: set `NEXT_PUBLIC_VIDEO_URL` |
@@ -59,7 +59,8 @@ A fresh demo account on production, reviewed with the checklist of the third-par
 Every page and every seeded project (App, Plan, Agents, Launch) at 1440, 1024 and 390 px, light and dark: 198 screenshots, plus Personal's empty states and a project that doesn't exist.
 - **Layout:** no page scrolls sideways at any width.
 - **States:** empty (Personal: Projects, Agents, Connections, Usage), loading (plan writing, build loader), waiting (Needs you, approvals) and error ("This project isn't here", a failed MCP test) all render in both themes.
-- **Accessibility (axe, WCAG 2.1 AA, 1440 and 1024, both themes):** after the fixes above, no violations. **Keyboard:** 40 tab stops each on Home, Connections and a project: every stop shows the focus ring.
+- **Accessibility (axe, WCAG 2.1 AA, 1440 and 1024, both themes):** before the fixes, 2 rules (contrast in the preview shell, a label without a role); on the fixed build, **no violations**. **Keyboard:** 40 tab stops each on Home, Connections and a project: every stop shows the focus ring, the preview frame included.
+- **On the rerun against the fixed local build,** 9 of 198 page loads timed out at 60 s under load (all 1024 px dark, plus one at 390 px); the same pages loaded at every other width and theme, and on production.
 
 ## 4. Hygiene and safety
 | Check | How | Result |
@@ -68,5 +69,5 @@ Every page and every seeded project (App, Plan, Agents, Launch) at 1440, 1024 an
 | Row-level security | Two fresh accounts; B tries to read A's rows; signed out too | `workspace_secrets`, `project_keys`, `connections`, `audit_log`, `user_preferences`, `terminal_sessions`, `members`: the other account and signed-out visitors see 0 rows. `analytics_events`: denied to everyone, owner included. The Vault functions are denied to a signed-in Owner; a project key's row holds only a Vault id |
 | Demo caps | A fresh demo account on production with 5 plans already today, then 10 demo-agent runs | The 6th plan is refused ("The demo writes up to 5 plans a day"); the 11th demo-agent run is refused |
 | 7-day cleanup | The cron endpoint without its secret; a unit test of the cleanup | 401 (the secret is set); anonymous accounts over 7 days go with their workspaces, newer ones and real accounts stay |
-| Test projects | Leftover test accounts and their projects | Deleted on 12 Oct; e2e tests make their own account per run and delete it; `scripts/delete-test-accounts.mjs` sweeps any left over |
+| Test projects | Leftover test accounts and their projects | The six stale test accounts, the screenshot account and the QA runs' demo accounts are deleted (12 Oct). Two anonymous demo sessions that aren't ours are left for the 7-day cleanup. e2e tests make their own account per run and delete it; `scripts/delete-test-accounts.mjs` sweeps any left over. The seed itself has no test data; its placeholder checks are replaced by `0025` |
 | The repo | A scan of every tracked file for wording about other people's work | Clean; a local pre-commit hook blocks it |
