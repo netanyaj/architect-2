@@ -19,7 +19,7 @@ export function PreviewFrame({
   className?: string;
 }) {
   return (
-    <div className={cn("relative mx-3 mb-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-white", className)}>
+    <div className={cn("relative mx-3 mb-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-white max-md:min-h-[520px]", className)}>
       {(url || badge) && (
         <div className="flex items-center gap-2.5 border-b border-line bg-tray px-2.5 py-2">
           {badge}
@@ -32,12 +32,13 @@ export function PreviewFrame({
         </div>
       )}
       <div className="relative min-h-0 flex-1 overflow-auto">{children}</div>
-      {dock}
+      {/* The dock sits in its own bar under the app, so it never covers the app's content (M6 round 4). */}
+      {dock && <div className="flex flex-none flex-wrap items-center justify-center gap-2 border-t border-line bg-tray px-2.5 py-2">{dock}</div>}
     </div>
   );
 }
 
-/** Architect's preview tools in one dark dock at the bottom of the frame: Point at something and the problems. The size and Light / Dark switches are in the project header (M5.8). */
+/** Architect's preview tools in one dark dock in the bar under the frame: Point at something and the problems. The size and Light / Dark switches are in the project header (M5.8). */
 export function PreviewDock({
   pointing,
   onPointToggle,
@@ -54,7 +55,7 @@ export function PreviewDock({
     <div
       role="toolbar"
       aria-label="Preview tools"
-      className="absolute bottom-3.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-primary p-[5px] text-on-primary shadow-[0_10px_30px_rgba(0,0,0,.2)]"
+      className="flex max-w-full flex-wrap items-center justify-center gap-1 rounded-full bg-primary p-[5px] text-on-primary"
     >
       <button type="button" aria-pressed={pointing} onClick={onPointToggle} className={cn(btn, pointing && "bg-on-primary/20")}>
         <Icon name="pointer" size="sm" />

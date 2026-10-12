@@ -1,48 +1,33 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"sequence":{"mirrorActors":false,"actorMargin":36,"wrap":true,"width":150}}}%%
 sequenceDiagram
-  actor M as Morgan
-  participant UI as Web app
+  participant M as Morgan
   participant PL as Plan service
-  participant G as Governance
+  participant PA as Policy and approvals
   participant OR as Run orchestrator
   participant V as Verifier
   participant AA as Architect agent
   participant SB as Sandbox
-  participant LS as Lyzr Studio
-  participant RT as Realtime hub
-  participant RUN as App runtime
-  Note over M,UI: 1 · Prompt
-  M->>UI: Prompt + PDF
-  Note over UI,PL: 2 · Write the plan
-  UI->>PL: Write the plan (model gateway)
-  PL-->>UI: Parts, checks and cost stream in
-  Note over M,G: 3 · Review, click Build
-  M->>UI: Build · ~N credits
-  UI->>G: Budget and model policy
-  G-->>OR: Allowed: start the run
-  Note over OR,SB: 4 · Start the run
-  OR->>SB: Resume or start the sandbox (warm pool)
-  Note over OR,V: 5 · Checks first
-  OR->>V: Write a check for each part
-  V-->>OR: Checks locked
-  loop 6–7 · Build and prove each part
-    OR->>AA: Build the part
-    AA->>SB: Edit files, run commands (daemon tools over MCP)
-    AA->>G: Anything leaving the sandbox (push, key, new app)
-    OR->>V: Run the part's check
-    V-->>OR: Pass (Works) or fail (fix, up to 3)
-    OR-->>RT: Part status
-    RT-->>UI: Part turns Works (or Needs you)
+  %% A white card, so ink lines read on GitHub's dark theme too
+  rect rgb(255, 255, 255)
+    Note over M,PL: 1 · Prompt
+    M->>PL: Prompt and a PDF, from the web app through the API gateway
+    Note over M,PL: 2 · Write the plan
+    PL-->>M: Parts, checks and cost stream in (model gateway)
+    Note over M,OR: 3 · Review, then click Build
+    M->>PA: Build · ~N credits
+    PA-->>OR: Budget and allowed models checked: start the run
+    Note over OR,SB: 4 · Start the run
+    OR->>SB: Resume the sandbox, or take one from the warm pool
+    Note over OR,V: 5 · Checks first
+    OR->>V: Write a check for each part
+    V-->>OR: Checks locked
+    loop 6–7 · Build and prove each part
+      OR->>AA: Build the part
+      AA->>SB: Edit files, run commands (daemon tools over MCP)
+      AA->>PA: Anything leaving the sandbox: allow, ask or refuse
+      OR->>V: Run the part's check
+      V->>SB: Run the check
+      V-->>OR: Pass: Works. Fail: fix, up to 3
+      OR-->>M: The part turns Works or Needs you (realtime hub)
+    end
   end
-  Note over OR,LS: 8 · Agents into Lyzr Studio
-  OR->>LS: Make each agent part in the workspace's Studio
-  Note over M,UI: 9 · Fix a blocker
-  M->>UI: Connect the app or add its key
-  Note over UI,SB: 10 · Live preview throughout
-  Note over M,RUN: 11 · Launch
-  M->>UI: Go live (or share with the team first)
-  UI->>G: Live needs an Admin? (governance on)
-  G-->>OR: Approved
-  OR->>RUN: Build the image, pre-publish checks, promote
-  Note over RUN,LS: 12 · Run and watch
-  RUN->>LS: App agents run on Studio
-  RUN-->>M: Live URL

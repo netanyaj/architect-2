@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { buttonClasses, TextLink } from "@/components/ax/button";
+import { DemoSetupDone } from "@/components/ax/demo-setup";
 import { Icon } from "@/components/ax/icon";
 import { ListRow, Tray } from "@/components/ax/list-row";
 import { StatusLine } from "@/components/ax/status-mark";
@@ -61,6 +62,7 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
 
   return (
     <div className="mx-auto flex w-full max-w-[880px] flex-col gap-9 px-8 pt-14 pb-10 max-sm:px-4 max-sm:pt-8">
+      <DemoSetupDone />
       <HomeComposer
         signedIn
         firstName={displayNameFor(user).split(" ")[0]}

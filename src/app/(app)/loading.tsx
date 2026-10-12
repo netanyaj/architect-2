@@ -1,3 +1,5 @@
+import { DemoSetupWhileLoading } from "@/components/ax/demo-setup";
+
 /** While a page in the app loads (Home, Projects, Connections, Settings, Governance): a quiet skeleton of the page. */
 export default function Loading() {
   return (
@@ -15,6 +17,7 @@ export default function Loading() {
           </div>
         ))}
       </div>
+      <DemoSetupWhileLoading />
     </div>
   );
 }

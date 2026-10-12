@@ -1,14 +1,18 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"sequence":{"mirrorActors":false,"actorMargin":36,"wrap":true,"width":150}}}%%
 sequenceDiagram
   autonumber
   participant B as Browser
   participant PX as Preview proxy
-  participant SB as Sandbox (dev server)
-  B->>PX: Open preview--project.app domain with a one-time code
-  PX->>PX: Exchange code for a session cookie (scoped to this project, short-lived)
-  PX-->>B: Set cookie, redirect (no token left in the URL)
-  B->>PX: Page and asset requests
-  PX->>SB: Forward to the running dev server
-  SB-->>PX: HTML
-  PX-->>B: HTML + element picker + console bridge injected
-  B-->>PX: Live-reload WebSocket
-  PX-->>SB: Passed through
+  participant SB as Sandbox dev server
+  %% A white card, so ink lines read on GitHub's dark theme too
+  rect rgb(255, 255, 255)
+    B->>PX: Open preview--project.app domain with a one-time code
+    PX->>PX: Swap the code for a session cookie (this project only, short-lived)
+    PX-->>B: Set the cookie, redirect (no token left in the URL)
+    B->>PX: Page and asset requests
+    PX->>SB: Forward to the running dev server
+    SB-->>PX: HTML
+    PX-->>B: HTML, with the element picker and console bridge added
+    B-->>PX: Live-reload WebSocket
+    PX-->>SB: Passed through
+  end

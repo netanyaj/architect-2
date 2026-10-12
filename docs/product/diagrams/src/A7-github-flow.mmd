@@ -1,13 +1,17 @@
-flowchart LR
-  U["Sam installs the GitHub App<br/>on chosen repos only"] --> GA["GitHub App<br/>short-lived tokens per operation"]
-  GA --> GE["Git executor"]
-  GE -- import: clone and analyse --> AN["Stack · run command · tests · agents"]
-  AN --> PL["The plan from the repo<br/>parts that already work are kept"]
-  PL --> BLD["Build the changed parts<br/>in the sandbox"]
-  BLD -- after approval --> PR["Branch + pull request<br/>lists the plan's parts"]
-  PR --> REV["Review and merge on GitHub"]
-  REV -- webhook --> GE
-  GE --> SYNC["Pull the merge into the sandbox<br/>re-run the affected checks"]
-  POL["Governance: push to main needs an Admin"] -.-> PR
-  classDef g fill:#F0EAFA,stroke:#6236AD;
-  class POL g;
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"flowchart":{"curve":"basis","padding":14,"nodeSpacing":36,"rankSpacing":44}}}%%
+flowchart TB
+  %% A white card, so ink lines read on GitHub's dark theme too
+  subgraph CARD[" "]
+    direction TB
+    U["Sam installs the GitHub App on chosen repos<br/>Production: contents and pull requests write, on those repos only<br/>Prototype: read-only contents and metadata"]
+    U --> GE["Git executor<br/>short-lived tokens per operation"]
+    GE -- "import: clone and analyse" --> AN["Stack · run command · tests · agents"]
+    AN --> PL["The plan from the repo<br/>parts that already work are kept"]
+    PL --> BLD["Build the changed parts in the sandbox"]
+    BLD --> PR["Branch and pull request<br/>listing the plan's parts"]
+    PR --> REV["Review on GitHub"]
+    REV --> MRG["Merge to main"]
+    POL["Governance on: merging to main<br/>needs an Owner or Admin approval"] -.-> MRG
+    MRG -- "webhook" --> SYNC["Git executor pulls the merge into the sandbox<br/>and re-runs the affected checks"]
+  end
+  style CARD fill:#FFFFFF,stroke:#D6D4CC

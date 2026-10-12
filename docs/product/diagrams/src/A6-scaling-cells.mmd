@@ -1,25 +1,32 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"flowchart":{"curve":"basis","padding":14,"nodeSpacing":36,"rankSpacing":44}}}%%
 flowchart TB
-  G["Global layer<br/>API gateway · auth · billing · tenant directory"]
-  G --> C1 & C2 & C3
-  subgraph C1["Cell 1 (region A)"]
+  %% A white card, so ink lines read on GitHub's dark theme too
+  subgraph CARD[" "]
     direction TB
-    w1["Workers (autoscale on queue depth)"]
-    s1["Sandbox fleet + warm pool"]
-    r1[("Cell database and cache")]
+    G["Lyzr control plane<br/>CDN · API gateway · identity · tenant directory · billing · policy authoring"]
+    subgraph C3["Cell N (region B, or a VPC)"]
+      direction TB
+      w3["Workers<br/>autoscale on queue depth"]
+      s3["Sandbox fleet and warm pool<br/>about 500 running sandboxes"]
+      r3[("Cell Postgres and Redis")]
+    end
+    subgraph C2["Cell 2 (region A)"]
+      direction TB
+      w2["Workers<br/>autoscale on queue depth"]
+      s2["Sandbox fleet and warm pool<br/>about 500 running sandboxes"]
+      r2[("Cell Postgres and Redis")]
+    end
+    subgraph C1["Cell 1 (region A)"]
+      direction TB
+      w1["Workers<br/>autoscale on queue depth"]
+      s1["Sandbox fleet and warm pool<br/>about 500 running sandboxes"]
+      r1[("Cell Postgres and Redis")]
+    end
+    w1 ~~~ s1 ~~~ r1
+    w2 ~~~ s2 ~~~ r2
+    w3 ~~~ s3 ~~~ r3
+    G --> C1
+    G --> C2
+    G --> C3
   end
-  subgraph C2["Cell 2 (region A)"]
-    direction TB
-    w2["Workers"]
-    s2["Sandbox fleet + warm pool"]
-    r2[("Cell database and cache")]
-  end
-  subgraph C3["Cell N (region B or a customer VPC)"]
-    direction TB
-    w3["Workers"]
-    s3["Sandbox fleet + warm pool"]
-    r3[("Cell database and cache")]
-  end
-  N["Each tenant is pinned to one cell. A busy or failing cell affects only its tenants (NFR-6).<br/>Add capacity by adding cells, not by redesigning"]
-  C2 --- N
-  classDef g fill:#111827,color:#fff;
-  class G g;
+  style CARD fill:#FFFFFF,stroke:#D6D4CC

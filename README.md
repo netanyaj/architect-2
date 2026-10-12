@@ -2,9 +2,18 @@
 
 **Architect 2.0: describe an agentic app, see the plan and its cost, and launch it through your company's rules.**
 
-[Live demo](https://architect2-netanya.vercel.app) · Video (coming) · [Architecture](docs/product/ARCHITECTURE.md) · [Diagram](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/hero-architecture.png) · [PRD](docs/product/08-PRD-architect-2.md)
+[Live demo](https://architect2-netanya.vercel.app) · Video (coming) · [Architecture](docs/product/ARCHITECTURE.md) · [Diagram](docs/product/diagrams/hero-architecture.png) · [PRD](docs/product/08-PRD-architect-2.md)
 
-![Plan, then build, then launch](https://github.com/netanyaj/architect-2/raw/main/docs/media/plan-build-launch.png)
+One project, Supplier Invoice Auditor, from one prompt:
+
+**1 · Plan.** Parts in plain words, each with its check and cost, before anything is built.
+![The plan for Supplier Invoice Auditor: five parts with checks and costs, and Build · ~42 credits](docs/media/1-plan.png)
+
+**2 · Build.** Each part built and proved; the Gmail part waits for you, and the app preview fills in as parts work.
+![The build: four of five parts work, Connect Gmail waits, and the app preview shows the parts](docs/media/2-build.png)
+
+**3 · Launch.** Test, then your team, then Live, with what's left to fix.
+![Launch: Test version, Team version and Live, with one thing to fix before sharing](docs/media/3-launch.png)
 
 ## Today's Architect → 2.0
 From our own audit of today's Architect ([`docs/research/`](docs/research/)):
@@ -66,3 +75,7 @@ Each workspace's agents live in its own Studio account, editable from Architect 
 ## More
 - [PRD](docs/product/08-PRD-architect-2.md) · [Architecture](docs/product/ARCHITECTURE.md) · [Research](docs/research/) · [Decisions](docs/DECISIONS.md) · [Coverage of every PRD Must](docs/COVERAGE.md) · [QA report](docs/QA-REPORT.md)
 - [Design system](design-system/README.md) · [Setup](docs/SETUP.md) · [How it was built](docs/build/README.md): with Claude Code, from a spec pack
+
+---
+
+Built by Netanya as a prototype for Lyzr's Architect · [GitHub](https://github.com/netanyaj/architect-2)

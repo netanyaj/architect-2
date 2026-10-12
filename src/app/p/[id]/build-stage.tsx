@@ -227,7 +227,8 @@ function NoDarkTheme({ project }: { project: ProjectWorkspace }) {
   const [error, setError] = useState<string>();
   const canAct = canBuild(project.role);
   return (
-    <div role="status" className="absolute top-[58px] left-1/2 z-10 flex max-w-[calc(100%-24px)] -translate-x-1/2 flex-wrap items-center gap-x-3 gap-y-1 rounded-full border border-line bg-surface py-1 pr-1 pl-3.5 text-small shadow-pop">
+    // In the bar under the preview, beside the dock, so it never covers the app (M6 round 4).
+    <div role="status" className="flex max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-full border border-line bg-surface py-1 pr-1 pl-3.5 text-small">
       <span>{error ?? "This app has no dark theme yet"}</span>
       <Button
         size="sm"
@@ -399,7 +400,8 @@ export function AppPreview({ project, items, live }: { project: ProjectWorkspace
             if (selected) post({ type: "highlight", part: preview.highlight(selected), label: selected.title });
           }}
           style={frameFocused ? { outline: "2px solid var(--focus)", outlineOffset: -2 } : undefined}
-          className={size === "phone" ? "mx-auto block h-full w-[390px] border-x border-line" : "block h-full w-full"}
+          // On a phone the frame's height isn't definite, so h-full alone would fall back to 150px.
+          className={size === "phone" ? "mx-auto block h-full w-[390px] max-w-full border-x border-line max-md:min-h-[440px]" : "block h-full w-full max-md:min-h-[440px]"}
         />
       )}
     </PreviewFrame>

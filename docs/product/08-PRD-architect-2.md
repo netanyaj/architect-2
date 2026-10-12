@@ -201,7 +201,7 @@ Switched on per organisation. Admins get a Governance area; everyone else sees i
 | C-10 | **Agent permission modes**: never blanket bypass | Any action that leaves the sandbox (push, deploy, external call with a secret) runs only with an approval or a matching allow-rule; the same rule applies to users' coding agents | Must | Doc + Sim |
 
 ## 9. Experience: flows, information architecture and roles
-Flows, screens and diagrams are in `10-IA-and-flows.md`:
+Flows, screens and diagrams are in [10-IA-and-flows.md](../build/10-IA-and-flows.md), an early design document:
 F1 Onboard · F2 One prompt → full build → proof → deploy · F3 Import a repo · F4 Bring your own coding agent · F5 Connect an integration that needs approval · F6 Enterprise setup and approval queue · F7 Iterate after launch · F8 Hand off from Morgan to Sam · F9 Move an existing Architect app to 2.0.
 
 In every project the Blueprint is a fixed left panel, the canvas (Preview, Agents, Data, and Code and Terminal in Developer view) sits in the centre, and chat sits on the right. Deploy is the only primary button.
@@ -403,5 +403,5 @@ What the system must sustain; the how lives in the architecture doc. Lyzr publis
   - `04` = [`04-import-audit.md`](../research/04-import-audit.md) (repo import and build test)
   - `06` = [`06-competitor-matrix.md`](../research/06-competitor-matrix.md) (products compared), `07` = [`07-secondary-research.md`](../research/07-secondary-research.md) (forum and survey research)
   - Our research synthesis, which ties these together, isn't published.
-- Personas: `personas/` (Morgan, Sam, and a reference profile of the org-admin role). IA and flows: `10-IA-and-flows.md`. Diagrams: `diagrams/`.
+- Personas: `personas/` (Morgan, Sam, and a reference profile of the org-admin role). IA and flows: [10-IA-and-flows.md](../build/10-IA-and-flows.md). Diagrams: `diagrams/`.
 - Today vs 2.0 (scale, performance, reliability, security): `sheets/architect-today-vs-2.0.xlsx`.

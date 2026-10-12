@@ -88,6 +88,12 @@ export default async function Landing() {
             Architecture
           </a>
         </nav>
+        <footer className="-mt-2 text-small text-ink-2">
+          Built by Netanya as a prototype for Lyzr&apos;s Architect ·{" "}
+          <a href={REPO} target="_blank" rel="noreferrer" className={link}>
+            GitHub
+          </a>
+        </footer>
       </div>
     </main>
   );

@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { safeNext } from "@/lib/auth-paths";
+import { DEMO_SETUP_COOKIE } from "@/lib/demo-setup";
 import { createAdminDb, createServerDb } from "../db";
 import { origin } from "../origin";
 import { track } from "../analytics";
@@ -122,7 +123,10 @@ export async function startDemo() {
   const { data, error } = await db.auth.signInAnonymously({ options: { data: { full_name: "Morgan Lee" } } });
   if (error || !data.user) redirect(`/login?error=${encodeURIComponent(await friendlyAuthError(error?.message ?? "", error?.code))}`);
   const workspaceId = await ensureWorkspace(createAdminDb(), data.user);
-  (await cookies()).set(WORKSPACE_COOKIE, workspaceId, { path: "/", sameSite: "lax", httpOnly: true, maxAge: 60 * 60 * 24 * 7 });
+  const jar = await cookies();
+  jar.set(WORKSPACE_COOKIE, workspaceId, { path: "/", sameSite: "lax", httpOnly: true, maxAge: 60 * 60 * 24 * 7 });
+  // Home may still take a while to load the first time: the loading state says the demo is being set up.
+  jar.set(DEMO_SETUP_COOKIE, "1", { path: "/", sameSite: "lax", maxAge: 60 });
   await track("demo_started", { user: data.user, workspaceId });
   redirect("/home");
 }

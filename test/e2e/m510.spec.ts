@@ -29,6 +29,8 @@ test.describe("M5.10: fixes before M6", () => {
     const started = new Date().toISOString();
     await page.goto("/login");
     await page.getByRole("button", { name: "Try the demo" }).click();
+    // One clear state while the demo workspace is set up (M6 round 4).
+    await expect(page.getByRole("status").filter({ hasText: "Setting up your demo workspace…" })).toBeVisible();
     await page.waitForURL(/\/home/, { timeout: 60_000 }).catch(() => {});
     test.skip(page.url().includes("/login"), "Anonymous sign-ins aren't turned on in Supabase yet.");
     const tour = page.getByRole("region", { name: /^Take the tour/ });

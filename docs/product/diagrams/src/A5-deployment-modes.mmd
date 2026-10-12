@@ -1,29 +1,36 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"flowchart":{"curve":"basis","padding":14,"nodeSpacing":36,"rankSpacing":44}}}%%
 flowchart TB
-  subgraph M1["Lyzr Cloud (default)"]
+  %% A white card, so ink lines read on GitHub's dark theme too
+  subgraph CARD[" "]
     direction TB
-    c1["Control plane: Lyzr"]
-    d1["Data plane: Lyzr"]
+    subgraph M1["Lyzr Cloud (default)"]
+      direction LR
+      c1["Control plane: Lyzr"]
+      d1["Data plane: Lyzr, shared cells"]
+      s1["Lyzr Studio: Lyzr's,<br/>each workspace's own account"]
+    end
+    subgraph M2["Dedicated"]
+      direction LR
+      c2["Control plane: Lyzr"]
+      d2["Data plane: Lyzr, single-tenant,<br/>in the customer's chosen region"]
+      s2["Lyzr Studio: Lyzr's,<br/>each workspace's own account"]
+    end
+    subgraph M3["Customer's own cloud (VPC)"]
+      direction LR
+      c3["Control plane: Lyzr<br/>no customer code, data or prompts"]
+      d3["Data plane: the customer's cloud<br/>(AWS, GCP or Azure)"]
+      s3["Lyzr Studio runtime and registry:<br/>inside the customer's cell"]
+    end
+    subgraph M4["On-prem or air-gapped"]
+      direction LR
+      c4["Control plane: a local copy of<br/>Lyzr's, from signed releases"]
+      d4["Data plane: the customer's<br/>own servers"]
+      s4["Lyzr Studio runtime and registry:<br/>inside the customer's cell"]
+    end
+    c1 ~~~ d1 ~~~ s1
+    c2 ~~~ d2 ~~~ s2
+    c3 ~~~ d3 ~~~ s3
+    c4 ~~~ d4 ~~~ s4
+    M1 ~~~ M2 ~~~ M3 ~~~ M4
   end
-  subgraph M1B["Dedicated"]
-    direction TB
-    c1b["Control plane: Lyzr"]
-    d1b["Data plane: Lyzr, single-tenant,<br/>customer's chosen region"]
-  end
-  subgraph M2["Customer's own cloud (VPC)"]
-    direction TB
-    c2["Control plane: Lyzr<br/>(no customer code, data or prompts)"]
-    d2["Data plane: customer's AWS account<br/>sandboxes · workers · model gateway<br/>project store · app runtime"]
-  end
-  subgraph M3["On-prem or air-gapped"]
-    direction TB
-    c3["Control plane: customer"]
-    d3["Data plane: customer"]
-  end
-  NOTE["Same container images and Helm charts in every mode.<br/>Models: commercial APIs, customer's own models, or self-hosted open-source, per policy"]
-  M1 --- NOTE
-  M1B --- NOTE
-  M2 --- NOTE
-  M3 --- NOTE
-  classDef l fill:#EEF2FF,stroke:#4F46E5;
-  classDef c fill:#FFF7ED,stroke:#EA580C;
-  class c1,d1,c2,c1b,d1b l; class d2,c3,d3 c;
+  style CARD fill:#FFFFFF,stroke:#D6D4CC

@@ -4,7 +4,7 @@ _Owner: Netanya Jaison · Draft 2 · 2026-10-12. Companion to the PRD ([`08-PRD-
 
 _Code names keep two older words: `blueprint` is the plan and `item` is a part (as in `architect/blueprint.yaml` and `update_item`)._
 
-![How Architect 2.0 works in production: the twelve steps from prompt to a live app](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/hero-architecture.png)
+![How Architect 2.0 works in production: the twelve steps from prompt to a live app](diagrams/hero-architecture.png)
 _How Architect 2.0 works in production. The numbers are the steps in [section 2](#2-from-prompt-to-live-app). What the prototype runs is in [section 9](#9-what-the-assignment-prototype-implements)._
 
 ## At a glance
@@ -14,8 +14,8 @@ _How Architect 2.0 works in production. The numbers are the steps in [section 2]
 - **Every agent uses the same tool surface.** The sandbox daemon exposes its tools over MCP (Model Context Protocol), so the Architect agent and a user's own coding agent (Claude Code, Cursor) call exactly the same tools under the same policy.
 - **One runtime for launched apps everywhere.** Apps move from today's Netlify hosting to a container runtime that runs the same way in Lyzr Cloud, a customer's cloud or on-prem, and supports Python back ends, agent workers and autoscaling.
 
-![The system map in production: people, Lyzr's control plane, the boundary, a cell, Lyzr Studio and outside services](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/system-map-production.png)
-_The system map. Lyzr's control plane is global and holds no prompts, code or app data; everything else runs in a cell, in Lyzr Cloud or the customer's own cloud. The same map with what the prototype uses for each box opens [section 9](#9-what-the-assignment-prototype-implements)._
+![The system map in production: people, Lyzr's control plane, the boundary, a cell, Lyzr Studio and outside services](diagrams/system-map-production.png)
+_The system map. Lyzr's control plane is global and holds no prompts, plans, code or app data; everything else runs in a cell, in Lyzr Cloud or the customer's own cloud. The same map with what the prototype uses for each box opens [section 9](#9-what-the-assignment-prototype-implements)._
 
 ## 1. Starting point: what exists today, and what changes
 Based on our network captures and tests of today's Architect ([`docs/research/03-architect-architecture-today.md`](../research/03-architect-architecture-today.md), [`docs/research/04-import-audit.md`](../research/04-import-audit.md)) and a DNS check on 2026-10-03.
@@ -36,7 +36,82 @@ Based on our network captures and tests of today's Architect ([`docs/research/03
 | Trackers | About 15 third-party trackers in the builder | **Change:** none in customer-cloud and on-prem tenants | Sovereign promise (C-8) |
 
 ## 2. From prompt to live app
-The numbers match the hero diagram above. ![Prompt to live app](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/A2-prompt-to-live.png)
+The numbers match the hero diagram above. Steps 1 to 7, from the prompt to parts that work:
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"sequence":{"mirrorActors":false,"actorMargin":36,"wrap":true,"width":150}}}%%
+sequenceDiagram
+  participant M as Morgan
+  participant PL as Plan service
+  participant PA as Policy and approvals
+  participant OR as Run orchestrator
+  participant V as Verifier
+  participant AA as Architect agent
+  participant SB as Sandbox
+  %% A white card, so ink lines read on GitHub's dark theme too
+  rect rgb(255, 255, 255)
+    Note over M,PL: 1 · Prompt
+    M->>PL: Prompt and a PDF, from the web app through the API gateway
+    Note over M,PL: 2 · Write the plan
+    PL-->>M: Parts, checks and cost stream in (model gateway)
+    Note over M,OR: 3 · Review, then click Build
+    M->>PA: Build · ~N credits
+    PA-->>OR: Budget and allowed models checked: start the run
+    Note over OR,SB: 4 · Start the run
+    OR->>SB: Resume the sandbox, or take one from the warm pool
+    Note over OR,V: 5 · Checks first
+    OR->>V: Write a check for each part
+    V-->>OR: Checks locked
+    loop 6–7 · Build and prove each part
+      OR->>AA: Build the part
+      AA->>SB: Edit files, run commands (daemon tools over MCP)
+      AA->>PA: Anything leaving the sandbox: allow, ask or refuse
+      OR->>V: Run the part's check
+      V->>SB: Run the check
+      V-->>OR: Pass: Works. Fail: fix, up to 3
+      OR-->>M: The part turns Works or Needs you (realtime hub)
+    end
+  end
+```
+[PNG](diagrams/A2-prompt-to-live.png)
+
+Steps 8 to 12, from agents in Lyzr Studio to the live app:
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"sequence":{"mirrorActors":false,"actorMargin":36,"wrap":true,"width":150}}}%%
+sequenceDiagram
+  participant M as Morgan
+  participant OR as Run orchestrator
+  participant LS as Lyzr Studio
+  participant EV as Egress proxy and vault
+  participant RP as Realtime and preview
+  participant PA as Policy and approvals
+  participant RT as App runtime
+  %% A white card, so ink lines read on GitHub's dark theme too
+  rect rgb(255, 255, 255)
+    Note over OR,LS: 8 · Agents into Lyzr Studio
+    OR->>LS: Create each agent part in the workspace's own Studio
+    LS-->>OR: Agent IDs, saved on the parts
+    Note over M,EV: 9 · Fix a blocker
+    OR-->>M: Needs you: connect the app
+    M->>EV: Sign in to the app, or add its key or MCP server
+    EV-->>OR: Stored in the vault, never in the sandbox
+    Note over EV: The sandbox's calls go out through the proxy, which adds the key
+    Note over M,RP: 10 · Live preview, throughout
+    M->>RP: Open the Test version
+    RP-->>M: The app from the sandbox's dev server, updated as parts work
+    Note over M,RT: 11 · Launch
+    M->>PA: Launch: Test, Team, then Live
+    Note over PA: Live needs an Owner or Admin approval (governance on)
+    PA-->>OR: Approved
+    OR->>RT: Build the image, run the pre-publish checks, promote
+    Note over LS,RT: 12 · Run and watch
+    RT->>LS: The app's agents run on Studio
+    RT-->>M: Live URL, with audit and metering
+  end
+```
+[PNG](diagrams/A2b-blocker-to-live.png)
+
 
 1. **Prompt.** Morgan describes the app and attaches a PDF in the web app, which sends it through the API gateway. Attachments go to the project store; PDFs become a knowledge base.
 2. **Write the plan.** The plan service asks the model gateway to turn the prompt into parts, each with its check and its cost, plus defaults and questions; the estimator prices each part (PRD section 11). Parts stream to the browser as they're written. If the chosen model refuses on quota, the gateway follows the failover rule: failover goes only to models the organisation's policy pre-approves as fallbacks, and is always announced.
@@ -64,7 +139,43 @@ The numbers match the hero diagram above. ![Prompt to live app](https://github.c
 - Every build's actual tokens and sandbox minutes flow back from metering to update the estimator.
 
 ### 3.3 Run orchestrator and the Architect agent
-![Run loop](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/A3-run-loop.png)
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"flowchart":{"curve":"basis","padding":14,"nodeSpacing":36,"rankSpacing":44}}}%%
+flowchart TB
+  %% A white card, so ink lines read on GitHub's dark theme too
+  subgraph CARD[" "]
+    direction TB
+    subgraph W["Workers, outside the sandbox"]
+      direction LR
+      AA["Architect agent<br/>Claude Agent SDK harness<br/>checkpoints after each step"]
+      VF["Verifier<br/>its own context<br/>writes checks first"]
+    end
+    subgraph S["Sandbox, one per project"]
+      direction LR
+      D["Sandbox daemon<br/>files · commands · ports"]
+      T["Check runner<br/>tests · headless browser"]
+      APP["The user's stack<br/>Node or Python dev server"]
+    end
+    AA -- "tool calls" --> D
+    VF -- "run checks" --> T
+    D --> APP
+    T --> APP
+    subgraph C["Cell services"]
+      direction LR
+      MG["Model gateway"]
+      PA["Policy and approvals"]
+      ST[("Postgres and<br/>object storage")]
+      EG["Egress proxy and vault"]
+    end
+    APP -- "outbound calls" --> EG
+    W -. "model calls" .-> MG
+    W -. "actions leaving the sandbox" .-> PA
+    W -. "state and proofs" .-> ST
+  end
+  style CARD fill:#FFFFFF,stroke:#D6D4CC
+```
+[PNG](diagrams/A3-run-loop.png)
+
 
 **How the agent works, step by step**
 
@@ -123,7 +234,28 @@ The numbers match the hero diagram above. ![Prompt to live app](https://github.c
 - **Metering.** Every call is logged with project, part, run, role, model, tokens and cost. This feeds per-part actual cost, budgets and the estimator.
 
 ### 3.7 Live preview and the preview proxy
-![Preview path](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/A4-preview-path.png)
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"sequence":{"mirrorActors":false,"actorMargin":36,"wrap":true,"width":150}}}%%
+sequenceDiagram
+  autonumber
+  participant B as Browser
+  participant PX as Preview proxy
+  participant SB as Sandbox dev server
+  %% A white card, so ink lines read on GitHub's dark theme too
+  rect rgb(255, 255, 255)
+    B->>PX: Open preview--project.app domain with a one-time code
+    PX->>PX: Swap the code for a session cookie (this project only, short-lived)
+    PX-->>B: Set the cookie, redirect (no token left in the URL)
+    B->>PX: Page and asset requests
+    PX->>SB: Forward to the running dev server
+    SB-->>PX: HTML
+    PX-->>B: HTML, with the element picker and console bridge added
+    B-->>PX: Live-reload WebSocket
+    PX-->>SB: Passed through
+  end
+```
+[PNG](diagrams/A4-preview-path.png)
+
 
 - Each project gets a preview domain on a **separate registrable domain** from the builder (as today's `app.architect.new` and `architect.space` are), so generated code can never read or set the builder's cookies. It is served by the preview proxy, which forwards to the dev server running in the sandbox, as today.
 - **Access:** the web app gets a one-time code for the preview. The proxy exchanges it for a short-lived, project-scoped cookie (`SameSite=None; Partitioned`, so it works inside the builder's iframe) and redirects, so no token is left in the URL (today it sits in the query string).
@@ -144,11 +276,31 @@ The numbers match the hero diagram above. ![Prompt to live app](https://github.c
 - **Data-flow view:** every allowed destination is logged per project, which is what the data-flow view in Governance draws.
 
 ### 3.10 GitHub, the git executor, and users' coding agents
-![GitHub flow](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/A7-github-flow.png)
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"flowchart":{"curve":"basis","padding":14,"nodeSpacing":36,"rankSpacing":44}}}%%
+flowchart TB
+  %% A white card, so ink lines read on GitHub's dark theme too
+  subgraph CARD[" "]
+    direction TB
+    U["Sam installs the GitHub App on chosen repos<br/>Production: contents and pull requests write, on those repos only<br/>Prototype: read-only contents and metadata"]
+    U --> GE["Git executor<br/>short-lived tokens per operation"]
+    GE -- "import: clone and analyse" --> AN["Stack · run command · tests · agents"]
+    AN --> PL["The plan from the repo<br/>parts that already work are kept"]
+    PL --> BLD["Build the changed parts in the sandbox"]
+    BLD --> PR["Branch and pull request<br/>listing the plan's parts"]
+    PR --> REV["Review on GitHub"]
+    REV --> MRG["Merge to main"]
+    POL["Governance on: merging to main<br/>needs an Owner or Admin approval"] -.-> MRG
+    MRG -- "webhook" --> SYNC["Git executor pulls the merge into the sandbox<br/>and re-runs the affected checks"]
+  end
+  style CARD fill:#FFFFFF,stroke:#D6D4CC
+```
+[PNG](diagrams/A7-github-flow.png)
 
-- **GitHub App, per repo.** Users install the Architect GitHub App on chosen repos only. The git executor service mints short-lived installation tokens per operation; tokens never enter the sandbox.
+
+- **GitHub App, per repo.** Users install the Architect GitHub App on chosen repos only. The git executor service mints short-lived installation tokens per operation; tokens never enter the sandbox. In production the App needs contents and pull-requests write on those repos; the prototype's App is read-only (contents and metadata), so its PRs are simulated.
 - **Import:** clone, analyse (stack, run command, tests, agents), and copy the code into the sandbox. The analysis produces the plan from the repo (B-2).
-- **Changes as PRs:** after the user approves a push, the git executor pushes a branch and opens a PR whose description lists the plan's parts. Nothing is committed to the default branch.
+- **Changes as PRs:** the git executor pushes a branch and opens a PR whose description lists the plan's parts. Nothing is committed to the default branch by Architect; with governance on, merging to main needs an Owner or Admin approval.
 - **Two-way sync:** GitHub webhooks tell the git executor about merges and outside commits; it pulls them into the sandbox and re-runs the affected checks.
 - **Users' coding agents:** Architect's public MCP server and CLI expose the same tools (`get_blueprint`, `update_item`, `run_in_sandbox`, `run_tests`, `open_pr`, `request_approval`, `get_preview_url`) with a scoped project token. Calls go through the API gateway and the same policy checks as the Architect agent.
 
@@ -169,14 +321,53 @@ The numbers match the hero diagram above. ![Prompt to live app](https://github.c
 - **Migration:** existing apps keep running on Netlify. "Move to 2.0" (flow F9) rebuilds and relaunches them on the new runtime, then moves the domain.
 
 ## 4. Governance, security and where it runs
-![Deployment modes](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/A5-deployment-modes.png)
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"flowchart":{"curve":"basis","padding":14,"nodeSpacing":36,"rankSpacing":44}}}%%
+flowchart TB
+  %% A white card, so ink lines read on GitHub's dark theme too
+  subgraph CARD[" "]
+    direction TB
+    subgraph M1["Lyzr Cloud (default)"]
+      direction LR
+      c1["Control plane: Lyzr"]
+      d1["Data plane: Lyzr, shared cells"]
+      s1["Lyzr Studio: Lyzr's,<br/>each workspace's own account"]
+    end
+    subgraph M2["Dedicated"]
+      direction LR
+      c2["Control plane: Lyzr"]
+      d2["Data plane: Lyzr, single-tenant,<br/>in the customer's chosen region"]
+      s2["Lyzr Studio: Lyzr's,<br/>each workspace's own account"]
+    end
+    subgraph M3["Customer's own cloud (VPC)"]
+      direction LR
+      c3["Control plane: Lyzr<br/>no customer code, data or prompts"]
+      d3["Data plane: the customer's cloud<br/>(AWS, GCP or Azure)"]
+      s3["Lyzr Studio runtime and registry:<br/>inside the customer's cell"]
+    end
+    subgraph M4["On-prem or air-gapped"]
+      direction LR
+      c4["Control plane: a local copy of<br/>Lyzr's, from signed releases"]
+      d4["Data plane: the customer's<br/>own servers"]
+      s4["Lyzr Studio runtime and registry:<br/>inside the customer's cell"]
+    end
+    c1 ~~~ d1 ~~~ s1
+    c2 ~~~ d2 ~~~ s2
+    c3 ~~~ d3 ~~~ s3
+    c4 ~~~ d4 ~~~ s4
+    M1 ~~~ M2 ~~~ M3 ~~~ M4
+  end
+  style CARD fill:#FFFFFF,stroke:#D6D4CC
+```
+_The same container images and Helm charts run in every mode. Models: commercial APIs, the customer's own, or self-hosted open-source ones, per policy._ [PNG](diagrams/A5-deployment-modes.png)
+
 
 | Mode | Control plane | Data plane | Who it's for |
 |---|---|---|---|
 | **Lyzr Cloud** | Lyzr | Lyzr | Individuals, teams, most companies |
 | **Dedicated** | Lyzr | Lyzr, single-tenant, in the customer's chosen region | Companies that need data residency without running anything |
 | **Customer's own cloud (VPC)** | Lyzr (stores no customer code, data or prompts) | Customer's AWS account first, then Azure and GCP | Regulated enterprises that want data in their account |
-| **On-prem or air-gapped** | Customer | Customer | Governments, defence, strict data-residency |
+| **On-prem or air-gapped** | A local copy of Lyzr's, from signed releases | Customer | Governments, defence, strict data-residency |
 
 - **What stays in the data plane:** code, files, prompts, model calls, app data, secrets, logs and plan content (part titles and descriptions come from prompts, so they can be sensitive).
 - **What crosses to the control plane (customer-cloud mode), and nothing else:**
@@ -200,9 +391,44 @@ The numbers match the hero diagram above. ![Prompt to live app](https://github.c
   - no third-party trackers in customer-cloud and on-prem tenants.
 
 ## 5. Scaling to thousands of users
-![Scaling with cells](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/A6-scaling-cells.png)
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"flowchart":{"curve":"basis","padding":14,"nodeSpacing":36,"rankSpacing":44}}}%%
+flowchart TB
+  %% A white card, so ink lines read on GitHub's dark theme too
+  subgraph CARD[" "]
+    direction TB
+    G["Lyzr control plane<br/>CDN · API gateway · identity · tenant directory · billing · policy authoring"]
+    subgraph C3["Cell N (region B, or a VPC)"]
+      direction TB
+      w3["Workers<br/>autoscale on queue depth"]
+      s3["Sandbox fleet and warm pool<br/>about 500 running sandboxes"]
+      r3[("Cell Postgres and Redis")]
+    end
+    subgraph C2["Cell 2 (region A)"]
+      direction TB
+      w2["Workers<br/>autoscale on queue depth"]
+      s2["Sandbox fleet and warm pool<br/>about 500 running sandboxes"]
+      r2[("Cell Postgres and Redis")]
+    end
+    subgraph C1["Cell 1 (region A)"]
+      direction TB
+      w1["Workers<br/>autoscale on queue depth"]
+      s1["Sandbox fleet and warm pool<br/>about 500 running sandboxes"]
+      r1[("Cell Postgres and Redis")]
+    end
+    w1 ~~~ s1 ~~~ r1
+    w2 ~~~ s2 ~~~ r2
+    w3 ~~~ s3 ~~~ r3
+    G --> C1
+    G --> C2
+    G --> C3
+  end
+  style CARD fill:#FFFFFF,stroke:#D6D4CC
+```
+_Each tenant is pinned to one cell, so a busy or failing cell affects only its own tenants (NFR-6). Capacity grows by adding cells._ [PNG](diagrams/A6-scaling-cells.png)
 
-- **Cells.** The system is split into cells. Each cell has its own workers, sandbox fleet, workflow engine, realtime hub, Postgres and Redis, and serves a set of tenants. A thin global layer (gateway, auth, billing, tenant directory) routes each tenant to its cell. A noisy or failing cell affects only its tenants (NFR-6), and capacity grows by adding cells.
+
+- **Cells.** The system is split into cells. Each cell has its own workers, sandbox fleet, workflow engine, realtime hub, Postgres and Redis, and serves a set of tenants. Lyzr's control plane (gateway, identity, tenant directory, billing) routes each tenant to its cell. A noisy or failing cell affects only its tenants (NFR-6), and capacity grows by adding cells.
 - **Stateless services scale horizontally.** The gateway, plan service and realtime hub run as multiple copies behind load balancers. Workers scale on queue depth.
 - **Sandboxes scale with active work, not users.** Paused sandboxes cost storage only.
 
@@ -246,10 +472,10 @@ The numbers match the hero diagram above. ![Prompt to live app](https://github.c
 | Cells for scale and isolation | One large shared cluster | Contained failures, predictable growth, a customer cloud is just another cell | More environments to operate and monitor |
 
 ## 9. What the assignment prototype implements
-![The system map with what the prototype uses for each box: REAL, PART, SIM or NOT BUILT](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/system-map-prototype.png)
+![The system map with what the prototype uses for each box: REAL, PART, SIM or NOT BUILT](diagrams/system-map-prototype.png)
 _The same system map as [At a glance](#at-a-glance), with what the prototype uses for each box: **REAL** works for real, **PART** real records with a simulated effect, **SIM** simulated, **NOT BUILT** design only._
 
-![What this repo runs, and on what: Vercel and Supabase in Mumbai](https://github.com/netanyaj/architect-2/raw/main/docs/product/diagrams/prototype-as-built.png)
+![What this repo runs, and on what: Vercel and Supabase in Mumbai](diagrams/prototype-as-built.png)
 _What this repo runs, and on what._
 
 Part by part: the production design (sections 2–8), what the prototype does, and where. The [decisions log](../DECISIONS.md) records every place the prototype differs from the spec, and why. Every simulated surface carries the **Simulated** label in the product.

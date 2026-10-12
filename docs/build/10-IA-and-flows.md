@@ -1,6 +1,8 @@
 # Architect 2.0: information architecture and flows
 
-_Draft 2 · 2026-10-03. Built on the PRD (`08`). Every diagram has a PNG in `diagrams/` and an editable source in `diagrams/src/`._
+> **Early design of the information architecture.** The shipped product renamed Blueprint to plan, item to part and Deploy to Launch; see [ARCHITECTURE.md](../product/ARCHITECTURE.md).
+
+_Draft 2 · 2026-10-03. Built on the [PRD](../product/08-PRD-architect-2.md). Every diagram has a PNG in `diagrams/`._
 
 ## 1. Design principles (where each decision comes from)
 | Principle | What it decides in the UI | From |

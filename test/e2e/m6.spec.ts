@@ -21,9 +21,14 @@ test.describe("M6: landing page and MCP servers", () => {
     await expect(page.getByRole("button", { name: "Try the demo" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
     for (const proof of ["Plan and cost before build", "Proof per part", "Launch through your company's rules"]) await expect(page.getByText(proof)).toBeVisible();
+    // The credit line, on the landing page only.
+    const credit = page.locator("footer");
+    await expect(credit).toHaveText("Built by Netanya as a prototype for Lyzr's Architect · GitHub");
+    await expect(credit.getByRole("link", { name: "GitHub" })).toHaveAttribute("href", "https://github.com/netanyaj/architect-2");
     await signIn(page, user);
     await page.goto("/");
     await page.waitForURL(/\/home$/);
+    await expect(page.getByText("Built by Netanya")).toHaveCount(0);
   });
 
   test("add an MCP server (governance off): a real Test connection lists its tools, and refuses private addresses", async ({ page }) => {

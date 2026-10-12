@@ -6,6 +6,7 @@ import { buttonClasses } from "@/components/ax/button";
 import { StageBanner } from "@/components/ax/stage-banner";
 import { PENDING_PROMPT_KEY } from "@/lib/auth-paths";
 import { cn } from "@/lib/utils";
+import { DemoSetupOverlay } from "@/components/ax/demo-setup";
 import { signInWithEmail, signInWithProvider, startDemo, type EmailAuthState } from "@/server/actions/auth";
 
 function ProviderButton({ label }: { label: string }) {
@@ -20,9 +21,12 @@ function ProviderButton({ label }: { label: string }) {
 function DemoLink() {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" aria-disabled={pending || undefined} className="min-h-6 font-semibold text-ink underline decoration-line-ctl underline-offset-[3px]">
-      {pending ? "Opening the demo…" : "Try the demo"}
-    </button>
+    <>
+      <button type="submit" aria-disabled={pending || undefined} className="min-h-6 font-semibold text-ink underline decoration-line-ctl underline-offset-[3px]">
+        {pending ? "Setting up…" : "Try the demo"}
+      </button>
+      {pending && <DemoSetupOverlay />}
+    </>
   );
 }
 

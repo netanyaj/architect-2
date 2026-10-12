@@ -1,27 +1,33 @@
-flowchart LR
-  subgraph W["Worker pool (outside the sandbox)"]
-    AA["Architect agent<br/>Claude Agent SDK-based harness<br/>state checkpointed after each step"]
-    VF["Verifier<br/>separate context · writes checks first"]
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"flowchart":{"curve":"basis","padding":14,"nodeSpacing":36,"rankSpacing":44}}}%%
+flowchart TB
+  %% A white card, so ink lines read on GitHub's dark theme too
+  subgraph CARD[" "]
+    direction TB
+    subgraph W["Workers, outside the sandbox"]
+      direction LR
+      AA["Architect agent<br/>Claude Agent SDK harness<br/>checkpoints after each step"]
+      VF["Verifier<br/>its own context<br/>writes checks first"]
+    end
+    subgraph S["Sandbox, one per project"]
+      direction LR
+      D["Sandbox daemon<br/>files · commands · ports"]
+      T["Check runner<br/>tests · headless browser"]
+      APP["The user's stack<br/>Node or Python dev server"]
+    end
+    AA -- "tool calls" --> D
+    VF -- "run checks" --> T
+    D --> APP
+    T --> APP
+    subgraph C["Cell services"]
+      direction LR
+      MG["Model gateway"]
+      PA["Policy and approvals"]
+      ST[("Postgres and<br/>object storage")]
+      EG["Egress proxy and vault"]
+    end
+    APP -- "outbound calls" --> EG
+    W -. "model calls" .-> MG
+    W -. "actions leaving the sandbox" .-> PA
+    W -. "state and proofs" .-> ST
   end
-  subgraph S["Sandbox · one per project"]
-    D["Sandbox daemon<br/>files · commands · ports"]
-    APP["User's stack<br/>Node or Python dev server"]
-    T["Check runner<br/>tests · headless browser"]
-  end
-  MG["Model gateway"]
-  PL["Policy check"]
-  PSX[("Project store")]
-  EG["Egress proxy"]
-  AA -- tool calls --> D
-  VF -- run checks --> T
-  D --> APP
-  AA --> MG
-  VF --> MG
-  AA -. every action leaving the sandbox .-> PL
-  AA --> PSX
-  VF --> PSX
-  APP -- outbound calls --> EG
-  T --> APP
-  classDef w fill:#EEF2FF,stroke:#4F46E5;
-  classDef s fill:#ECFEFF,stroke:#0891B2;
-  class AA,VF w; class D,APP,T s;
+  style CARD fill:#FFFFFF,stroke:#D6D4CC

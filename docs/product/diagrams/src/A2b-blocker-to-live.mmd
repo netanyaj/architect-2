@@ -1,0 +1,31 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"15px","primaryColor":"#FFFFFF","primaryBorderColor":"#1A1A19","primaryTextColor":"#1A1A19","lineColor":"#1A1A19","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","clusterBkg":"#F5F4F0","clusterBorder":"#D6D4CC","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#1A1A19","actorTextColor":"#1A1A19","actorLineColor":"#A8A69F","signalColor":"#1A1A19","signalTextColor":"#1A1A19","noteBkgColor":"#F5F4F0","noteBorderColor":"#D6D4CC","noteTextColor":"#42413D","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#1A1A19","labelTextColor":"#1A1A19","loopTextColor":"#1A1A19","activationBkgColor":"#F5F4F0","activationBorderColor":"#1A1A19","sequenceNumberColor":"#FFFFFF"},"sequence":{"mirrorActors":false,"actorMargin":36,"wrap":true,"width":150}}}%%
+sequenceDiagram
+  participant M as Morgan
+  participant OR as Run orchestrator
+  participant LS as Lyzr Studio
+  participant EV as Egress proxy and vault
+  participant RP as Realtime and preview
+  participant PA as Policy and approvals
+  participant RT as App runtime
+  %% A white card, so ink lines read on GitHub's dark theme too
+  rect rgb(255, 255, 255)
+    Note over OR,LS: 8 · Agents into Lyzr Studio
+    OR->>LS: Create each agent part in the workspace's own Studio
+    LS-->>OR: Agent IDs, saved on the parts
+    Note over M,EV: 9 · Fix a blocker
+    OR-->>M: Needs you: connect the app
+    M->>EV: Sign in to the app, or add its key or MCP server
+    EV-->>OR: Stored in the vault, never in the sandbox
+    Note over EV: The sandbox's calls go out through the proxy, which adds the key
+    Note over M,RP: 10 · Live preview, throughout
+    M->>RP: Open the Test version
+    RP-->>M: The app from the sandbox's dev server, updated as parts work
+    Note over M,RT: 11 · Launch
+    M->>PA: Launch: Test, Team, then Live
+    Note over PA: Live needs an Owner or Admin approval (governance on)
+    PA-->>OR: Approved
+    OR->>RT: Build the image, run the pre-publish checks, promote
+    Note over LS,RT: 12 · Run and watch
+    RT->>LS: The app's agents run on Studio
+    RT-->>M: Live URL, with audit and metering
+  end
