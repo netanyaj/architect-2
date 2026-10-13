@@ -128,7 +128,8 @@ function TriggerNode({ end, scheduled, x, y, onEdit }: { end: GraphEnd; schedule
         {scheduled ? <SimTag title={SCHEDULE_SIM} className="h-5 px-1.5" /> : <Icon name="clock" size="sm" />}
       </span>
       <strong className="font-[650]">{end.title}</strong>
-      {end.detail && <span className="truncate text-small text-ink-2">{end.detail}</span>}
+      {/* Two lines, so "Weekdays at 8:00, your time zone" reads in full. */}
+      {end.detail && <span className="line-clamp-2 text-small text-ink-2">{end.detail}</span>}
     </button>
   );
 }

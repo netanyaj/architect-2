@@ -561,6 +561,6 @@ export async function saveSchedule(input: z.input<typeof scheduleInput>): Promis
   const { error } = await admin.from("agents").update({ schedule: storeSchedule(schedule), updated_at: new Date().toISOString() }).eq("id", row.id);
   if (error) return { ok: false, message: "The schedule couldn't be saved. Try again." };
   await admin.from("audit_log").insert({ workspace_id: ctx.workspace.id, actor: ctx.name, action: "agent.schedule_changed", target: row.name, details: { agent_id: row.id, schedule } as Json });
-  revalidatePath(`/p/${row.project_id}`);
+  // The Agents view holds its own copy (loadAgents), so nothing else on the page needs to refresh.
   return { ok: true, schedule };
 }
