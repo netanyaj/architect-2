@@ -28,6 +28,8 @@
  * run one after another ("Chapter 2 of 3 · step 3 of 9", Skip this chapter, Skip tour); each step is reported as it
  * shows so it can be saved; focus stays inside the card; motion uses our tokens (ease-out, 150–300 ms) and reduced
  * motion keeps only the fades; our icons replace lucide-react; the page stays usable under the spotlight.
+ * Round 8: the card never glides. It fades out, is placed, and fades in once its control has settled (moved more than
+ * 8px and stayed put for 150ms); scrolling is instant; the pointer appears at the control and presses once.
  */
 "use client";
 
@@ -72,7 +74,7 @@ export type TourStepDef = {
 export type TourChapterDef = { id: string; title: string; steps: TourStepDef[] };
 
 export type TourApi = {
-  /** Moves a pointer to the control, shows the click, then clicks it. */
+  /** Shows a pointer at the control, presses once, then clicks it. */
   click: (target: string, opts?: { timeout?: number }) => Promise<void>;
   /** Waits until the check passes; throws when the time runs out. */
   waitFor: (check: () => boolean, timeout?: number, what?: string) => Promise<void>;
@@ -84,6 +86,22 @@ export type TourApi = {
 };
 
 type Box = { top: number; left: number; width: number; height: number };
+
+/** Where the card sits: beside its control, bottom left (no control, or still waiting for it), the middle (missing), or the phone sheet. */
+type Place = { kind: "at"; top: number; left: number } | { kind: "bottom" | "center" | "phone" };
+
+/** Small layout jitter isn't a move. */
+const JITTER = 8;
+/** How long a control must stay put before the card moves to it, and how long the card takes to fade. */
+const SETTLE_MS = 150;
+/** A step whose control hasn't turned up by now shows its card bottom left while it waits. */
+const WAIT_MS = 1_200;
+
+const nearBox = (a: Box, b: Box) =>
+  Math.abs(a.top - b.top) <= JITTER && Math.abs(a.left - b.left) <= JITTER && Math.abs(a.width - b.width) <= JITTER && Math.abs(a.height - b.height) <= JITTER;
+
+const samePlace = (a: Place, b: Place) =>
+  a.kind === "at" && b.kind === "at" ? Math.abs(a.top - b.top) <= JITTER && Math.abs(a.left - b.left) <= JITTER : a.kind === b.kind;
 
 type TourContext = {
   active: boolean;
@@ -206,7 +224,13 @@ export function TourEngine({
   const [phase, setPhase] = useState<Phase>("moving");
   const [acting, setActing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pointer, setPointer] = useState<{ from: { x: number; y: number }; to: { x: number; y: number }; key: number } | null>(null);
+  const [pointer, setPointer] = useState<{ x: number; y: number; key: number } | null>(null);
+  // The control's box once it has settled: the card is placed from this, while the spotlight follows pos exactly.
+  const [anchor, setAnchor] = useState<Box | null>(null);
+  // The control hasn't turned up yet: after a moment the card shows bottom left while it waits.
+  const [late, setLate] = useState(false);
+  // Where the card is drawn and whether it shows. It changes place only while faded out.
+  const [view, setView] = useState<{ at: Place | null; visible: boolean }>({ at: null, visible: false });
   const [retry, setRetry] = useState(0);
   const card = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 380, height: 220 });
@@ -261,6 +285,8 @@ export function TourEngine({
     };
     setPhase("moving");
     setPos(null);
+    setAnchor(null);
+    setLate(false);
     setError(null);
     (async () => {
       if (st.page && (!atPlace(st.page) || (pushed.current && pushed.current !== st.page))) {
@@ -280,7 +306,8 @@ export function TourEngine({
       if (!live()) return;
       if (!found) return setPhase("missing");
       const r = findTarget(target)!.getBoundingClientRect();
-      if (r.top < 0 || r.bottom > window.innerHeight) findTarget(target)!.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+      // Instant: the card stays hidden until the control has settled, then shows in place.
+      if (r.top < 0 || r.bottom > window.innerHeight) findTarget(target)!.scrollIntoView({ behavior: "auto", block: "center" });
     })();
     // The step and Take me there decide; everything else is read through refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -305,6 +332,20 @@ export function TourEngine({
     return () => window.cancelAnimationFrame(raf);
   }, [step, phase, acted]);
 
+  // The card moves only when the control has moved more than 8px and stayed put for 150ms.
+  useEffect(() => {
+    if (!pos || (anchor && nearBox(anchor, pos))) return;
+    const t = window.setTimeout(() => setAnchor(pos), SETTLE_MS);
+    return () => window.clearTimeout(t);
+  }, [pos, anchor]);
+
+  const hasTarget = Boolean(targetOf(step, acted));
+  useEffect(() => {
+    if (phase !== "shown" || !hasTarget || anchor) return;
+    const t = window.setTimeout(() => setLate(true), WAIT_MS);
+    return () => window.clearTimeout(t);
+  }, [phase, hasTarget, anchor, stepKey]);
+
   useLayoutEffect(() => {
     const el = card.current;
     if (!el) return;
@@ -313,26 +354,74 @@ export function TourEngine({
     return () => ro.disconnect();
   });
 
+  // Where the card wants to be. Hidden while the step goes to its place, and for a moment while its control turns up.
+  const want: Place | null =
+    phase === "moving"
+      ? null
+      : phone
+        ? hasTarget && !anchor && !late && phase !== "missing"
+          ? null
+          : { kind: "phone" }
+        : !hasTarget
+          ? { kind: "bottom" }
+          : anchor
+            ? { kind: "at", ...placeCard(anchor, step?.position, size) }
+            : phase === "missing"
+              ? { kind: "center" }
+              : late
+                ? { kind: "bottom" }
+                : null;
+  const wantKey = want ? (want.kind === "at" ? `at:${Math.round(want.top)}:${Math.round(want.left)}` : want.kind) : "none";
+
+  // The card never glides: to change place it fades out, is placed, then fades in.
+  const viewRef = useRef(view);
+  const hiddenAt = useRef(0);
+  const moveTimer = useRef(0);
+  useLayoutEffect(() => {
+    viewRef.current = view;
+  });
+  useEffect(() => {
+    window.clearTimeout(moveTimer.current);
+    const v = viewRef.current;
+    if (!want) {
+      if (v.visible) {
+        hiddenAt.current = Date.now();
+        setView({ at: v.at, visible: false });
+      }
+      return;
+    }
+    if (v.at && samePlace(want, v.at)) {
+      if (!v.visible) setView({ at: v.at, visible: true });
+      return;
+    }
+    if (v.visible) {
+      hiddenAt.current = Date.now();
+      setView({ at: v.at, visible: false });
+    }
+    // Wait out the fade before placing, so the card is never seen jumping.
+    const left = v.at ? Math.max(0, SETTLE_MS - (Date.now() - hiddenAt.current)) : 0;
+    const show = () => setView({ at: want, visible: true });
+    if (left) moveTimer.current = window.setTimeout(show, left);
+    else show();
+    // The place decides; want is read as it was when the place changed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantKey]);
+  useEffect(() => () => window.clearTimeout(moveTimer.current), []);
+
   // Focus moves into the card at each step: Tab cycles its controls, and the arrow keys step while it has focus.
   useEffect(() => {
-    if (phase === "moving" || acting) return;
+    if (phase === "moving" || acting || !view.visible) return;
     card.current?.querySelector<HTMLElement>("[data-tour-next]")?.focus({ preventScroll: true });
-  }, [phase, acting, stepKey]);
+  }, [phase, acting, stepKey, view.visible]);
 
-  // The visible click: scroll the control into view, move a pointer from the card to it, press, then click it.
+  // The visible click: scroll the control into view, show a pointer on it, press once, then click it.
   const press = useCallback(
     async (el: HTMLElement) => {
       const r0 = el.getBoundingClientRect();
-      if (r0.top < 0 || r0.bottom > window.innerHeight) {
-        el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
-        await sleep(reduce ? 0 : 320);
-      }
+      if (r0.top < 0 || r0.bottom > window.innerHeight) el.scrollIntoView({ behavior: "auto", block: "center" });
       const r = el.getBoundingClientRect();
-      const c = card.current?.getBoundingClientRect();
-      const from = c ? { x: c.left + c.width - 60, y: c.top + c.height - 40 } : { x: r.left, y: r.top };
-      const to = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-      setPointer({ from, to, key: Date.now() });
-      await sleep(reduce ? 120 : 560);
+      setPointer({ x: r.left + r.width / 2, y: r.top + r.height / 2, key: Date.now() });
+      await sleep(reduce ? 120 : 220);
       el.click();
       await sleep(200);
       setPointer(null);
@@ -369,7 +458,7 @@ export function TourEngine({
     [onMove],
   );
 
-  const busy = acting || phase === "moving";
+  const busy = acting || phase === "moving" || !view.visible;
 
   const next = useCallback(async () => {
     if (!at || !step || acting) return;
@@ -453,8 +542,8 @@ export function TourEngine({
   // Shown count: "step 3 of 9" (two cards can share a number).
   const counts = chapter ? [...new Set(chapter.steps.map((s, i) => s.count ?? i + 1))] : [];
   const shownCount = step && at ? counts.indexOf(step.count ?? at.s + 1) + 1 : 0;
-  const spot = targetOf(step, acted) && phase !== "moving" ? pos : null;
-  const place = spot && !phone ? placeCard(spot, step?.position, size) : null;
+  const spot = hasTarget && phase !== "moving" ? pos : null;
+  const place = view.at;
   const pad = 6;
   const fade = { duration: reduce ? 0.15 : 0.22, ease: EASE };
   const isLast = Boolean(at && chapter && at.c === chapters.length - 1 && at.s === chapter.steps.length - 1);
@@ -499,17 +588,19 @@ export function TourEngine({
             data-tour-card
             data-tour-phase={phase}
             onKeyDown={onKey}
+            data-tour-visible={view.visible || undefined}
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1, x: place ? place.left : 0, y: place ? place.top : 0 }}
+            animate={{ opacity: view.visible ? 1 : 0 }}
             exit={{ opacity: 0 }}
-            transition={{ opacity: fade, x: { duration: reduce ? 0 : 0.3, ease: EASE }, y: { duration: reduce ? 0 : 0.3, ease: EASE } }}
-            style={place ? { top: 0, left: 0 } : undefined}
+            transition={{ duration: SETTLE_MS / 1000, ease: EASE }}
+            style={place?.kind === "at" ? { top: place.top, left: place.left } : undefined}
             className={cn(
               // pointer-events-auto: stays clickable when a modal drawer has made the page behind it inert.
               "pointer-events-auto fixed z-[62] flex flex-col gap-3 border border-line bg-surface text-ink shadow-pop",
               phone ? "inset-x-0 bottom-[60px] rounded-t-pane px-4 pt-3.5 pb-4" : "w-[min(380px,calc(100vw-28px))] rounded-card p-4",
-              // No control to point at: the middle of the screen (missing), or the bottom left while it goes there.
-              !phone && !place && (phase === "missing" ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" : "bottom-4 left-4"),
+              // No control to point at: the middle of the screen (missing), or the bottom left while it waits.
+              !phone && place?.kind === "center" && "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
+              !phone && (!place || place.kind === "bottom") && "bottom-4 left-4",
             )}
           >
             <div className="flex items-center gap-2 text-small text-ink-2">
@@ -535,9 +626,9 @@ export function TourEngine({
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={stepKey}
-                initial={{ opacity: 0, y: reduce ? 0 : 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: reduce ? 0 : -6 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 transition={{ duration: reduce ? 0.12 : 0.18, ease: EASE }}
                 className="flex flex-col gap-1.5"
               >
@@ -594,26 +685,32 @@ export function TourEngine({
           </motion.div>
         )}
       </AnimatePresence>
-      {/* The visible click: a pointer travels to the real control and presses it, then the control is clicked. */}
+      {/* The visible click: a pointer appears on the real control and presses it once, then the control is clicked. */}
       <AnimatePresence>
         {pointer && (
           <motion.div
             key={pointer.key}
             aria-hidden="true"
             data-tour-pointer
-            className="pointer-events-none fixed top-0 left-0 z-[70]"
-            initial={{ x: pointer.from.x, y: pointer.from.y, opacity: 0 }}
-            animate={{ x: pointer.to.x, y: pointer.to.y, opacity: 1 }}
+            className="pointer-events-none fixed z-[70]"
+            style={{ top: pointer.y, left: pointer.x }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: reduce ? 0 : 0.36, ease: EASE }}
+            transition={{ duration: 0.1, ease: EASE }}
           >
-            <span className="block size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-focus bg-focus/25" />
+            <motion.span
+              className="block size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-focus bg-focus/25"
+              initial={{ scale: 1 }}
+              animate={{ scale: reduce ? 1 : [1, 0.8, 1] }}
+              transition={{ duration: 0.2, ease: EASE }}
+            />
             {!reduce && (
               <motion.span
                 className="absolute top-0 left-0 block size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-focus"
                 initial={{ scale: 1, opacity: 0 }}
-                animate={{ scale: 2.2, opacity: [0, 0.7, 0] }}
-                transition={{ delay: 0.36, duration: 0.3, ease: EASE }}
+                animate={{ scale: 1.8, opacity: [0, 0.7, 0] }}
+                transition={{ duration: 0.2, ease: EASE }}
               />
             )}
           </motion.div>
