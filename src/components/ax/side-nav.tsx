@@ -40,7 +40,7 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
       data-tour={`nav-${item.label.toLowerCase()}`}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex min-h-10 w-full items-center gap-[11px] rounded-card border border-transparent px-3 text-body font-[550] text-ink-2 no-underline hover:bg-selected hover:text-ink",
+        "flex min-h-10 w-full items-center gap-[11px] rounded-card border border-transparent px-3 text-body font-[550] text-ink-2 no-underline transition-colors hover:bg-selected hover:text-ink",
         active && "border-line bg-surface font-[650] text-ink shadow-[0_1px_2px_rgba(0,0,0,.05)] hover:bg-surface",
       )}
     >

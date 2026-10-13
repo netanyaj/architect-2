@@ -52,7 +52,7 @@ export function Segmented<T extends string>({
             tabIndex={mode === "tabs" && !on ? -1 : undefined}
             onClick={() => onChange(o.value)}
             className={cn(
-              "min-h-[30px] rounded-full border-0 bg-transparent px-3.5 text-body font-[550] whitespace-nowrap text-ink-2",
+              "min-h-[30px] rounded-full border-0 bg-transparent px-3.5 text-body font-[550] whitespace-nowrap text-ink-2 transition-colors hover:text-ink",
               on && "bg-surface font-[650] text-ink shadow-[0_1px_2px_rgba(0,0,0,.1),0_0_0_1px_var(--line)]",
             )}
           >

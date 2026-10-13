@@ -54,6 +54,9 @@
   --radius-md: 10px;
   --radius-lg: 12px;
   --radius-xl: 18px;
+  /* Every transition-colors (buttons, rows, tabs) uses the shared motion tokens rather than Tailwind's 150ms ease. */
+  --default-transition-duration: var(--motion-fast);
+  --default-transition-timing-function: var(--ease-out);
 }
 
 @layer base {

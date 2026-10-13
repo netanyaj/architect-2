@@ -15,7 +15,7 @@ export function NotDoneList({ rows, onOpen }: { rows: NotDone[]; onOpen?: (key: 
       {rows.map((r) => (
         <li key={r.key}>
           {/* Named by the part; the reason is its description, so the row doesn't read as the fix itself. */}
-          <button type="button" aria-labelledby={`${id}-${r.key}`} aria-describedby={`${id}-${r.key}-why`} onClick={() => onOpen?.(r.key)} className="flex w-full items-start gap-2.5 rounded-tile px-2.5 py-2 text-left hover:bg-selected">
+          <button type="button" aria-labelledby={`${id}-${r.key}`} aria-describedby={`${id}-${r.key}-why`} onClick={() => onOpen?.(r.key)} className="flex w-full items-start gap-2.5 rounded-tile px-2.5 py-2 text-left transition-colors hover:bg-selected">
             <StatusMark status={r.status} icon={ICON[r.status]} className="mt-0.5" />
             <span className="min-w-0 flex-1">
               <span id={`${id}-${r.key}`} className="block font-semibold">

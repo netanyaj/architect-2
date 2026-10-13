@@ -69,7 +69,7 @@ export function PlanPanel({
         {progress && (
           <div className="flex flex-col gap-1.5">
             <div className="h-1.5 overflow-hidden rounded-full bg-selected" aria-hidden="true">
-              <i className="block h-full bg-ink" style={{ width: `${Math.round(progress.value * 100)}%` }} />
+              <i className="block h-full bg-ink transition-[width] duration-(--motion-slow)" style={{ width: `${Math.round(progress.value * 100)}%` }} />
             </div>
             <span className="text-small text-ink-2 tabular-nums">{progress.label}</span>
           </div>
@@ -143,7 +143,7 @@ export function PlanRow({
       onClick={onClick}
       aria-current={selected ? "true" : undefined}
       className={cn(
-        "flex w-full items-start gap-2.5 rounded-tile border-0 bg-transparent p-2 text-left text-ink hover:bg-selected",
+        "flex w-full items-start gap-2.5 rounded-tile border-0 bg-transparent p-2 text-left text-ink transition-colors hover:bg-selected",
         selected && "bg-selected",
       )}
     >
