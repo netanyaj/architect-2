@@ -16,7 +16,7 @@ One project, Supplier Invoice Auditor, from one prompt:
 ![Launch: Test version, Team version and Live, with one thing to fix before sharing](docs/media/3-launch.png)
 
 ## Today's Architect → 2.0
-From our own audit of today's Architect ([`docs/research/`](docs/research/)):
+From our own audit of today's Architect ([`docs/research/`](docs/research/)), compared with Architect as I tested it in the last week of September 2026:
 
 | Today's Architect | Architect 2.0 |
 |---|---|
