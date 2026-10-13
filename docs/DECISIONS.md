@@ -334,6 +334,16 @@ From the M5.8 review notes (not in the repo). No migration: everything new is st
 | Connections | Lyzr Studio, MCP servers, then a loose "Add an API key" button above the apps | Three headed sections in order: Lyzr Studio, Apps (with "Add an API key" in its header), MCP servers (with "Add an MCP server" in its header) | Each kind of connection is found in one place |
 | MCP and API-key forms | URL and header in the code font; Cancel only closed the form | Name, URL and auth header use the body font, text and placeholders; Cancel clears every field and any error, in both forms | Form fields read as form fields; a cancelled form doesn't come back with old input |
 
+## M6 round 7: product fixes (13 Oct 2026)
+
+| Area | Before | We did | Why |
+|---|---|---|---|
+| Microphone on Home | A 15px icon in the composer | A 20px icon on its 38px round button (still a disabled "Speak instead of typing", since voice isn't in the prototype) | Feedback said it was too small to notice |
+| Point at something | A labelled button in a dark dock, in a bar under the preview | A pointer icon button beside the preview's address, with the tooltip and accessible name "Point at something to change it"; it shows pressed while on, and picking something fills the chat box as before. The problems count sits beside it, and its list opens under the address bar. The bar under the app now only appears for "This app has no dark theme yet" | Next to the address it reads as a browser tool; the bar no longer takes room from the app when there's nothing to say |
+| Agent schedules | The graph's first node was fixed: a service ("Google Calendar"), "On a schedule" (from a schedule part's title) or "Someone uses the app" | The first node is a button that opens "When it runs" in the first agent's settings: start on the plan's trigger, or on a schedule (days, time, time zone), for example "Weekdays at 8:00, your time zone". Saved with its own Save schedule (so it works on the read-only demo agent), shown on the graph and in the Agents list, labelled Simulated. A plan with a schedule part starts with the schedule its words say ("every weekday at 8:00") | Real scheduling would run in the cell's orchestrator; here nothing runs on the clock, and the label says so. Stored as JSON in the existing `agents.schedule` column on the first agent: no migration |
+| Simulator failure text | Any plan's last agent failed with the Meeting Prep sentence "brief is 200 words or fewer" and "236 words" | The failure is the failing part's own check ("leads are assigned a score… with an explanation"), with what it measured: the scenario's word counts only when the check is about a word count, otherwise "2 of 3 passed" and plain notes per try. "Too long" only shows for a limit on words or characters | The build story has to match the plan on screen |
+| `cn` package | Flagged as possibly stray | Kept: it is the class merger (clsx plus tailwind-merge) that `src/lib/utils.ts` and every `src/components/ui` file import | Removing it would break every shadcn component |
+
 ## Numbers we set, and how we picked them
 
 | Number | Value | How we picked it |
