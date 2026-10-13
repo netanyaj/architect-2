@@ -152,7 +152,7 @@ export function ProjectsList({ projects, creditsUsed, canStart }: { projects: Ro
           placeholder="Find a project"
           className="min-h-[38px] w-[220px] rounded-full border border-line-ctl bg-surface px-4 placeholder:text-ink-3 max-sm:w-full"
         />
-        <Button variant="primary" icon="plus" href="/home" disabledReason={canStart ? undefined : "Viewers can't start projects."}>
+        <Button data-tour="new-project" variant="primary" icon="plus" href="/home" disabledReason={canStart ? undefined : "Viewers can't start projects."}>
           New project
         </Button>
       </div>

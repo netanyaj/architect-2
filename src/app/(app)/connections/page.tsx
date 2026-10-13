@@ -73,7 +73,7 @@ export default async function ConnectionsPage() {
   });
 
   return (
-    <div className="mx-auto flex w-full max-w-[1040px] flex-col gap-[22px] px-8 pt-10 pb-12 max-sm:px-4">
+    <div data-tour="connections" className="mx-auto flex w-full max-w-[1040px] flex-col gap-[22px] px-8 pt-10 pb-12 max-sm:px-4">
       <div className="flex flex-col gap-1">
         <h1 className="text-title font-[650]">Connections</h1>
         <p className="flex flex-wrap items-center gap-2 text-ink-2">

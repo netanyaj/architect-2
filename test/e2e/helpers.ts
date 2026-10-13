@@ -11,7 +11,7 @@ export function adminDb() {
 export type TestUser = { id: string; email: string; password: string };
 
 /** A confirmed email account, so tests don't depend on reading an inbox. */
-export async function createTestUser(label: string): Promise<TestUser> {
+export async function createTestUser(label: string, opts: { fresh?: boolean } = {}): Promise<TestUser> {
   const email = `e2e-${label}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@example.com`;
   const password = `e2e-${Math.random().toString(36).slice(2)}-Pw1`;
   const { data, error } = await adminDb().auth.admin.createUser({
@@ -22,6 +22,8 @@ export async function createTestUser(label: string): Promise<TestUser> {
     user_metadata: { full_name: `${label.charAt(0).toUpperCase()}${label.slice(1)} Tester` },
   });
   if (error || !data.user) throw new Error(`createUser failed: ${error?.message}`);
+  // The tour's welcome opens on everyone's first sign-in. Test users have seen it, unless a test asks (fresh: true).
+  if (!opts.fresh) await adminDb().from("user_preferences").upsert({ user_id: data.user.id, tour: { welcomed: true } });
   return { id: data.user.id, email, password };
 }
 

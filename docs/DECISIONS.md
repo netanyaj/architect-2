@@ -308,6 +308,21 @@ From the M5.8 review notes (not in the repo). No migration: everything new is st
 | Copy | "A Live deploy waits for an Admin. You're one" | "Live waits for an Owner or Admin. You're the Owner: approve it yourself." | The demo user is an Owner; "deploy" isn't in the word list |
 | Events | | Migration 0026 adds `tour_minimised` and `tour_finished` to `analytics_events` | The analytics query shows where people leave the tour |
 
+## M6 round 7: the tour, rebuilt on the shadcn tour component (13 Oct 2026)
+
+**One flow in three chapters (the story, "Find your way around", Help and finish); Next does each step for real.**
+
+| Area | Before (Tour v3) | We did | Why |
+|---|---|---|---|
+| Component | Our own coach card and hints | NiazMorshed2007/shadcn-tour (MIT), copied into `src/components/tour.tsx` with the licence kept at the top, then extended: Next can run an action and wait for its result; steps change pages and wait for their control; `data-tour` targets; chapters; progress saved in `user_preferences.tour`; focus kept in the card; our motion tokens, with reduced motion keeping only the fades; our icons instead of lucide-react | The spotlight and step card were what we lacked; the hard parts (acting on real controls, page changes) are ours |
+| Starting | Home's card, after sign-in | A welcome on everyone's first sign-in (demo visitors and normal accounts), in the seeded Acme Ops (someone in Personal is switched there). Skip is always on the card; Take the tour is in the side nav, Resources and ⌘K, and picks up where the person left off | The tour is how a reviewer finds the good parts |
+| Next | Pointed at controls; the person clicked | Next performs the step: a pointer moves to the real control and presses it (Write the plan, the recommended answer, Build, open a part, Connect, Point at something, Share then Go live, Approve). Steps that spend credits or change something name the action on the button ("Build it", "Approve it") | Rule 1 holds: the person still clicks, and sees what's clicked |
+| Chapter 2 | None | One step per side-nav item with its exact label (Home, Projects, Agents, Connections, Marketplace, Usage, Approvals, Governance, Settings); Next opens the page and spotlights what matters there. Approvals and Governance only for Owners and Admins with governance on; Settings says what turning governance on adds | Find your way around after the story |
+| Governance branch | | Launch explains the branch that applies and one line on the other. With governance on, the Owner's Live goes straight out (only a Builder's waits), so Approvals approves Sam's waiting request. With it off, Governance shows Settings › Governance and what turning it on adds | Matches what the product does |
+| New in 2.0 | | A small icon with a tooltip, no label | |
+| Removed | The Tour v3 coach card, its hints and Home's tour cards | Replaced by the tour above | One tour, not two |
+| Test users | | `createTestUser` marks test users as already welcomed (the tour tests ask for a fresh one) | The welcome would otherwise sit over every other test |
+
 ## M6: Tour v3 (12 Oct 2026)
 
 **One coach card in one place, a hint on every step's control, and a screen that doesn't change by itself.**

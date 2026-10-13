@@ -76,6 +76,10 @@ Each workspace's agents live in its own Studio account, editable from Architect 
 - [PRD](docs/product/08-PRD-architect-2.md) · [Architecture](docs/product/ARCHITECTURE.md) · [Research](docs/research/) · [Decisions](docs/DECISIONS.md) · [Coverage of every PRD Must](docs/COVERAGE.md) · [QA report](docs/QA-REPORT.md)
 - [Design system](design-system/README.md) · [Setup](docs/SETUP.md) · [How it was built](docs/build/README.md): with Claude Code, from a spec pack
 
+## Third-party code
+
+Tour component adapted from [NiazMorshed2007/shadcn-tour](https://github.com/NiazMorshed2007/shadcn-tour) (MIT). The licence notice is kept at the top of `src/components/tour.tsx`.
+
 ---
 
 Built by Netanya Jaison as a prototype for Lyzr's Architect · not an official Lyzr product · [GitHub](https://github.com/netanyaj/architect-2)

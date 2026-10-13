@@ -18,7 +18,7 @@ export default function MarketplacePage() {
           <SimTag />
         </p>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+      <div data-tour="templates" className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
         {listed.map((s) => (
           <Link
             key={s.id}

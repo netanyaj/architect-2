@@ -66,6 +66,7 @@ export function Composer({
   const home = variant === "home";
   return (
     <form
+      data-tour={home ? "composer" : "chat-composer"}
       onSubmit={submit}
       className={cn(
         "flex flex-col border border-line-ctl bg-surface",
@@ -110,8 +111,8 @@ export function Composer({
         {home ? (
           <button
             type="submit"
-            // The tour's step 1 hint points here (Tour v3).
-            data-tour-hint="plan"
+            // The tour's "Write the plan" step clicks this.
+            data-tour={home ? "write-plan" : undefined}
             aria-disabled={blockedReason || pending ? true : undefined}
             title={blockedReason}
             className={cn(

@@ -63,8 +63,7 @@ import { fromStreamed, GROUP_LABEL, GROUP_ORDER, PlanDocument } from "./plan-doc
 import { usePlanWriter } from "./use-plan-writer";
 import { savePane } from "@/server/actions/preferences";
 import { DevPanel } from "./dev-panel";
-import { publishTourLive, useTourStore } from "@/components/ax/tour-guide";
-import { guideActive } from "@/lib/tour";
+import { useTourActive } from "@/components/ax/tour-guide";
 
 type View = "app" | "agents" | "data" | "files" | "code" | "terminal";
 const VIEWS: View[] = ["app", "agents", "data", "files"];
@@ -161,11 +160,6 @@ function StageBody({
       <AppPreview project={project} items={items} live={live} />
     </>
   );
-}
-
-/** Room at the foot of the Parts pane for the tour's coach card (Tour v3), the card's own height. */
-function CoachRoom() {
-  return <div aria-hidden="true" className="flex-none max-md:hidden" style={{ height: "calc(var(--coach-h, 0px) + 16px)" }} />;
 }
 
 function Rail({ label, icon, onOpen, children }: { label: string; icon: "panelLeft" | "panelRight"; onOpen: () => void; children?: ReactNode }) {
@@ -466,7 +460,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   };
   const setPlanOpen = (open: boolean) => togglePane("parts", open);
   const setChatOpen = (open: boolean) => togglePane("chat", open);
-  const tourOn = guideActive(useTourStore((s) => s.tour));
+  const tourOn = useTourActive();
   // Launch keeps the plan open and folds chat to a rail (screen 4).
   // Agents keeps the plan open too, listing the agents and the apps they connect to (screen 9).
   // While the tour is on, both stay open unless the person folds one here.
@@ -475,17 +469,6 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   const paneClass = (pane: "parts" | "chat") =>
     paneMotion[pane] === "out" ? (pane === "parts" ? "ax-slide-to-left" : "ax-slide-to-right") : paneMotion[pane] === "in" ? (pane === "parts" ? "ax-slide-from-left" : "ax-slide-from-right") : undefined;
 
-  // "Show me" (Tour v3): open the pane that holds the step's control, so the card can scroll to it.
-  useEffect(() => {
-    const onReveal = (e: Event) => {
-      const step = (e as CustomEvent<string>).detail;
-      if (step === "blocker" || step === "build") {
-        if (!showPlan) togglePane("parts", true);
-      }
-    };
-    window.addEventListener("tour:reveal", onReveal);
-    return () => window.removeEventListener("tour:reveal", onReveal);
-  });
   const canAct = canBuild(project.role);
 
   const writingId = project.plan?.generation === "writing" ? project.plan.id : null;
@@ -556,12 +539,6 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
 
   const counted = items.filter((i) => i.status !== "deferred" && i.status !== "dropped");
   const worksNow = counted.filter((i) => i.status === "built" || i.status === "sample_data").length;
-  // The coach card shows the build as the Parts pane does: "Building · 3 of 5 parts work" (Tour v3).
-  const waitingPart = counted.some((i) => i.status === "needs_connection");
-  useEffect(() => {
-    publishTourLive(planStage ? null : { projectId: project.id, running, works: worksNow, total: counted.length, waiting: waitingPart });
-  }, [project.id, planStage, running, worksNow, counted.length, waitingPart]);
-  useEffect(() => () => publishTourLive(null), []);
   const budgetPaused = Boolean(live.budgetPause) && (running || (project.status === "paused" && project.run?.status === "paused_budget" && items.some((i) => i.status === "agreed")));
 
   const blockingOpen = project.plan?.questions.filter((q) => q.blocking && !q.answer).length ?? 0;
@@ -652,7 +629,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
   const streamedItems = writer.phase !== "idle" && writer.items.length && (writing || writer.phase === "failed") ? writer.items.map(fromStreamed) : project.items;
   const editReason = !canAct ? "Viewers can't change the plan." : project.plan?.agreedAt ? "This version is agreed. Ask for changes in chat." : undefined;
   const planDocument = (
-    <div id="plan-top">
+    <div id="plan-top" data-tour="plan-doc">
       <PlanDocument
         project={project}
         writer={writer}
@@ -682,8 +659,6 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
       }
       onToggleCollapsed={() => setPlanOpen(false)}
       className={paneClass("parts")}
-      // Room under the parts for the tour's coach card, which sits over the pane's bottom-left corner.
-      footer={tourOn ? <CoachRoom /> : undefined}
     >
       {planStage ? (
         <PlanStagePanel project={project} items={streamedItems} writing={writing} failed={failed} />
@@ -761,6 +736,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
             <button
               type="button"
               role="switch"
+              data-tour="dev-toggle"
               aria-checked={dev}
               aria-label="Developer view"
               onClick={toggleDev}
@@ -779,8 +755,8 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
           <MoreMenu project={project} items={items} canAct={canAct} dev={dev} onToggleDev={toggleDev} onTransfer={() => setTransferOpen(true)} onDelete={() => setDeleteOpen(true)} />
           {state.action.beside && <span className="max-w-[190px] text-right text-small leading-tight text-ink-2 max-md:hidden">{state.action.beside}</span>}
           <Button
-            // The tour's Build hint points here, while the stage action is Build.
-            data-tour-hint={planStage ? "build" : undefined}
+            // The tour's Build step (planStage) and Launch step (on the Launch page) point here.
+            data-tour={planStage ? "build" : launch ? "launch-action" : undefined}
             // The stage action is the primary only when nothing on screen needs the person first (BUILD-SPEC section 2).
             variant={
               (view === "agents" && !onLaunch && (agentOpen || agentsWaiting))
@@ -842,7 +818,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
 
       <div className="flex min-h-0 flex-1 gap-2.5 max-lg:flex-col">
         {planPanel}
-        <section aria-label="Stage" className="flex min-h-[480px] min-w-0 flex-1 flex-col overflow-hidden rounded-pane border border-line bg-surface shadow-pane">
+        <section aria-label="Stage" data-tour="stage" className="flex min-h-[480px] min-w-0 flex-1 flex-col overflow-hidden rounded-pane border border-line bg-surface shadow-pane">
           {launch ? (
             <div className="min-h-0 flex-1 overflow-auto">
               <LaunchView project={project} state={launch} />

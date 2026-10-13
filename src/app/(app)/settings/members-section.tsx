@@ -251,7 +251,7 @@ export function MembersSection({
                 ))}
               </Select>
             </div>
-            <Button type="submit" variant="primary" disabledReason={pending ? "Creating the link…" : undefined}>
+            <Button type="submit" data-tour="invite" variant="primary" disabledReason={pending ? "Creating the link…" : undefined}>
               {pending ? "Creating…" : "Create invite link"}
             </Button>
           </div>

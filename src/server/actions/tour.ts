@@ -1,98 +1,78 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { TOUR_STEPS, type TourStep, type TourView } from "@/lib/tour";
+import { CHAPTERS, type Chapter, type TourView } from "@/lib/tour";
 import { track } from "../analytics";
 import { createAdminDb } from "../db";
-import { saveTourPrefs, tourDone, tourFor } from "../tour";
+import { saveTourPrefs, tourFor, tourPrefs } from "../tour";
 import { getAppContext } from "../workspace";
 import type { ActionResult } from "./members";
+import { switchWorkspace } from "./members";
 
 const FAILED = "The tour couldn't be saved. Try again.";
 
-async function save(change: Parameters<typeof saveTourPrefs>[2]): Promise<ActionResult> {
-  const ctx = await getAppContext();
-  const ok = await saveTourPrefs(createAdminDb(), ctx.user.id, change);
-  return ok ? { ok: true } : { ok: false, message: FAILED };
-}
-
-/** The guide's state, fresh: it asks after each page change and every few seconds while the tour is on. */
+/** The tour's state, fresh. */
 export async function tourState(): Promise<TourView | null> {
   return tourFor(createAdminDb(), await getAppContext());
 }
 
-/** Start the tour (Home's card): the guide appears on every page. Steps already done don't announce themselves. */
-export async function startTour(): Promise<ActionResult> {
+/**
+ * Start the tour from the welcome (first sign-in or Take the tour). It runs in the person's seeded Acme Ops: someone in
+ * Personal is switched there first, so the story has its demo projects, approvals and governance.
+ */
+export async function beginTour(): Promise<ActionResult<{ switched: boolean }>> {
   const ctx = await getAppContext();
   const admin = createAdminDb();
-  const done = await tourDone(admin, ctx.user.id, ctx.workspace.id);
-  const ok = await saveTourPrefs(admin, ctx.user.id, { started: true, minimised: false, dismissed: false, finished: false, celebrated: done });
+  let switched = false;
+  if (ctx.workspace.kind === "personal") {
+    const demo = ctx.memberships.find((m) => m.role === "owner" && m.kind === "demo");
+    if (demo) switched = (await switchWorkspace(demo.workspaceId)).ok;
+  }
+  const ok = await saveTourPrefs(admin, ctx.user.id, { welcomed: true, started: true, dismissed: false, finished: false, chapter: "story", step: "home", projectId: undefined });
   if (!ok) return { ok: false, message: FAILED };
   await track("tour_step", { user: ctx.user, workspaceId: ctx.workspace.id, detail: "started" });
-  revalidatePath("/home");
+  return { ok: true, switched };
+}
+
+/** Where the person is, saved at each step, so a reload resumes there. Recorded too, to see where people leave. */
+export async function saveTourProgress(input: { chapter: Chapter; step: string; projectId?: string | null }): Promise<void> {
+  if (!(CHAPTERS as readonly string[]).includes(input.chapter) || !/^[a-z0-9-]{1,30}$/.test(input.step)) return;
+  const ctx = await getAppContext();
+  const change: Parameters<typeof saveTourPrefs>[2] = { chapter: input.chapter, step: input.step };
+  if (input.projectId && /^[0-9a-f-]{36}$/.test(input.projectId)) change.projectId = input.projectId;
+  await saveTourPrefs(createAdminDb(), ctx.user.id, change);
+  await track("tour_step", { user: ctx.user, workspaceId: ctx.workspace.id, detail: `${input.chapter}:${input.step}` });
+}
+
+/** "Skip" on the welcome, or "Skip tour" on any step. Progress is kept: Take the tour picks up from there. */
+export async function skipTour(at: string): Promise<ActionResult> {
+  const ctx = await getAppContext();
+  const ok = await saveTourPrefs(createAdminDb(), ctx.user.id, { welcomed: true, dismissed: true });
+  if (!ok) return { ok: false, message: FAILED };
+  await track("tour_minimised", { user: ctx.user, workspaceId: ctx.workspace.id, detail: `skip:${at}`.slice(0, 40) });
   return { ok: true };
 }
 
-/** × on the tour card puts it away to the guide; the guide's own − shrinks it to a dot. Both are recorded. */
-export async function minimiseTour(from: "card" | "guide"): Promise<ActionResult> {
+/**
+ * Take the tour (side nav, Resources, ⌘K): picks up where the person left off, or starts again after they finished.
+ * Returns the welcome when there's nothing to pick up.
+ */
+export async function takeTour(): Promise<ActionResult<{ resume: boolean }>> {
   const ctx = await getAppContext();
   const admin = createAdminDb();
-  const change = from === "card" ? { started: true, minimised: false, celebrated: await tourDone(admin, ctx.user.id, ctx.workspace.id) } : { minimised: true };
-  const ok = await saveTourPrefs(admin, ctx.user.id, change);
+  const prefs = await tourPrefs(admin, ctx.user.id);
+  const resume = Boolean(prefs.started && !prefs.finished && prefs.step && prefs.step !== "home");
+  const ok = await saveTourPrefs(admin, ctx.user.id, resume ? { dismissed: false } : { welcomed: false, started: false, dismissed: false, finished: false, chapter: undefined, step: undefined, projectId: undefined });
   if (!ok) return { ok: false, message: FAILED };
-  await track("tour_minimised", { user: ctx.user, workspaceId: ctx.workspace.id, detail: from });
-  revalidatePath("/home");
-  return { ok: true };
+  await track("tour_step", { user: ctx.user, workspaceId: ctx.workspace.id, detail: resume ? "reopened" : "restarted" });
+  return { ok: true, resume };
 }
 
-/** The dot opens back into the guide. */
-export async function expandTour(): Promise<ActionResult> {
-  return save({ minimised: false });
-}
-
-/** "Don't show again", in the guide's step list. Take the tour brings it back. */
-export async function dismissTour(): Promise<ActionResult> {
-  const r = await save({ dismissed: true });
-  if (r.ok) revalidatePath("/home");
-  return r;
-}
-
-/** Take the tour (Resources, ⌘K): back on screen, from wherever the person got to. */
-export async function takeTour(): Promise<ActionResult> {
-  const ctx = await getAppContext();
-  const admin = createAdminDb();
-  const done = await tourDone(admin, ctx.user.id, ctx.workspace.id);
-  const ok = await saveTourPrefs(admin, ctx.user.id, { started: true, minimised: false, dismissed: false, finished: false, celebrated: done });
-  if (!ok) return { ok: false, message: FAILED };
-  await track("tour_step", { user: ctx.user, workspaceId: ctx.workspace.id, detail: "reopened" });
-  revalidatePath("/home");
-  return { ok: true };
-}
-
-/** The finish card was closed (Explore on your own, Reset demo data, or ×): the tour goes away. */
+/** The last step: the tour is done (Explore on your own, Reset demo data, or closing it). */
 export async function finishTour(how: "explore" | "reset" | "close"): Promise<ActionResult> {
   const ctx = await getAppContext();
-  const ok = await saveTourPrefs(createAdminDb(), ctx.user.id, { finished: true, minimised: false });
+  const ok = await saveTourPrefs(createAdminDb(), ctx.user.id, { finished: true, started: false });
   if (!ok) return { ok: false, message: FAILED };
   await track("tour_finished", { user: ctx.user, workspaceId: ctx.workspace.id, detail: how });
-  revalidatePath("/home");
   return { ok: true };
 }
 
-/** A step's "done" message was shown. */
-export async function markCelebrated(steps: TourStep[]): Promise<void> {
-  await save({ celebrated: steps.filter((s) => TOUR_STEPS.includes(s)) });
-}
-
-/** A hint was closed with "Got it". */
-export async function closeHint(step: TourStep, seen: TourStep[]): Promise<void> {
-  if (!TOUR_STEPS.includes(step)) return;
-  await save({ hints: [...new Set([...seen.filter((s) => TOUR_STEPS.includes(s)), step])] });
-}
-
-/** A tour step's link was followed (analytics only: the step is done when the person does it). */
-export async function openTourStep(step: TourStep): Promise<void> {
-  if (!TOUR_STEPS.includes(step)) return;
-  const ctx = await getAppContext();
-  await track("tour_step", { user: ctx.user, workspaceId: ctx.workspace.id, detail: step });
-}

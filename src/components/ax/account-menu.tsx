@@ -69,6 +69,7 @@ export function AccountMenu({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger
+          data-tour="nav-settings"
           aria-label={`Account and workspace: ${wsName}`}
           disabled={pending}
           className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-card px-2 py-1.5 text-left hover:bg-selected"

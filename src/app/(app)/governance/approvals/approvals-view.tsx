@@ -249,7 +249,7 @@ function Detail({ request: r, onDecided }: { request: Request; onDecided: (note:
           {r.actions.map((a, i) => (
             <Button
               key={a.scope}
-              data-tour-hint={i === 0 && r.kind === "deploy" ? "launch" : undefined}
+              data-tour={i === 0 && r.kind === "deploy" ? "approve" : undefined}
               variant={i === 0 ? "primary" : "secondary"}
               title={a.consequence}
               disabledReason={busy}

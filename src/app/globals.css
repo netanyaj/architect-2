@@ -156,10 +156,3 @@
 @media (prefers-reduced-motion: reduce) {
   .ax-slide-to-left, .ax-slide-to-right { animation-name: ax-fade-out !important; animation-duration: var(--motion-base) !important; }
 }
-
-/* Tour v3: pages leave room at their end for the coach card (its height, --coach-h), so it never hides their last
-   controls. On a phone the card is a bottom sheet above the Help bar. */
-body:has([data-coach]) { padding-bottom: calc(var(--coach-h, 0px) + 24px); }
-@media (width < 48rem) {
-  body:has([data-coach]) { padding-bottom: calc(var(--coach-h, 0px) + 72px); }
-}

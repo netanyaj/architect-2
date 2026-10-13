@@ -10,6 +10,7 @@ import { ResourcesMenu } from "./resources-menu";
 import type { WorkspaceOption } from "./workspace-switcher";
 import type { WorkspacePlan } from "@/lib/plans";
 import { LogoMark } from "./logo-mark";
+import { useTourGuide } from "./tour-guide";
 import { useUi } from "@/lib/ui-store";
 
 type NavItem = { href: string; label: string; icon: IconName; count?: number };
@@ -36,6 +37,7 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <Link
       href={item.href}
+      data-tour={`nav-${item.label.toLowerCase()}`}
       aria-current={active ? "page" : undefined}
       className={cn(
         "flex min-h-10 w-full items-center gap-[11px] rounded-card border border-transparent px-3 text-body font-[550] text-ink-2 no-underline hover:bg-selected hover:text-ink",
@@ -56,7 +58,7 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
 export function CreditsCard({ left, total, resetsOn }: SideNavProps["credits"]) {
   const pct = total > 0 ? Math.max(0, Math.min(100, (left / total) * 100)) : 0;
   return (
-    <div className="flex flex-col gap-2 rounded-card border border-line bg-surface p-3.5">
+    <div data-tour="credits" className="flex flex-col gap-2 rounded-card border border-line bg-surface p-3.5">
       <div className="flex items-center justify-between">
         <span className="font-semibold">Credits</span>
         <span className="text-small font-semibold tabular-nums">
@@ -91,12 +93,29 @@ function SearchRow() {
     <button
       type="button"
       onClick={() => openPalette(true)}
+      data-tour="search"
       aria-keyshortcuts="Meta+K Control+K"
       className="flex min-h-10 w-full items-center gap-[11px] rounded-card border border-transparent px-3 text-left text-body font-[550] text-ink-2 hover:bg-selected hover:text-ink"
     >
       <Icon name="search" />
       Search
       <kbd className="ml-auto rounded-[6px] border border-line bg-surface px-1.5 font-sans text-small leading-5 text-ink-2">⌘K</kbd>
+    </button>
+  );
+}
+
+/** Take the tour (round 7): always in the side nav, as well as in Resources and ⌘K. */
+function TakeTourRow() {
+  const guide = useTourGuide();
+  if (!guide.available) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => void guide.take()}
+      className="flex min-h-10 w-full items-center gap-[11px] rounded-card border border-transparent px-3 text-left text-body font-[550] text-ink-2 hover:bg-selected hover:text-ink"
+    >
+      <Icon name="sparkle" />
+      Take the tour
     </button>
   );
 }
@@ -168,6 +187,7 @@ export function SideNav(props: SideNavProps) {
         </>
       )}
       <div className="flex-1" />
+      <TakeTourRow />
       <CreditsCard {...props.credits} />
       {/* Two controls side by side (Notion's pattern): the account chip, and Resources. */}
       <div className="flex items-center gap-1 pt-1">

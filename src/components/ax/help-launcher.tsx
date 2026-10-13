@@ -26,6 +26,7 @@ export function HelpLauncher({
       <button
         type="button"
         aria-label="Help"
+        data-tour="help"
         title="Help"
         aria-expanded={helpOpen}
         onClick={() => (helpOpen ? closeHelp() : openHelp(projectId))}

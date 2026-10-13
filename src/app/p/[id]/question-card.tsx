@@ -51,7 +51,7 @@ export function QuestionCard({ questions, editReason }: { questions: PlanQuestio
         )}
       </div>
       <p className="font-semibold">{q.text}</p>
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label={q.text}>
+      <div data-tour="question" className="flex flex-wrap gap-1.5" role="group" aria-label={q.text}>
         {q.options.map((o) => (
           <Option key={o.value} onClick={editReason || pending ? undefined : () => answer(o.value)}>
             {o.label}

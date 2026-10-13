@@ -24,7 +24,7 @@ export function LookAndFeel({ project }: { project: ProjectWorkspace }) {
   const applied = picked === project.look;
   return (
     // The plan document's column (M5.10): same max width, left edge and spacing as the sections above it.
-    <section aria-labelledby="design" className="mx-auto flex w-full max-w-[720px] flex-col gap-2.5 px-8 pb-9 max-sm:px-4">
+    <section aria-labelledby="design" data-tour="plan-design" className="mx-auto flex w-full max-w-[720px] flex-col gap-2.5 px-8 pb-9 max-sm:px-4">
       <h2 id="design" className="text-sub font-[650]">
         Design
       </h2>

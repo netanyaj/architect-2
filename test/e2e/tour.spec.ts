@@ -1,149 +1,198 @@
 import { expect, test, type Page } from "@playwright/test";
 import { signIn } from "./build.spec.seed";
-import { adminDb, createTestUser, deleteTestUser, sessionUserId, type TestUser } from "./helpers";
+import { adminDb, createTestUser, deleteTestUser, demoWorkspace, type TestUser } from "./helpers";
 
-/* Tour v3 (M6): one coach card, bottom left, that walks the five steps with a hint on each step's control, keeps the
-   project's panes open, follows the build, and moves on by itself. Plus the ways to put it away and bring it back. */
+/* The tour (round 7): the welcome on first sign-in, then three chapters on the adapted shadcn tour component. Next
+   performs each step's action on the real control; Back, Skip this chapter and Skip tour; progress survives a reload;
+   chapter 2 has one step per side-nav item and leaves out what the person can't see. */
 
-const card = (page: Page) => page.getByRole("region", { name: "Tour", exact: true });
-const TITLES = { plan: "Write a plan", build: "Build it", blocker: "Fix a blocker", launch: "Launch with approval", governance: "See Governance and the audit log" } as const;
-type Step = keyof typeof TITLES;
-const N: Record<Step, number> = { plan: 1, build: 2, blocker: 3, launch: 4, governance: 5 };
+const card = (page: Page) => page.locator("[data-tour-card]");
 
-/** At every step: the card says which step, its hint is on screen beside a control that's on screen, and on a project page both panes are open. */
-async function atStep(page: Page, step: Step, opts: { project?: boolean; done?: boolean } = {}) {
-  await expect(card(page)).toBeVisible();
-  // Opening the audit log is step 5 itself: by then the card may already say Done, then show the finish.
-  if (!opts.done) await expect(card(page)).toContainText(`Step ${N[step]} of 5 · ${TITLES[step]}`, { timeout: 30_000 });
-  const hint = page.getByRole("note", { name: `Tour hint: ${TITLES[step]}` });
-  await expect(hint).toBeVisible({ timeout: 15_000 });
-  await expect(hint).toBeInViewport();
-  await expect(page.locator(`[data-tour-hint="${step}"]`).first()).toBeInViewport();
-  if (opts.project) {
-    await expect(page.getByRole("complementary", { name: "Parts" })).toBeVisible();
-    await expect(page.getByRole("complementary", { name: "Chat" })).toBeVisible();
+/** The story, as an Owner with governance on (the seeded Acme Ops). */
+const STORY = [
+  "Describe the app once",
+  "The plan comes first",
+  "A question, and a change",
+  "The look, before building",
+  "Build, at the price you saw",
+  "Proof per part",
+  "A blocker you can fix",
+  "Connections",
+  "The live preview",
+  "Agents",
+  "Developer view, and Import a repo",
+  "Launch",
+  "Approvals",
+  "Governance",
+];
+/** What Next says on the steps that act (Rule 1: the button names the action). */
+const ACTS: Record<string, string> = {
+  "Describe the app once": "Write the plan",
+  "A question, and a change": "Use the recommended answer",
+  "Build, at the price you saw": "Build it",
+  "Proof per part": "Open this part",
+  "A blocker you can fix": "Connect it",
+  "The live preview": "Point at something",
+  Launch: "Go live",
+  Approvals: "Approve it",
+};
+/** Chapter 2: the nav item, then its page (Settings shows its menu too). */
+const AROUND_ON = ["Home", "Projects", "Agents", "Connections", "Marketplace", "Usage", "Approvals", "Governance", "Settings"];
+const AROUND_OFF = ["Home", "Projects", "Agents", "Connections", "Marketplace", "Usage", "Settings"];
+/** Steps whose control may not exist (no question in this plan; no agents in the list yet). */
+const OPTIONAL_SPOT = new Set(["A question, and a change"]);
+
+/** The card shows this step and its place in the tour, inside the screen, and spotlights a control on screen when it has one. */
+async function atCard(page: Page, chapter: number, step: number, of: number, title: string, opts: { spotlight?: boolean } = {}) {
+  await expect(card(page).locator("#tour-step-title")).toHaveText(title, { timeout: 240_000 });
+  await expect(card(page)).toContainText(`Chapter ${chapter} of 3 · step ${step} of ${of}`);
+  await expect(card(page)).toBeInViewport();
+  if (opts.spotlight) {
+    const spot = page.locator("[data-tour-spotlight]");
+    await expect(spot).toBeVisible({ timeout: 20_000 });
+    await expect(spot).toBeInViewport();
   }
 }
 
-test.describe("Tour v3", () => {
-  test.setTimeout(600_000);
+async function next(page: Page, label?: string) {
+  const btn = card(page).locator("[data-tour-next]");
+  await expect(btn).toHaveText(label ?? /^(Next|Open .+|Finish)$/);
+  await btn.click();
+}
 
-  test("a fresh demo account walks all five steps: the card, a hint on a visible control, and open panes at every step", async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto("/login");
-    await page.getByRole("button", { name: "Try the demo" }).click();
-    await page.waitForURL(/\/home/, { timeout: 60_000 }).catch(() => {});
-    test.skip(page.url().includes("/login"), "Anonymous sign-ins aren't turned on in Supabase yet.");
-    try {
-      await page.getByRole("region", { name: /^Take the tour/ }).getByRole("button", { name: "Start the tour" }).click();
-      await page.waitForURL(/\/home\?tour=plan/);
-
-      // 1 · Write a plan: the hint is on Write the plan.
-      await atStep(page, "plan");
-      await page.getByRole("button", { name: /^Write the plan/ }).click();
-      await page.waitForURL(/\/p\//, { timeout: 60_000 });
-      await expect(page.getByText(/Here's the plan: \d+ parts/)).toBeVisible({ timeout: 150_000 });
-      const project = page.url().split("?")[0];
-
-      // 2 · Build it: the card moves on by itself ("Done ✓", then the step), with the hint on Build.
-      await atStep(page, "build", { project: true });
-      // The fast simulation, so the test doesn't wait for a real build's pace.
-      await page.goto(`${project}?view=plan&sim=fast`);
-      await atStep(page, "build", { project: true });
-      for (let i = 0; i < 4; i++) {
-        const build = page.getByRole("button", { name: /^Build · ~\d+ credits$/ });
-        if ((await build.isVisible()) && !(await build.getAttribute("aria-disabled"))) break;
-        const rec = page.getByRole("button", { name: /Recommended|Use this/ }).first();
-        if (await rec.isVisible().catch(() => false)) await rec.click();
-        await page.waitForTimeout(1500);
-      }
-      await page.getByRole("button", { name: /^Build · ~\d+ credits$/ }).click();
-      // Build from the Plan tab goes to the App view with Parts and Chat open; the card follows the build.
-      await expect(page).not.toHaveURL(/view=plan/);
-      await expect(page.getByRole("complementary", { name: "Parts" })).toBeVisible();
-      await expect(page.getByRole("complementary", { name: "Chat" })).toBeVisible();
-      await expect(card(page).getByText(/Building · \d+ of \d+ parts work/)).toBeVisible({ timeout: 30_000 });
-
-      // 3 · Fix a blocker: once a part waits for an app, the hint is on its Connect button.
-      await atStep(page, "blocker", { project: true });
-      await page.locator('[data-tour-hint="blocker"]').first().click();
-      await page.getByRole("dialog", { name: /^Connect / }).getByRole("button", { name: "Allow" }).click();
-
-      // 4 · Launch with approval: the card's link opens the waiting Live request, with the hint on Approve.
-      await expect(card(page)).toContainText("Step 4 of 5 · Launch with approval", { timeout: 30_000 });
-      await card(page).getByRole("link", { name: "Open Approvals" }).click();
-      await page.waitForURL(/\/governance\/approvals\?id=/);
-      await atStep(page, "launch");
-      await page.locator('[data-tour-hint="launch"]').click();
-
-      // 5 · Governance and the audit log: the hint is on the audit log.
-      await expect(card(page)).toContainText("Step 5 of 5", { timeout: 30_000 });
-      await card(page).getByRole("link", { name: "Open the audit log" }).click();
-      await page.waitForURL(/\/governance\?section=audit/);
-      await atStep(page, "governance", { done: true });
-
-      // The finish, in the card itself; closing it ends the tour.
-      await expect(card(page).getByRole("heading", { name: "You've seen the whole story" })).toBeVisible({ timeout: 30_000 });
-      await card(page).getByRole("button", { name: "Explore on your own" }).click();
-      await expect(card(page)).toHaveCount(0);
-    } finally {
-      // This test's own demo user, from its session (never another test's).
-      const me = await sessionUserId(page);
-      if (me) await deleteTestUser({ id: me, email: "", password: "" });
-    }
+test.describe("Tour", () => {
+  test.setTimeout(900_000);
+  let user: TestUser | undefined;
+  test.afterEach(async () => {
+    if (user) await deleteTestUser(user);
+    user = undefined;
   });
 
-  test.describe("putting it away and bringing it back", () => {
-    let user: TestUser;
-    test.beforeAll(async () => {
-      user = await createTestUser("tour");
-    });
-    test.afterAll(async () => {
-      if (user) await deleteTestUser(user);
-    });
+  test("a fresh account: the welcome, every step of all three chapters, Back, and a reload that resumes", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    user = await createTestUser("tour", { fresh: true });
+    await signIn(page, user);
+    const db = adminDb();
 
-    test("× on the Home card, × on the coach card, a page change, Don't show again, and ⌘K", async ({ page }) => {
-      await page.setViewportSize({ width: 1440, height: 900 });
-      await signIn(page, user);
-      const db = adminDb();
-      const events = async (event: string) => (await db.from("analytics_events").select("detail").eq("user_id", user.id).eq("event", event)).data!.map((e) => e.detail);
+    // First sign-in: the welcome, with Start the tour and Skip.
+    const welcome = page.getByRole("alertdialog");
+    await expect(welcome).toContainText("Welcome to Architect 2.0");
+    await expect(welcome.getByRole("button", { name: "Skip" })).toBeVisible();
+    await welcome.getByRole("button", { name: "Start the tour" }).click();
 
-      // A normal account: a compact card under the composer; × puts it away to the coach card, recorded.
-      await page.goto("/home");
-      const homeCard = page.getByRole("region", { name: /^Take the tour/ });
-      await expect(homeCard).toContainText("Take the tour · 0 of 5");
-      await homeCard.getByRole("button", { name: "Minimise the tour" }).click();
-      await expect(homeCard).toHaveCount(0);
-      await expect(card(page)).toContainText("Step 1 of 5 · Write a plan");
-      await expect.poll(() => events("tour_minimised")).toContain("card");
+    // Chapter 1, the story. New-in-2.0 steps carry the icon; steps that act name the action on Next.
+    await atCard(page, 1, 1, STORY.length, STORY[0], { spotlight: true });
+    await expect(card(page).getByRole("img", { name: "New in Architect 2.0" })).toBeVisible();
+    for (let i = 0; i < STORY.length; i++) {
+      const title = STORY[i];
+      await atCard(page, 1, i + 1, STORY.length, title, { spotlight: !OPTIONAL_SPOT.has(title) });
+      if (title === "The look, before building") {
+        // Back shows the previous card; Next comes back.
+        await card(page).getByRole("button", { name: "Back" }).click();
+        await atCard(page, 1, i, STORY.length, STORY[i - 1]);
+        await next(page, ACTS[STORY[i - 1]]);
+        await atCard(page, 1, i + 1, STORY.length, title, { spotlight: true });
+      }
+      if (title === "Proof per part") {
+        // Build from the Plan tab opened the App view, with Parts and Chat open.
+        await expect(page).not.toHaveURL(/view=plan/);
+        await expect(page.getByRole("complementary", { name: "Parts" })).toBeVisible();
+        await expect(page.getByRole("complementary", { name: "Chat" })).toBeVisible();
+      }
+      if (title === "A blocker you can fix") {
+        // A reload mid-tour resumes on the same step.
+        await page.reload();
+        await atCard(page, 1, i + 1, STORY.length, title, { spotlight: true });
+      }
+      await next(page, ACTS[title]);
+    }
 
-      // Changing pages never minimises it.
-      await page.goto("/connections");
-      await expect(card(page)).toContainText("Step 1 of 5 · Write a plan");
-      // The card is outside the side nav, clear of the credits meter.
-      const nav = await page.getByRole("navigation", { name: "Workspace" }).boundingBox();
-      const box = await card(page).boundingBox();
-      expect(box!.x).toBeGreaterThanOrEqual(nav!.x + nav!.width);
+    // Chapter 2: each nav item, then its page.
+    for (let i = 0; i < AROUND_ON.length; i++) {
+      const label = AROUND_ON[i];
+      await atCard(page, 2, i + 1, AROUND_ON.length, label, { spotlight: true });
+      await next(page, `Open ${label}`);
+      await atCard(page, 2, i + 1, AROUND_ON.length, label, { spotlight: label !== "Agents" });
+      if (label === "Settings") {
+        await expect(page).toHaveURL(/\/settings\/members$/);
+        await next(page);
+        await atCard(page, 2, i + 1, AROUND_ON.length, label, { spotlight: true });
+        await expect(card(page)).toContainText("Docs, What's new, Trash and the community live in Resources");
+      }
+      await next(page);
+    }
 
-      // Only × minimises it, to a small pill, saved across reloads; the pill brings it back.
-      await card(page).getByRole("button", { name: "Minimise the tour" }).click();
-      await expect(page.getByRole("button", { name: "Show the tour · 0 of 5" })).toBeVisible();
-      await expect.poll(() => events("tour_minimised")).toContain("guide");
-      await page.reload();
-      await page.getByRole("button", { name: "Show the tour · 0 of 5" }).click();
-      await expect(card(page)).toBeVisible();
+    // Chapter 3: Help and ⌘K, then the finish.
+    await atCard(page, 3, 1, 2, "Help and ⌘K", { spotlight: true });
+    await next(page);
+    await atCard(page, 3, 2, 2, "You've seen the whole story");
+    await expect(card(page).getByRole("link", { name: /Read the README/ })).toBeVisible();
+    await expect(card(page).getByRole("button", { name: "Reset demo data" })).toBeVisible();
+    await next(page, "Explore on your own");
+    await expect(card(page)).toHaveCount(0);
+    await expect.poll(async () => ((await db.from("user_preferences").select("tour").eq("user_id", user!.id).single()).data!.tour as { finished?: boolean }).finished).toBe(true);
+    // Take the tour stays in the side nav.
+    await page.goto("/home");
+    await expect(page.getByRole("navigation", { name: "Workspace" }).getByRole("button", { name: "Take the tour" })).toBeVisible();
+  });
 
-      // Don't show again, from All steps; it stays gone; ⌘K brings it back with its steps open.
-      await card(page).getByRole("button", { name: "All steps" }).click();
-      await page.getByRole("dialog").getByRole("button", { name: "Don't show again" }).click();
-      await expect(card(page)).toHaveCount(0);
-      await page.goto("/home");
-      await expect(card(page)).toHaveCount(0);
-      await page.keyboard.press("ControlOrMeta+k");
-      await page.getByRole("combobox", { name: "Search" }).fill("tour");
-      await page.getByRole("option", { name: /Take the tour/ }).click();
-      await expect(card(page)).toBeVisible();
-      await expect(page.getByRole("dialog").filter({ hasText: /^The tour · / })).toBeVisible();
-    });
+  test("Skip on the welcome; Take the tour; Skip this chapter; Skip tour mid-way and Take the tour resumes there", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    user = await createTestUser("tourskip", { fresh: true });
+    await signIn(page, user);
+    const welcome = page.getByRole("alertdialog");
+    await welcome.getByRole("button", { name: "Skip" }).click();
+    await expect(welcome).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole("alertdialog")).toHaveCount(0);
+
+    // Resources has Take the tour; so does the side nav, which opens the welcome again.
+    await page.getByRole("button", { name: "Resources" }).click();
+    await expect(page.getByRole("menuitem", { name: "Take the tour" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page.getByRole("navigation", { name: "Workspace" }).getByRole("button", { name: "Take the tour" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Start the tour" }).click();
+    await atCard(page, 1, 1, STORY.length, STORY[0], { spotlight: true });
+
+    // Skip this chapter: straight to chapter 2.
+    await card(page).getByRole("button", { name: "Skip this chapter" }).click();
+    await atCard(page, 2, 1, AROUND_ON.length, "Home", { spotlight: true });
+    await next(page, "Open Home");
+    await atCard(page, 2, 1, AROUND_ON.length, "Home", { spotlight: true });
+    await next(page);
+    await atCard(page, 2, 2, AROUND_ON.length, "Projects", { spotlight: true });
+    // Skip tour, then Take the tour (here from ⌘K) picks up where it was.
+    await card(page).getByRole("button", { name: "Skip tour" }).click();
+    await expect(card(page)).toHaveCount(0);
+    await page.reload();
+    await expect(card(page)).toHaveCount(0);
+    await page.keyboard.press("ControlOrMeta+k");
+    await page.getByRole("combobox", { name: "Search" }).fill("tour");
+    await page.getByRole("option", { name: /Take the tour/ }).click();
+    await atCard(page, 2, 2, AROUND_ON.length, "Projects", { spotlight: true });
+  });
+
+  test("chapter 2 with governance off: no Approvals or Governance, and Settings says what turning it on adds", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    user = await createTestUser("touroff");
+    await signIn(page, user);
+    const ws = await demoWorkspace(user);
+    const db = adminDb();
+    await db.from("workspaces").update({ governance_enabled: false }).eq("id", ws);
+    await db.from("user_preferences").upsert({ user_id: user.id, tour: { welcomed: true, started: true, chapter: "around", step: "nav-home" } });
+    await page.goto("/home");
+    for (let i = 0; i < AROUND_OFF.length; i++) {
+      const label = AROUND_OFF[i];
+      await atCard(page, 2, i + 1, AROUND_OFF.length, label, { spotlight: true });
+      if (label === "Settings") await expect(card(page)).toContainText("Turning governance on here adds Approvals and Governance to the nav.");
+      await next(page, `Open ${label}`);
+      await atCard(page, 2, i + 1, AROUND_OFF.length, label);
+      if (label === "Settings") {
+        await next(page);
+        await atCard(page, 2, i + 1, AROUND_OFF.length, label);
+      }
+      await next(page);
+    }
+    await atCard(page, 3, 1, 2, "Help and ⌘K", { spotlight: true });
   });
 });

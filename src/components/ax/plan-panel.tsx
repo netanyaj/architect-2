@@ -138,6 +138,8 @@ export function PlanRow({
   return (
     <button
       type="button"
+      // The tour's "Proof per part" step opens the first part that works.
+      data-tour={status === "works" ? "part-works" : undefined}
       onClick={onClick}
       aria-current={selected ? "true" : undefined}
       className={cn(

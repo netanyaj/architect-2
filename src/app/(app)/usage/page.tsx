@@ -51,7 +51,7 @@ export default async function UsagePage() {
           <SimTag />
         </p>
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div data-tour="usage-totals" className="grid gap-3 sm:grid-cols-3">
         {stat("Credits left", `${left.toLocaleString("en-US")} / ${ctx.workspace.creditsTotal.toLocaleString("en-US")}`, `Resets ${formatResetDate(ctx.workspace.creditsResetOn)}`)}
         {stat("Used this month", used.toLocaleString("en-US"), "Plans, builds, fixes and running apps")}
         {stat("Spent on fixes", fixes.toLocaleString("en-US"), "Up to 3 tries per part, then it stops")}
