@@ -2,12 +2,10 @@
 //   *.mmd  Mermaid, rendered in Chromium with mermaid (from jsDelivr) and the shared _config.json
 //   *.svg  hand-made SVG (from the hero.py, prototype.py and system_map.py generators), copied and rasterised
 // Writes <name>.svg and <name>.png (2×) beside the sources' folder, and copies each Mermaid source into its ```mermaid
-// block in ARCHITECTURE.md (the block just above its [PNG](diagrams/<name>.png) link), then regenerates
-// ARCHITECTURE-standalone.md (scripts/standalone-architecture.mjs). Usage: node scripts/render-diagrams.mjs [name…]
+// block in ARCHITECTURE.md (the block just above its [PNG](diagrams/<name>.png) link). Usage: node scripts/render-diagrams.mjs [name…]
 import { chromium } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 
 const DIR = path.join(process.cwd(), "docs/product/diagrams");
 const SRC = path.join(DIR, "src");
@@ -56,6 +54,3 @@ for (const file of sources.filter((f) => f.endsWith(".mmd"))) {
   else console.log("no block in ARCHITECTURE.md for", name);
 }
 fs.writeFileSync(docPath, doc);
-
-// The standalone copy (absolute image URLs, PNGs for the Mermaid blocks, no <details>) follows ARCHITECTURE.md.
-execFileSync(process.execPath, [path.join(process.cwd(), "scripts/standalone-architecture.mjs")], { stdio: "inherit" });

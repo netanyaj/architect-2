@@ -1,8 +1,8 @@
-// Writes docs/product/ARCHITECTURE-standalone.md from ARCHITECTURE.md: a copy that works when downloaded on its own.
+// Writes a standalone copy of docs/product/ARCHITECTURE.md that works when downloaded on its own (it isn't kept in the repo).
 // - every image and every ```mermaid block becomes a PNG from raw.githubusercontent.com (the separate [PNG] links go);
 // - links to other files in the repo point at github.com;
 // - <details> sections become plain sections, since many Markdown viewers don't support them.
-// Run by scripts/render-diagrams.mjs after each render, or on its own: node scripts/standalone-architecture.mjs
+// Usage: node scripts/standalone-architecture.mjs <output file>, e.g. ~/Downloads/ARCHITECTURE-standalone.md
 import fs from "node:fs";
 import path from "node:path";
 
@@ -13,7 +13,11 @@ const TREE = `https://github.com/${REPO}/tree/main/`;
 const DOC_DIR = "docs/product";
 const root = process.cwd();
 const src = path.join(root, DOC_DIR, "ARCHITECTURE.md");
-const out = path.join(root, DOC_DIR, "ARCHITECTURE-standalone.md");
+const out = process.argv.slice(2).find((a) => !a.startsWith("--"));
+if (!out) {
+  console.error("Usage: node scripts/standalone-architecture.mjs <output file>");
+  process.exit(1);
+}
 
 /** A path relative to docs/product, as a path from the repo root. */
 const fromRoot = (rel) => path.posix.normalize(path.posix.join(DOC_DIR, rel));
@@ -50,7 +54,9 @@ for (let i = 0; i < lines.length; i++) {
   if (summary) {
     const nextText = lines.slice(i + 1).find((l) => l.trim() !== "") ?? "";
     if (/^#{1,6} /.test(nextText)) continue;
-    outLines.push(`**${summary[1].replace(/<\/?b>/g, "")}**`);
+    // "<b>3.1 Web app…</b> · click to open" becomes the subsection's heading; other summaries a bold line.
+    const text = summary[1].replace(/<\/?b>/g, "").replace(/^Show (\w)/, (_, c) => c.toUpperCase());
+    outLines.push(/^\d+\.\d+ /.test(text) ? `### ${text}` : `**${text}**`);
     continue;
   }
   outLines.push(line);
@@ -58,7 +64,7 @@ for (let i = 0; i < lines.length; i++) {
 doc = outLines.join("\n").replace(/\n{3,}/g, "\n\n");
 
 // The note about folded sections doesn't apply here.
-doc = doc.replace(/ The deep sections \([^)]*\) are folded: click a title to open it\./, "");
+doc = doc.replace(/\nEach component below opens with a click\.\n/, "");
 
 // Under the title: where to read it best.
 doc = doc.replace(/^(# [^\n]+\n)/, `$1\nBest viewed on GitHub: https://github.com/${REPO}/blob/main/${DOC_DIR}/ARCHITECTURE.md\n`);
@@ -68,5 +74,5 @@ fs.writeFileSync(out, banner + doc);
 
 const images = [...doc.matchAll(/!\[[^\]]*\]\((https:[^)\s]+)\)/g)].map((m) => m[1]);
 const leftovers = { mermaid: (doc.match(/```mermaid/g) ?? []).length, png: (doc.match(/\[PNG\]\(/g) ?? []).length, details: (doc.match(/<\/?details>|<summary>/g) ?? []).length };
-console.log(`ARCHITECTURE-standalone.md written: ${images.length} images, leftovers ${JSON.stringify(leftovers)}`);
+console.log(`${out} written: ${images.length} images, leftovers ${JSON.stringify(leftovers)}`);
 if (process.argv.includes("--list")) for (const u of images) console.log(u);
