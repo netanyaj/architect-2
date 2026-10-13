@@ -320,3 +320,42 @@ describe("Not in Studio yet · Retry, and agents made when their part works (M5.
     expect(db.tables.items.find((i) => i.key === "urgency")!.status).toBe("built");
   });
 });
+
+/* When it runs (round 7, Simulated): a schedule on the app's first agent, saved on its own. */
+describe("saveSchedule", () => {
+  beforeEach(() => {
+    db.tables.agents.push({ ...agentRow });
+  });
+
+  it("saves a schedule on the first agent, audits it, and the agents view reads it back", async () => {
+    const { saveSchedule, loadAgents } = await actions();
+    const r = await saveSchedule({ agentId: A, schedule: { days: "weekdays", time: "8:00", tz: "Europe/London" } });
+    expect(r).toEqual({ ok: true, schedule: { days: "weekdays", time: "08:00", tz: "Europe/London" } });
+    expect(JSON.parse(db.tables.agents[0].schedule as string)).toEqual({ days: "weekdays", time: "08:00", tz: "Europe/London" });
+    expect(db.tables.audit_log[0]).toMatchObject({ action: "agent.schedule_changed", target: "Urgency and team label" });
+    const loaded = await loadAgents({ projectId: P });
+    if (!loaded.ok) throw new Error(loaded.message);
+    expect(loaded.data.schedule).toEqual({ days: "weekdays", time: "08:00", tz: "Europe/London" });
+    expect(loaded.data.scheduleAgentId).toBe(A);
+    // The plan's own trigger is kept, for "start on its trigger".
+    expect(loaded.data.trigger.title).toBe("Zendesk");
+  });
+
+  it("null switches the schedule off: it starts on its trigger again", async () => {
+    const { saveSchedule, loadAgents } = await actions();
+    await saveSchedule({ agentId: A, schedule: { days: "daily", time: "09:00", tz: "" } });
+    expect(await saveSchedule({ agentId: A, schedule: null })).toEqual({ ok: true, schedule: null });
+    const loaded = await loadAgents({ projectId: P });
+    if (!loaded.ok) throw new Error(loaded.message);
+    expect(loaded.data.schedule).toBeNull();
+  });
+
+  it("refuses a time or time zone that doesn't exist, and viewers", async () => {
+    const { saveSchedule } = await actions();
+    expect(await saveSchedule({ agentId: A, schedule: { days: "daily", time: "25:00", tz: "" } })).toEqual({ ok: false, message: "Pick a time, for example 8:00." });
+    expect(await saveSchedule({ agentId: A, schedule: { days: "daily", time: "09:00", tz: "Mars/Olympus" } })).toEqual({ ok: false, message: "Pick a time zone from the list." });
+    role = "viewer";
+    expect(await saveSchedule({ agentId: A, schedule: null })).toMatchObject({ ok: false });
+    expect(db.tables.agents[0].schedule).toBeUndefined();
+  });
+});

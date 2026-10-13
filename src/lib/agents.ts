@@ -7,6 +7,7 @@
  */
 import type { ModelChoice } from "./models";
 import { providerName } from "./providers";
+import { scheduleFromText, scheduleWords, type Schedule } from "./schedule";
 import { usesMeetingPrepSample } from "./sim/preview";
 
 export type PlanPart = {
@@ -50,6 +51,8 @@ export type AgentGraphSpec = {
   /** Tool name → service, for every tool the plan's parts name. */
   toolProviders: Record<string, string>;
   sample: boolean;
+  /** When the plan says it runs on a schedule ("Daily schedule"): that schedule, read from its words. Null otherwise. */
+  schedule: Schedule | null;
 };
 
 const INACTIVE = new Set(["deferred", "dropped"]);
@@ -125,6 +128,7 @@ function meetingPrepSample(parts: PlanPart[]): AgentGraphSpec | null {
   const meeting = SAMPLE_BY_PROVIDER.google_calendar;
   return {
     sample: true,
+    schedule: null,
     trigger: { label: "Starts when", title: "Google Calendar", detail: "30 min before each meeting", edge: "Meeting coming up" },
     delivery: { label: "Delivers to", title: "Slack message", detail: "To you", edge: "Sends the brief" },
     toolProviders: { Gmail: "gmail", HubSpot: "hubspot" },
@@ -171,7 +175,7 @@ export function agentGraph(input: { projectName: string; prompt: string | null; 
 
   const triggerPart = integrations.find((p) => READS.test(p.title) && !SENDS.test(p.title)) ?? integrations.find((p) => !SENDS.test(p.title));
   const deliveryPart = [...integrations].reverse().find((p) => p !== triggerPart && SENDS.test(`${p.title} ${p.description ?? ""}`));
-  const schedule = parts.find((p) => p.grp === "features" && SCHEDULE.test(p.title));
+  const schedule = parts.find((p) => (p.grp === "features" || p.grp === "quality") && SCHEDULE.test(p.title));
   const triggerService = triggerPart ? (triggerPart.provider ?? serviceIn(`${triggerPart.title} ${triggerPart.description ?? ""}`)) : null;
   const deliveryService = deliveryPart ? (deliveryPart.provider ?? serviceIn(`${deliveryPart.title} ${deliveryPart.description ?? ""}`)) : null;
   const trigger: GraphEnd = triggerPart
@@ -200,6 +204,7 @@ export function agentGraph(input: { projectName: string; prompt: string | null; 
   const sampleFrom = (sampleService && SAMPLE_BY_PROVIDER[sampleService]) || null;
   return {
     sample: false,
+    schedule: schedule && !triggerPart ? (scheduleFromText(`${schedule.title} ${schedule.description ?? ""} ${schedule.provedWhen}`) ?? { days: "daily", time: "09:00", tz: "" }) : null,
     trigger,
     delivery,
     toolProviders,
@@ -222,6 +227,23 @@ export function agentGraph(input: { projectName: string; prompt: string | null; 
       };
     }),
   };
+}
+
+/**
+ * The graph's first node once a schedule is set (round 7): "On a schedule · Weekdays at 8:00, your time zone".
+ * Without one, the trigger the plan implies.
+ */
+export function triggerFor(trigger: GraphEnd, schedule: Schedule | null, viewerTz?: string): GraphEnd & { scheduled: boolean } {
+  // A plan's schedule part, switched off: someone starts it from the app instead.
+  if (!schedule && trigger.title === "On a schedule") return { label: "Starts when", title: "Someone uses the app", detail: "From the app's screen", edge: "A request comes in", scheduled: false };
+  if (!schedule) return { ...trigger, scheduled: false };
+  return { label: "Starts when", title: "On a schedule", detail: scheduleWords(schedule, viewerTz), edge: "Time to run", scheduled: true };
+}
+
+/** The "start on its trigger" choice in the schedule editor: "New ticket in Zendesk", "When someone uses the app". */
+export function triggerChoice(trigger: GraphEnd): string {
+  if (trigger.title === "On a schedule" || trigger.title === "Someone uses the app") return "When someone uses the app";
+  return `${trigger.edge} in ${trigger.title}`;
 }
 
 /** Where an agent runs, in plain words (B-6, BL-8). Imported CrewAI and LangGraph agents are Simulated. */

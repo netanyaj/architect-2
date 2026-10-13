@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { CONVERT_CREDITS, type AgentOrigin, type GraphEnd } from "@/lib/agents";
+import { parseSchedule, SCHEDULE_DAYS, storeSchedule, TIME_RE, padTime, validTimeZone, type Schedule } from "@/lib/schedule";
 import { startOfDayUtc } from "@/lib/plan-limit";
 import type { Json } from "@/lib/database.types";
 import { GatewayRateLimited, GatewaySlow, GatewayUnavailable, runAgent, type AgentRuntime } from "@/lib/gateway";
@@ -78,7 +79,15 @@ export type AgentView = {
 };
 
 export type AgentsData = {
+  /** What the plan implies starts the app; the view shows `schedule` in its place when there is one. */
   trigger: GraphEnd;
+  /**
+   * When the app runs on the clock (round 7, Simulated): saved on the first agent, the one the trigger starts, or read
+   * from the plan's schedule part. Null: it starts on its trigger.
+   */
+  schedule: Schedule | null;
+  /** The agent whose settings hold the schedule (the first one). */
+  scheduleAgentId: string | null;
   delivery: GraphEnd;
   toolProviders: Record<string, string>;
   agents: AgentView[];
@@ -248,10 +257,15 @@ export async function loadAgents(input: { projectId: string }): Promise<ActionRe
     runsByAgent[row.id] = [...tryRuns, ...buildRuns].sort((x, y) => y.at.localeCompare(x.at));
   }
 
+  // The schedule lives on the first agent (the one the trigger starts); never set, it's what the plan says.
+  const first = agents[0];
+  const stored = parseSchedule(rows.find((r) => r.id === first?.id)?.schedule);
   return {
     ok: true,
     data: {
       trigger: spec.trigger,
+      schedule: stored === "off" ? null : (stored ?? spec.schedule),
+      scheduleAgentId: first?.id ?? null,
       delivery: spec.delivery,
       toolProviders: spec.toolProviders,
       agents,
@@ -517,4 +531,36 @@ export async function setAgentRun(raw: z.input<typeof runInput>): Promise<Action
   });
   revalidatePath(`/p/${row.project_id}`);
   return { ok: true, lyzrAgentId, warning };
+}
+
+const scheduleInput = z.object({
+  agentId: uuid,
+  schedule: z
+    .object({
+      days: z.enum(SCHEDULE_DAYS),
+      time: z.string().regex(TIME_RE, "Pick a time, for example 8:00."),
+      tz: z.string().max(64).refine(validTimeZone, "Pick a time zone from the list."),
+    })
+    .nullable(),
+});
+
+/**
+ * When the app runs (round 7, Simulated): a schedule on its first agent, or null to start on its trigger. Saved on
+ * its own, so it works on the shared demo agent too: it's this project's, and nothing goes to Lyzr Studio. Nothing
+ * runs on the clock in this prototype; real schedules would run in the cell's orchestrator.
+ */
+export async function saveSchedule(input: z.input<typeof scheduleInput>): Promise<ActionResult<{ schedule: Schedule | null }>> {
+  const ctx = await getAppContext();
+  if (!canBuild(ctx.role)) return { ok: false, message: BUILDERS_ONLY };
+  const parsed = scheduleInput.safeParse(input);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "That schedule isn't valid." };
+  const admin = createAdminDb();
+  const row = await agentInWorkspace(admin, parsed.data.agentId, ctx.workspace.id);
+  if (!row) return { ok: false, message: "That agent isn't in this workspace." };
+  const schedule = parsed.data.schedule ? { ...parsed.data.schedule, time: padTime(parsed.data.schedule.time) } : null;
+  const { error } = await admin.from("agents").update({ schedule: storeSchedule(schedule), updated_at: new Date().toISOString() }).eq("id", row.id);
+  if (error) return { ok: false, message: "The schedule couldn't be saved. Try again." };
+  await admin.from("audit_log").insert({ workspace_id: ctx.workspace.id, actor: ctx.name, action: "agent.schedule_changed", target: row.name, details: { agent_id: row.id, schedule } as Json });
+  revalidatePath(`/p/${row.project_id}`);
+  return { ok: true, schedule };
 }

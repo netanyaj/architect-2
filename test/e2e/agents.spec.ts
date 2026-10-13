@@ -113,4 +113,42 @@ test.describe("M4 · M5.10: Agents in the workspace's own Lyzr Studio", () => {
     await expect(writer.getByText("Its check")).toBeVisible();
     made.push(...(await studioAgents(id)));
   });
+  test("Round 7: the trigger is editable: a schedule set in Agent settings shows on the graph, labelled Simulated", async ({ page }) => {
+    await signIn(page, user);
+    const id = await projectId(user, "Meeting Prep");
+    await page.goto(`/p/${id}?view=agents`);
+    const graph = page.getByRole("group", { name: "How the agents connect" });
+    // The first node is a button: it opens the first agent's settings with the schedule focused.
+    await graph.getByRole("button", { name: /^Starts when Google Calendar, 30 min before each meeting\. Change when it runs$/ }).click();
+    const research = panel(page, "Research agent");
+    const when = research.getByRole("group", { name: /When it runs/ });
+    await expect(when.getByText("Simulated")).toBeVisible();
+    await expect(when.getByLabel("Starts")).toBeFocused();
+    await expect(when.getByLabel("Starts")).toHaveValue("trigger");
+    await expect(when.getByRole("button", { name: "Save schedule" })).toHaveAttribute("aria-disabled", "true");
+    // Even on the read-only demo agent: the schedule is this project's, and nothing goes to Studio.
+    await when.getByLabel("Starts").selectOption("schedule");
+    await when.getByLabel("Days").selectOption("weekdays");
+    await when.getByLabel("Time", { exact: true }).fill("08:00");
+    await when.getByRole("button", { name: "Save schedule" }).click();
+    await expect(when.getByRole("status")).toHaveText("Saved: Weekdays at 8:00, your time zone.");
+    const trigger = graph.getByRole("button", { name: /^Starts when On a schedule, Weekdays at 8:00, your time zone \(simulated\)\. Change when it runs$/ });
+    await expect(trigger).toContainText("Weekdays at 8:00, your time zone");
+    await expect(trigger.getByText("Simulated")).toBeVisible();
+    const { data: row } = await adminDb().from("agents").select("schedule").eq("project_id", id).eq("name", "Research agent").single();
+    expect(JSON.parse(row!.schedule!)).toMatchObject({ days: "weekdays", time: "08:00" });
+
+    // It's kept after a reload, and the next agent says what starts it.
+    await page.reload();
+    await expect(trigger).toBeVisible();
+    await graph.getByRole("button", { name: "Brief writer: open its settings" }).click();
+    await expect(panel(page, "Brief writer").getByText("Starts when Research agent hands over.")).toBeVisible();
+
+    // Back to its trigger.
+    await trigger.click();
+    await when.getByLabel("Starts").selectOption("trigger");
+    await when.getByRole("button", { name: "Save schedule" }).click();
+    await expect(when.getByRole("status")).toHaveText("Saved: it starts on its trigger.");
+    await expect(graph.getByRole("button", { name: /^Starts when Google Calendar/ })).toBeVisible();
+  });
 });

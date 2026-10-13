@@ -18,7 +18,7 @@ const uuid = z.string().uuid();
 const WORKS = ["built", "sample_data"];
 
 export const AGENT_COLUMNS =
-  "id, workspace_id, project_id, item_key, name, description, framework, model, instructions, tools, knowledge, temperature, max_tokens, lyzr_agent_id, studio_synced_at, studio_error, run_as" as const;
+  "id, workspace_id, project_id, item_key, name, description, framework, model, instructions, tools, knowledge, temperature, max_tokens, lyzr_agent_id, studio_synced_at, studio_error, run_as, schedule" as const;
 
 export type AgentRow = {
   id: string;
@@ -38,6 +38,8 @@ export type AgentRow = {
   studio_synced_at: string | null;
   studio_error: string | null;
   run_as: string;
+  /** JSON text (src/lib/schedule.ts): when the app's first agent runs, Simulated. */
+  schedule: string | null;
 };
 
 /** The seeded Research agent in Meeting Prep: the one shared demo agent (M5.10). */

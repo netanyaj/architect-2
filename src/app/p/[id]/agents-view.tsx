@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Button, buttonClasses, IconButton, TextLink } from "@/components/ax/button";
 import { AgentGlyph } from "@/components/ax/AgentGlyph";
 import { EmptyState } from "@/components/ax/empty-state";
@@ -15,7 +15,8 @@ import { Segmented } from "@/components/ax/segmented";
 import { StatusMark } from "@/components/ax/status-mark";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { agentGraph, changesBetween, CONVERT_CREDITS, GRAPH, layoutGraph, runtimeLine, studioUrl, type AgentDraft, type GraphEnd } from "@/lib/agents";
+import { agentGraph, changesBetween, CONVERT_CREDITS, GRAPH, layoutGraph, runtimeLine, studioUrl, triggerChoice, triggerFor, type AgentDraft, type GraphEnd } from "@/lib/agents";
+import { COMMON_ZONES, DAY_WORDS, SCHEDULE_DAYS, sameSchedule, scheduleWords, viewerTimeZone, zoneWords, type Schedule, type ScheduleDays } from "@/lib/schedule";
 import { MODEL_LABEL, type ModelChoice } from "@/lib/models";
 import { agentRole } from "@/lib/brand";
 import { canBuild } from "@/lib/permissions";
@@ -23,7 +24,7 @@ import { PROVIDERS, providerName } from "@/lib/providers";
 import { relativeTime } from "@/lib/project-status";
 import { useUi } from "@/lib/ui-store";
 import { cn } from "@/lib/utils";
-import { loadAgents, retryStudio, saveAgent, setAgentRun, tryAgent, type AgentRunView, type AgentsData, type AgentView } from "@/server/actions/agents";
+import { loadAgents, retryStudio, saveAgent, saveSchedule, setAgentRun, tryAgent, type AgentRunView, type AgentsData, type AgentView } from "@/server/actions/agents";
 import { loadPart, type PartDetail } from "@/server/actions/run";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
 import { rowFor } from "./build-stage";
@@ -110,6 +111,134 @@ function EndNode({ end, x, y }: { end: GraphEnd; x: number; y: number }) {
   );
 }
 
+const SCHEDULE_SIM = "Nothing runs on the clock in this prototype. Real schedules would run in the cell's orchestrator.";
+
+/** The graph's first node (round 7): what starts the app, or its schedule. A button: it opens the schedule editor. */
+function TriggerNode({ end, scheduled, x, y, onEdit }: { end: GraphEnd; scheduled: boolean; x: number; y: number; onEdit: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onEdit}
+      aria-label={`${end.label} ${end.title}${end.detail ? `, ${end.detail}` : ""}${scheduled ? " (simulated)" : ""}. Change when it runs`}
+      className="absolute flex flex-col gap-1 rounded-[14px] border border-line bg-surface px-3.5 py-2.5 text-left text-ink shadow-[0_2px_8px_rgba(0,0,0,.06)] hover:border-line-ctl"
+      style={{ left: x, top: y, width: GRAPH.nodeW, minHeight: GRAPH.nodeH }}
+    >
+      <span className="flex items-center gap-2 text-small font-semibold text-ink-3">
+        <span className="flex-1">{end.label}</span>
+        {scheduled ? <SimTag title={SCHEDULE_SIM} className="h-5 px-1.5" /> : <Icon name="clock" size="sm" />}
+      </span>
+      <strong className="font-[650]">{end.title}</strong>
+      {end.detail && <span className="truncate text-small text-ink-2">{end.detail}</span>}
+    </button>
+  );
+}
+
+/**
+ * When it runs (round 7, Simulated), in the first agent's settings: on its trigger, or on a schedule ("Weekdays at
+ * 8:00, your time zone"). Saved on its own, apart from Save changes, so it works on the read-only demo agent too.
+ */
+function ScheduleSection({
+  agent,
+  trigger,
+  schedule,
+  readOnly,
+  viewerTz,
+  onSaved,
+}: {
+  agent: AgentView;
+  trigger: GraphEnd;
+  schedule: Schedule | null;
+  readOnly: boolean;
+  viewerTz: string;
+  onSaved: (s: Schedule | null) => void;
+}) {
+  const fallback: Schedule = { days: "weekdays", time: "08:00", tz: viewerTz };
+  const [on, setOn] = useState(Boolean(schedule));
+  const [draft, setDraft] = useState<Schedule>(schedule ? { ...schedule, tz: schedule.tz || viewerTz } : fallback);
+  const [pending, start] = useTransition();
+  const [note, setNote] = useState<{ kind: "error" | "info"; text: string }>();
+  const next = on ? draft : null;
+  const changed = !sameSchedule(next, schedule ? { ...schedule, tz: schedule.tz || viewerTz } : null);
+  const zones = Array.from(new Set([viewerTz, draft.tz, ...COMMON_ZONES].filter(Boolean)));
+  const reason = readOnly ? "Viewers can't change agents." : undefined;
+  const save = () =>
+    start(async () => {
+      setNote(undefined);
+      const r = await saveSchedule({ agentId: agent.id, schedule: next });
+      if (!r.ok) return setNote({ kind: "error", text: r.message });
+      onSaved(r.schedule);
+      setNote({ kind: "info", text: r.schedule ? `Saved: ${scheduleWords(r.schedule, viewerTz)}.` : "Saved: it starts on its trigger." });
+    });
+  const field = "flex flex-col gap-1 text-small font-semibold text-ink-2";
+  return (
+    <fieldset className="flex flex-col gap-2 rounded-card border border-line p-3">
+      <legend className="flex items-center gap-2 px-1 text-small font-semibold text-ink-2">
+        When it runs
+        <SimTag title={SCHEDULE_SIM} />
+      </legend>
+      <label className={field}>
+        Starts
+        <Select
+          id={`when-${agent.id}`}
+          value={on ? "schedule" : "trigger"}
+          aria-disabled={reason ? true : undefined}
+          title={reason}
+          onChange={(e) => !reason && setOn(e.target.value === "schedule")}
+          wrapperClassName="self-start max-w-full"
+        >
+          <option value="trigger">{triggerChoice(trigger)}</option>
+          <option value="schedule">On a schedule</option>
+        </Select>
+      </label>
+      {on && (
+        <div className="flex flex-wrap gap-2">
+          <label className={field}>
+            Days
+            <Select value={draft.days} aria-disabled={reason ? true : undefined} title={reason} onChange={(e) => !reason && setDraft({ ...draft, days: e.target.value as ScheduleDays })}>
+              {SCHEDULE_DAYS.map((d) => (
+                <option key={d} value={d}>
+                  {DAY_WORDS[d]}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className={field}>
+            Time
+            <input
+              type="time"
+              value={draft.time}
+              readOnly={Boolean(reason)}
+              onChange={(e) => e.target.value && setDraft({ ...draft, time: e.target.value })}
+              className="min-h-8 rounded-full border border-line-ctl bg-surface px-3 text-body font-[550] text-ink tabular-nums"
+            />
+          </label>
+          <label className={field}>
+            Time zone
+            <Select value={draft.tz} aria-disabled={reason ? true : undefined} title={reason} onChange={(e) => !reason && setDraft({ ...draft, tz: e.target.value })} wrapperClassName="max-w-full">
+              {zones.map((z) => (
+                <option key={z} value={z}>
+                  {z === viewerTz ? `Your time zone (${zoneWords(z).replace(/ time$/, "")})` : zoneWords(z).replace(/ time$/, "")}
+                </option>
+              ))}
+            </Select>
+          </label>
+        </div>
+      )}
+      <p className="text-small text-ink-2">{on ? `Runs ${scheduleWords(draft, viewerTz).replace(/^\w/, (c) => c.toLowerCase())}. ` : ""}{SCHEDULE_SIM}</p>
+      {!readOnly && (
+        <Button size="sm" className="self-start" disabledReason={pending ? "Saving…" : changed ? undefined : "No changes to the schedule."} onClick={save}>
+          {pending ? "Saving…" : "Save schedule"}
+        </Button>
+      )}
+      {note && (
+        <p role={note.kind === "error" ? "alert" : "status"} className={cn("text-small", note.kind === "error" ? "font-semibold text-failed" : "text-ink-2")}>
+          {note.text}
+        </p>
+      )}
+    </fieldset>
+  );
+}
+
 function AgentNodeStatus({ agent, item }: { agent: AgentView; item: WorkspaceItem | undefined }) {
   const status = item?.status ?? agent.status;
   const model = shortModel(agent.model);
@@ -129,6 +258,8 @@ function Graph({
   onSelect,
   connected,
   denied,
+  viewerTz,
+  onEditSchedule,
 }: {
   data: AgentsData;
   drafts: Record<string, Draft>;
@@ -137,9 +268,12 @@ function Graph({
   onSelect: (key: string) => void;
   connected: string[];
   denied: string[];
+  viewerTz: string;
+  onEditSchedule: () => void;
 }) {
   const agents = data.agents.map((a) => ({ ...a, ...(drafts[a.id] ?? {}) }));
-  const layout = layoutGraph({ trigger: data.trigger, delivery: data.delivery, agents }, data.toolProviders);
+  const trigger = triggerFor(data.trigger, data.schedule, viewerTz);
+  const layout = layoutGraph({ trigger, delivery: data.delivery, agents }, data.toolProviders);
   const [zoom, setZoom] = useState(1);
   const box = useRef<HTMLDivElement>(null);
   const fit = () => {
@@ -149,7 +283,7 @@ function Graph({
   };
   const byKey = new Map(items.map((i) => [i.key, i]));
   const describe = [
-    `${data.trigger.label} ${data.trigger.title}`,
+    `${trigger.label} ${trigger.title}${trigger.scheduled ? `, ${trigger.detail}` : ""}`,
     ...agents.map((a) => `${a.name}${a.tools.length ? `, uses ${a.tools.join(", ")}` : ""}${a.knowledge.length ? `, knows ${a.knowledge.join(", ")}` : ""}, ${a.handoff.toLowerCase()}`),
     `${data.delivery.label.toLowerCase()} ${data.delivery.title}`,
   ].join(". ");
@@ -190,7 +324,7 @@ function Graph({
               </span>
             ))}
             {layout.main.map((m) => {
-              if (m.kind === "trigger") return <EndNode key={m.id} end={data.trigger} x={m.x} y={m.y} />;
+              if (m.kind === "trigger") return <TriggerNode key={m.id} end={trigger} scheduled={trigger.scheduled} x={m.x} y={m.y} onEdit={onEditSchedule} />;
               if (m.kind === "delivery") return <EndNode key={m.id} end={data.delivery} x={m.x} y={m.y} />;
               const a = agents[m.agentIndex!];
               const on = selected === a.key;
@@ -863,7 +997,16 @@ function AgentPanel({
   onSaved,
   onRan,
   onRunChanged,
+  viewerTz,
+  focusSchedule,
+  onScheduleFocused,
+  onScheduleSaved,
 }: {
+  viewerTz: string;
+  /** Set when the graph's trigger was clicked: open Settings and focus the schedule. */
+  focusSchedule: boolean;
+  onScheduleFocused: () => void;
+  onScheduleSaved: (s: Schedule | null) => void;
   onRunChanged: (fields: Partial<AgentView>) => void;
   agent: AgentView;
   saved: Draft;
@@ -882,6 +1025,17 @@ function AgentPanel({
   const [notice, setNotice] = useState<{ kind: "error" | "warning"; text: string }>();
   const readOnly = !canBuild(project.role) || agent.demo;
   const changes = changesBetween(saved, draft);
+  const holdsSchedule = data.scheduleAgentId === agent.id;
+  const before = data.agents[data.agents.findIndex((a) => a.id === agent.id) - 1];
+  useEffect(() => {
+    if (!focusSchedule) return;
+    // Next frame: Settings shows, then its schedule takes focus.
+    requestAnimationFrame(() => {
+      setTab("settings");
+      requestAnimationFrame(() => document.getElementById(`when-${agent.id}`)?.focus());
+    });
+    onScheduleFocused();
+  }, [focusSchedule, agent.id, onScheduleFocused]);
   const save = () =>
     start(async () => {
       setNotice(undefined);
@@ -921,6 +1075,12 @@ function AgentPanel({
         ]}
       />
       <div role="tabpanel" aria-label={tab === "try" ? "Try it" : tab.charAt(0).toUpperCase() + tab.slice(1)} className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-auto px-4 py-2.5">
+        {tab === "settings" &&
+          (holdsSchedule ? (
+            <ScheduleSection agent={agent} trigger={data.trigger} schedule={data.schedule} readOnly={!canBuild(project.role)} viewerTz={viewerTz} onSaved={onScheduleSaved} />
+          ) : (
+            before && <p className="text-small text-ink-2">Starts when {before.name} hands over.</p>
+          ))}
         {tab === "settings" && <SettingsTab agent={agent} draft={draft} setDraft={setDraft} project={project} readOnly={readOnly} lyzrModel={data.lyzr.model} mcpServers={data.mcpServers} onRunChanged={onRunChanged} />}
         {tab === "runs" &&
           (runs.length ? (
@@ -961,6 +1121,10 @@ export function AgentsView({ project, items }: { project: ProjectWorkspace; item
   const [data, setData] = useState<AgentsData | null>(null);
   const [error, setError] = useState<string>();
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
+  const [focusSchedule, setFocusSchedule] = useState(false);
+  const clearFocus = useCallback(() => setFocusSchedule(false), []);
+  // Only read once the agents have loaded, in the browser.
+  const viewerTz = useMemo(() => viewerTimeZone(), []);
   const version = project.plan?.version ?? 0;
 
   useEffect(() => {
@@ -1006,7 +1170,22 @@ export function AgentsView({ project, items }: { project: ProjectWorkspace; item
   const patch = (id: string, fields: Partial<AgentView>) => setData((d) => (d ? { ...d, agents: d.agents.map((a) => (a.id === id ? { ...a, ...fields } : a)) } : d));
   return (
     <div className="flex min-h-0 flex-1 gap-0 px-3 pb-3 max-lg:flex-col max-lg:gap-3">
-      <Graph data={data} drafts={drafts} items={items} selected={agentKey} onSelect={openAgent} connected={project.connected} denied={project.denied} />
+      <Graph
+        data={data}
+        drafts={drafts}
+        items={items}
+        selected={agentKey}
+        onSelect={openAgent}
+        connected={project.connected}
+        denied={project.denied}
+        viewerTz={viewerTz}
+        onEditSchedule={() => {
+          const first = data.agents.find((a) => a.id === data.scheduleAgentId);
+          if (!first) return;
+          openAgent(first.key);
+          setFocusSchedule(true);
+        }}
+      />
       {selected && (
         <AgentPanel
           key={selected.id}
@@ -1029,6 +1208,10 @@ export function AgentsView({ project, items }: { project: ProjectWorkspace; item
             });
           }}
           onRunChanged={(fields) => patch(selected.id, fields)}
+          viewerTz={viewerTz}
+          focusSchedule={focusSchedule}
+          onScheduleFocused={clearFocus}
+          onScheduleSaved={(schedule) => setData((d) => (d ? { ...d, schedule } : d))}
           onRan={(r) => {
             patch(selected.id, { lyzrAgentId: r.lyzrAgentId, syncedAt: r.syncedAt });
             setData((d) => (d ? { ...d, runs: { ...d.runs, [selected.id]: [r.run, ...(d.runs[selected.id] ?? [])] } } : d));
