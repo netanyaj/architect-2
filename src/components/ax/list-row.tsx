@@ -95,8 +95,8 @@ export function ListRow({
     <li
       className={cn(
         "relative flex flex-col gap-2 rounded-card border border-line bg-surface px-4 py-3.5 text-ink",
-        href && "hover:border-line-ctl",
-        selected && "border-2 border-ink",
+        href && "transition-colors hover:border-line-ctl",
+        selected && "border-2 border-ink px-[15px] py-[13px]",
         className,
       )}
     >

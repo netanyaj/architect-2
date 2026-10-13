@@ -31,8 +31,8 @@ export function VersionCards({
             aria-checked={on}
             onClick={() => onSelect?.(c.id)}
             className={cn(
-              "flex flex-col gap-1.5 rounded-card border border-line bg-surface p-3.5 text-left",
-              on && "border-2 border-ink",
+              "flex flex-col gap-1.5 rounded-card border border-line bg-surface p-3.5 text-left transition-colors",
+              on ? "border-2 border-ink p-[13px]" : "hover:border-line-ctl",
             )}
           >
             <span className="text-small font-[650] text-ink-3">{c.order}</span>
