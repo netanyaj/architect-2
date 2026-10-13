@@ -26,12 +26,12 @@ export function MasterDetail({
   return (
     <div className="flex min-h-0 flex-1 max-md:flex-col">
       <section aria-label={listLabel} className="flex flex-none flex-col border-r border-line bg-tray max-md:border-r-0 max-md:border-b md:w-[380px] md:rounded-l-pane">
-        <div className="flex flex-col gap-2.5 px-5 pt-[22px] pb-3">
+        <div className="flex flex-col gap-2.5 px-5 pt-6 pb-3">
           <h1 className="text-title font-[650]">{title}</h1>
           <div className="text-small text-ink-2">{intro}</div>
           {filters}
         </div>
-        <ul aria-label={listLabel} className="flex flex-col gap-1.5 px-2.5 pb-4">
+        <ul aria-label={listLabel} className="flex flex-col gap-2 px-2.5 pb-4">
           {rows}
         </ul>
       </section>
@@ -66,7 +66,7 @@ export function MasterRow({
         type="button"
         aria-current={on || undefined}
         onClick={onClick}
-        className={cn("flex w-full items-center gap-3 rounded-card border border-line bg-surface px-3.5 py-3 text-left hover:border-line-ctl", on && "border-2 border-ink px-[13px] py-[11px]")}
+        className={cn("flex w-full items-center gap-3 rounded-card border border-line bg-surface px-3.5 py-3 text-left transition-colors hover:border-line-ctl", on && "border-2 border-ink px-[13px] py-[11px]")}
       >
         <StatusMark status={status} icon={icon} />
         <span className="flex min-w-0 flex-1 flex-col">
@@ -84,7 +84,7 @@ export function DetailBody({ children, footer }: { children: ReactNode; footer?:
   return (
     <>
       <div className="flex-1 overflow-auto">
-        <div className="mx-auto flex max-w-[680px] flex-col gap-[18px] px-6 pt-7 pb-8 max-sm:px-4">{children}</div>
+        <div className="mx-auto flex max-w-[680px] flex-col gap-5 px-6 pt-6 pb-8 max-sm:px-4">{children}</div>
       </div>
       {footer && <div className="flex flex-wrap items-center gap-2 border-t border-line px-6 py-3.5 max-sm:px-4">{footer}</div>}
     </>
