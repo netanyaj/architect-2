@@ -829,7 +829,7 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
           {(dev || (planStage && (view === "app" || view === "agents") && project.plan && !writing && !failed) || (!planStage && (view === "app" || view === "agents"))) && (
             <div className="flex flex-wrap items-center gap-2.5 px-3 py-2.5">
               {dev && (
-                <span className="ml-auto">
+                <span data-tour="dev-repo" className="ml-auto">
                   <PrStatus project={project} items={items} />
                 </span>
               )}

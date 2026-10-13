@@ -32,6 +32,8 @@ export type TourPrefs = {
   step?: string;
   /** The project the tour made in chapter 1, for the steps that come back to it. */
   projectId?: string;
+  /** Steps whose action is done (the plan written, the build started…): Back and Next never do them again. */
+  acted?: string[];
 };
 
 /** What the tour needs to know about the person and their workspace, from the server. */
@@ -43,6 +45,9 @@ export type TourView = {
   chapter: Chapter | null;
   step: string | null;
   projectId: string | null;
+  acted: string[];
+  /** Whose tour this is: the tab's own copy of the position is kept per person. */
+  userId: string;
   /** A demo visitor (anonymous sign-in): their workspace is deleted after 7 days. */
   demoVisitor: boolean;
   governance: boolean;

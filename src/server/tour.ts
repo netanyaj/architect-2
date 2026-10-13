@@ -56,6 +56,8 @@ export async function tourFor(admin: AdminDb, ctx: AppContext): Promise<TourView
     chapter: active && prefs.chapter && (CHAPTERS as readonly string[]).includes(prefs.chapter) ? (prefs.chapter as Chapter) : active ? "story" : null,
     step: active ? (prefs.step ?? null) : null,
     projectId: prefs.projectId ?? null,
+    acted: active ? (prefs.acted ?? []) : [],
+    userId: ctx.user.id,
     demoVisitor: Boolean(ctx.user.is_anonymous),
     governance: ctx.workspace.governanceEnabled,
     role: ctx.role,

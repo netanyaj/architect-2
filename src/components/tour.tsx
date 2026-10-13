@@ -32,7 +32,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Icon } from "@/components/ax/icon";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -40,10 +40,20 @@ import { cn } from "@/lib/utils";
 
 export type TourStepDef = {
   id: string;
-  /** The data-tour value to spotlight. None: the card sits at the bottom of the screen, with no spotlight. */
+  /**
+   * The data-tour value to spotlight, or css:<selector>; "a || b" tries each in turn. None: the card sits at the bottom of
+   * the screen, with no spotlight.
+   */
   target?: string;
-  /** The page this step is on (path and query). The tour goes there first, then waits for the target. */
+  /** What to spotlight once the step's action is done and its control has gone (a finished build, a connected blocker). */
+  doneTarget?: string;
+  /**
+   * The step's place: its route and the view state it needs in the query (?dev=1, ?view=terminal). Next, Back and a
+   * resume all go there first, then show the card, then wait for the target.
+   */
   page?: string;
+  /** View state the query can't hold (a closed drawer, an open tab), set once the route is right. */
+  prepare?: (api: TourApi) => Promise<void>;
   title: string;
   content: ReactNode;
   /** The Next button's words. Steps that spend credits or change something name the action ("Build it"). */
@@ -55,7 +65,7 @@ export type TourStepDef = {
   position?: "top" | "bottom" | "left" | "right";
   /** The step number shown, when two cards make one step (chapter 2: the nav item, then its page). */
   count?: number;
-  /** How long to wait for the target before showing the card without a spotlight (ms). */
+  /** How long to wait for the target before offering "Take me there" (ms; default 5 seconds). */
   waitMs?: number;
 };
 
@@ -92,10 +102,12 @@ const GAP = 14;
  * selector instead, for lists drawn by shared components that don't carry attributes (the Projects list, Policies).
  */
 export function findTarget(target: string): HTMLElement | null {
-  const selector = target.startsWith("css:") ? target.slice(4) : `[data-tour="${target}"]`;
-  for (const el of document.querySelectorAll<HTMLElement>(selector)) {
-    const r = el.getBoundingClientRect();
-    if (r.width > 0 && r.height > 0) return el;
+  for (const one of target.split(" || ")) {
+    const selector = one.startsWith("css:") ? one.slice(4) : `[data-tour="${one}"]`;
+    for (const el of document.querySelectorAll<HTMLElement>(selector)) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) return el;
+    }
   }
   return null;
 }
@@ -143,9 +155,28 @@ function locate(chapters: TourChapterDef[], at: { chapter: string; step: string 
   return { c, s: s >= 0 ? s : 0 };
 }
 
+/** A done step lights up its result when it has one; Back never undoes the action. */
+function targetOf(st: TourStepDef | null | undefined, done: string[]): string | undefined {
+  return st?.doneTarget && done.includes(st.id) ? st.doneTarget : st?.target;
+}
+
+/** Same place: the step's path, and exactly its query (?dev=1, ?view=…), ignoring the simulator's ?sim. */
+function atPlace(page: string | undefined): boolean {
+  if (!page) return true;
+  const want = new URL(page, window.location.origin);
+  if (window.location.pathname !== want.pathname) return false;
+  const norm = (p: URLSearchParams) => [...p.entries()].filter(([k]) => k !== "sim").map(([k, v]) => `${k}=${v}`).sort().join("&");
+  return norm(new URLSearchParams(window.location.search)) === norm(want.searchParams);
+}
+
+/** Where the card shows a step: going to its place, shown there, or shown without its control (Take me there). */
+type Phase = "moving" | "shown" | "missing";
+
 export function TourEngine({
   chapters,
   initial,
+  acted,
+  onActed,
   onStep,
   onSkip,
   onFinish,
@@ -153,35 +184,49 @@ export function TourEngine({
   children,
 }: {
   chapters: TourChapterDef[];
-  /** Resume here (a reload mid-tour). */
+  /** Resume here (a reload mid-tour, or a page from another part of the app). */
   initial: { chapter: string; step: string } | null;
+  /** Steps whose action is done: Next on them just moves on (Back never undoes an action). */
+  acted: string[];
+  onActed: (step: string) => void;
   /** Each step as it shows: save it. */
   onStep: (chapter: string, step: string) => void;
   /** Skip tour, from this step. */
   onSkip: (chapter: string, step: string) => void;
   /** Past the last step. */
   onFinish: () => void;
-  /** Every move (Next, Back, Skip this chapter), before the step's page opens: keep it, so a page change resumes there. */
+  /** Every move (Next, Back, Skip this chapter), before the step's place opens: keep it, so a page change resumes there. */
   onMove?: (chapter: string, step: string) => void;
   children: ReactNode;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
   const reduce = useReducedMotion();
   const [at, setAt] = useState<{ c: number; s: number } | null>(() => locate(chapters, initial));
   const [pos, setPos] = useState<Box | null>(null);
-  const [ready, setReady] = useState(false);
+  const [phase, setPhase] = useState<Phase>("moving");
   const [acting, setActing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pointer, setPointer] = useState<{ from: { x: number; y: number }; to: { x: number; y: number }; key: number } | null>(null);
+  const [retry, setRetry] = useState(0);
   const card = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 380, height: 220 });
   const [phone, setPhone] = useState(false);
-  const pathRef = useRef(pathname);
-  const stepRef = useRef({ onStep });
+  // Each request to show a step gets a number: an older one still going to its place or waiting gives up.
+  const request = useRef(0);
+  // The last page the tour asked the router for; a push still in flight can land after a newer request, so a step
+  // whose page differs from it pushes its own page even when the address bar already shows it.
+  const pushed = useRef<string | null>(null);
+  // The step actions' helpers, for the place-setting effect above them.
+  const apiRef = useRef<TourApi>(null as unknown as TourApi);
+  const chaptersRef = useRef(chapters);
+  const actedRef = useRef(acted);
   useLayoutEffect(() => {
-    pathRef.current = pathname;
-    stepRef.current = { onStep };
+    actedRef.current = acted;
+  });
+  const cbRef = useRef({ onStep });
+  useLayoutEffect(() => {
+    chaptersRef.current = chapters;
+    cbRef.current = { onStep };
   });
 
   const chapter = at ? chapters[at.c] : null;
@@ -195,48 +240,57 @@ export function TourEngine({
     return () => m.removeEventListener("change", on);
   }, []);
 
-  // Each step: go to its page, wait for its target, then show it. It's reported (saved) as it shows. It runs when the
-  // step changes, not when the steps are rebuilt (a page refresh mid-action must not send the person back).
+  // Each step: go to its place (route and view state), then show the card, then wait up to 5 seconds for its control.
+  // Next, Back, a resume and Take me there all come through here; only the most recent request wins.
   const stepKey = at ? `${at.c}:${at.s}` : null;
-  const chaptersRef = useRef(chapters);
-  useLayoutEffect(() => {
-    chaptersRef.current = chapters;
-  });
   useEffect(() => {
     if (!at) return;
     const ch = chaptersRef.current[at.c];
     const st = ch?.steps[at.s];
     if (!st) return;
-    let stale = false;
-    const path = st.page?.split("?")[0];
-    (async () => {
-      // Go to the step's page: a different path, or the same path without the step's query (Home's ?tour=plan).
-      const query = st.page?.split("?")[1];
-      if (st.page && (pathRef.current !== path || (query && !window.location.search.includes(query)))) router.push(st.page);
-      // First the page (a slow page still arrives), then the control on it (waitMs: some only appear later, or not at all).
-      if (path) await waitFor(() => window.location.pathname === path && (!query || window.location.search.includes(query)), 30_000).catch(() => {});
-      if (st.target) await waitFor(() => Boolean(findTarget(st.target!)), st.waitMs ?? 15_000).catch(() => {});
-      if (stale) return;
-      const el = st.target ? findTarget(st.target) : null;
-      const r = el?.getBoundingClientRect();
-      if (el && r && (r.top < 0 || r.bottom > window.innerHeight)) el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
-      setError(null);
-      setReady(true);
-      stepRef.current.onStep(ch.id, st.id);
-    })();
-    return () => {
-      stale = true;
-      setReady(false);
+    const mine = ++request.current;
+    const live = () => request.current === mine;
+    const until = async (check: () => boolean, ms: number) => {
+      const end = Date.now() + ms;
+      while (Date.now() < end) {
+        if (!live()) return false;
+        if (check()) return true;
+        await sleep(100);
+      }
+      return false;
     };
-    // Only the step decides; `at` is read for it.
+    setPhase("moving");
+    setPos(null);
+    setError(null);
+    (async () => {
+      if (st.page && (!atPlace(st.page) || (pushed.current && pushed.current !== st.page))) {
+        pushed.current = st.page;
+        router.push(st.page);
+      }
+      await until(() => atPlace(st.page), 30_000);
+      if (!live()) return;
+      if (pushed.current && atPlace(pushed.current)) pushed.current = null;
+      if (st.prepare && apiRef.current) await st.prepare(apiRef.current).catch(() => {});
+      if (!live()) return;
+      setPhase("shown");
+      cbRef.current.onStep(ch.id, st.id);
+      const target = targetOf(st, actedRef.current);
+      if (!target) return;
+      const found = await until(() => Boolean(findTarget(target)), st.waitMs ?? 5_000);
+      if (!live()) return;
+      if (!found) return setPhase("missing");
+      const r = findTarget(target)!.getBoundingClientRect();
+      if (r.top < 0 || r.bottom > window.innerHeight) findTarget(target)!.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+    })();
+    // The step and Take me there decide; everything else is read through refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stepKey]);
+  }, [stepKey, retry]);
 
-  // Follow the target as the page scrolls, resizes or redraws.
+  // Follow the control as the page scrolls, resizes or redraws; a control that turns up late lights up then.
   useEffect(() => {
-    if (!step?.target || !ready) return;
+    const target = targetOf(step, acted);
+    if (!target || phase === "moving") return;
     let raf = 0;
-    const target = step.target;
     const update = () => {
       const r = findTarget(target)?.getBoundingClientRect();
       setPos((p) => {
@@ -244,11 +298,12 @@ export function TourEngine({
         const n = { top: r.top, left: r.left, width: r.width, height: r.height };
         return p && Math.abs(p.top - n.top) < 0.5 && Math.abs(p.left - n.left) < 0.5 && Math.abs(p.width - n.width) < 0.5 && Math.abs(p.height - n.height) < 0.5 ? p : n;
       });
+      if (r) setPhase((ph) => (ph === "missing" ? "shown" : ph));
       raf = window.requestAnimationFrame(update);
     };
     update();
     return () => window.cancelAnimationFrame(raf);
-  }, [step, ready]);
+  }, [step, phase, acted]);
 
   useLayoutEffect(() => {
     const el = card.current;
@@ -260,9 +315,9 @@ export function TourEngine({
 
   // Focus moves into the card at each step: Tab cycles its controls, and the arrow keys step while it has focus.
   useEffect(() => {
-    if (!ready || acting) return;
+    if (phase === "moving" || acting) return;
     card.current?.querySelector<HTMLElement>("[data-tour-next]")?.focus({ preventScroll: true });
-  }, [ready, acting, stepKey]);
+  }, [phase, acting, stepKey]);
 
   // The visible click: scroll the control into view, move a pointer from the card to it, press, then click it.
   const press = useCallback(
@@ -288,7 +343,10 @@ export function TourEngine({
   const api = useMemo<TourApi>(
     () => ({
       find: findTarget,
-      go: (href) => router.push(href),
+      go: (href) => {
+        pushed.current = href;
+        router.push(href);
+      },
       waitFor,
       click: async (target, opts) => {
         await waitFor(() => Boolean(findTarget(target)), opts?.timeout ?? 15_000, "The control");
@@ -298,25 +356,32 @@ export function TourEngine({
     }),
     [router, press],
   );
+  useLayoutEffect(() => {
+    apiRef.current = api;
+  });
 
   const goTo = useCallback(
     (c: number, s: number) => {
-      setPos(null);
+      const st = chaptersRef.current[c]?.steps[s];
+      if (st) onMove?.(chaptersRef.current[c].id, st.id);
       setAt({ c, s });
-      const st = chapters[c]?.steps[s];
-      if (st) onMove?.(chapters[c].id, st.id);
     },
-    [chapters, onMove],
+    [onMove],
   );
+
+  const busy = acting || phase === "moving";
 
   const next = useCallback(async () => {
     if (!at || !step || acting) return;
     setError(null);
-    if (step.onNext) {
+    // An action already done (a build, a connect, an approval) isn't done again: Next just moves on.
+    if (step.onNext && !acted.includes(step.id)) {
+      if (phase === "moving") return;
       setActing(true);
       try {
         const r = await step.onNext(api);
         if (r === false) return;
+        onActed(step.id);
       } catch (e) {
         setError(`${e instanceof Error ? e.message : "That didn't work"}. Next tries again.`);
         return;
@@ -324,32 +389,34 @@ export function TourEngine({
         setActing(false);
       }
     }
-    const ch = chapters[at.c];
+    const ch = chaptersRef.current[at.c];
     if (at.s < ch.steps.length - 1) goTo(at.c, at.s + 1);
-    else if (at.c < chapters.length - 1) goTo(at.c + 1, 0);
+    else if (at.c < chaptersRef.current.length - 1) goTo(at.c + 1, 0);
     else {
       setAt(null);
       onFinish();
     }
-  }, [at, step, acting, api, chapters, goTo, onFinish]);
+  }, [at, step, acting, phase, acted, api, goTo, onActed, onFinish]);
 
+  // Back returns to the previous step's place as it is now; it never undoes that step's action.
   const back = useCallback(() => {
     if (!at || acting) return;
     if (at.s > 0) goTo(at.c, at.s - 1);
-    else if (at.c > 0) goTo(at.c - 1, chapters[at.c - 1].steps.length - 1);
-  }, [at, acting, chapters, goTo]);
+    else if (at.c > 0) goTo(at.c - 1, chaptersRef.current[at.c - 1].steps.length - 1);
+  }, [at, acting, goTo]);
 
   const skipChapter = useCallback(() => {
-    if (!at) return;
-    if (at.c < chapters.length - 1) goTo(at.c + 1, 0);
+    if (!at || acting) return;
+    if (at.c < chaptersRef.current.length - 1) goTo(at.c + 1, 0);
     else {
       setAt(null);
       onFinish();
     }
-  }, [at, chapters.length, goTo, onFinish]);
+  }, [at, acting, goTo, onFinish]);
 
   const skipTour = useCallback(() => {
     if (!chapter || !step) return;
+    request.current++;
     onSkip(chapter.id, step.id);
     setAt(null);
   }, [chapter, step, onSkip]);
@@ -371,29 +438,34 @@ export function TourEngine({
   const ctx = useMemo<TourContext>(
     () => ({
       active: Boolean(at),
-      start: (where) => goTo(...((): [number, number] => {
-        const l = locate(chapters, { chapter: where?.chapter ?? chapters[0].id, step: where?.step ?? chapters[0].steps[0].id });
-        return l ? [l.c, l.s] : [0, 0];
-      })()),
-      stop: () => setAt(null),
+      start: (where) => {
+        const l = locate(chaptersRef.current, { chapter: where?.chapter ?? chaptersRef.current[0].id, step: where?.step ?? chaptersRef.current[0].steps[0].id });
+        goTo(l?.c ?? 0, l?.s ?? 0);
+      },
+      stop: () => {
+        request.current++;
+        setAt(null);
+      },
     }),
-    [at, chapters, goTo],
+    [at, goTo],
   );
 
-  // Shown count: "step 3 of 9" (two cards can share a number in chapter 2).
+  // Shown count: "step 3 of 9" (two cards can share a number).
   const counts = chapter ? [...new Set(chapter.steps.map((s, i) => s.count ?? i + 1))] : [];
   const shownCount = step && at ? counts.indexOf(step.count ?? at.s + 1) + 1 : 0;
-  const spot = step?.target ? pos : null;
+  const spot = targetOf(step, acted) && phase !== "moving" ? pos : null;
   const place = spot && !phone ? placeCard(spot, step?.position, size) : null;
   const pad = 6;
   const fade = { duration: reduce ? 0.15 : 0.22, ease: EASE };
   const isLast = Boolean(at && chapter && at.c === chapters.length - 1 && at.s === chapter.steps.length - 1);
+  const show = Boolean(at && step && chapter);
+  const btn = "min-h-8 rounded-full px-3 text-small font-semibold disabled:cursor-default disabled:opacity-60";
 
   return (
     <Ctx.Provider value={ctx}>
       {children}
       <AnimatePresence>
-        {at && step && chapter && ready && (
+        {show && (
           <motion.svg key="tour-overlay" aria-hidden="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={fade} className="pointer-events-none fixed inset-0 z-[60] h-full w-full">
             <defs>
               <mask id="tour-mask">
@@ -406,7 +478,7 @@ export function TourEngine({
           </motion.svg>
         )}
       </AnimatePresence>
-      {at && step && chapter && ready && spot && (
+      {show && spot && (
         <div
           aria-hidden="true"
           data-tour-spotlight
@@ -415,7 +487,7 @@ export function TourEngine({
         />
       )}
       <AnimatePresence>
-        {at && step && chapter && ready && (
+        {show && at && step && chapter && (
           <motion.div
             key="tour-card"
             ref={card}
@@ -423,7 +495,9 @@ export function TourEngine({
             aria-modal="false"
             aria-labelledby="tour-step-title"
             aria-label="Tour"
+            aria-busy={phase === "moving" || undefined}
             data-tour-card
+            data-tour-phase={phase}
             onKeyDown={onKey}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1, x: place ? place.left : 0, y: place ? place.top : 0 }}
@@ -434,7 +508,8 @@ export function TourEngine({
               // pointer-events-auto: stays clickable when a modal drawer has made the page behind it inert.
               "pointer-events-auto fixed z-[62] flex flex-col gap-3 border border-line bg-surface text-ink shadow-pop",
               phone ? "inset-x-0 bottom-[60px] rounded-t-pane px-4 pt-3.5 pb-4" : "w-[min(380px,calc(100vw-28px))] rounded-card p-4",
-              !phone && !place && "bottom-4 left-4",
+              // No control to point at: the middle of the screen (missing), or the bottom left while it goes there.
+              !phone && !place && (phase === "missing" ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" : "bottom-4 left-4"),
             )}
           >
             <div className="flex items-center gap-2 text-small text-ink-2">
@@ -449,7 +524,10 @@ export function TourEngine({
                         <Icon name="sparkle" size="sm" />
                       </span>
                     </TooltipTrigger>
-                    <TooltipContent>New in Architect 2.0</TooltipContent>
+                    {/* Above the tour's overlay and card (z 60–62), and inside the screen. */}
+                    <TooltipContent className="z-[80]" collisionPadding={12}>
+                      New in Architect 2.0
+                    </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               )}
@@ -469,6 +547,14 @@ export function TourEngine({
                 <div className="flex flex-col gap-1.5 text-ink-2">{step.content}</div>
               </motion.div>
             </AnimatePresence>
+            {phase === "missing" && (
+              <div className="flex flex-wrap items-center gap-2 rounded-tile bg-tray px-3 py-2 text-small">
+                <span className="min-w-0 flex-1 text-ink-2">This step&apos;s control isn&apos;t on the screen.</span>
+                <button type="button" onClick={() => setRetry((n) => n + 1)} className={cn(btn, "border border-transparent bg-(--btn) hover:bg-(--btn-hover)")}>
+                  Take me there
+                </button>
+              </div>
+            )}
             {error && (
               <p role="alert" className="text-small font-semibold text-failed">
                 {error}
@@ -476,7 +562,7 @@ export function TourEngine({
             )}
             <div className="flex items-center gap-2">
               {(at.s > 0 || at.c > 0) && (
-                <button type="button" onClick={back} disabled={acting} className="min-h-8 rounded-full border border-transparent bg-(--btn) px-3 text-small font-semibold hover:bg-(--btn-hover) disabled:text-ink-3">
+                <button type="button" onClick={back} disabled={busy} className={cn(btn, "border border-transparent bg-(--btn) hover:bg-(--btn-hover)")}>
                   Back
                 </button>
               )}
@@ -485,10 +571,10 @@ export function TourEngine({
                 type="button"
                 data-tour-next
                 onClick={() => void next()}
-                aria-disabled={acting || undefined}
-                className={cn("min-h-8 rounded-full border border-primary bg-primary px-4 text-small font-semibold text-on-primary", acting && "cursor-progress opacity-80")}
+                disabled={busy}
+                className={cn(btn, "border border-primary bg-primary px-4 text-on-primary", acting && "cursor-progress")}
               >
-                {acting ? "Working…" : (step.nextLabel ?? (isLast ? "Finish" : "Next"))}
+                {acting ? "Working…" : (step.nextLabel && !acted.includes(step.id) ? step.nextLabel : isLast ? "Finish" : "Next")}
               </button>
             </div>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-2 text-small">

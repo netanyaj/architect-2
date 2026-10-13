@@ -23,13 +23,15 @@ type Runtime = {
   /** Mid-tour: the chapter and step to show. Null: no tour running. */
   at: { chapter: Chapter; step: string } | null;
   projectId: string | null;
+  /** Steps whose action is done: Back and Next never do them again. */
+  acted: string[];
   welcomeOpen: boolean;
   /** Bumped to remount the engine at `at` (a start, a resume). */
   run: number;
   seeded: boolean;
 };
 
-const useRuntime = create<Runtime>(() => ({ view: null, at: null, projectId: null, welcomeOpen: false, run: 0, seeded: false }));
+const useRuntime = create<Runtime>(() => ({ view: null, at: null, projectId: null, acted: [], welcomeOpen: false, run: 0, seeded: false }));
 
 /** The tour is running: project pages keep Parts and Chat open while it is. */
 export const useTourActive = () => useRuntime((s) => Boolean(s.at));
@@ -43,6 +45,13 @@ const GuideContext = createContext<Guide>({ available: false, take: async () => 
 export const useTourGuide = () => useContext(GuideContext);
 
 const UUID = /^\/p\/([0-9a-f-]{36})/;
+
+/** View state for a project step: no part drawer left open (Open this part opens one). */
+async function closeDrawers() {
+  if (!document.querySelector('[role="dialog"]:not([data-tour-card])')) return;
+  document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  await sleep(300);
+}
 const sleep = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
 
 /** A button on the page by its words (for controls drawn by other lanes' components). */
@@ -116,8 +125,9 @@ function buildChapters(view: TourView, rt: { projectId: string | null }): TourCh
     {
       id: "design",
       page: projectPage("?view=plan"),
-      // Before a build the look is in the plan's "Data, sign-in and look" group; after one, Plan › Design shows it.
-      target: 'css:#group-data, [data-tour="plan-design"]',
+      // Before a build the look is in the plan's "Data, sign-in and look" group; after one, Plan › Design shows it. A plan
+      // without that group (the model decides) shows its stack, with its database and sign-in.
+      target: 'css:#group-data, [data-tour="plan-design"] || plan-stack',
       newIn2: true,
       title: "The look, before building",
       content: <p>Data, sign-in and the app&apos;s look are parts of the plan too, chosen before anything is built. After the build, Plan › Design shows the look and feel, and you can change it in chat.</p>,
@@ -126,6 +136,7 @@ function buildChapters(view: TourView, rt: { projectId: string | null }): TourCh
       id: "build",
       page: projectPage("?view=plan"),
       target: "build",
+      doneTarget: 'css:aside[aria-label="Parts"]',
       newIn2: true,
       title: "Build, at the price you saw",
       content: <p>The button says what it costs. Nothing is built or charged before this click. Next clicks it for you.</p>,
@@ -138,6 +149,8 @@ function buildChapters(view: TourView, rt: { projectId: string | null }): TourCh
     },
     {
       id: "proof",
+      page: projectPage(),
+      prepare: closeDrawers,
       target: "part-works",
       waitMs: 150_000,
       newIn2: true,
@@ -151,7 +164,10 @@ function buildChapters(view: TourView, rt: { projectId: string | null }): TourCh
     },
     {
       id: "blocker",
+      page: projectPage(),
+      prepare: closeDrawers,
       target: "blocker",
+      doneTarget: "part-works",
       waitMs: 150_000,
       newIn2: true,
       title: "A blocker you can fix",
@@ -176,6 +192,7 @@ function buildChapters(view: TourView, rt: { projectId: string | null }): TourCh
     {
       id: "preview",
       page: projectPage(),
+      prepare: closeDrawers,
       target: "stage",
       title: "The live preview",
       content: <p>Phone or desktop, Light or Dark, and Point at something: pick any part of the app and it goes into chat, ready to change.</p>,
@@ -205,16 +222,45 @@ function buildChapters(view: TourView, rt: { projectId: string | null }): TourCh
         </p>
       ),
     },
+    // 11a: Developer view, inside the project. Next turns it on (Code, with what changed), then opens Terminal.
     {
       id: "developer",
       page: projectPage(),
+      prepare: closeDrawers,
       target: "dev-toggle",
-      title: "Developer view, and Import a repo",
-      content: (
-        <p>
-          Code, changes, a terminal and the console, for developers. Import a repo keeps your existing code and turns its tests into proof: that&apos;s how Architect works with the systems you already have.
-        </p>
-      ),
+      count: 11,
+      title: "Developer view",
+      content: <p>For developers: the code behind every part, a terminal and the console, with the same plan and checks.</p>,
+      nextLabel: "Open Developer view",
+      onNext: async (api) => {
+        await api.click("dev-toggle");
+        await api.waitFor(() => new URLSearchParams(window.location.search).get("dev") === "1", 15_000, "Developer view");
+      },
+    },
+    {
+      id: "dev-code",
+      page: projectPage("?dev=1"),
+      target: 'css:aside[aria-label="Files"]',
+      count: 11,
+      title: "Developer view: Code",
+      content: <p>Every part&apos;s code, grouped by part, with what changed in each file. Edit a file here and its part&apos;s check runs again.</p>,
+      nextLabel: "Open Terminal",
+      onNext: async (api) => {
+        // The Stage view tabs' "Terminal & logs".
+        const tabs = document.querySelector('[aria-label="Stage view"]') ?? document;
+        const tab = buttonByText(tabs, /^\s*Terminal/);
+        if (tab) await api.clickElement(tab);
+        await api.waitFor(() => new URLSearchParams(window.location.search).get("view") === "terminal", 15_000, "The terminal");
+      },
+    },
+    // 11b: where the code lives.
+    {
+      id: "dev-repo",
+      page: projectPage("?dev=1&view=terminal"),
+      target: "dev-repo",
+      count: 12,
+      title: "Your repo, branches and PRs",
+      content: <p>Projects can live in your own GitHub repo; changes come back as PRs. To bring an existing repo in, use Import a repo on Home.</p>,
     },
     {
       id: "launch",
@@ -249,6 +295,7 @@ function buildChapters(view: TourView, rt: { projectId: string | null }): TourCh
             id: "approvals",
             page: "/governance/approvals",
             target: "approve",
+            doneTarget: 'css:section[aria-label="Requests"]',
             title: "Approvals",
             content: <p>Sam, a Builder, asked to make ticket-triage live. It waits here for an Owner or Admin, so it&apos;s yours to approve.</p>,
             nextLabel: "Approve it",
@@ -282,57 +329,40 @@ function buildChapters(view: TourView, rt: { projectId: string | null }): TourCh
         },
   ];
 
-  // Chapter 2: one step per side-nav item, using its exact label. Next opens the page and spotlights what matters there.
-  const nav: { key: string; label: string; href: string; target: string; line: string; page: string; show?: boolean }[] = [
-    { key: "home", label: "Home", href: "/home", target: "composer", line: "Start here: describe an app, or pick up where you left off.", page: "You started here. The composer is at the top, and Continue where you left off is under it." },
-    { key: "projects", label: "Projects", href: "/projects", target: 'css:ul[aria-label="Projects"]', line: "Every app you've planned or built, with what each one needs from you next.", page: "Each row says what that project needs from you next. New project is at the top." },
-    { key: "agents", label: "Agents", href: "/agents", target: 'css:ul[aria-label="Agents"]', line: "All the agents across your projects, including ones from Lyzr Studio or other frameworks; edit, schedule and try them.", page: "Each agent shows up here once its part is built. Open one to edit it, set its schedule, or try it on Lyzr Studio." },
-    { key: "connections", label: "Connections", href: "/connections", target: "connections", line: "The apps, API keys, MCP servers and Lyzr key your projects use; connect once, use in any project.", page: "You've been here: each section has its own Add button." },
-    { key: "marketplace", label: "Marketplace", href: "/marketplace", target: "templates", line: "Templates and ready-made agents to start from, and where your team's published apps appear.", page: "Pick one and its prompt fills the composer on Home." },
-    { key: "usage", label: "Usage", href: "/usage", target: "usage-totals", line: "Credits by project and by build, against each budget, so cost is never a surprise.", page: "This month's totals, then every build and fix by project. The credits meter in the nav shows what's left." },
-    { key: "approvals", label: "Approvals", href: "/governance/approvals", target: 'css:ul[aria-label="Requests"] > li:first-child', line: "What's waiting for an Owner or Admin, such as Live launches or new apps.", page: "You saw approvals in action. This is where they wait for you.", show: gov && admin },
-    { key: "governance", label: "Governance", href: "/governance", target: 'css:ul[aria-label="Policies"]', line: "The company's rules: where apps run, allowed models and apps, budgets, and the audit log.", page: "Each rule is a section. The audit log is at the end of the list.", show: gov && admin },
+  // Chapter 2: one card per page, using the nav's exact labels. The card goes to the page and lights up its nav item.
+  const nav: { key: string; label: string; href: string; line: string; show?: boolean }[] = [
+    { key: "home", label: "Home", href: "/home", line: "Start here: describe an app, or pick up where you left off. Import a repo is here too: bring in an existing GitHub repo, and its tests become proof." },
+    { key: "projects", label: "Projects", href: "/projects", line: "Every app you've planned or built, with what each one needs from you next. New project is at the top." },
+    { key: "agents", label: "Agents", href: "/agents", line: "All the agents across your projects, including ones from Lyzr Studio or other frameworks. Each shows up once its part is built: open it to edit it, set its schedule, or try it on Lyzr Studio." },
+    { key: "connections", label: "Connections", href: "/connections", line: "The apps, API keys, MCP servers and Lyzr key your projects use. Connect once and any project can use it; each section has its own Add button." },
+    { key: "marketplace", label: "Marketplace", href: "/marketplace", line: "Templates and ready-made agents to start from, and where your team's published apps appear. Pick one and its prompt fills the composer on Home." },
+    { key: "usage", label: "Usage", href: "/usage", line: "Credits by project and by build, against each budget, so cost is never a surprise. The credits meter in the nav shows what's left." },
+    { key: "approvals", label: "Approvals", href: "/governance/approvals", line: "You saw approvals in action. This is where they wait for an Owner or Admin: Live launches, new apps and more.", show: gov && admin },
+    { key: "governance", label: "Governance", href: "/governance", line: "The company's rules: where apps run, the allowed models and apps, budgets, and the audit log at the end of the list.", show: gov && admin },
   ];
-  const around: TourStepDef[] = [];
-  let n = 0;
-  for (const item of nav.filter((x) => x.show !== false)) {
-    n += 1;
-    around.push(
-      { id: `nav-${item.key}`, target: `nav-${item.key}`, waitMs: 1_500, count: n, title: item.label, content: <p>{item.line}</p>, nextLabel: `Open ${item.label}`, onNext: (api) => { const el = api.find(`nav-${item.key}`); if (el) return api.clickElement(el); api.go(item.href); } },
-      { id: `page-${item.key}`, page: item.href, target: item.target, waitMs: 6_000, count: n, title: item.label, content: <p>{item.page}</p> },
-    );
-  }
-  n += 1;
+  const around: TourStepDef[] = nav
+    .filter((x) => x.show !== false)
+    .map((item) => ({ id: `nav-${item.key}`, page: item.href, target: `nav-${item.key}`, waitMs: 1_500, title: item.label, content: <p>{item.line}</p> }));
+  const settingsCount = around.length + 1;
   around.push(
     {
-      id: "nav-settings",
+      id: "settings",
+      page: "/settings",
       target: "nav-settings",
       waitMs: 1_500,
-      count: n,
+      count: settingsCount,
       title: "Settings",
       content: (
         <p>
-          Workspace and personal settings, from the account menu.{" "}
-          {gov ? "" : "Turning governance on here adds Approvals and Governance to the nav."}
+          Workspace and personal settings, from the account menu.{gov ? "" : " Turning governance on here adds Approvals and Governance to the nav."}
         </p>
       ),
-      nextLabel: "Open Settings",
-    },
-    {
-      id: "page-settings",
-      page: "/settings/members",
-      target: "invite",
-      waitMs: 6_000,
-      count: n,
-      title: "Settings",
-      content: <p>Invite people and set their roles in Members.</p>,
     },
     {
       id: "settings-menu",
-      page: "/settings/members",
+      page: "/settings",
       target: 'css:nav[aria-label="Settings"]',
-      waitMs: 3_000,
-      count: n,
+      count: settingsCount,
       title: "Settings",
       content: (
         <>
@@ -453,6 +483,38 @@ function Welcome({ view, onStart, onSkip }: { view: TourView; onStart: () => voi
   );
 }
 
+type Position = { chapter: Chapter; step: string; projectId: string | null; acted: string[] };
+const tabKey = (userId: string) => `architect-tour:${userId}`;
+
+/**
+ * The tab's own copy of where the tour is, written at once at each step. Saves to the server run one at a time, so a reload
+ * straight after Next or Back can cut off the newest; resuming in this tab reads this copy first.
+ */
+function keepPosition(userId: string | undefined, p: Position | null) {
+  if (!userId) return;
+  try {
+    if (p) sessionStorage.setItem(tabKey(userId), JSON.stringify(p));
+    else sessionStorage.removeItem(tabKey(userId));
+  } catch {
+    // Storage can be off (a private window); the server's copy still resumes the tour.
+  }
+}
+
+function keptPosition(userId: string): Position | null {
+  try {
+    const p = JSON.parse(sessionStorage.getItem(tabKey(userId)) ?? "null") as Position | null;
+    return p && typeof p.step === "string" && typeof p.chapter === "string" && Array.isArray(p.acted) ? p : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Where the tour is: kept in the tab at once, and saved for the person. */
+function save(p: Position) {
+  keepPosition(useRuntime.getState().view?.userId, p);
+  void saveTourProgress(p);
+}
+
 /**
  * The tour for a page: the server's copy when the page opens, then the client store. Renders the welcome, the engine around the
  * page, and the context for Take the tour.
@@ -467,11 +529,15 @@ export function TourProvider({ initial, available, children }: { initial: TourVi
       useRuntime.setState({ view: initial });
       return;
     }
+    // Mid-tour, this tab's own copy is the newest; otherwise it's stale and goes.
+    const kept = initial?.active ? keptPosition(initial.userId) : null;
+    if (initial && !initial.active) keepPosition(initial.userId, null);
     useRuntime.setState({
       seeded: true,
       view: initial,
-      projectId: initial?.projectId ?? null,
-      at: initial?.active && initial.chapter ? { chapter: initial.chapter, step: initial.step ?? "home" } : null,
+      projectId: kept?.projectId ?? initial?.projectId ?? null,
+      acted: kept?.acted ?? initial?.acted ?? [],
+      at: kept ? { chapter: kept.chapter, step: kept.step } : initial?.active && initial.chapter ? { chapter: initial.chapter, step: initial.step ?? "home" } : null,
       welcomeOpen: Boolean(initial?.welcome),
       run: s.run + 1,
     });
@@ -490,9 +556,10 @@ export function TourProvider({ initial, available, children }: { initial: TourVi
 
   const start = useCallback(async () => {
     const r = await beginTour();
+    keepPosition(useRuntime.getState().view?.userId, null);
     useRuntime.setState({ welcomeOpen: false });
     if (!r.ok) return;
-    useRuntime.setState((s) => ({ at: { chapter: "story", step: "home" }, projectId: null, run: s.run + 1 }));
+    useRuntime.setState((s) => ({ at: { chapter: "story", step: "home" }, projectId: null, acted: [], run: s.run + 1 }));
     if (r.switched) router.refresh();
   }, [router]);
 
@@ -501,9 +568,9 @@ export function TourProvider({ initial, available, children }: { initial: TourVi
     if (!r.ok) return;
     const fresh = await tourState();
     if (r.resume && fresh?.chapter && fresh.step) {
-      useRuntime.setState((s) => ({ view: fresh, at: { chapter: fresh.chapter!, step: fresh.step! }, projectId: fresh.projectId, run: s.run + 1 }));
+      useRuntime.setState((s) => ({ view: fresh, at: { chapter: fresh.chapter!, step: fresh.step! }, projectId: fresh.projectId, acted: fresh.acted, run: s.run + 1 }));
     } else {
-      useRuntime.setState({ view: fresh, at: null, welcomeOpen: true });
+      useRuntime.setState({ view: fresh, at: null, acted: [], welcomeOpen: true });
     }
   }, []);
 
@@ -516,16 +583,25 @@ export function TourProvider({ initial, available, children }: { initial: TourVi
         key={rt.run}
         chapters={chapters}
         initial={rt.at}
+        acted={rt.acted}
+        onActed={(step) => {
+          const s = useRuntime.getState();
+          const acted = [...new Set([...s.acted, step])];
+          useRuntime.setState({ acted });
+          save({ chapter: (s.at?.chapter ?? "story") as Chapter, step: s.at?.step ?? step, projectId: s.projectId, acted });
+        }}
         onMove={(chapter, step) => moveTo(chapter as Chapter, step)}
         onStep={(chapter, step) => {
           moveTo(chapter as Chapter, step);
-          void saveTourProgress({ chapter: chapter as Chapter, step, projectId: useRuntime.getState().projectId });
+          save({ chapter: chapter as Chapter, step, projectId: useRuntime.getState().projectId, acted: useRuntime.getState().acted });
         }}
         onSkip={(_chapter, step) => {
+          keepPosition(view.userId, null);
           useRuntime.setState({ at: null });
           void skipTour(step);
         }}
         onFinish={() => {
+          keepPosition(view.userId, null);
           useRuntime.setState({ at: null });
           void finishTour("explore");
         }}
@@ -536,6 +612,7 @@ export function TourProvider({ initial, available, children }: { initial: TourVi
         view={view}
         onStart={() => void start()}
         onSkip={() => {
+          keepPosition(view.userId, null);
           useRuntime.setState({ welcomeOpen: false });
           void skipTour("welcome");
         }}

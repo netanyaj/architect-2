@@ -364,7 +364,7 @@ export function PlanDocument({
         ) : (
           project.prompt && <p className="text-sub text-ink-2">{project.prompt}</p>
         )}
-        <p className="flex flex-wrap items-center gap-2 text-small text-ink-2" title={STACK_NOTE}>
+        <p data-tour="plan-stack" className="flex flex-wrap items-center gap-2 text-small text-ink-2" title={STACK_NOTE}>
           <span>
             <b className="font-semibold text-ink">Stack:</b> {project.stack === "default" ? `${DEFAULT_STACK}, the default for new projects` : `${project.stack}, kept from your repo`}
           </span>
