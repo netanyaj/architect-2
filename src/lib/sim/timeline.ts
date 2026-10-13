@@ -89,6 +89,8 @@ export type Timeline = {
   durationMs: number;
   runStatus: "done" | "paused_budget" | "paused_item";
   totals: { credits: number; fixCredits: number };
+  /** The check that failed first in this run, in the failing part's own words (null: nothing failed). */
+  failure: { item_key: string; check: string; measured: string | null } | null;
 };
 
 /** FNV-1a: a stable 32-bit hash of the run id, so each run differs but replays identically. */
@@ -150,6 +152,39 @@ export function outcomeFor(item: SimItem, ctx: { lastAgentKey: string | null; co
   return { kind: "pass", ...plain };
 }
 
+/** A part's check as a clause: "Done when briefs stay under 200 words." → "briefs stay under 200 words". */
+export function checkClause(item: Pick<SimItem, "title" | "proved_when">): string {
+  const text = (item.proved_when ?? "").trim().replace(/^done when\s+/i, "").replace(/[.\s]+$/, "");
+  if (!text) return `${item.title.toLowerCase()} passes its check`;
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}
+
+/**
+ * What the failing part's check measured, try by try. The scenario's numbers ("236 words") only fit a check about a
+ * word count, as in the Meeting Prep demo; any other check reports how many of its assertions passed, with plain notes.
+ */
+export function failureFor(
+  item: Pick<SimItem, "title" | "proved_when" | "grp">,
+  outcome: Pick<Outcome, "kind" | "measured" | "notes">,
+  scenario: Scenario,
+): { check: string; first: string | null; measured: string[]; notes: string[] } {
+  const check = checkClause(item);
+  const fixRule = scenario.rules.find((r) => r.id === "fix-once") as FixRule;
+  if (/\bwords?\b/i.test(item.proved_when ?? "")) {
+    return { check, first: fixRule.failure?.measured ?? null, measured: outcome.measured, notes: outcome.notes };
+  }
+  const n = checkFor(item as SimItem, scenario).assertions;
+  const measured = `${n - 1} of ${n} passed`;
+  return {
+    check,
+    first: measured,
+    measured: outcome.kind === "fail" ? Array.from({ length: outcome.measured.length }, () => measured) : [],
+    notes: outcome.kind === "fail" ? GENERIC_NOTES.slice(0, outcome.notes.length) : [],
+  };
+}
+
+const GENERIC_NOTES = ["Told the agent what its check expects", "Checked the output before saving it", "Tightened the agent's instructions"];
+
 /** The check written for a part before its code (by group, from the scenario). */
 function checkFor(item: SimItem, scenario: Scenario) {
   const byGroup = scenario.checks_by_group as Record<string, { kind: string; assertions: number; screenshot: boolean }>;
@@ -194,6 +229,7 @@ export function buildTimeline(input: TimelineInput): Timeline {
   let done = 0;
   let runStatus: Timeline["runStatus"] = "done";
   let fixCredits = 0;
+  let firstFailure: Timeline["failure"] = null;
 
   events.push({ at_ms: 0, type: "run.started", actor: "system", payload: { total_items: total, est_minutes: Math.max(1, Math.round((totalEstimate / 12) * 45 / 60)) } });
   step(600);
@@ -272,10 +308,13 @@ export function buildTimeline(input: TimelineInput): Timeline {
       // The build's check fails, then up to 3 fixes run, each its own Usage line (A-9). Normally fix 1 passes;
       // ?sim=paused makes all 3 fail and the part is Blocked (screen 6).
       spent += credits;
-      const checkText = fixRule.failure?.check ?? "the part's check";
+      // The failure is told in the part's own check, never the demo's sentence.
+      const failure = failureFor(item, outcome, scenario);
+      const checkText = failure.check;
       const attempts: ItemOutcome["attempts"] = [];
       const fixes: ItemOutcome["fixes"] = [];
-      events.push({ at_ms: at(), type: "item.failed", item_key: item.key, actor: "verifier", payload: { item_key: item.key, attempt: 0, reason: checkText, measured: fixRule.failure?.measured ?? null } });
+      firstFailure ??= { item_key: item.key, check: checkText, measured: failure.first };
+      events.push({ at_ms: at(), type: "item.failed", item_key: item.key, actor: "verifier", payload: { item_key: item.key, attempt: 0, reason: checkText, measured: failure.first } });
       let passed = false;
       let budgetStop = false;
       for (let attempt = 1; attempt <= MAX_FIXES; attempt++) {
@@ -293,8 +332,8 @@ export function buildTimeline(input: TimelineInput): Timeline {
         }
         step(duration * 0.6);
         const fails = attempt <= outcome.failingFixes;
-        const measured = fails ? (outcome.measured[attempt - 1] ?? null) : null;
-        const note = outcome.notes[attempt - 1] ?? null;
+        const measured = fails ? (failure.measured[attempt - 1] ?? null) : null;
+        const note = failure.notes[attempt - 1] ?? null;
         fixes.push({ attempt, credits: fixCost, measured, note });
         attempts.push({ attempt, measured, note, credits: fixCost, result: fails ? "fail" : "pass" });
         if (!fails) {
@@ -308,7 +347,7 @@ export function buildTimeline(input: TimelineInput): Timeline {
         outcomes.push({ ...base, fixes, attempts, proof: passProof });
         done++;
       } else {
-        const last = attempts.at(-1)?.measured ?? fixRule.failure?.measured ?? "failed";
+        const last = attempts.at(-1)?.measured ?? failure.first ?? "failed";
         events.push({ at_ms: at(), type: "item.paused", item_key: item.key, actor: "system", payload: { item_key: item.key, attempts } });
         outcomes.push({
           ...base,
@@ -347,5 +386,6 @@ export function buildTimeline(input: TimelineInput): Timeline {
     durationMs: t,
     runStatus,
     totals: { credits: outcomes.reduce((s, o) => s + (o.status === "agreed" || o.status === "needs_approval" ? 0 : o.credits), 0), fixCredits },
+    failure: firstFailure,
   };
 }

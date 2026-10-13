@@ -87,11 +87,10 @@ export async function startRun(admin: AdminDb, runId: string, sim: SimOptions = 
       if (error) throw error;
     }
 
-    const failure = SCENARIO.rules.find((r) => r.id === "fix-once") as { failure?: unknown };
     const { data: endsAt, error } = await admin.rpc("set_run_timeline", {
       p_run: run.id,
       p_duration_ms: t.durationMs,
-      p_outcome: { status: t.runStatus, failure: failure.failure ?? null, outcomes: t.outcomes } as unknown as Json,
+      p_outcome: { status: t.runStatus, failure: t.failure, outcomes: t.outcomes } as unknown as Json,
     });
     if (error || !endsAt) throw error ?? new Error("run not running");
     // A project from a repo gets this session's branch and pull request (Simulated); nothing goes to main directly.

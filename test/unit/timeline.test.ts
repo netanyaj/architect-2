@@ -2,12 +2,21 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Blueprint } from "@/lib/blueprint";
-import { buildTimeline, hash, MAX_FIXES, type SimItem, type TimelineInput } from "@/lib/sim/timeline";
+import { replay } from "@/lib/sim/replay";
+import { buildTimeline, checkClause, hash, MAX_FIXES, type SimItem, type TimelineInput } from "@/lib/sim/timeline";
 import { estimate } from "@/server/estimate";
 
 /* The recorded Meeting Prep plan, priced like the real thing, is the build's input. */
 const plan: Blueprint = JSON.parse(readFileSync(join(__dirname, "..", "fixtures", "blueprints", "meeting-prep.gemini.json"), "utf8"));
-const items: SimItem[] = plan.items.map((i, position) => ({ ...i, position, status: "agreed", estimate_likely: estimate(i).likely }));
+// The demo's brief writer has a word limit (as seeded for the e2e build test), so its failure reads in words.
+const WORD_CHECK = "Done when briefs stay under 200 words and name every attendee.";
+const items: SimItem[] = plan.items.map((i, position) => ({
+  ...i,
+  position,
+  status: "agreed",
+  estimate_likely: estimate(i).likely,
+  proved_when: i.key === "talking-points-generator" ? WORD_CHECK : i.proved_when,
+}));
 
 const input = (over: Partial<TimelineInput> = {}): TimelineInput => ({
   runId: "run-1",
@@ -66,7 +75,8 @@ describe("buildTimeline", () => {
     expect(o.fixes[0].credits).toBeGreaterThanOrEqual(2);
     expect(o.fixes[0].credits).toBeLessThanOrEqual(3);
     expect(typesFor(t, "talking-points-generator")).toEqual(["check.written", "item.building", "log.line", "item.failed", "item.fixing", "log.line", "log.line", "item.built"]);
-    expect(t.events.find((e) => e.type === "item.failed")?.payload).toMatchObject({ reason: "brief is 200 words or fewer", measured: "236 words" });
+    expect(t.events.find((e) => e.type === "item.failed")?.payload).toMatchObject({ reason: "briefs stay under 200 words and name every attendee", measured: "236 words" });
+    expect(t.failure).toEqual({ item_key: "talking-points-generator", check: "briefs stay under 200 words and name every attendee", measured: "236 words" });
     expect(t.totals.fixCredits).toBe(o.fixes[0].credits);
     // Every other part passes on the first try.
     expect(t.outcomes.filter((x) => x.fixes.length)).toHaveLength(1);
@@ -150,5 +160,43 @@ describe("follow-up runs", () => {
     const waiting = items.map((i, n) => ({ ...i, status: n < 4 ? "built" : "agreed" }));
     const t = buildTimeline(input({ runId: "more-1", items: waiting, budget: { limit: 200, spent: 40 } }));
     expect(t.outcomes.map((o) => o.key).sort()).toEqual(["brief-schedule", "slack-brief-delivery"]);
+  });
+});
+
+/* Any plan, not just Meeting Prep: the fix-once failure is told in the failing part's own check (round 7). */
+describe("the failure text comes from the failing part's own check", () => {
+  const leads: Blueprint = JSON.parse(readFileSync(join(__dirname, "..", "fixtures", "blueprints", "lead-scorer.gemini.json"), "utf8"));
+  const leadItems: SimItem[] = leads.items.map((i, position) => ({ ...i, position, status: "agreed", estimate_likely: estimate(i).likely }));
+  const agent = leadItems.filter((i) => i.grp === "agents").at(-1)!;
+  const run = (variant: TimelineInput["variant"] = "default") =>
+    buildTimeline({ runId: "lead-run", items: leadItems, connected: leadItems.map((i) => i.provider ?? "").filter(Boolean), denied: [], budget: { limit: null, spent: 0 }, variant });
+
+  it("names the part's check, with what it measured, and nothing from the Meeting Prep demo", () => {
+    const t = run();
+    const failed = t.events.find((e) => e.type === "item.failed")!;
+    expect(failed.item_key).toBe(agent.key);
+    expect(failed.payload).toMatchObject({ reason: "leads are assigned a score between 0 and 100 with an explanation", measured: "2 of 3 passed" });
+    expect(t.failure).toEqual({ item_key: agent.key, check: "leads are assigned a score between 0 and 100 with an explanation", measured: "2 of 3 passed" });
+    expect(JSON.stringify(t)).not.toMatch(/200 words|236 words|brief/i);
+    const live = replay(
+      { id: "r", kind: "build", status: "running", variant: "default", startedAt: new Date(0).toISOString(), endsAt: null, events: t.events.map((e, n) => ({ id: n, type: e.type, itemKey: e.item_key ?? null, atMs: e.at_ms, actorLabel: null, payload: e.payload })) },
+      t.events.find((e) => e.type === "item.fixing")!.at_ms,
+    );
+    expect(live.parts[agent.key]).toEqual({ status: "failed", statusDetail: "A check failed (2 of 3 passed). Fixing it, try 1 of 3." });
+  });
+
+  it("?sim=paused: each try's note is plain, not about a word limit", () => {
+    const o = run("paused").outcomes.find((x) => x.key === agent.key)!;
+    expect(o.status).toBe("paused");
+    expect(o.attempts.map((a) => [a.measured, a.note])).toEqual([
+      ["2 of 3 passed", "Told the agent what its check expects"],
+      ["2 of 3 passed", "Checked the output before saving it"],
+      ["2 of 3 passed", "Tightened the agent's instructions"],
+    ]);
+  });
+
+  it("checkClause reads a check as a clause, and falls back to the part's title", () => {
+    expect(checkClause({ title: "Brief writer", proved_when: "Done when briefs stay under 200 words." })).toBe("briefs stay under 200 words");
+    expect(checkClause({ title: "Lead scorer", proved_when: null })).toBe("lead scorer passes its check");
   });
 });

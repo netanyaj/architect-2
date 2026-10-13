@@ -52,11 +52,13 @@ export type LiveRun = {
   fixSpent: number;
 };
 
-/** "brief is 200 words or fewer" → "too long"; otherwise what was measured. */
+/** "briefs stay under 200 words" → "too long"; otherwise what was measured ("2 of 3 passed"). */
 export function failedBecause(reason: unknown, measured: unknown): string {
   const r = String(reason ?? "");
-  if (/or fewer|under|at most|no more than/i.test(r)) return "too long";
-  if (/or more|at least/i.test(r)) return "too short";
+  // Only a limit on a count of words or characters reads as too long or too short.
+  const limit = /\b(words?|characters?)\b/i.test(r);
+  if (limit && /\b(or fewer|under|at most|no more than)\b/i.test(r)) return "too long";
+  if (limit && /\b(or more|at least)\b/i.test(r)) return "too short";
   return String(measured ?? "it didn't pass");
 }
 
@@ -106,7 +108,7 @@ export function replay(run: RunInfo | null, nowMs: number): LiveRun {
         if (key) {
           const n = Number(p.attempt ?? 1);
           live.fixes[key] = n;
-          live.parts[key] = { status: "failed", statusDetail: n > 3 ? "Trying once more" : `A check failed (${lastFailure || "too long"}). Fixing it, try ${n} of 3.` };
+          live.parts[key] = { status: "failed", statusDetail: n > 3 ? "Trying once more" : `A check failed (${lastFailure || "it didn't pass"}). Fixing it, try ${n} of 3.` };
         }
         break;
       case "item.built":

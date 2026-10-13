@@ -7,7 +7,15 @@ import { buildTimeline, type SimItem } from "@/lib/sim/timeline";
 import { estimate } from "@/server/estimate";
 
 const plan: Blueprint = JSON.parse(readFileSync(join(__dirname, "..", "fixtures", "blueprints", "meeting-prep.gemini.json"), "utf8"));
-const items: SimItem[] = plan.items.map((i, position) => ({ ...i, position, status: "agreed", estimate_likely: estimate(i).likely }));
+// The demo's brief writer has a word limit (as seeded for the e2e build test), so its failure reads in words.
+const WORD_CHECK = "Done when briefs stay under 200 words and name every attendee.";
+const items: SimItem[] = plan.items.map((i, position) => ({
+  ...i,
+  position,
+  status: "agreed",
+  estimate_likely: estimate(i).likely,
+  proved_when: i.key === "talking-points-generator" ? WORD_CHECK : i.proved_when,
+}));
 const START = Date.parse("2026-10-06T10:00:00Z");
 
 function runOf(variant: "default" | "paused" | "budget" = "default", status = "running"): { run: RunInfo; duration: number } {
@@ -88,6 +96,9 @@ describe("replay", () => {
 describe("words", () => {
   it("says why a check failed, and the time left", () => {
     expect(failedBecause("brief is 200 words or fewer", "236 words")).toBe("too long");
+    expect(failedBecause("a summary under 200 characters is saved", null)).toBe("too long");
+    // "under" alone isn't a length: a part's own check says what was measured instead.
+    expect(failedBecause("tickets are filed under the right team", "2 of 3 passed")).toBe("2 of 3 passed");
     expect(failedBecause("names every attendee", "2 of 3")).toBe("2 of 3");
     expect([etaWords(null), etaWords(30), etaWords(360)]).toEqual([null, "less than a minute", "about 6 min"]);
   });
