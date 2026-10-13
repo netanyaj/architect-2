@@ -116,7 +116,7 @@ test.describe("M3: the simulated build", () => {
       .toEqual(["paused_budget", "done"]);
   });
 
-  test("A-9 and the preview dock: a Blocked part's choice works while the build plays; sizes, Point at something, problems, Test the app", async ({ page }) => {
+  test("A-9 and the preview tools: a Blocked part's choice works while the build plays; sizes, Point at something, problems, Test the app", async ({ page }) => {
     await signIn(page, user);
     const id = await seedPlan(user, "Field Notes");
     // Three more screens after the agents keep the build playing for a few seconds after the part is Blocked.
@@ -151,7 +151,7 @@ test.describe("M3: the simulated build", () => {
     // The chat says so as the replay ends; the server records it a moment later.
     await expect.poll(async () => (await db.from("items").select("status").eq("project_id", id).eq("key", "talking-points-generator").single()).data?.status, { timeout: 30_000 }).toBe("built");
 
-    // The sizes are in the header beside the tabs (M5.8); the dock has Point at something. Then Test the app.
+    // The sizes are in the header beside the tabs (M5.8); Point at something is beside the address. Then Test the app.
     const sizes = page.getByRole("banner").getByRole("group", { name: "Preview size" });
     await sizes.getByRole("button", { name: "Phone size" }).click();
     await expect(page.locator('iframe[title="Field Notes, test version"]')).toHaveClass(/w-\[390px\]/);
@@ -160,10 +160,19 @@ test.describe("M3: the simulated build", () => {
     await page.getByRole("button", { name: "Dark view of the app" }).click();
     await expect(page.getByRole("status").filter({ hasText: "This app has no dark theme yet" })).toBeVisible();
     await page.getByRole("button", { name: "Light view of the app" }).click();
-    const dock = page.getByRole("toolbar", { name: "Preview tools" });
-    await dock.getByRole("button", { name: "Point at something" }).click();
+    // Point at something is a pointer button beside the preview's address (round 7), with a tooltip; no bar under the app.
+    const tools = page.getByRole("toolbar", { name: "Preview tools" });
+    const point = tools.getByRole("button", { name: "Point at something to change it" });
+    await point.hover();
+    await expect(page.getByRole("tooltip")).toHaveText("Point at something to change it");
+    await expect(point).toHaveAttribute("aria-pressed", "false");
+    const box = (await point.boundingBox())!;
+    expect(Math.min(box.width, box.height)).toBeGreaterThanOrEqual(24);
+    await point.click();
+    await expect(point).toHaveAttribute("aria-pressed", "true");
     await app.locator('section[data-part="extra-1"]').click();
     await expect(page.getByLabel("Message Architect")).toHaveValue(/About “Search” in the app:/);
+    await expect(point).toHaveAttribute("aria-pressed", "false");
     await page.getByRole("button", { name: "Test the app" }).click();
     await expect(page.getByText(/checks pass/)).toBeVisible();
   });

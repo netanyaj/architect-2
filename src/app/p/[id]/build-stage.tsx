@@ -8,7 +8,7 @@ import { Icon } from "@/components/ax/icon";
 import { NeedsYouCard } from "@/components/ax/needs-you-card";
 import { SimTag } from "@/components/ax/pill";
 import { PlanGroup, PlanRow } from "@/components/ax/plan-panel";
-import { PreviewDock, PreviewFrame } from "@/components/ax/preview-dock";
+import { PreviewFrame, PreviewTools } from "@/components/ax/preview-dock";
 import { StageBanner } from "@/components/ax/stage-banner";
 import type { Status, StatusIcon } from "@/components/ax/status-mark";
 import { canBuild, canManageMembers } from "@/lib/permissions";
@@ -227,7 +227,7 @@ function NoDarkTheme({ project }: { project: ProjectWorkspace }) {
   const [error, setError] = useState<string>();
   const canAct = canBuild(project.role);
   return (
-    // In the bar under the preview, beside the dock, so it never covers the app (M6 round 4).
+    // In the bar under the preview, so it never covers the app (M6 round 4).
     <div role="status" className="flex max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-full border border-line bg-surface py-1 pr-1 pl-3.5 text-small">
       <span>{error ?? "This app has no dark theme yet"}</span>
       <Button
@@ -278,7 +278,6 @@ export function PreviewControls({ projectId }: { projectId: string }) {
   );
 }
 
-/** The app in its Test version, with the dock: sizes, Point at something, N problems (BL-6). */
 /** The loader's line under the shape: "Build 2/6 · Building Talking points generator" (Geist Mono). */
 export function buildProgressLine(live: Pick<LiveRun, "done" | "total" | "activity">, parts = 0): string {
   const last = live.activity.at(-1);
@@ -288,6 +287,7 @@ export function buildProgressLine(live: Pick<LiveRun, "done" | "total" | "activi
   return total ? `Build ${Math.min(live.done + 1, total)}/${total} · ${now}` : now;
 }
 
+/** The app in its Test version, with its tools beside the address: Point at something and N problems (BL-6). */
 export function AppPreview({ project, items, live }: { project: ProjectWorkspace; items: WorkspaceItem[]; live?: LiveRun }) {
   const { partKey, openPart, sendToChat } = useUi();
   // The size and the Light / Dark view are switched in the project header (M5.8), beside the tabs.
@@ -345,38 +345,36 @@ export function AppPreview({ project, items, live }: { project: ProjectWorkspace
     <PreviewFrame
       url={`${slug}--test.architect.space/today`}
       badge={<SimTag title={preview.kind === "shell" ? "The preview is a stand-in shell showing this plan's parts" : "The preview is a pre-built sample app in this prototype"}>Simulated build</SimTag>}
-      dock={
-        <>
-          {console_ && preview.problems.length > 0 && (
-            <div role="dialog" aria-label="Problems" className="absolute right-3 bottom-[70px] left-3 mx-auto flex max-w-[560px] flex-col gap-2 rounded-card border border-line bg-surface p-3 shadow-pop">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold">{plural(preview.problems.length, "problem")}</h3>
-                <TextLink onClick={() => setConsole(false)}>Close</TextLink>
-              </div>
-              {preview.problems.map((p) => (
-                <div key={p.key} className="flex flex-wrap items-start gap-2 rounded-tile border border-line px-3 py-2">
-                  <span className="min-w-0 flex-1">
-                    <b>{p.title}</b>
-                    <span className="block text-small text-ink-2">{p.text}</span>
-                  </span>
-                  <TextLink onClick={() => openPart(p.key)}>Open</TextLink>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      sendToChat(`Fix ${p.title}: ${p.text}`);
-                      setConsole(false);
-                    }}
-                  >
-                    Fix with AI
-                  </Button>
-                </div>
-              ))}
+      tools={<PreviewTools pointing={pointing} onPointToggle={() => setPointing((p) => !p)} problems={preview.problems.length} onOpenProblems={() => setConsole((c) => !c)} />}
+      overlay={
+        console_ && preview.problems.length > 0 && (
+          <div role="dialog" aria-label="Problems" className="absolute top-[52px] right-3 left-3 z-10 mx-auto flex max-w-[560px] flex-col gap-2 rounded-card border border-line bg-surface p-3 shadow-pop">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">{plural(preview.problems.length, "problem")}</h3>
+              <TextLink onClick={() => setConsole(false)}>Close</TextLink>
             </div>
-          )}
-          {scheme === "dark" && !dark && <NoDarkTheme project={project} />}
-          <PreviewDock pointing={pointing} onPointToggle={() => setPointing((p) => !p)} problems={preview.problems.length} onOpenProblems={() => setConsole((c) => !c)} />
-        </>
+            {preview.problems.map((p) => (
+              <div key={p.key} className="flex flex-wrap items-start gap-2 rounded-tile border border-line px-3 py-2">
+                <span className="min-w-0 flex-1">
+                  <b>{p.title}</b>
+                  <span className="block text-small text-ink-2">{p.text}</span>
+                </span>
+                <TextLink onClick={() => openPart(p.key)}>Open</TextLink>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    sendToChat(`Fix ${p.title}: ${p.text}`);
+                    setConsole(false);
+                  }}
+                >
+                  Fix with AI
+                </Button>
+              </div>
+            ))}
+          </div>
+        )
       }
+      dock={scheme === "dark" && !dark ? <NoDarkTheme project={project} /> : undefined}
     >
       {live?.playing && preview.reveal.length === 0 ? (
         // Nothing to show yet while the build runs: the brand loader and where the build is (Soft Tray v4).
