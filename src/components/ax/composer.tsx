@@ -104,7 +104,7 @@ export function Composer({
             title="Voice input isn't in this prototype yet. Type your request instead."
             className="grid size-[38px] cursor-not-allowed place-items-center rounded-full text-ink-3"
           >
-            <Icon name="mic" size="sm" />
+            <Icon name="mic" className="size-5" />
           </button>
         )}
         {home ? (
