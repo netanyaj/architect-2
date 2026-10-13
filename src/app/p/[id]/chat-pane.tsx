@@ -13,11 +13,12 @@ import { Option } from "@/components/ax/stage-banner";
 import type { ModelPick } from "@/lib/models";
 import { canBuild } from "@/lib/permissions";
 import { useUi } from "@/lib/ui-store";
-import { answerInstead, applyChange, discardChange, sendMessage, turnIntoChange, undoChange } from "@/server/actions/chat";
+import { answerInstead, applyChange, discardChange, sendMessage, turnIntoChange, undoChange, type ChatBusy } from "@/server/actions/chat";
 import type { ChangeCardData, ProjectWorkspace } from "@/server/project";
 import { ChatAddMenu, useAttachments } from "./chat-add-menu";
 import { ChatMoreMenu } from "./chat-more-menu";
 import { CodeEditCard } from "./code-edit-card";
+import { ModelBusyBanner } from "./model-busy-banner";
 import { cn } from "@/lib/utils";
 import { PrCard } from "./pr-card";
 import { QuestionCard } from "./question-card";
@@ -280,6 +281,8 @@ export function ChatPane({
   const [addStatus, setAddStatus] = useState<string>();
   const [sending, setSending] = useState<string | null>(null);
   const [error, setError] = useState<string>();
+  // The model was busy (its limit, high demand or too slow): the paused banner with Switch model, not a red line.
+  const [busy, setBusy] = useState<ChatBusy>();
   const [pickerOpen, setPickerOpen] = useState(false);
   // The project's model was disallowed after it was picked (C-2): say so here, never switch it silently.
   const modelAllowed = project.modelPick === "auto" || project.models.some((m) => m.choice === project.model);
@@ -304,7 +307,8 @@ export function ChatPane({
     setSending(head.text);
     void (async () => {
       const r = await sendMessage({ projectId: project.id, content: head.text });
-      if (!r.ok) setError(r.message);
+      if (!r.ok && r.busy) setBusy(r.busy);
+      else if (!r.ok) setError(r.message);
       setSending(null);
       router.refresh();
     })();
@@ -316,6 +320,7 @@ export function ChatPane({
 
   const submit = (text: string) => {
     setError(undefined);
+    setBusy(undefined);
     const carried = attachments.items.map((a) => a.line).join("\n");
     setQueue((q) => [...q, { id: nextId.current++, text: carried ? `${text}\n\n${carried}` : text }]);
     attachments.clear();
@@ -412,6 +417,7 @@ export function ChatPane({
             {error}
           </p>
         )}
+        {busy && <ModelBusyBanner project={project} busy={busy} kept="Your message is saved." />}
         <div ref={endRef} />
       </div>
       {queue.map((q) => (

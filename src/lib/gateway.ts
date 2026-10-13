@@ -16,8 +16,9 @@ export type { ModelChoice };
  * - Gemini is always real; OpenRouter is real when its key and model are set.
  * - Claude and GPT are real when their key is set. Otherwise they're answered by Gemini and marked
  *   `simulated`, and the UI shows the Simulated tag. Never hide that a model is simulated.
- * - A free-tier rate limit (429) is retried with backoff, then thrown as GatewayRateLimited so the UI can show
- *   the paused banner with "Switch model". Never fail over to another model silently.
+ * - A free-tier rate limit (429) or an overloaded model (503, "high demand") is retried with backoff, then thrown as
+ *   GatewayRateLimited so the UI can show the paused banner with "Switch model". Never fail over to another model
+ *   silently.
  */
 
 export type ResolvedModel = {
@@ -28,11 +29,22 @@ export type ResolvedModel = {
   model: LanguageModel;
 };
 
+/** Why a model is busy: its free limit (429), or high demand on the provider's side (503). */
+export type BusyReason = "limit" | "demand";
+
 export class GatewayRateLimited extends Error {
-  constructor(public label: string) {
-    super(`${label} is busy right now (rate limit).`);
+  constructor(
+    public label: string,
+    public reason: BusyReason = "limit",
+  ) {
+    super(`${label} is busy right now (${reason === "demand" ? "high demand" : "rate limit"}).`);
     this.name = "GatewayRateLimited";
   }
+}
+
+/** The words for why a model is busy, as the chat and the plan say them. */
+export function busyWords(reason: BusyReason): string {
+  return reason === "demand" ? "high demand" : "its free limit";
 }
 
 /** The model took longer than its limit (OpenRouter's free models: 45 s). Shown like a rate limit: paused, Switch model. */
@@ -140,13 +152,16 @@ function statusOf(err: unknown): number | undefined {
 }
 
 /**
- * Provider failures become gateway errors: a 429 is GatewayRateLimited (the paused banner with "Switch model"),
- * any other API failure GatewayUnavailable. Returns null for everything else (e.g. output that didn't match the
+ * Provider failures become gateway errors: a 429 (free limit) or a 503 (overloaded, "high demand") is
+ * GatewayRateLimited (the paused banner with "Switch model", and the fallback), any other API failure
+ * GatewayUnavailable. Returns null for everything else (e.g. output that didn't match the
  * schema), which callers treat as the model's mistake and may retry.
  */
 export function classifyGatewayError(err: unknown, label: string): GatewayRateLimited | GatewayUnavailable | GatewaySlow | null {
   if (err instanceof GatewayRateLimited || err instanceof GatewayUnavailable || err instanceof GatewaySlow) return err;
-  if (statusOf(err) === 429) return new GatewayRateLimited(label);
+  const status = statusOf(err);
+  if (status === 429) return new GatewayRateLimited(label, "limit");
+  if (status === 503) return new GatewayRateLimited(label, "demand");
   if (APICallError.isInstance(err) || RetryError.isInstance(err)) {
     return new GatewayUnavailable(label, err instanceof Error ? err.message : String(err));
   }
@@ -162,7 +177,7 @@ export async function ask(input: {
   temperature?: number;
   /** Quick answers (Help): Gemini thinks at "low" (about 3.5 s instead of ~19 s on gemini-3.x flash). */
   fast?: boolean;
-  /** The model to fall back to when Gemini refuses on quota (M5.10): the caller passes it only if the policy allows it. */
+  /** The model to fall back to when Gemini is busy (quota or high demand, M5.10): the caller passes it only if the policy allows it. */
   fallback?: ModelChoice | null;
 }): Promise<{ text: string; label: string; simulated: boolean; fallbackNote?: string }> {
   try {
@@ -170,13 +185,14 @@ export async function ask(input: {
   } catch (err) {
     const to = fallbackFor(err, input.model, input.fallback);
     if (!to) throw err;
-    return { ...(await askOnce({ ...input, model: to })), fallbackNote: fallbackNote(to) };
+    return { ...(await askOnce({ ...input, model: to })), fallbackNote: fallbackNote(to, (err as GatewayRateLimited).reason) };
   }
 }
 
 /**
- * When Gemini (or a simulated model it answers for) refuses on quota or its rate limit, after the SDK's retries: the
- * fallback model, if one was offered and it's real here. Null otherwise: the error stands (the paused banner).
+ * When Gemini (or a simulated model it answers for) refuses on quota, its rate limit or high demand (503), after the
+ * SDK's retries: the fallback model, if one was offered and it's real here. Null otherwise: the error stands (the
+ * paused banner).
  */
 function fallbackFor(err: unknown, choice: ModelChoice | undefined, fallback: ModelChoice | null | undefined): ModelChoice | null {
   if (!(err instanceof GatewayRateLimited) || !fallback) return null;
@@ -186,8 +202,8 @@ function fallbackFor(err: unknown, choice: ModelChoice | undefined, fallback: Mo
 }
 
 /** The one line that says it (M5.10): never fail over silently. */
-export function fallbackNote(to: ModelChoice): string {
-  return `${modelName("gemini")} is busy right now (its free limit), so ${modelName(to)} answered instead.`;
+export function fallbackNote(to: ModelChoice, reason: BusyReason = "limit"): string {
+  return `${modelName("gemini")} is busy right now (${busyWords(reason)}), so ${modelName(to)} answered instead.`;
 }
 
 async function askOnce(input: Parameters<typeof ask>[0]): Promise<{ text: string; label: string; simulated: boolean }> {
@@ -216,7 +232,7 @@ async function askOnce(input: Parameters<typeof ask>[0]): Promise<{ text: string
   }
 }
 
-/** A structured answer (zod schema) through the same gateway rules: retries, 429 → GatewayRateLimited. */
+/** A structured answer (zod schema) through the same gateway rules: retries, 429 or 503 → GatewayRateLimited. */
 export async function askObject<T>(input: {
   instructions: string;
   prompt: string;
@@ -231,7 +247,7 @@ export async function askObject<T>(input: {
   } catch (err) {
     const to = fallbackFor(err, input.model, input.fallback);
     if (!to) throw err;
-    return { ...(await askObjectOnce({ ...input, model: to })), fallbackNote: fallbackNote(to) };
+    return { ...(await askObjectOnce({ ...input, model: to })), fallbackNote: fallbackNote(to, (err as GatewayRateLimited).reason) };
   }
 }
 

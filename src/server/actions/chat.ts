@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { Json } from "@/lib/database.types";
-import { askObject, GatewayRateLimited, GatewaySlow, ask } from "@/lib/gateway";
+import { askObject, busyWords, GatewayRateLimited, GatewaySlow, ask } from "@/lib/gateway";
 import { intentByRules, type Intent } from "@/lib/intent";
 import { DEFAULT_MODEL, type ModelChoice } from "@/lib/models";
 import { MODEL_NOT_ALLOWED } from "@/lib/policies";
@@ -70,7 +70,10 @@ const INTENT = `Classify one chat message sent to an app builder about the plan 
 "sure" is false when it could reasonably be read either way.`;
 const IntentSchema = z.object({ intent: z.enum(["question", "change"]), sure: z.boolean() });
 
-export type ChatResult = ActionResult<{ proposalId?: string; intent?: Intent | "suggestion" }> & { rateLimited?: boolean };
+/** Why the model couldn't answer, when it was busy: the client shows the paused banner with Switch model. */
+export type ChatBusy = "limit" | "demand" | "slow";
+
+export type ChatResult = ActionResult<{ proposalId?: string; intent?: Intent | "suggestion" }> & { rateLimited?: boolean; busy?: ChatBusy };
 
 type ChatProject = NonNullable<Awaited<ReturnType<typeof projectInWorkspace>>>;
 type ChatPlan = NonNullable<Awaited<ReturnType<typeof latestPlan>>>;
@@ -119,7 +122,7 @@ function busyMessage(err: unknown) {
   return err instanceof GatewaySlow
     ? "The free model took too long, so I stopped it. Your message is saved. Switch model, or try again."
     : err instanceof GatewayRateLimited
-      ? "The model is busy right now (the free model's limit), so I couldn't answer. Your message is saved. Switch model, or try again in a minute."
+      ? `The model is busy right now (${err.reason === "demand" ? "high demand" : "the free model's limit"}), so I couldn't answer. Your message is saved. Switch model, or try again in a minute.`
       : "I couldn't reach the model just now. Your message is saved. Try again in a moment.";
 }
 
@@ -255,10 +258,12 @@ export async function sendMessage(input: { projectId: string; content: string })
     revalidatePath(`/p/${project.id}`);
     return { ok: true, intent, ...r };
   } catch (err) {
-    const busy = err instanceof GatewayRateLimited || err instanceof GatewaySlow;
+    const busy: ChatBusy | undefined = err instanceof GatewayRateLimited ? err.reason : err instanceof GatewaySlow ? "slow" : undefined;
     await say(busyMessage(err), "plan");
     revalidatePath(`/p/${project.id}`);
-    return { ok: false, rateLimited: busy, message: busy ? "The model is busy right now. Switch model, or try again in a minute." : "The model didn't answer. Try again." };
+    return busy
+      ? { ok: false, rateLimited: true, busy, message: `The model is busy right now (${busy === "slow" ? "it took too long" : busyWords(busy)}). Switch model, or try again in a minute.` }
+      : { ok: false, message: "The model didn't answer. Try again." };
   }
 }
 

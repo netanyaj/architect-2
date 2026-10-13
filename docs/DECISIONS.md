@@ -359,6 +359,14 @@ From the M5.8 review notes (not in the repo). No migration: everything new is st
 | Simulator failure text | Any plan's last agent failed with the Meeting Prep sentence "brief is 200 words or fewer" and "236 words" | The failure is the failing part's own check ("leads are assigned a score… with an explanation"), with what it measured: the scenario's word counts only when the check is about a word count, otherwise "2 of 3 passed" and plain notes per try. "Too long" only shows for a limit on words or characters | The build story has to match the plan on screen |
 | `cn` package | Flagged as possibly stray | Kept: it is the class merger (clsx plus tailwind-merge) that `src/lib/utils.ts` and every `src/components/ui` file import | Removing it would break every shadcn component |
 
+## Model busy: a 503 counts as busy (14 Oct 2026)
+
+| Area | Before | We did | Why |
+|---|---|---|---|
+| Gemini 503, "high demand" | Read as "the model didn't answer": no Switch model and no fallback. Fix with AI failed this way: retried by the SDK, then "The model didn't answer. Try again." | A 503 is busy, like a 429 (`GatewayRateLimited`, reason `demand`): retried with backoff, then OpenRouter answers if the policy allows it and it's set up, and the chat says so ("… is busy right now (high demand), so … answered instead"); otherwise the paused banner with Switch model. A 429 still says "its free limit" | Overload is temporary and has nothing to do with the request; the same honest path as a quota limit gets the person an answer, and failover stays announced and policy-bound |
+| Paused banner in chat and Fix with AI | Only the plan showed it; chat and Fix with AI showed a red line, even for a 429 | Both show the paused banner: the model's name, why it's busy, that the message is saved and nothing changed, and Switch model, which asks first as the composer's picker does. Switch model is a secondary button there, so the screen keeps one primary | Same state, same banner; one primary button per screen (CLAUDE.md rule 4) |
+| Plan banner wording | "The free model reached its limit." | "The free model can't take more requests right now." | True for a 429 and a 503; the plan's failure kind doesn't record which |
+
 ## Numbers we set, and how we picked them
 
 | Number | Value | How we picked it |

@@ -18,7 +18,7 @@ Product documents (PRD, architecture, flows) are in `docs/product/`. When this f
 - Vercel AI SDK. All model calls go through `src/lib/gateway.ts`, never a provider SDK directly.
   - Real providers: Google (Gemini, required) and OpenRouter (optional, free models, via `@openrouter/ai-sdk-provider`).
   - Claude and GPT: real only if `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` is set. Otherwise the gateway routes them to Gemini and the picker shows them with a `SimTag`. Never hide that a model is simulated.
-  - Failover goes only to models the organisation's policy pre-approves as fallbacks, and is always announced. In the prototype, Gemini out of quota falls back to OpenRouter and says so in chat; any other free-tier rate limit (429) retries with backoff, then shows the paused banner with "Switch model".
+  - Failover goes only to models the organisation's policy pre-approves as fallbacks, and is always announced. In the prototype, Gemini busy (out of quota, a 429 rate limit, or a 503 "high demand" overload) retries with backoff, then falls back to OpenRouter when the policy allows it and says so in chat; otherwise it shows the paused banner with "Switch model".
 - GitHub App (read-only contents and metadata) via Octokit, for repo listing and import analysis.
 - Playwright for the smoke test; Vitest for unit tests.
 

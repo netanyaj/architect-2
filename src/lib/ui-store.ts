@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import type { ModelPick } from "./models";
 
 /** Small UI-only state. Server state lives in Supabase. */
 type UiState = {
@@ -16,6 +17,10 @@ type UiState = {
   chatDraft: { text: string; n: number } | null;
   sendToChat: (text: string) => void;
   takeChatDraft: () => void;
+  /** A model picked from a busy banner (chat, Fix with AI): the workspace asks before switching, as the picker does. */
+  modelRequest: { model: ModelPick; n: number } | null;
+  requestModel: (model: ModelPick) => void;
+  takeModelRequest: () => void;
   /** Unsaved changes in the open agent's settings (Agents view): the stage action waits for Save or Discard. */
   agentChanges: number;
   /** The agent whose settings are open on the right (Agents view), by part key. */
@@ -49,6 +54,9 @@ export const useUi = create<UiState>((set) => ({
   chatDraft: null,
   sendToChat: (text) => set((s) => ({ chatDraft: { text, n: (s.chatDraft?.n ?? 0) + 1 } })),
   takeChatDraft: () => set({ chatDraft: null }),
+  modelRequest: null,
+  requestModel: (model) => set((s) => ({ modelRequest: { model, n: (s.modelRequest?.n ?? 0) + 1 } })),
+  takeModelRequest: () => set({ modelRequest: null }),
   agentChanges: 0,
   agentKey: null,
   openAgent: (key) => set({ agentKey: key }),

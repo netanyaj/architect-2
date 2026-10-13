@@ -17,7 +17,14 @@ vi.mock("@/server/blueprint/generate", async (orig) => ({
 /** Whether OpenRouter's free model is set up (its key): the fallback when Gemini refuses on quota (M5.10). */
 const gw = { openRouterReal: false };
 vi.mock("@/lib/gateway", async () => {
-  class GatewayRateLimited extends Error {}
+  class GatewayRateLimited extends Error {
+    constructor(
+      public label: string,
+      public reason: "limit" | "demand" = "limit",
+    ) {
+      super("busy");
+    }
+  }
   class GatewayUnavailable extends Error {}
   class GatewaySlow extends Error {
     constructor(
@@ -31,6 +38,7 @@ vi.mock("@/lib/gateway", async () => {
     GatewayRateLimited,
     GatewayUnavailable,
     GatewaySlow,
+    busyWords: (reason: string) => (reason === "demand" ? "high demand" : "its free limit"),
     resolveModel: (m: string) => ({
       choice: m,
       label: m === "claude" ? "Claude Sonnet" : m === "openrouter" ? "OpenRouter (free)" : "Gemini",
@@ -152,6 +160,28 @@ describe("writePlan", () => {
     expect(db.tables.blueprints[0]).toMatchObject({ generation: "ready", model: "openrouter", simulated_model: false });
     expect(db.tables.messages).toEqual([expect.objectContaining({ role: "architect", content: expect.stringMatching(/is writing this plan instead\.$/) })]);
     expect(db.tables.items).toHaveLength(plan.items.length);
+  });
+
+  it("a 503 (high demand) falls back the same way, and the note says high demand", async () => {
+    gw.openRouterReal = true;
+    generate.mockImplementation(async (input: { model: string }, ev) => {
+      if (input.model === "gemini") throw new GatewayRateLimited("Gemini", "demand");
+      for (const [i, item] of plan.items.entries()) await ev.onItem(item, i);
+      return { blueprint: plan, tokens: 4500, label: "OpenRouter (free)", simulated: false, ms: 9000 };
+    });
+    await run();
+    expect(generate.mock.calls.map((c) => (c[0] as { model: string }).model)).toEqual(["gemini", "openrouter"]);
+    expect(events.filter((e) => e.type === "started").at(-1)).toMatchObject({ note: "Gemini 3.5 Flash Lite is busy right now (high demand), so Nemotron 3 Super on OpenRouter is writing this plan instead." });
+    expect(events.at(-1)?.type).toBe("done");
+  });
+
+  it("a 503 without OpenRouter set up: the paused banner, and the message says high demand", async () => {
+    generate.mockImplementation(async () => {
+      throw new GatewayRateLimited("Gemini", "demand");
+    });
+    await run();
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(events.at(-1)).toMatchObject({ type: "error", kind: "rate_limited", message: expect.stringContaining("busy right now (high demand)") });
   });
 
   it("no fallback when OpenRouter isn't allowed here: the paused banner, as before", async () => {

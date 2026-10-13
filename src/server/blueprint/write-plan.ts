@@ -3,7 +3,7 @@ import { attachedFileKind, fileParts, type AttachedFile } from "@/lib/file-parts
 import "server-only";
 
 import type { Item as ItemT } from "@/lib/blueprint";
-import { GatewayRateLimited, GatewaySlow, GatewayUnavailable, modelName, resolveModel } from "@/lib/gateway";
+import { busyWords, GatewayRateLimited, GatewaySlow, GatewayUnavailable, modelName, resolveModel } from "@/lib/gateway";
 import { canBuild } from "@/lib/permissions";
 import { MODEL_LABEL, resolvePick, type ModelChoice } from "@/lib/models";
 import type { AdminDb } from "../db";
@@ -181,8 +181,9 @@ export async function writePlan(
     try {
       result = await write(model);
     } catch (err) {
-      // Gemini refused on quota or its rate limit, after the gateway's retries (M5.10): when OpenRouter's free model
-      // is set up and allowed here, it writes the plan instead, and the chat says so in one line. Never silently.
+      // Gemini refused on quota, its rate limit or high demand (503), after the gateway's retries (M5.10): when
+      // OpenRouter's free model is set up and allowed here, it writes the plan instead, and the chat says so in one
+      // line. Never silently.
       const geminiAnswered = resolved.choice === "gemini" || resolved.simulated;
       const openRouter = resolveModel("openrouter");
       if (!(err instanceof GatewayRateLimited) || !geminiAnswered || openRouter.simulated || !(await allowedModels(admin, ctx.workspace.id)).includes("openrouter")) throw err;
@@ -191,7 +192,7 @@ export async function writePlan(
       used = "openrouter";
       usedResolved = openRouter;
       await admin.from("blueprints").update({ model: "openrouter", simulated_model: false }).eq("id", bp.id);
-      const note = `${modelName("gemini")} is busy right now (its free limit), so ${modelName("openrouter")} is writing this plan instead.`;
+      const note = `${modelName("gemini")} is busy right now (${busyWords(err.reason)}), so ${modelName("openrouter")} is writing this plan instead.`;
       await admin.from("messages").insert({ project_id: project.id, role: "architect", mode: "plan", content: note });
       emit({ type: "started", blueprintId: bp.id, version, model: { label: openRouter.label, simulated: false }, note });
       result = await write("openrouter");
@@ -265,7 +266,7 @@ export async function writePlan(
     const kind = err instanceof GatewayRateLimited ? "rate_limited" : err instanceof GatewaySlow ? "slow" : err instanceof BlueprintInvalid ? "invalid" : "unavailable";
     const message =
       kind === "rate_limited"
-        ? `${usedResolved.label} is busy right now (the free model's limit). The parts written so far are kept. Switch model, or try again in a minute.`
+        ? `${usedResolved.label} is busy right now (${(err as GatewayRateLimited).reason === "demand" ? "high demand" : "the free model's limit"}). The parts written so far are kept. Switch model, or try again in a minute.`
         : kind === "slow"
           ? `${usedResolved.label} is taking too long (over ${(err as GatewaySlow).seconds} s). The parts written so far are kept. Switch model, or try again.`
           : kind === "invalid"

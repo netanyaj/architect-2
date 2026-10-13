@@ -25,9 +25,10 @@ import { branchInfo, slugOf, type TerminalLine } from "@/lib/dev-view";
 import type { LiveRun } from "@/lib/sim/replay";
 import { canBuild } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
-import { sendMessage } from "@/server/actions/chat";
+import { sendMessage, type ChatBusy } from "@/server/actions/chat";
 import { deployedEnvs, endTerminalSession, listTerminalSessions, loadTerminalSession, runCommand, saveTerminalSession, type TerminalSessionSummary } from "@/server/actions/terminal";
 import type { ProjectWorkspace, WorkspaceItem } from "@/server/project";
+import { ModelBusyBanner } from "./model-busy-banner";
 
 type Tab = "terminal" | "console" | "build" | "live";
 
@@ -230,14 +231,24 @@ function ConsoleTab({ project, entries }: { project: ProjectWorkspace; entries: 
   const router = useRouter();
   const [level, setLevel] = useState<ConsoleLevel | "all">("all");
   const [sent, setSent] = useState<Record<string, "sending" | "sent" | string>>({});
+  // The model was busy (its limit, high demand or too slow): the paused banner, and Fix with AI stays to try again.
+  const [busy, setBusy] = useState<ChatBusy | null>(null);
   const [, start] = useTransition();
   const counts = consoleCounts(entries);
   const shown = level === "all" ? entries : entries.filter((e) => e.level === level);
   const fix = (e: ConsoleEntry) =>
     start(async () => {
       setSent((s) => ({ ...s, [e.id]: "sending" }));
+      setBusy(null);
       const r = await sendMessage({ projectId: project.id, content: fixRequest(e) });
-      setSent((s) => ({ ...s, [e.id]: r.ok ? "sent" : r.message }));
+      if (!r.ok && r.busy) {
+        setBusy(r.busy);
+        setSent((s) => {
+          const rest = { ...s };
+          delete rest[e.id];
+          return rest;
+        });
+      } else setSent((s) => ({ ...s, [e.id]: r.ok ? "sent" : r.message }));
       router.refresh();
     });
   return (
@@ -256,6 +267,7 @@ function ConsoleTab({ project, entries }: { project: ProjectWorkspace; entries: 
           ]}
         />
       </div>
+      {busy && <ModelBusyBanner project={project} busy={busy} kept="The request is saved in chat." className="mx-3 mb-2" />}
       <ol aria-label="Console" className="min-h-0 flex-1 overflow-auto">
         {shown.map((e) => (
           <li key={e.id} className={cn("flex flex-wrap items-start gap-x-3 gap-y-1 border-t border-line px-4 py-2", e.level === "error" && "bg-failed-bg")}>

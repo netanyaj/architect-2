@@ -45,7 +45,8 @@ export async function askSupport(input: { question: string; history?: { role: "u
     return { ok: true, answer: text };
   } catch (err) {
     if (err instanceof GatewayRateLimited || err instanceof GatewaySlow) {
-      return { ok: false, rateLimited: true, message: "Help is busy right now (the free model's limit). Try again in a minute, or talk to a person." };
+      const why = err instanceof GatewayRateLimited && err.reason === "demand" ? "high demand" : err instanceof GatewaySlow ? "it took too long" : "the free model's limit";
+      return { ok: false, rateLimited: true, message: `Help is busy right now (${why}). Try again in a minute, or talk to a person.` };
     }
     return { ok: false, message: "Help can't answer right now. Try again in a moment, or talk to a person." };
   }

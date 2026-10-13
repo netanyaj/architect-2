@@ -500,6 +500,18 @@ export function Workspace({ project, page = "workspace" }: { project: ProjectWor
       if (thenWrite) void write(m === AUTO ? {} : { model: m });
     });
 
+  // Switch model on a busy banner (chat, Fix with AI) asks first, as the picker does.
+  const { modelRequest, takeModelRequest } = useUi();
+  useEffect(() => {
+    if (!modelRequest) return;
+    takeModelRequest();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- taking a request handed over from a banner once
+    if (project.plan) setModelAsk(modelRequest.model);
+    else switchModel(modelRequest.model, false);
+    // switchModel is redefined each render; the request decides.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modelRequest, takeModelRequest, project.plan]);
+
   // The picker's label (a registered private model goes by its own name).
   const modelName = (m: ModelPick) => (m === AUTO ? AUTO_LABEL : (project.models.find((o) => o.choice === m)?.label ?? MODEL_LABEL[m]));
 

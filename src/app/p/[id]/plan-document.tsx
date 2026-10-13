@@ -398,7 +398,7 @@ export function PlanDocument({
                 </>
               }
             >
-              {failed.kind === "slow" ? "The free model didn't finish within 45 seconds." : "The free model reached its limit."}{" "}
+              {failed.kind === "slow" ? "The free model didn't finish within 45 seconds." : "The free model can't take more requests right now."}{" "}
               {items.length ? `The ${items.length} parts written so far are kept. ` : ""}Nothing was built or charged.{" "}
               {switchTo ? `Switch to ${switchTo.label}, or try again${failed.kind === "slow" ? "" : " in a minute"}.` : "Try again in a minute."}
             </StageBanner>

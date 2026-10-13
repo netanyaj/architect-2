@@ -100,3 +100,20 @@ describe("sendMessage reads intent", () => {
     expect(askObject.mock.calls.at(-1)![0].prompt).toContain("Add a Slack step (suggested by Jordan)");
   });
 });
+
+describe("sendMessage when the model is busy", () => {
+  it("Fix with AI on a 503 (high demand): the busy reason for the paused banner, and the chat says so", async () => {
+    const { GatewayRateLimited } = await import("@/lib/gateway");
+    askObject.mockRejectedValueOnce(new GatewayRateLimited("Gemini", "demand"));
+    const r = await sendMessage({ projectId: P, content: "Fix this error from the preview's console: Brief: 2 of 3 assertions passed (in app/brief.ts)." });
+    expect(r).toEqual({ ok: false, rateLimited: true, busy: "demand", message: "The model is busy right now (high demand). Switch model, or try again in a minute." });
+    expect(db.tables.messages.at(-1)).toMatchObject({ role: "architect", content: expect.stringContaining("(high demand)") });
+    expect(db.tables.change_proposals).toEqual([]);
+  });
+
+  it("a 429 says the free model's limit", async () => {
+    const { GatewayRateLimited } = await import("@/lib/gateway");
+    askObject.mockRejectedValueOnce(new GatewayRateLimited("Gemini"));
+    expect(await sendMessage({ projectId: P, content: "Also post the brief to Slack" })).toMatchObject({ ok: false, busy: "limit", message: expect.stringContaining("(its free limit)") });
+  });
+});
