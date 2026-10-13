@@ -195,11 +195,16 @@ export function TourEngine({
     return () => m.removeEventListener("change", on);
   }, []);
 
-  // Each step: go to its page, wait for its target, then show it. It's reported (saved) as it shows.
+  // Each step: go to its page, wait for its target, then show it. It's reported (saved) as it shows. It runs when the
+  // step changes, not when the steps are rebuilt (a page refresh mid-action must not send the person back).
   const stepKey = at ? `${at.c}:${at.s}` : null;
+  const chaptersRef = useRef(chapters);
+  useLayoutEffect(() => {
+    chaptersRef.current = chapters;
+  });
   useEffect(() => {
     if (!at) return;
-    const ch = chapters[at.c];
+    const ch = chaptersRef.current[at.c];
     const st = ch?.steps[at.s];
     if (!st) return;
     let stale = false;
@@ -223,7 +228,9 @@ export function TourEngine({
       stale = true;
       setReady(false);
     };
-  }, [stepKey, at, chapters, router, reduce]);
+    // Only the step decides; `at` is read for it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stepKey]);
 
   // Follow the target as the page scrolls, resizes or redraws.
   useEffect(() => {

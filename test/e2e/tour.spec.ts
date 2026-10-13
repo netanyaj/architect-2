@@ -164,6 +164,7 @@ test.describe("Tour", () => {
     // Skip tour, then Take the tour (here from ⌘K) picks up where it was.
     await card(page).getByRole("button", { name: "Skip tour" }).click();
     await expect(card(page)).toHaveCount(0);
+    await expect.poll(async () => ((await adminDb().from("user_preferences").select("tour").eq("user_id", user!.id).single()).data!.tour as { dismissed?: boolean }).dismissed).toBe(true);
     await page.reload();
     await expect(card(page)).toHaveCount(0);
     await page.keyboard.press("ControlOrMeta+k");
