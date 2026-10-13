@@ -60,7 +60,7 @@ A fresh demo account on production, reviewed with the checklist of the third-par
 | 🔴 | The terminal lost a command's output when a second command was typed before the first answered | Developer view › Terminal & logs | **Fixed**: every result appends to the latest lines (found by `m55.spec`) |
 | 🟡 | At 1024 px with Parts and Chat open, the preview is narrow | Project App view | Open: auto-collapse Parts below 1100 px until the person touches it |
 | 🟡 | Research agent (the demo agent) shows "Claude Sonnet · Sim" in its read-only model picker, though it runs on Gemini 3.1 Flash Lite | Meeting Prep › Agents | Open: show Studio's model for the demo agent |
-| 🟡 | The landing page's Video link says "soon" until the video is published | `/` | Open: set `NEXT_PUBLIC_VIDEO_URL` |
+| 🟡 | The landing page's Video link says "soon" until the video is published | `/` | **Fixed**: `NEXT_PUBLIC_VIDEO_URL` is now set in Vercel |
 | 🟡 | Seeded agents' instructions repeat the placeholder check | Agents › Instructions on seeded projects | Open: new and reset workspaces take the new checks once `0025` is applied; existing agent rows keep theirs |
 | 🟢 | Project names on Home are links under 24 px tall, but the whole row is clickable | Home | Fine (the row is the target) |
 | 🟢 | The preview's "This week" wraps on phones | Meeting Prep preview at 390 | Fine (it's the sample app) |

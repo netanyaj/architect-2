@@ -2,7 +2,7 @@
 
 **Architect 2.0: describe an agentic app, see the plan and its cost, and launch it through your company's rules.**
 
-[Live demo](https://architect2-netanya.vercel.app) · Video (coming) · [Architecture](docs/product/ARCHITECTURE.md) · [Diagram](docs/product/diagrams/hero-architecture.png) · [PRD](docs/product/08-PRD-architect-2.md)
+[Live demo](https://architect2-netanya.vercel.app) · [Video walkthrough](https://youtu.be/0AATPRPQO4A) · [Architecture](docs/product/ARCHITECTURE.md) · [Diagram](docs/product/diagrams/hero-architecture.png) · [PRD](docs/product/08-PRD-architect-2.md)
 
 One project, Supplier Invoice Auditor, from one prompt:
 
