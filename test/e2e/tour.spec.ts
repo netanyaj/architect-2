@@ -152,6 +152,32 @@ test.describe("Tour", () => {
     await walk(page, false, { backs: false });
   });
 
+  test("a second tour in the same workspace: Gmail is already connected and Sam's launch approved, so those steps say so instead of acting", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    user = await createTestUser("tour2nd", { fresh: true });
+    await signIn(page, user);
+    await page.getByRole("alertdialog").waitFor();
+    // What an earlier tour here left: Gmail connected, and Sam's request to make ticket-triage live approved.
+    const ws = await demoWorkspace(user);
+    await adminDb().from("connections").update({ status: "connected", scopes: ["read_write"] }).eq("workspace_id", ws).eq("provider", "gmail");
+    await adminDb().from("approvals").update({ status: "approved", decided_at: new Date().toISOString() }).eq("workspace_id", ws).eq("kind", "deploy");
+    await page.reload();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Start the tour" }).click();
+    const s = story(true).map((c) =>
+      c.title === "A blocker you can fix" ? { ...c, title: "When a part waits for you", act: undefined } : c.title === "Approvals" ? { ...c, act: undefined } : c,
+    );
+    for (let i = 0; i < s.length; i++) {
+      await atCard(page, 1, s, i);
+      if (s[i].title === "When a part waits for you") {
+        await expect(card(page)).toContainText("Gmail is already connected in this workspace");
+        await expect(page.locator('[data-tour="blocker"]')).toHaveCount(0);
+      }
+      if (s[i].title === "Approvals") await expect(card(page)).toContainText("already approved in this workspace");
+      await next(page, s[i].act ?? /^Next$/);
+    }
+    await atCard(page, 2, around(true), 0);
+  });
+
   test("Back and Next pressed quickly 10 times: only the last request wins, and the card matches its page", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     user = await createTestUser("tourfast");

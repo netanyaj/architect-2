@@ -382,7 +382,8 @@ export function PlanDocument({
       )}
 
       {failed && !writing && (
-        <>
+        // The tour reads this: the plan stopped, so Next can't wait for it.
+        <div data-plan-stopped className="contents">
           {failed.kind === "rate_limited" || failed.kind === "slow" ? (
             <StageBanner
               kind="paused"
@@ -455,7 +456,7 @@ export function PlanDocument({
             </form>
           )}
           <p className="text-small text-ink-2">If it fails twice, Help can look at it with this project attached.</p>
-        </>
+        </div>
       )}
 
       {openQuestions.map((q) => (

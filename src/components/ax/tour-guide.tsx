@@ -29,9 +29,14 @@ type Runtime = {
   /** Bumped to remount the engine at `at` (a start, a resume). */
   run: number;
   seeded: boolean;
+  /**
+   * The workspace as the tour clicked Build: Gmail already connected (the build won't stop for it), and a Live launch
+   * waiting for approval. An earlier tour here connected Gmail and approved Sam's launch. Null: not known (a reload).
+   */
+  atBuild: { gmail: boolean; deployWaiting: boolean } | null;
 };
 
-const useRuntime = create<Runtime>(() => ({ view: null, at: null, projectId: null, acted: [], welcomeOpen: false, run: 0, seeded: false }));
+const useRuntime = create<Runtime>(() => ({ view: null, at: null, projectId: null, acted: [], welcomeOpen: false, run: 0, seeded: false, atBuild: null }));
 
 /** The tour is running: project pages keep Parts and Chat open while it is. */
 export const useTourActive = () => useRuntime((s) => Boolean(s.at));
@@ -64,7 +69,7 @@ function buttonByText(scope: ParentNode, text: RegExp): HTMLElement | null {
 }
 
 /** The three chapters, for this person and workspace. Steps for pages they can't see are left out. */
-function buildChapters(view: TourView, rt: { projectId: string | null }): TourChapterDef[] {
+function buildChapters(view: TourView, rt: { projectId: string | null; gmailReady: boolean; nothingToApprove: boolean }): TourChapterDef[] {
   const pid = rt.projectId;
   const admin = view.role === "owner" || view.role === "admin";
   const gov = view.governance;
@@ -101,7 +106,15 @@ function buildChapters(view: TourView, rt: { projectId: string | null }): TourCh
       title: "The plan comes first",
       content: <p>Parts in plain words, each with the check that proves it and what it costs, and the total before anything is spent. Next waits for the plan to finish.</p>,
       onNext: async (api) => {
-        await api.waitFor(() => /^Build · ~\d+ credits$/.test(api.find("build")?.textContent?.trim() ?? ""), 180_000, "The finished plan");
+        await api.waitFor(
+          () => {
+            // The plan stopped (the model failed or was busy): waiting won't finish it, the page's own buttons will.
+            if (document.querySelector("[data-plan-stopped]")) throw new Error("The plan stopped. Use Try again or Switch model on the page, then press Next.");
+            return /^Build · ~\d+ credits$/.test(api.find("build")?.textContent?.trim() ?? "");
+          },
+          180_000,
+          "The finished plan",
+        );
       },
     },
     {
@@ -142,6 +155,8 @@ function buildChapters(view: TourView, rt: { projectId: string | null }): TourCh
       content: <p>The button says what it costs. Nothing is built or charged before this click. Next clicks it for you.</p>,
       nextLabel: "Build it",
       onNext: async (api) => {
+        // Whether the build stops for Gmail is decided now, by whether it's connected.
+        useRuntime.setState({ atBuild: { gmail: view.gmailConnected, deployWaiting: view.deployWaiting } });
         await api.click("build");
         // The App view opens, the live preview, with Parts and Chat open.
         await api.waitFor(() => !window.location.search.includes("view=plan") && Boolean(document.querySelector('aside[aria-label="Parts"]')) && Boolean(document.querySelector('aside[aria-label="Chat"]')), 30_000, "The App view");
@@ -162,26 +177,42 @@ function buildChapters(view: TourView, rt: { projectId: string | null }): TourCh
         await sleep(900);
       },
     },
-    {
-      id: "blocker",
-      page: projectPage(),
-      prepare: closeDrawers,
-      target: "blocker",
-      doneTarget: "part-works",
-      waitMs: 150_000,
-      newIn2: true,
-      title: "A blocker you can fix",
-      content: <p>A part waits for Gmail. Connect it (here, with sample data) and the build carries on. Everything else kept building.</p>,
-      nextLabel: "Connect it",
-      onNext: async (api) => {
-        // Close the part's drawer first, if it's open.
-        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-        await sleep(350);
-        await api.click("blocker");
-        await api.click("connect-allow", { timeout: 8_000 });
-        await api.waitFor(() => !findTarget("connect-allow"), 15_000, "The connection");
-      },
-    },
+    // Gmail already connected here (an earlier tour connected it): the build doesn't stop for it, so the step says so and
+    // shows the parts instead of waiting for a Connect button that won't come.
+    rt.gmailReady
+      ? {
+          id: "blocker",
+          page: projectPage(),
+          prepare: closeDrawers,
+          target: 'css:aside[aria-label="Parts"]',
+          newIn2: true,
+          title: "When a part waits for you",
+          content: (
+            <p>
+              Gmail is already connected in this workspace, so the part that reads it works with your data and nothing stopped. Without it, that part waits with Connect Gmail and uses sample data, while everything else keeps building.
+            </p>
+          ),
+        }
+      : {
+          id: "blocker",
+          page: projectPage(),
+          prepare: closeDrawers,
+          target: "blocker",
+          doneTarget: "part-works",
+          waitMs: 150_000,
+          newIn2: true,
+          title: "A blocker you can fix",
+          content: <p>A part waits for Gmail. Connect it (here, with sample data) and the build carries on. Everything else kept building.</p>,
+          nextLabel: "Connect it",
+          onNext: async (api) => {
+            // Close the part's drawer first, if it's open.
+            document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+            await sleep(350);
+            await api.click("blocker");
+            await api.click("connect-allow", { timeout: 8_000 });
+            await api.waitFor(() => !findTarget("connect-allow"), 15_000, "The connection");
+          },
+        },
     {
       id: "connections",
       page: "/connections",
@@ -291,19 +322,28 @@ function buildChapters(view: TourView, rt: { projectId: string | null }): TourCh
     },
     ...(gov && admin
       ? [
-          {
-            id: "approvals",
-            page: "/governance/approvals",
-            target: "approve",
-            doneTarget: 'css:section[aria-label="Requests"]',
-            title: "Approvals",
-            content: <p>Sam, a Builder, asked to make ticket-triage live. It waits here for an Owner or Admin, so it&apos;s yours to approve.</p>,
-            nextLabel: "Approve it",
-            onNext: async (api: TourApi) => {
-              await api.click("approve");
-              await api.waitFor(() => /Approved/.test(document.body.textContent ?? ""), 15_000, "The approval");
-            },
-          } satisfies TourStepDef,
+          rt.nothingToApprove
+            ? ({
+                // An earlier tour here approved Sam's launch: nothing waits, so the step shows the requests instead.
+                id: "approvals",
+                page: "/governance/approvals",
+                target: 'css:section[aria-label="Requests"]',
+                title: "Approvals",
+                content: <p>Live launches, new apps and tokens wait here for an Owner or Admin. Sam&apos;s request to make ticket-triage live is already approved in this workspace, so there&apos;s nothing to approve now.</p>,
+              } satisfies TourStepDef)
+            : ({
+                id: "approvals",
+                page: "/governance/approvals",
+                target: "approve",
+                doneTarget: 'css:section[aria-label="Requests"]',
+                title: "Approvals",
+                content: <p>Sam, a Builder, asked to make ticket-triage live. It waits here for an Owner or Admin, so it&apos;s yours to approve.</p>,
+                nextLabel: "Approve it",
+                onNext: async (api: TourApi) => {
+                  await api.click("approve");
+                  await api.waitFor(() => /Approved/.test(document.body.textContent ?? ""), 15_000, "The approval");
+                },
+              } satisfies TourStepDef),
         ]
       : []),
     gov && admin
@@ -552,14 +592,19 @@ export function TourProvider({ initial, available, children }: { initial: TourVi
     if (s.at?.chapter === "story" && onProject && !s.projectId) useRuntime.setState({ projectId: onProject });
   }, [onProject, rt.at?.chapter]);
 
-  const chapters = useMemo(() => (view ? buildChapters(view, { projectId: rt.projectId }) : []), [view, rt.projectId]);
+  const gmailReady = rt.atBuild ? rt.atBuild.gmail : Boolean(view?.gmailConnected && !rt.acted.includes("blocker"));
+  const nothingToApprove = rt.atBuild ? !rt.atBuild.deployWaiting : Boolean(view && !view.deployWaiting && !rt.acted.includes("approvals"));
+  const chapters = useMemo(
+    () => (view ? buildChapters(view, { projectId: rt.projectId, gmailReady, nothingToApprove }) : []),
+    [view, rt.projectId, gmailReady, nothingToApprove],
+  );
 
   const start = useCallback(async () => {
     const r = await beginTour();
     keepPosition(useRuntime.getState().view?.userId, null);
     useRuntime.setState({ welcomeOpen: false });
     if (!r.ok) return;
-    useRuntime.setState((s) => ({ at: { chapter: "story", step: "home" }, projectId: null, acted: [], run: s.run + 1 }));
+    useRuntime.setState((s) => ({ at: { chapter: "story", step: "home" }, projectId: null, acted: [], atBuild: null, run: s.run + 1 }));
     if (r.switched) router.refresh();
   }, [router]);
 

@@ -49,6 +49,10 @@ export async function tourFor(admin: AdminDb, ctx: AppContext): Promise<TourView
   if (!tourAvailable(ctx)) return null;
   const prefs = await tourPrefs(admin, ctx.user.id);
   const active = Boolean(prefs.started && !prefs.dismissed && !prefs.finished);
+  const [{ data: gmail }, { data: deploy }] = await Promise.all([
+    admin.from("connections").select("id").eq("workspace_id", ctx.workspace.id).eq("provider", "gmail").eq("status", "connected").limit(1),
+    admin.from("approvals").select("id").eq("workspace_id", ctx.workspace.id).eq("kind", "deploy").eq("status", "waiting").limit(1),
+  ]);
   return {
     // First sign-in: nothing chosen yet.
     welcome: !prefs.welcomed && !prefs.started && !prefs.dismissed && !prefs.finished,
@@ -60,6 +64,8 @@ export async function tourFor(admin: AdminDb, ctx: AppContext): Promise<TourView
     userId: ctx.user.id,
     demoVisitor: Boolean(ctx.user.is_anonymous),
     governance: ctx.workspace.governanceEnabled,
+    gmailConnected: Boolean(gmail?.length),
+    deployWaiting: Boolean(deploy?.length),
     role: ctx.role,
     personal: ctx.workspace.kind === "personal",
     demoWorkspaceId: ctx.memberships.find((m) => m.role === "owner" && m.kind === "demo")?.workspaceId ?? null,

@@ -51,6 +51,10 @@ export type TourView = {
   /** A demo visitor (anonymous sign-in): their workspace is deleted after 7 days. */
   demoVisitor: boolean;
   governance: boolean;
+  /** Gmail is already connected here (an earlier tour connected it): the build won't stop for it, so the blocker step says so. */
+  gmailConnected: boolean;
+  /** A Live launch is waiting for approval here (the seeded one from Sam): the Approvals step approves it. */
+  deployWaiting: boolean;
   role: "owner" | "admin" | "builder" | "viewer";
   personal: boolean;
   /** The seeded Acme Ops this person owns, to switch to when the tour starts in Personal. */

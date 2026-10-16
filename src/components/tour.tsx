@@ -340,6 +340,8 @@ export function TourEngine({
   }, [pos, anchor]);
 
   const hasTarget = Boolean(targetOf(step, acted));
+  // The step's action needs its control, which hasn't turned up yet: Next waits for it (a missing control offers Take me there).
+  const waiting = phase === "shown" && hasTarget && !pos && Boolean(step?.onNext) && !acted.includes(step?.id ?? "");
   useEffect(() => {
     if (phase !== "shown" || !hasTarget || anchor) return;
     const t = window.setTimeout(() => setLate(true), WAIT_MS);
@@ -410,9 +412,9 @@ export function TourEngine({
 
   // Focus moves into the card at each step: Tab cycles its controls, and the arrow keys step while it has focus.
   useEffect(() => {
-    if (phase === "moving" || acting || !view.visible) return;
+    if (phase === "moving" || acting || !view.visible || waiting) return;
     card.current?.querySelector<HTMLElement>("[data-tour-next]")?.focus({ preventScroll: true });
-  }, [phase, acting, stepKey, view.visible]);
+  }, [phase, acting, stepKey, view.visible, waiting]);
 
   // The visible click: scroll the control into view, show a pointer on it, press once, then click it.
   const press = useCallback(
@@ -472,7 +474,9 @@ export function TourEngine({
         if (r === false) return;
         onActed(step.id);
       } catch (e) {
-        setError(`${e instanceof Error ? e.message : "That didn't work"}. Next tries again.`);
+        // A step's own message says what to do; otherwise Next simply tries again.
+        const m = e instanceof Error ? e.message : "That didn't work";
+        setError(/[.!?]$/.test(m) ? m : `${m}. Next tries again.`);
         return;
       } finally {
         setActing(false);
@@ -511,7 +515,7 @@ export function TourEngine({
   }, [chapter, step, onSkip]);
 
   const onKey = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowRight") void next();
+    if (e.key === "ArrowRight" && !waiting) void next();
     else if (e.key === "ArrowLeft") back();
     else if (e.key === "Tab") {
       // Focus stays inside the card.
@@ -646,6 +650,11 @@ export function TourEngine({
                 </button>
               </div>
             )}
+            {waiting && !acting && (
+              <p role="status" className="text-small text-ink-2">
+                Waiting for it to show on the page…
+              </p>
+            )}
             {error && (
               <p role="alert" className="text-small font-semibold text-failed">
                 {error}
@@ -662,7 +671,7 @@ export function TourEngine({
                 type="button"
                 data-tour-next
                 onClick={() => void next()}
-                disabled={busy}
+                disabled={busy || waiting}
                 className={cn(btn, "border border-primary bg-primary px-4 text-on-primary", acting && "cursor-progress")}
               >
                 {acting ? "Working…" : (step.nextLabel && !acted.includes(step.id) ? step.nextLabel : isLast ? "Finish" : "Next")}
