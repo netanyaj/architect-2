@@ -229,7 +229,7 @@ function planIntro(project: ProjectWorkspace, writing: boolean): string {
   if (writing) return "I'm writing the plan now. Parts appear on the left as they're ready. Nothing is built yet.";
   if (!plan) return "I'll write the plan here: every part, how I'll check it works, and what it costs. Nothing is built until you click Build.";
   if (plan.generation === "failed") {
-    return `Sorry, I lost the connection to the model part-way through. Your request${project.items.length ? ` and the first ${project.items.length} parts are` : " is"} saved. Try again, or switch models.`;
+    return `Sorry, I couldn't finish the plan this time. Your request${project.items.length ? ` and the first ${project.items.length} parts are` : " is"} saved. Try again, or switch models.`;
   }
   const parts = project.items.filter((i) => i.status !== "dropped" && i.status !== "deferred").length;
   const choices = plan.defaults.length + plan.questions.filter((q) => !q.blocking && !q.answer).length;
